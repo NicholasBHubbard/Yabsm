@@ -1,0 +1,31 @@
+                 #-----------------------------------------#
+                 # WELCOME TO THE YABSM CONFIGURATION FILE #
+                 #-----------------------------------------#
+
+#-----------------------------------------------------------------------#
+# *_snaps = How many snapshots do you want take in given timeframe?     #
+#                                                                       #
+# *_keep = How many snapshots do you want to keep from given timeframe? #
+#-----------------------------------------------------------------------#
+
+# HOURLY
+hrly_snaps=12
+hrly_keep=20
+
+# DAILY
+daily_snaps=24
+daily_keep=24
+
+# WEEKLY
+weekly_snaps=7
+weekly_keep=7
+
+# MONTHLY
+monthly_snaps=1
+monthly_keep=1
+
+# shell options = {bash, zsh, fish, ksh, tcsh}
+shell=bash
+
+# date_format options = {mm/dd/yyyy, dd/mm/yyyy}
+date=dd/mm/yyyy

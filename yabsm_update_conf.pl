@@ -15,8 +15,7 @@ use 5.010;
 open (my $fh, '<:encoding(UTF-8)', '/etc/yabsmrc')
   or die 'failed to open file /etc/yabsmrc: $!';
 
-my @lines = grep { m/^\s/ } readline $fh;
+my @lines = grep { m/^[a-z]/ } readline $fh;
 
 close $fh;
 
-say @lines;

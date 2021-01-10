@@ -1,47 +1,60 @@
 #!/usr/bin/env perl
 
-# Author: Nicholas Hubbard
-# Email:  nhub73@keemail.me
-# WWW:    https://github.com/NicholasBHubbard/yabsm
+#  Author: Nicholas Hubbard
+#  Email:  nhub73@keemail.me
+#  WWW:    https://github.com/NicholasBHubbard/yabsm
+#
+#  This script is used for taking and deleting a single snapshot.
+#  
+#  Snapshot names look something like this: 'day=2021_01_31,time=15:30'.
+#
+#  Exactly five arguments are required:
+#  1: '--subv' subvolume to be snapshotted.
+#  2: '--snapdir' root snapshot directory (typically /.snapshots).
+#  3: '--subvname' the yabsm name of the subvolume being snapshotted.
+#  4: '--timeframe' the timeframe for the snapshot (hourly, daily, etc). 
+#  5: '--keeping' the number of snapshots to keep for the subvolume/timeframe.
+#
+#  This script is not meant to be used by the end user.
 
 use strict;
 use warnings;
 use 5.010;
 
-=pod
-
-=head1 DESCRIPTION
-
-This script is used for taking and deleting a single snapshot.
-
-Snapshot names look something like this: 'day=2021_01_31,time=15:30'.
-
-Exactly five arguments must be given:
-1: subvolume to be snapshotted
-2: root snapshot directory (typically /.snapshots)
-3: the yabsm name of the subvolume being snapshotted (ex: 'root' for '/')
-4: the timeframe for the snapshot (hourly, daily, etc). 
-6: the number of snapshots the user wants to keep for this subvolume/timeframe.
-
-This script should not be used by the end user.
-
-=cut
+use Getopt::Long;
 
                ####################################
-               #       GRAB INPUT PARAMETERS      #
+               #     PROCESS INPUT PARAMETERS     #
                ####################################
 
-my $subvol_to_snapshot_arg = $ARGV[0];
-my $snap_root_dir_arg      = $ARGV[1];
-my $yabsm_subvol_name_arg  = $ARGV[2];
-my $timeframe_arg          = $ARGV[3]; 
-my $snaps_to_keep_arg      = $ARGV[4];
+my $SUBVOL_TO_SNAPSHOT_ARG;
+my $SNAPSHOT_ROOT_DIR_ARG;
+my $YABSM_SUBVOL_ARG;
+my $TIMEFRAME_ARG;
+my $SNAPS_TO_KEEP_ARG;
+
+GetOptions ('subv=s'      => \$SUBVOL_TO_SNAPSHOT_ARG,
+            'snapdir=s'   => \$SNAPSHOT_ROOT_DIR_ARG,
+            'subvname=s'  => \$YABSM_SUBVOL_ARG,
+            'timeframe=s' => \$TIMEFRAME_ARG,
+            'keeping=i'   => \$SNAPS_TO_KEEP_ARG);
+
+foreach my $arg ($SUBVOL_TO_SNAPSHOT_ARG, 
+                 $SNAPSHOT_ROOT_DIR_ARG,
+                 $YABSM_SUBVOL_ARG,
+                 $TIMEFRAME_ARG,
+                 $SNAPS_TO_KEEP_ARG) {
+  die "a required command line argument was not provided"
+    if !defined $arg;
+}
+
+my $WORKING_DIR = "${SNAPSHOT_ROOT_DIR_ARG}/${YABSM_SUBVOL_ARG}/$TIMEFRAME_ARG";
 
                ####################################
                #               MAIN               #
                ####################################
 
-delete_earliest_snapshot(); 
+delete_appropriate_snapshots(); 
 take_new_snapshot();
 
                ####################################
@@ -51,11 +64,11 @@ take_new_snapshot();
 sub take_new_snapshot {
 
   system('btrfs subvolume snapshot '
-         . $subvol_to_snapshot_arg . ' '
-         . $snap_root_dir_arg . '/'
-         . $yabsm_subvol_name_arg . '/'
-         . $timeframe_arg . '/'
-         . create_snapshot_name());
+         . $SUBVOL_TO_SNAPSHOT_ARG . ' '
+         . $WORKING_DIR . '/'
+         . create_snapshot_name()) == 0 # system() returns exit status.
+           or die "unable to create new snapshot in \"${WORKING_DIR}\"";
+  return;
 }
 
 sub create_snapshot_name { 
@@ -73,30 +86,58 @@ sub create_snapshot_name {
                #        SNAPSHOT DELETION         #
                ####################################
 
-sub delete_earliest_snapshot {
+sub delete_appropriate_snapshots {
 
-  opendir(DIR,"${snap_root_dir_arg}/${yabsm_subvol_name_arg}/$timeframe_arg");
+  opendir(my $dh, $WORKING_DIR)
+    or die "failed to open directory $WORKING_DIR: $!";
 
-  my @snaps = grep(/^[^\.]/, readdir DIR); # exclude dot files
+  my @existing_snaps = grep(/^[^\.]/, readdir $dh); # exclude dot files
 
-  closedir DIR;
+  closedir $dh;
 
-  return if scalar(@snaps) < $snaps_to_keep_arg; 
+  my $num_snaps = scalar @existing_snaps;
 
-  my $earliest_snap = $snaps[0];
-  foreach my $snap (@snaps) {
-    $earliest_snap = $snap
-      if snapshot_lt($snap,$earliest_snap);
+  if ($num_snaps < $SNAPS_TO_KEEP_ARG) { # don't delete any snapshots.
+    return; 
+  } 
+  elsif ($num_snaps > $SNAPS_TO_KEEP_ARG) { # user changed settings to keep 
+                                               # less snapshots.
+    for (my $i = 0; $i <= $num_snaps - $SNAPS_TO_KEEP_ARG; $i++) {
+
+      my $snap_to_delete = earliest_snap(\@existing_snaps);
+
+      delete_snapshot $snap_to_delete;
+
+      @existing_snaps = grep $_ ne $snap_to_delete, @existing_snaps;
+    }
+  } 
+  else { # delete just one snapshot.
+    delete_snapshot(earliest_snap(\@existing_snaps)); 
   }
+  return;
+}
+
+sub delete_snapshot {
 
   system('btrfs subvolume delete '
-         . $snap_root_dir_arg . '/'
-         . $yabsm_subvol_name_arg . '/'
-         . $timeframe_arg . '/'
-         . $earliest_snap);
+         . $WORKING_DIR . '/'
+         . $_[0]) == 0
+           or die "failed to delete subvolume \"${WORKING_DIR}/$_[0]\"";
+  return;
+}
+
+sub earliest_snap {
+
+  my $earliest_snap = @{$_[0]}[0]; 
+
+  foreach my $snap (@{$_[0]}) {
+    $earliest_snap = $snap if snapshot_lt($snap,$earliest_snap);
+  }
+  return $earliest_snap;
 }
 
 sub snapshot_lt { 
+
   return lexically_lt(snap_name_to_lex_ord_nums($_[0]),
                       snap_name_to_lex_ord_nums($_[1]));
 }
@@ -112,7 +153,7 @@ sub lexically_lt {
   elsif ($head1 < $head2) {
     return 1;
   }
-  elsif (@tail1 == 0 && @tail2 == 0) { # array args are always equal length.
+  elsif (@tail1 == 0 && @tail2 == 0) { # array args must always be equal length.
     return 0;
   }
   else {
@@ -121,6 +162,8 @@ sub lexically_lt {
 }
 
 sub snap_name_to_lex_ord_nums {
+
   my ($yr, $mon, $day, $hr, $min) = $_[0] =~ m/([0-9]+)/g;
+
   return [$yr,$mon,$day,$hr,$min];
 }

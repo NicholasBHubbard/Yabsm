@@ -45,7 +45,7 @@ foreach my $arg ($SUBVOL_MOUNTPOINT_ARG,
                  $TIMEFRAME_ARG,
                  $SNAPS_TO_KEEP_ARG) {
     die 'required: {--mntpoint, --snapdir, --subvname, --timeframe, --keeping}'
-      if !defined $arg;
+      if ! defined $arg;
 }
 
 my $WORKING_DIR =

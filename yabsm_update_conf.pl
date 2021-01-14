@@ -8,17 +8,17 @@ use strict;
 use warnings;
 use 5.010;
 
-use Data::Dumper;
+use Scalar::Util qw(looks_like_number);
 
                  ####################################
                  #               MAIN               #
                  ####################################
 
-my %YABSMRC_HASH = yabsmrc_to_hash();
+my %YABSMRC_HASH = yabsmrc_to_hash(); # global
 
 check_valid_config();
 write_cronjobs();
-
+say "success";
                  ####################################
                  #         PARSE CONFIG FILE        #
                  ####################################
@@ -45,9 +45,91 @@ sub yabsmrc_to_hash {
             $yabsmrc_hash{$key} = $val;
         }
     }
-    
     close $fh;
     return %yabsmrc_hash;
+}
+
+                 ####################################
+                 #           WRITE CRONJOBS         #
+                 ####################################
+
+sub write_cronjobs {
+    
+    my $file = '/etc/crontab';
+    my $tmp  = '/tmp/yabsm_tmp';
+    
+    open (my $in, '<', $file)
+      or die "failed to open file \"/etc/crontab\"";
+    open (my $out, '>', $tmp)
+      or die "failed to open tmp file at \"/tmp/yabsm_tmp\" $!";
+
+    foreach (<$in>) {
+        if ($_ =~ /yabsm_take_snapshot/) {
+            print $out '';
+        }
+        else {
+            print $out $_;
+        }
+    }
+
+    my @cron_strings = create_all_cronjob_strings();
+    foreach (@cron_strings) {
+        print $out "$_\n";
+    }
+
+    close $out;
+    close $file;
+    rename $tmp, $file;
+    return;
+} 
+
+sub create_all_cronjob_strings {
+    
+    my @all_cron_strings;
+
+    my @subvols_to_snap = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
+
+    my $snapshot_dir = $YABSMRC_HASH{'snapshot_directory'}; 
+
+    foreach (@subvols_to_snap) {
+
+        my ($subv_name, $mountpoint) = split /,/, $_;
+        
+        my ($hourly_take, $hourly_keep,
+            $daily_take, $daily_keep,
+            $midnight_want, $midnight_keep,
+            $monthly_want, $monthly_keep) = gather_settings_for($subv_name); 
+        
+        my $hourly_cron = ('*/' . int(60 / $hourly_take)
+                           . ' * * * * root /root/yabsm/yabsm_take_snapshot '
+                           . "--mntpoint $mountpoint --snapdir $snapshot_dir "
+                           . "--subvname $subv_name --timeframe hourly "
+                           . "--keeping $hourly_keep");
+        
+        my $daily_cron = ('0 */' . int(24 / $daily_take)
+                          . ' * * * root /root/yabsm/yabsm_take_snapshot '
+                          . "--mntpoint $mountpoint --snapdir $snapshot_dir "
+                          . "--subvname $subv_name --timeframe daily "
+                          . "--keeping $daily_keep");
+        
+        my $midnight_cron = ('0 0 * * * root /root/yabsm/yabsm_take_snapshot '
+                             . "--mntpoint $mountpoint --snapdir $snapshot_dir "
+                             . "--subvname $subv_name --timeframe midnight "
+                             . "--keeping $midnight_keep")
+          unless $midnight_want eq 'no';
+        
+        my $monthly_cron = ('0 0 1 * * root /rootyabsm/yabsm_take_snapshot '
+                            . "--mntpoint $mountpoint --snapdir $snapshot_dir "
+                            . "--subvname $subv_name --timeframe monthly "
+                            . "--keeping $monthly_keep")
+          unless $monthly_want eq 'no';
+
+        push @all_cron_strings, grep { defined } ($hourly_cron,
+                                                  $daily_cron,
+                                                  $midnight_cron,
+                                                  $monthly_cron);
+    }
+    return @all_cron_strings;
 }
 
                  ####################################
@@ -66,15 +148,18 @@ sub check_valid_config {
                            $daily_take, $daily_keep,
                            $midnight_want, $midnight_keep,
                            $monthly_want, $monthly_keep) 
-          = grab_settings_for($subv);
+          = gather_settings_for($subv);
         
         die ("\"$subv\" is missing one of these required settings:\n"
              . "${subv}_hourly_take   | ${subv}_hourly_keep\n${subv}_daily_take"
              . "    | ${subv}_daily_keep\n${subv}_midnight_want | "
              . "${subv}_midnight_keep \n${subv}_monthly_want "
              . " | ${subv}_monthly_keep\n $!")
-          if grep { ! defined } (@settings);
+          if grep { ! defined } @settings;
         
+        die ("found a negative value for a \"$subv\" setting")
+          if grep { looks_like_number $_ and $_ < 0 } @settings;
+
         die ("max value for \"${subv}_hourly_take\" is '60'")
           if ($hourly_take > 60);
         
@@ -82,78 +167,19 @@ sub check_valid_config {
           if ($daily_take > 24);
         
         die ("value for \"${subv}_midnight_want\" must be \"yes\" or \"no\"")
-          if ! ($midnight_want ne 'yes' xor $midnight_want ne 'no');
+          unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
         
         die ("value for \"${subv}_monthly_want\" must be \"yes\" or \"no\"")
-          if ! ($monthly_want ne 'yes' xor $monthly_want ne 'no');
+          unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
     }
     return;
 }
-
-                 ####################################
-                 #           WRITE CRONJOBS         #
-                 ####################################
-
-sub write_cronjobs {
-    
-    my @cronjobs;
-    
-    my @subvols_to_snap = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
-    
-    foreach (@subvols_to_snap) {
-        
-        my ($subv_name, $mountpoint) = split /,/, $_;
-        
-        my @cron_strings = create_cronjob_strings_for($subv_name,$mountpoint);
-    }
-    return;
-}
-
-sub create_cronjob_strings_for {
-    
-    my $subv_name = shift;
-    my $mountpoint = shift;
-    
-    my $snapshot_dir = $YABSMRC_HASH{'snapshot_directory'}; 
-    
-    my ($hourly_take, $hourly_keep,
-        $daily_take, $daily_keep,
-        $midnight_want, $midnight_keep,
-        $monthly_want, $monthly_keep) = grab_settings_for($subv_name); 
-    
-    my $hourly_cron = ('*/' . int(60 / $hourly_take)
-                       . ' * * * * root /root/yabsm/yabsm_take_snapshot '
-                       . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                       . "--subvname $subv_name --timeframe hourly "
-                       . "--keeping $hourly_keep");
-    
-    my $daily_cron = ('0 */' . int(24 / $daily_take)
-                      . ' * * * root /root/yabsm/yabsm_take_snapshot '
-                      . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                      . "--subvname $subv_name --timeframe daily "
-                      . "--keeping $daily_keep");
-    
-    my $midnight_cron = ('0 0 * * * root /root/yabsm/yabsm_take_snapshot '
-                         . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                         . "--subvname $subv_name --timeframe midnight "
-                         . "--keeping $midnight_keep")
-      unless !defined $midnight_want;
-    
-    my $monthly_cron = ('0 0 1 * * root /rootyabsm/yabsm_take_snapshot '
-                        . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                        . "--subvname $subv_name --timeframe monthly "
-                        . "--keeping $monthly_keep")
-      unless !defined $monthly_want;
-    
-    return [$hourly_cron, $daily_cron, $midnight_cron, $monthly_cron];
-}
-
 
                  ####################################
                  #              HELPERS             #
                  ####################################
 
-sub grab_settings_for {
+sub gather_settings_for {
     
     my $subv_name = shift;
     
@@ -171,5 +197,3 @@ sub grab_settings_for {
             $midnight_want, $midnight_keep,
             $monthly_want, $monthly_keep);
 }
-
-say "success";

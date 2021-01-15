@@ -1,8 +1,12 @@
 #!/usr/bin/env perl
 
-# Author: Nicholas Hubbard
-# Email:  nhub73@keemail.me
-# WWW:    https://github.com/NicholasBHubbard/yabsm
+#  Author: Nicholas Hubbard
+#  Email:  nhub73@keemail.me
+#  WWW:    https://github.com/NicholasBHubbard/yabsm
+#
+#  This script parses the '/etc/yabsmrc', checks for errors, and then writes the
+#  appropriate cronjobs to '/etc/crontab'. The cronjobs will call the 
+#  '/usr/sbin/yabsm-take-snapshot' script.
 
 use strict;
 use warnings;
@@ -14,11 +18,11 @@ use Scalar::Util qw(looks_like_number);
                  #               MAIN               #
                  ####################################
 
-my %YABSMRC_HASH = yabsmrc_to_hash(); # global
+my %YABSMRC_HASH = yabsmrc_to_hash(); # make settings global
 
 check_valid_config();
 write_cronjobs();
-say "success";
+
                  ####################################
                  #         PARSE CONFIG FILE        #
                  ####################################
@@ -39,7 +43,7 @@ sub yabsmrc_to_hash {
         chomp $val; # $val is appended with newline
         
         if ($key eq 'I_want_to_snap_this_subvol') { 
-            push @{$yabsmrc_hash{$key}}, $val; # note this is an array
+            push @{$yabsmrc_hash{$key}}, $val; # creating an array
         }
         else {
             $yabsmrc_hash{$key} = $val;
@@ -55,31 +59,31 @@ sub yabsmrc_to_hash {
 
 sub write_cronjobs {
     
-    my $file = '/etc/crontab';
-    my $tmp  = '/tmp/yabsm_tmp';
+    my $crontab_file = '/etc/crontab';
+    my $tmp_file = '/tmp/yabsm_tmp';
     
-    open (my $in, '<', $file)
+    open (my $fh_crontab, '<', $crontab_file)
       or die "failed to open file \"/etc/crontab\"";
-    open (my $out, '>', $tmp)
+    open (my $fh_tmp, '>', $tmp_file)
       or die "failed to open tmp file at \"/tmp/yabsm_tmp\" $!";
 
-    foreach (<$in>) {
+    foreach (<$fh_crontab>) {
         if ($_ =~ /yabsm_take_snapshot/) {
-            print $out '';
+            print $fh_tmp '';
         }
         else {
-            print $out $_;
+            print $fh_tmp $_;
         }
     }
 
     my @cron_strings = create_all_cronjob_strings();
     foreach (@cron_strings) {
-        print $out "$_\n";
+        print $fh_tmp "$_ \n";
     }
 
-    close $out;
-    close $file;
-    rename $tmp, $file;
+    close $fh_crontab;
+    close $fh_tmp;
+    rename $tmp_file, $crontab_file;
     return;
 } 
 
@@ -101,24 +105,24 @@ sub create_all_cronjob_strings {
             $monthly_want, $monthly_keep) = gather_settings_for($subv_name); 
         
         my $hourly_cron = ('*/' . int(60 / $hourly_take)
-                           . ' * * * * root /root/yabsm/yabsm_take_snapshot '
+                           . ' * * * * root /usr/sbin/yabsm-take-snapshot '
                            . "--mntpoint $mountpoint --snapdir $snapshot_dir "
                            . "--subvname $subv_name --timeframe hourly "
                            . "--keeping $hourly_keep");
         
         my $daily_cron = ('0 */' . int(24 / $daily_take)
-                          . ' * * * root /root/yabsm/yabsm_take_snapshot '
+                          . ' * * * root /usr/sbin/yabsm-take-snapshot '
                           . "--mntpoint $mountpoint --snapdir $snapshot_dir "
                           . "--subvname $subv_name --timeframe daily "
                           . "--keeping $daily_keep");
         
-        my $midnight_cron = ('0 0 * * * root /root/yabsm/yabsm_take_snapshot '
+        my $midnight_cron = ('0 0 * * * root /usr/sbin/yabsm-take-snapshot '
                              . "--mntpoint $mountpoint --snapdir $snapshot_dir "
                              . "--subvname $subv_name --timeframe midnight "
                              . "--keeping $midnight_keep")
           unless $midnight_want eq 'no';
         
-        my $monthly_cron = ('0 0 1 * * root /rootyabsm/yabsm_take_snapshot '
+        my $monthly_cron = ('0 0 1 * * root /usr/sbin/yabsm-take-snapshot '
                             . "--mntpoint $mountpoint --snapdir $snapshot_dir "
                             . "--subvname $subv_name --timeframe monthly "
                             . "--keeping $monthly_keep")

@@ -45,8 +45,8 @@
   home_daily_take=13
   home_daily_keep=
 
-  home_midnight_want=no
-  home_midnight_keep=0
+  home_midnight_want=yes
+  home_midnight_keep=14
 
   home_monthly_want=no
   home_monthly_keep=0
@@ -56,11 +56,11 @@
   + You must specify the mount point of the root of your snapshot
     subvolume. Traditionally this subvolume is mounted at /.snapshots.
   + For every subvolume you want to snapshot you must specify a
-    'I_want_to_snap_this_subvol' field. On the right hand side of the equals
+    `I_want_to_snap_this_subvol` field. On the right hand side of the equals
     sign should be the name of the subvolume and it's mount point. Note that
     you can name your subvolumes whatever you would like. These names are not
     related to the internal btrfs names.
   + For every subvolume you wish to snapshot you are required to specify a
-    field for all of the following: *_hourly_take, *_hourly_keep, *_daily_take,
+    field for all of the following: `*_hourly_take, *_hourly_keep, *_daily_take,
     *_daily_keep, *_midnight_want, *_midnight_keep, *_monthly_want,
-    *_monthly_keep. 
+    *_monthly_keep`.

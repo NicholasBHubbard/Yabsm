@@ -64,7 +64,7 @@ take_new_snapshot();
 
 sub take_new_snapshot {
     
-    system('btrfs subvolume snapshot -r '
+    system('btrfs subvolume snapshot -r ' # '-r' means read-only 
            . $SUBVOL_MOUNTPOINT_ARG . ' '
            . $WORKING_DIR . '/'
            . create_snapshot_name()) == 0 # system() returns exit status

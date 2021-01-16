@@ -13,9 +13,9 @@
   #+BEGIN_SRC  
   # /etc/yabsmrc
                                         
-            #-----------------------------------------#
-            # WELCOME TO THE YABSM CONFIGURATION FILE #
-            #-----------------------------------------#
+               #-----------------------------------------#
+               # WELCOME TO THE YABSM CONFIGURATION FILE #
+               #-----------------------------------------#
 
   snapshot_directory=/.snapshots
 
@@ -61,6 +61,15 @@
     you can name your subvolumes whatever you would like. These names are not
     related to the internal btrfs names.
   + For every subvolume you wish to snapshot you are required to specify a
-    field for all of the following: =*_hourly_take=, =*_hourly_keep=,
+    field for each of the following: =*_hourly_take=, =*_hourly_keep=,
     =*_daily_take=, =*_daily_keep=, =*_midnight_want=, =*_midnight_keep=,
     =*_monthly_want=, =*_monthly_keep=.
+* What do the settings mean?
+  + =*_*_keep=: How many of this type of snapshot do you want to keep around? 
+  + =*_hourly_take=: How many snapshots do you want to take over the course of
+    an hour? Max value is 60.
+  + =*_daily_take=: How many snapshots do you want to take per day? These
+    snapshots are taken at the beginning of the hour. Max value is 24.
+  + =*_midnight_want=: Do you want to take a snapshot every night at midnight?
+  + =*_monthly_want=: Do you want to take a snapshot on the first day of every month?
+

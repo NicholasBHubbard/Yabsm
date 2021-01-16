@@ -11,7 +11,7 @@
   You can tweak your configuration to your liking by editing the =/etc/yabsmrc=
   file. After you are done simply run =sudo yabsm update= and you are good to
   go. You may of course modify your settings whenever you want. Snapshots are
-  named after the time they are taken, in =yyyy_mm_dd= format.
+  named after the time they are taken in =yyyy_mm_dd= format.
 
   For example a snapshot taken at 15:30 on March 20'th 2021 will be named
   =day=2021_03_20,time=15:30=. 
@@ -91,7 +91,7 @@
 
   + =*_monthly_want=: Do you want to take a snapshot on the first day of every month?
 
-* How does YABSM work?
+* How does YABSM work internally?
   YABSM simply writes cronjobs to =/etc/crontab= that call a script that will
   take new snapshots and delete appropriate snapshots.
   

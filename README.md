@@ -91,10 +91,6 @@
 
   + =*_monthly_want=: Do you want to take a snapshot on the first day of every month?
 
-* How does YABSM work internally?
-  YABSM simply writes cronjobs to =/etc/crontab= that call a script that will
-  take new snapshots and delete appropriate snapshots.
-  
 * Where do my snapshots go?
 Here is the file tree structure of the example configuration
   #+BEGIN_SRC  
@@ -111,4 +107,8 @@ Here is the file tree structure of the example configuration
       ├── midnight
       └── monthly
   #+END_SRC  
+
+* How does YABSM work internally?
+  YABSM simply writes cronjobs to =/etc/crontab= that call a script that will
+  take new snapshots and delete appropriate snapshots.
   

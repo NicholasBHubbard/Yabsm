@@ -5,11 +5,16 @@
 * Why should I use YABSM?
   The entire point of YABSM is to make it trivial to set up a custom snapshot
   system. All you have to do is edit a simple configuration file and run one
-  command.
+  command. 
 
 * How do I use it?
-  Here is an example yabsm configuration
+  You can tweak your configuration to your liking by editing the =/etc/yabsmrc=
+  file. After you are done simply run =sudo yabsm update= and you are good to
+  go. You may of course modify your settings whenever you want. Snapshots are
+  named after the time they are taken for example an snapshot taken at 15:30 on
+  March 20th 2021 will be named =day=2021_03_20,time=15:30=.
 
+*  Example Configuration
   #+BEGIN_SRC  
   # /etc/yabsmrc
                                         
@@ -51,7 +56,6 @@
   home_monthly_want=no
   home_monthly_keep=0
   #+END_SRC  
-
   There are a couple of things to note here
   + You must specify the mount point of the root of your snapshot
     subvolume. Traditionally this subvolume is mounted at /.snapshots.
@@ -85,3 +89,6 @@
 
   + =*_monthly_want=: Do you want to take a snapshot on the first day of every month?
 
+* Where do my snapshots go?
+  
+  

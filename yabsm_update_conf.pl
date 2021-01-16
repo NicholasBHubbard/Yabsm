@@ -68,7 +68,7 @@ sub write_cronjobs {
       or die "failed to open tmp file at \"/tmp/yabsm_tmp\" $!";
 
     foreach (<$fh_crontab>) {
-        if ($_ =~ /yabsm_take_snapshot/) {
+        if ($_ =~ /yabsm-take-snapshot/) {
             print $fh_tmp '';
         }
         else {

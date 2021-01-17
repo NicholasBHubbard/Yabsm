@@ -22,7 +22,10 @@
   ~$ cd ./yabsm/src/
   ~$ sudo perl yabsm_init.pl
   #+END_SRC  
-  Now just update =/etc/yabsmrc= to your liking and then run =sudo yabsmrc --update=.
+  Now just update =/etc/yabsmrc= to your liking and then run
+  #+BEGIN_SRC
+  sudo yabsmrc --update
+  #+END_SRC
 *  Example Configuration
   #+BEGIN_SRC  
   # /etc/yabsmrc

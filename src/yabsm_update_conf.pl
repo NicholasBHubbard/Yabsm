@@ -213,7 +213,10 @@ sub create_directories {
         }
         else {
             mkdir "${snapshot_dir}/$subv";
-            mkdir "${snapshot_dir}/${subv}";
+            mkdir "${snapshot_dir}/${subv}/hourly";
+            mkdir "${snapshot_dir}/${subv}/daily";
+            mkdir "${snapshot_dir}/${subv}/midnight";
+            mkdir "${snapshot_dir}/${subv}/monthly";
         }
     }
 }

@@ -26,6 +26,7 @@ if (getpwuid($<) ne 'root') {
 my %YABSMRC_HASH = yabsmrc_to_hash(); # make settings global
 
 check_valid_config();
+create_directories();
 write_cronjobs();
 
                  ####################################
@@ -150,8 +151,16 @@ sub check_valid_config {
     
     my @subvols_to_check = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
     
+    my $snapshot_dir = $YABSMRC_HASH{'snapshot_dir'};
+
+    die "$snapshot_dir does not exist" unless (-d $snapshot_dir);
+
     foreach (@subvols_to_check) {
         
+        die ("parse error on \"I_want_to_snap_this_subvol=$_"
+             . ': it seems you have have a space on the right hand side of'
+             .  ' of the equals sign') if $_ =~ ' ';
+
         my ($subv, undef) = split /,/, $_;
         
         my @settings = my ($hourly_take, $hourly_keep,
@@ -183,6 +192,30 @@ sub check_valid_config {
           unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
     }
     return;
+}
+
+                 ####################################
+                 #         CREATE DIRECTORIES       #
+                 ####################################
+ 
+sub create_directories {
+
+    my @subvols_being_snapped = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
+
+    my $snapshot_dir = $YABSMRC_HASH{'snapshot_dir'};
+
+    foreach (@subvols_being_snapped) {
+
+        my ($subv, undef) = split /,/, $_;
+
+        if (-d "${snapshot_dir}/$subv") {
+            next;
+        }
+        else {
+            mkdir "${snapshot_dir}/$subv";
+            mkdir "${snapshot_dir}/${subv}";
+        }
+    }
 }
 
                  ####################################

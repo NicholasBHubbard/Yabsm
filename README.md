@@ -54,7 +54,7 @@
 
 
 
-  I_want_to_snap_this_subvol=home,/home/user
+  I_want_to_snap_this_subvol=home,/home
   
   home_hourly_take=12
   home_hourly_keep=100

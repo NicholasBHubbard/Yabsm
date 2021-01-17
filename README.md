@@ -68,7 +68,7 @@
   home_monthly_want=no
   home_monthly_keep=0
   #+END_SRC  
-  There are a couple of things to note here
+  There are a few things to note here:
   + You must specify the mount point of the root of your snapshot
     subvolume. Traditionally this subvolume is mounted at /.snapshots.
 

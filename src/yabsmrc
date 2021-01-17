@@ -1,0 +1,21 @@
+# /etc/yabsmrc
+
+                 #-----------------------------------------#
+                 # WELCOME TO THE YABSM CONFIGURATION FILE #
+                 #-----------------------------------------#
+
+snapshot_directory=/.snapshots
+
+I_want_to_snap_this_subvol=root,/
+
+root_hourly_take=12
+root_hourly_keep=30
+
+root_daily_take=24
+root_daily_keep=48
+
+root_midnight_want=yes
+root_midnight_keep=14
+
+root_monthly_want=yes
+root_monthly_keep=12

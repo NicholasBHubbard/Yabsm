@@ -35,10 +35,10 @@ chmod 0664, "${WORKING_DIR}/yabsmrc";
 
 move "${WORKING_DIR}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
 move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update-conf";
-move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/sbin/yabsm";
+move "${WORKING_DIR}/yabsm.pl", "/usr/sbin/yabsm";
 move "${WORKING_DIR}/yabsmrc", "/etc/yabsmrc";
 
 print "success! \n";
-print "Please proceed to edit \"/etc/yabsmrc/\" to your liking and then run \"yabsm --update\" \n";
+print "Please proceed to edit \"/etc/yabsmrc/\" to your liking and then run \"sudo yabsm --update\" \n";
 
-system("rm -rf $WORKING_DIR");
+system("rm -rf ${WORKING_DIR}/../../yabsm");

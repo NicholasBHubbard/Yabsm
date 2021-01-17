@@ -16,6 +16,13 @@
   For example a snapshot taken at 15:30 on March 20'th 2021 will be named
   =day=2021_03_20,time=15:30=. 
 
+* Installation
+  #+BEGIN_SRC  
+  ~$ cd
+  ~$ git clone https://github.com/NicholasBHubbard/yabsm.git
+  ~$ cd ./yabsm/src/
+  ~$ sudo perl yabsm_init.pl
+  #+END_SRC  
 *  Example Configuration
   #+BEGIN_SRC  
   # /etc/yabsmrc

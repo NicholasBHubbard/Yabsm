@@ -48,7 +48,8 @@ foreach my $arg ($SUBVOL_MOUNTPOINT_ARG,
                  $YABSM_SUBVOL_NAME_ARG,
                  $TIMEFRAME_ARG,
                  $SNAPS_TO_KEEP_ARG) {
-    die 'required: {--mntpoint, --snapdir, --subvname, --timeframe, --keeping}'
+    die ('missing one of: {--mntpoint, --snapdir, --subvname,'
+         . ' --timeframe, --keeping}')
       if ! defined $arg;
 }
 

@@ -13,6 +13,7 @@ use warnings;
 use 5.010;
 
 use Scalar::Util qw(looks_like_number);
+use File::Copy qw(move);
 
 if (getpwuid($<) ne 'root') {
     die "error: must be run by root user $!";
@@ -87,7 +88,7 @@ sub write_cronjobs {
 
     close $fh_crontab;
     close $fh_tmp;
-    rename $tmp_file, $crontab_file or die $!;
+    move $tmp_file, $crontab_file or die $!;
     return;
 } 
 
@@ -109,27 +110,28 @@ sub create_all_cronjob_strings {
             $monthly_want, $monthly_keep) = gather_settings_for($subv_name); 
         
         my $hourly_cron = ('*/' . int(60 / $hourly_take)
-                           . ' * * * * root /usr/sbin/yabsm-take-snapshot '
-                           . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                           . "--subvname $subv_name --timeframe hourly "
-                           . "--keeping $hourly_keep");
+                           . ' * * * * root /usr/local/sbin/yabsm-take-snapshot'
+                           . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                           . " --subvname $subv_name --timeframe hourly"
+                           . " --keeping $hourly_keep");
         
         my $daily_cron = ('0 */' . int(24 / $daily_take)
-                          . ' * * * root /usr/sbin/yabsm-take-snapshot '
-                          . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                          . "--subvname $subv_name --timeframe daily "
-                          . "--keeping $daily_keep");
+                          . ' * * * root /usr/local/sbin/yabsm-take-snapshot'
+                          . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                          . " --subvname $subv_name --timeframe daily"
+                          . " --keeping $daily_keep");
         
-        my $midnight_cron = ('0 0 * * * root /usr/sbin/yabsm-take-snapshot '
-                             . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                             . "--subvname $subv_name --timeframe midnight "
-                             . "--keeping $midnight_keep")
+        my $midnight_cron = ('0 0 * * * root'
+                             . ' /usr/local/sbin/yabsm-take-snapshot'
+                             . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                             . " --subvname $subv_name --timeframe midnight"
+                             . " --keeping $midnight_keep")
           unless $midnight_want eq 'no';
         
-        my $monthly_cron = ('0 0 1 * * root /usr/sbin/yabsm-take-snapshot '
-                            . "--mntpoint $mountpoint --snapdir $snapshot_dir "
-                            . "--subvname $subv_name --timeframe monthly "
-                            . "--keeping $monthly_keep")
+        my $monthly_cron = ('0 0 1 * * root /usr/local/sbin/yabsm-take-snapshot'
+                            . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                            . " --subvname $subv_name --timeframe monthly"
+                            . " --keeping $monthly_keep")
           unless $monthly_want eq 'no';
 
         push @all_cron_strings, grep { defined } ($hourly_cron,

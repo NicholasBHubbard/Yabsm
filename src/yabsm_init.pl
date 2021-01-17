@@ -3,6 +3,9 @@
 #  Author: Nicholas Hubbard
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
+#
+#  This script initializes YABSM. The ownership of all YABSM executables is
+#  changed to the root user. FINISH THIS LATER
 
 use strict;
 use warnings;
@@ -23,4 +26,9 @@ chown 0, 0,
 chmod 0774, 
   "${WORKING_DIR}/yabsm_update_conf.pl",
   "${WORKING_DIR}/yabsm_take_snapshot.pl";
+
+move "${WORKING_DIR}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
+move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update-conf";
+
+
 

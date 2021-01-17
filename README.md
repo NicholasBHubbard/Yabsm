@@ -18,11 +18,11 @@
 
 * Installation
   #+BEGIN_SRC  
-  ~$ cd
   ~$ git clone https://github.com/NicholasBHubbard/yabsm.git
   ~$ cd ./yabsm/src/
   ~$ sudo perl yabsm_init.pl
   #+END_SRC  
+  Now just update =/etc/yabsmrc= to your liking and then run =sudo yabsmrc --update=.
 *  Example Configuration
   #+BEGIN_SRC  
   # /etc/yabsmrc

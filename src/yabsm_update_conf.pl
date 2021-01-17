@@ -87,7 +87,7 @@ sub write_cronjobs {
 
     close $fh_crontab;
     close $fh_tmp;
-    rename $tmp_file, $crontab_file;
+    rename $tmp_file, $crontab_file or die $!;
     return;
 } 
 

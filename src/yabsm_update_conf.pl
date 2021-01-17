@@ -151,7 +151,7 @@ sub check_valid_config {
     
     my @subvols_to_check = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
     
-    my $snapshot_dir = $YABSMRC_HASH{'snapshot_dir'};
+    my $snapshot_dir = $YABSMRC_HASH{'snapshot_directory'};
 
     die "$snapshot_dir does not exist" unless (-d $snapshot_dir);
 
@@ -202,7 +202,7 @@ sub create_directories {
 
     my @subvols_being_snapped = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
 
-    my $snapshot_dir = $YABSMRC_HASH{'snapshot_dir'};
+    my $snapshot_dir = $YABSMRC_HASH{'snapshot_directory'};
 
     foreach (@subvols_being_snapped) {
 

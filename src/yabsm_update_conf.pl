@@ -14,6 +14,10 @@ use 5.010;
 
 use Scalar::Util qw(looks_like_number);
 
+if (getpwuid($<) ne 'root') {
+    die "error: must be run by root user $!";
+}
+
                  ####################################
                  #               MAIN               #
                  ####################################
@@ -201,3 +205,5 @@ sub gather_settings_for {
             $midnight_want, $midnight_keep,
             $monthly_want, $monthly_keep);
 }
+
+sub trim { my $s = shift; $s =~ s/^\s+|\s+$//g; return $s };

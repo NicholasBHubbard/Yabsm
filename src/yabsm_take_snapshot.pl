@@ -23,6 +23,10 @@ use 5.010;
 
 use Getopt::Long;
 
+if (getpwuid($<) ne 'root') {
+    die "error: must be run by root user $!";
+}
+
                  ####################################
                  #     PROCESS INPUT PARAMETERS     #
                  ####################################

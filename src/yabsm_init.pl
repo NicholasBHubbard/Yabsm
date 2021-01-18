@@ -20,7 +20,8 @@ if (getpwuid($<) ne 'root') {
 
 sub get_working_dir {
     my $abs_path = abs_path($0);
-    return $abs_path =~ s/\/[^\/]+$//;
+    $abs_path =~ s/\/[^\/]+$//;
+    return $abs_path;
 }
 
 my $WORKING_DIR = get_working_dir();

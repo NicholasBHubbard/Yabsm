@@ -28,8 +28,9 @@
   #+END_SRC
   Feel free to remove the cloned repo.
 *  Example Configuration
+
   #+BEGIN_SRC  
-# /etc/yabsmrcs
+# /etc/yabsmrc
                                       
                          #-----------------------------------------#
                          # WELCOME TO THE YABSM CONFIGURATION FILE #

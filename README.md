@@ -119,11 +119,9 @@ Here is the file tree structure of the example configuration
   #+END_SRC  
 
 * What does YABSM do to my computer?
-  YABSM simply writes cronjobs to =/etc/crontab= that call a script that will
-  take new snapshots and delete appropriate snapshots. Two helper scripts,
-  namely =yabsm-take-snapshot= and =yabsm-update-conf= are placed into
-  /usr/local/sbin, while the script meant to be used to the user, =yabsm= is
-  placed into =/usr/sbin=. 
+  YABSM simply writes cronjobs to =/etc/crontab= calling a script that will
+  takes new snapshots and deletes appropriate snapshots.
 
-
-  
+  Two helper scripts, namely =yabsm-take-snapshot= and =yabsm-update-conf= are
+  placed into /usr/local/sbin, while the script meant to be used to the user,
+  =yabsm= is placed into =/usr/sbin=. 

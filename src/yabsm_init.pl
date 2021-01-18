@@ -18,8 +18,12 @@ if (getpwuid($<) ne 'root') {
     die "error: must be run by root user $!";
 }
 
-my $WORKING_DIR = abs_path($0);
-$WORKING_DIR =~ s/\/[^\/]+$//;
+sub get_working_dir {
+    my $abs_path = abs_path($0);
+    return $abs_path =~ s/\/[^\/]+$//;
+}
+
+my $WORKING_DIR = get_working_dir();
 
 move "${WORKING_DIR}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
 move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update-conf";

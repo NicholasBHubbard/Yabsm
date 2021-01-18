@@ -22,7 +22,7 @@ use File::Copy qw(move);
 my %YABSMRC_HASH = yabsmrc_to_hash(); # make settings global
 
 check_valid_config();
-create_directories(); # only relevant on first running
+create_directories(); 
 write_cronjobs();
 print "success!/n";
 
@@ -182,10 +182,12 @@ sub check_valid_config {
         die ("max value for \"${subv_name}_daily_take\" is '24'")
           if ($daily_take > 24);
         
-        die ("value for \"${subv_name}_midnight_want\" must be \"yes\" or \"no\"")
+        die ("value for \"${subv_name}_midnight_want\""
+             . " must be \"yes\" or \"no\"")
           unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
         
-        die ("value for \"${subv_name}_monthly_want\" must be \"yes\" or \"no\"")
+        die ("value for \"${subv_name}_monthly_want\""
+             . " must be \"yes\" or \"no\"")
           unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
     }
     return;
@@ -205,6 +207,7 @@ sub create_directories {
 
         my ($subv_name, undef) = split /,/, $_;
 
+        # if dir exists mkdir does not do anything
         mkdir "${snapshot_dir}/$subv_name";
         mkdir "${snapshot_dir}/${subv_name}/hourly";
         mkdir "${snapshot_dir}/${subv_name}/daily";
@@ -215,9 +218,8 @@ sub create_directories {
         mkdir "${snapshot_dir}/${subv_name}/monthly"
           if ($YABSMRC_HASH{"${subv_name}_monthly_want"} eq 'yes');
         }
-    }
     return:
-}
+    }
 
                  ####################################
                  #              HELPERS             #

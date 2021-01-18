@@ -5,7 +5,10 @@
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
 #  This script initializes YABSM. The ownership of all YABSM executables is
-#  changed to the root user. FINISH THIS LATER
+#  changed to the root user. The executable helper scripts are placed in
+#  '/usr/local/sbin/yabsm-take-snapshot' and
+#  '/usr/local/sbin/yabsm-take-snapshot' respectively. The end-user script is
+#  placed into /usr/sbin/yabsm.
 
 use strict;
 use warnings;

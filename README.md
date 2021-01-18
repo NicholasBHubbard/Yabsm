@@ -29,45 +29,45 @@
   Feel free to remove the cloned repo.
 *  Example Configuration
   #+BEGIN_SRC  
-  # /etc/yabsmrc
-                                        
-               #-----------------------------------------#
-               # WELCOME TO THE YABSM CONFIGURATION FILE #
-               #-----------------------------------------#
+# /etc/yabsmrc
+                                      
+                         #-----------------------------------------#
+                         # WELCOME TO THE YABSM CONFIGURATION FILE #
+                         #-----------------------------------------#
 
-  snapshot_directory=/.snapshots
-
-
-
-  I_want_to_snap_this_subvol=root,/
-
-  root_hourly_take=60
-  root_hourly_keep=24
-
-  root_daily_take=24
-  root_daily_keep=48
-
-  root_midnight_want=no
-  root_midnight_keep=10001
-
-  root_monthly_want=yes
-  root_monthly_keep=12
+snapshot_directory=/.snapshots
 
 
 
-  I_want_to_snap_this_subvol=home,/home
-  
-  home_hourly_take=12
-  home_hourly_keep=100
+I_want_to_snap_this_subvol=root,/
 
-  home_daily_take=13
-  home_daily_keep=
+root_hourly_take=12
+root_hourly_keep=24
 
-  home_midnight_want=yes
-  home_midnight_keep=14
+root_daily_take=24
+root_daily_keep=48
 
-  home_monthly_want=no
-  home_monthly_keep=0
+root_midnight_want=yes
+root_midnight_keep=14
+
+root_monthly_want=yes
+root_monthly_keep=12
+
+
+
+I_want_to_snap_this_subvol=home,/home
+
+home_hourly_take=12
+home_hourly_keep=100
+
+home_daily_take=13
+home_daily_keep=
+
+home_midnight_want=no
+home_midnight_keep=0
+
+home_monthly_want=no
+home_monthly_keep=100001
   #+END_SRC  
   There are a few things to note here:
   + You must specify the mount point of the root of your snapshot
@@ -107,19 +107,22 @@ Here is the file tree structure of the example configuration
   #+BEGIN_SRC  
   /.snapshots
   |
-  ├── home
-  │   ├── daily
+  ├── root
   │   ├── hourly
+  │   ├── daily
   │   ├── midnight
   │   └── monthly
-  └── root
-      ├── daily
+  └── home
       ├── hourly
-      ├── midnight
-      └── monthly
+      ├── daily
   #+END_SRC  
 
-* How does YABSM work internally?
+* What does YABSM do to my computer?
   YABSM simply writes cronjobs to =/etc/crontab= that call a script that will
-  take new snapshots and delete appropriate snapshots.
+  take new snapshots and delete appropriate snapshots. Two helper scripts,
+  namely =yabsm-take-snapshot= and =yabsm-update-conf= are placed into
+  /usr/local/sbin, while the script meant to be used to the user, =yabsm= is
+  placed into =/usr/sbin=. 
+
+
   

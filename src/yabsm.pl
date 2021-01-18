@@ -4,7 +4,7 @@
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
-#  This is the end user script for YABSM (yet another btrfs snapshots manager).
+#  This is the end-user script for YABSM (yet another btrfs snapshots manager).
 
 use strict;
 use warnings;
@@ -12,15 +12,11 @@ use 5.010;
 
 use Getopt::Long;
 
-if (getpwuid($<) ne 'root') {
-    die "error: must be run by root user"; 
-}
+my $UPDATE_ARG;
 
-my $UPDATE;
+GetOptions ('update' => \$UPDATE_ARG);
 
-GetOptions ('update' => \$UPDATE);
-
-if ($UPDATE) {
+if ($UPDATE_ARG) {
     system('/usr/local/sbin/yabsm-update-conf');
 }
 else {

@@ -15,10 +15,6 @@ use 5.010;
 use Scalar::Util qw(looks_like_number);
 use File::Copy qw(move);
 
-if (getpwuid($<) ne 'root') {
-    die "error: must be run by root user $!";
-}
-
                  ####################################
                  #               MAIN               #
                  ####################################
@@ -26,8 +22,9 @@ if (getpwuid($<) ne 'root') {
 my %YABSMRC_HASH = yabsmrc_to_hash(); # make settings global
 
 check_valid_config();
-create_directories();
+create_directories(); # only relevant on first running
 write_cronjobs();
+print "success!/n";
 
                  ####################################
                  #         PARSE CONFIG FILE        #
@@ -157,38 +154,38 @@ sub check_valid_config {
 
     foreach (@subvols_to_check) {
         
-        die ("parse error on \"I_want_to_snap_this_subvol=$_"
-             . ': it seems you have have a space on the right hand side of'
-             .  ' of the equals sign') if $_ =~ ' ';
+        die ("parse error on \"I_want_to_snap_this_subvol=$_\":\n"
+             . 'space on the right hand side of of the equals sign')
+          if $_ =~ ' ';
 
-        my ($subv, undef) = split /,/, $_;
+        my ($subv_name, undef) = split /,/, $_;
         
         my @settings = my ($hourly_take, $hourly_keep,
                            $daily_take, $daily_keep,
                            $midnight_want, $midnight_keep,
                            $monthly_want, $monthly_keep) 
-          = gather_settings_for($subv);
+          = gather_settings_for($subv_name);
         
-        die ("\"$subv\" is missing one of these required settings:\n"
-             . "${subv}_hourly_take   | ${subv}_hourly_keep\n${subv}_daily_take"
-             . "    | ${subv}_daily_keep\n${subv}_midnight_want | "
-             . "${subv}_midnight_keep \n${subv}_monthly_want "
-             . " | ${subv}_monthly_keep\n $!")
+        die ("\"$subv_name\" is missing one of these required settings:\n"
+             . "${subv_name}_hourly_take   | ${subv_name}_hourly_keep\n"
+             . "${subv_name}_daily_take    | ${subv_name}_daily_keep\n"
+             . "${subv_name}_midnight_want | ${subv_name}_midnight_keep \n"
+             . "${subv_name}_monthly_want  | ${subv_name}_monthly_keep\n $!")
           if grep { ! defined } @settings;
         
-        die ("found a negative value for a \"$subv\" setting")
+        die ("found a negative value for a \"$subv_name\" setting")
           if grep { looks_like_number $_ and $_ < 0 } @settings;
 
-        die ("max value for \"${subv}_hourly_take\" is '60'")
+        die ("max value for \"${subv_name}_hourly_take\" is '60'")
           if ($hourly_take > 60);
         
-        die ("max value for \"${subv}_daily_take\" is '24'")
+        die ("max value for \"${subv_name}_daily_take\" is '24'")
           if ($daily_take > 24);
         
-        die ("value for \"${subv}_midnight_want\" must be \"yes\" or \"no\"")
+        die ("value for \"${subv_name}_midnight_want\" must be \"yes\" or \"no\"")
           unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
         
-        die ("value for \"${subv}_monthly_want\" must be \"yes\" or \"no\"")
+        die ("value for \"${subv_name}_monthly_want\" must be \"yes\" or \"no\"")
           unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
     }
     return;
@@ -206,19 +203,20 @@ sub create_directories {
 
     foreach (@subvols_being_snapped) {
 
-        my ($subv, undef) = split /,/, $_;
+        my ($subv_name, undef) = split /,/, $_;
 
-        if (-d "${snapshot_dir}/$subv") {
-            next;
-        }
-        else {
-            mkdir "${snapshot_dir}/$subv";
-            mkdir "${snapshot_dir}/${subv}/hourly";
-            mkdir "${snapshot_dir}/${subv}/daily";
-            mkdir "${snapshot_dir}/${subv}/midnight";
-            mkdir "${snapshot_dir}/${subv}/monthly";
+        mkdir "${snapshot_dir}/$subv_name";
+        mkdir "${snapshot_dir}/${subv_name}/hourly";
+        mkdir "${snapshot_dir}/${subv_name}/daily";
+
+        mkdir "${snapshot_dir}/${subv_name}/midnight"
+          if ($YABSMRC_HASH{"${subv_name}_midnight_want"} eq 'yes');
+        
+        mkdir "${snapshot_dir}/${subv_name}/monthly"
+          if ($YABSMRC_HASH{"${subv_name}_monthly_want"} eq 'yes');
         }
     }
+    return:
 }
 
                  ####################################
@@ -243,5 +241,3 @@ sub gather_settings_for {
             $midnight_want, $midnight_keep,
             $monthly_want, $monthly_keep);
 }
-
-sub trim { my $s = shift; $s =~ s/^\s+|\s+$//g; return $s };

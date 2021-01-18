@@ -10,9 +10,9 @@
 * How do I use it?
   You can tweak your configuration to your liking by editing the =/etc/yabsmrc=
   file. After you are done simply run =sudo yabsm update= and you are good to
-  go. You may of course modify your settings whenever you want. Snapshots are
-  named after the time they are taken in =yyyy_mm_dd= format. 
+  go. You may of course modify your settings whenever you want.
 
+  Snapshots are named after the time they are taken in =yyyy_mm_dd= format. 
   For example a snapshot taken at 15:30 on March 20th 2021 will be named
   =day=2021_03_20,time=15:30=. 
 

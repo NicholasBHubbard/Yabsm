@@ -22,10 +22,11 @@
   ~$ cd ./yabsm/src/
   ~$ sudo perl yabsm_init.pl
   #+END_SRC  
-  Now just update =/etc/yabsmrc= to your liking and then run
+  Now just modify =/etc/yabsmrc= to your liking and then run:
   #+BEGIN_SRC
   sudo yabsm --update
   #+END_SRC
+  Feel free to remove the cloned repo.
 *  Example Configuration
   #+BEGIN_SRC  
   # /etc/yabsmrc

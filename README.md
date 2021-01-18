@@ -134,5 +134,5 @@ Here is the file tree structure of the example configuration
   take new snapshots and delete appropriate snapshots.
 
   Two helper scripts, namely =yabsm-take-snapshot= and =yabsm-update-conf= are
-  placed into /usr/local/sbin, while the script meant to be used to the user,
+  placed into =/usr/local/sbin=, while the script meant to be used to the user,
   =yabsm= is placed into =/usr/sbin=. 

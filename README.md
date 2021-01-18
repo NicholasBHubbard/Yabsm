@@ -5,8 +5,15 @@
 * Why should I use YABSM?
   The entire point of YABSM is to make it trivial to set up a custom snapshot
   system. All you have to do is edit a simple configuration file and run one
-  command. 
+  command.
 
+* Features
+  + Split your snapshots into hourly, daily, midnight, and monthly categories.
+  + Take up to a snapshot per minute, a snapshot per hour, a snapshot every
+    night at midnight, and a snapshot on the first of every month.
+  + Keep as many or as little snapshots as you want per category. YABSM will
+    delete appropriate snapshots.
+  
 * How do I use it?
   You can tweak your configuration to your liking by editing the =/etc/yabsmrc=
   file. After you are done simply run =sudo yabsm update= and you are good to
@@ -16,7 +23,7 @@
   For example a snapshot taken at 15:30 on March 20th 2021 will be named
   =day=2021_03_20,time=15:30=. 
 
-  Please note that all snapshots are read only.
+  Please note that snapshots are read only.
 
 * Installation
   #+BEGIN_SRC  
@@ -88,6 +95,8 @@ home_monthly_keep=100001
     field for each of the following: =*_hourly_take=, =*_hourly_keep=,
     =*_daily_take=, =*_daily_keep=, =*_midnight_want=, =*_midnight_keep=,
     =*_monthly_want=, =*_monthly_keep=.
+
+  + You are required to take hourly and daily snapshots. 
 * What do the settings mean?
   + =*_*_keep=: How many of this type of snapshot do you want to keep around? 
 
@@ -122,7 +131,7 @@ Here is the file tree structure of the example configuration
 
 * What does YABSM do to my computer?
   YABSM simply writes cronjobs to =/etc/crontab= calling a script that will
-  takes new snapshots and deletes appropriate snapshots.
+  take new snapshots and delete appropriate snapshots.
 
   Two helper scripts, namely =yabsm-take-snapshot= and =yabsm-update-conf= are
   placed into /usr/local/sbin, while the script meant to be used to the user,

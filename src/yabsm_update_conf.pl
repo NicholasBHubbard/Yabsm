@@ -24,7 +24,7 @@ my %YABSMRC_HASH = yabsmrc_to_hash(); # make settings global
 check_valid_config();
 create_directories(); 
 write_cronjobs();
-print "success!\n";
+print "success!r/ln";
 
                  ####################################
                  #         PARSE CONFIG FILE        #

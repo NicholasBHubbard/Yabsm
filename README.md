@@ -27,8 +27,8 @@
   sudo yabsm --update
   #+END_SRC
   Feel free to remove the cloned repo.
-*  Example Configuration
 
+*  Example Configuration
   #+BEGIN_SRC  
 # /etc/yabsmrc
                                       

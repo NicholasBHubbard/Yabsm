@@ -32,9 +32,9 @@
   #+BEGIN_SRC  
 # /etc/yabsmrc
                                       
-            #-----------------------------------------#
-            # WELCOME TO THE YABSM CONFIGURATION FILE #
-            #-----------------------------------------#
+              #-----------------------------------------#
+              # WELCOME TO THE YABSM CONFIGURATION FILE #
+              #-----------------------------------------#
 
 snapshot_directory=/.snapshots
 

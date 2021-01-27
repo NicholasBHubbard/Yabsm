@@ -7,7 +7,6 @@
 snapshot_directory=/.snapshots
 
 
-
 I_want_to_snap_this_subvol=root,/
 
 root_hourly_take=12
@@ -21,7 +20,6 @@ root_midnight_keep=14
 
 root_monthly_want=yes
 root_monthly_keep=12
-
 
 
 I_want_to_snap_this_subvol=home,/home

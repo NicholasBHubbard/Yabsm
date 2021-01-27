@@ -5,7 +5,7 @@
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
 #  This script parses the '/etc/yabsmrc', checks for errors, and then writes the
-#  appropriate cronjobs to '/etc/crontab'. The cronjobs will call the 
+#  appropriate cronjobs to '/etc/crontab'. The cronjobs will call the
 #  '/usr/sbin/yabsm-take-snapshot' script.
 
 use strict;

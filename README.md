@@ -25,7 +25,7 @@
 
   Please note that snapshots are read only.
 
-  Please also note that =/usr/local/sbin= must be on your path.
+  Please also note that =/usr/local/sbin= must be on your path. 
 
 * Installation
   #+BEGIN_SRC  

@@ -81,7 +81,7 @@ sub write_cronjobs {
 
     my @cron_strings = create_all_cronjob_strings();
     foreach (@cron_strings) {
-        print $fh_tmp "$_ \n";
+        print $fh_tmp "\n $_ \n";
     }
 
     close $fh_crontab;

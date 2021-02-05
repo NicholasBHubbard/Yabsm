@@ -73,7 +73,6 @@ sub write_cronjobs {
     foreach (<$fh_crontab>) {
         if ($_ =~ /yabsm-take-snapshot/) {
 	    next;
-#	    print $fh_tmp " \n"; 
         }
         else {
             print $fh_tmp $_;

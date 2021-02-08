@@ -103,7 +103,7 @@ sub delete_appropriate_snapshots {
         return; 
     } 
     elsif ($num_snaps > $SNAPS_TO_KEEP_ARG) { # user changed prefs to keep less
-        
+	
         for (my $i = 0; $i <= $num_snaps - $SNAPS_TO_KEEP_ARG; $i++) {
             
             my $snap_to_delete = earliest_snap(\@existing_snaps);

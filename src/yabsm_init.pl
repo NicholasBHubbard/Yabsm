@@ -37,9 +37,9 @@ chown 0, 0,
   "/usr/local/sbin/yabsm-take-snapshot",
   "/etc/yabsmrc";
 
-chmod 755, 
-  "/usr/local/sbin/yabsm-update",
-  "/usr/local/sbin/yabsm-take-snapshot";
+chmod 755, "/usr/local/sbin/yabsm-update",
+
+chmod 744, "/usr/local/sbin/yabsm-take-snapshot";
 
 chmod 644, "/etc/yabsmrc";
 

@@ -32,15 +32,15 @@ move "${WORKING_DIR}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapsh
 move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update";
 move "${WORKING_DIR}/yabsmrc", "/etc/yabsmrc";
 
-chmod 774, 
-  "/usr/local/sbin/yabsm-update",
-  "/usr/local/sbin/yabsm-take-snapshot";
-
-chmod 664, "/etc/yabsmrc";
-
 chown 0, 0,
   "/usr/local/sbin/yabsm-update",
   "/usr/local/sbin/yabsm-take-snapshot",
   "/etc/yabsmrc";
+
+chmod 755, 
+  "/usr/local/sbin/yabsm-update",
+  "/usr/local/sbin/yabsm-take-snapshot";
+
+chmod 644, "/etc/yabsmrc";
 
 print "success!\n";

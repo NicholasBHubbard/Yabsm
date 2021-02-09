@@ -16,7 +16,7 @@
   
 * How do I use it?
   You can tweak your configuration to your liking by editing the =/etc/yabsmrc=
-  file. After you are done simply run =sudo yabsm update= and you are good to
+  file. After you are done simply run =sudo yabsm-update= and you are good to
   go. You may of course modify your settings whenever you want. 
 
   Snapshots are named after the time they are taken in =yyyy_mm_dd= format. 
@@ -36,7 +36,7 @@
   #+END_SRC  
   Now just modify =/etc/yabsmrc= to your liking and then run:
   #+BEGIN_SRC
-  sudo yabsm --update
+  sudo yabsm-update
   #+END_SRC
   Feel free to remove the cloned repo.
 
@@ -136,6 +136,6 @@ Here is the file tree structure of the example configuration
   YABSM simply writes cronjobs to =/etc/crontab= that call a script for
   taking new snapshots and deleting old snapshots.
 
-  Three scripts, namely =yabsm-take-snapshot=, =yabsm-update-conf=, and =yabsm=
-  are placed into =/usr/local/sbin=. Only the =yabsm= script is meant to be
+  Two scripts, namely =yabsm-take-snapshot=, and =yabsm-update= are placed
+  into =/usr/local/sbin=. Only the =yabsm-update= script is meant to be
   used by the user. 

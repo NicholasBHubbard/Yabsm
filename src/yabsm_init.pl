@@ -29,21 +29,18 @@ sub get_working_dir {
 my $WORKING_DIR = get_working_dir();
 
 move "${WORKING_DIR}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
-move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update-conf";
-move "${WORKING_DIR}/yabsm.pl", "/usr/local/sbin/yabsm";
+move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update";
 move "${WORKING_DIR}/yabsmrc", "/etc/yabsmrc";
 
-chmod 0774, 
-  "/usr/local/sbin/yabsm-update-conf",
-  "/usr/local/sbin/yabsm-take-snapshot",
-  "/usr/local/sbin/yabsm";
+chmod 774, 
+  "/usr/local/sbin/yabsm-update",
+  "/usr/local/sbin/yabsm-take-snapshot";
 
-chmod 0664, "/etc/yabsmrc";
+chmod 664, "/etc/yabsmrc";
 
 chown 0, 0,
-  "/usr/local/sbin/yabsm-update-conf",
+  "/usr/local/sbin/yabsm-update",
   "/usr/local/sbin/yabsm-take-snapshot",
-  "/usr/local/sbin/yabsm.pl",
   "/etc/yabsmrc";
 
 print "success!\n";

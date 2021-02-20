@@ -32,7 +32,7 @@ print "success!\n";
 
 sub yabsmrc_to_hash {
     
-    open my $fh, '<:encoding(UTF-8)', '/etc/yabsmrc'
+    open my $fh, '<', '/etc/yabsmrc'
       or die 'failed to open file \"/etc/yabsmrc\": $!';
     
     my %yabsmrc_hash;
@@ -67,6 +67,7 @@ sub write_cronjobs {
     
     open (my $fh_crontab, '<', $crontab_file)
       or die "failed to open file \"/etc/crontab\"";
+
     open (my $fh_tmp, '>', $tmp_file)
       or die "failed to open tmp file at \"/tmp/yabsm_tmp\" $!";
 

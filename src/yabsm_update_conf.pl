@@ -6,7 +6,7 @@
 #
 #  This script parses the '/etc/yabsmrc', checks for errors, and then writes the
 #  appropriate cronjobs to '/etc/crontab'. The cronjobs will call the
-#  '/usr/sbin/yabsm-take-snapshot' script.
+#  '/usr/local/sbin/yabsm-take-snapshot' script.
 
 use strict;
 use warnings;
@@ -32,22 +32,24 @@ print "success!\n";
 
 sub yabsmrc_to_hash {
     
-    open my $fh, '<', '/etc/yabsmrc'
-      or die 'failed to open file \"/etc/yabsmrc\": $!';
+    open (my $fh, '<', '/etc/yabsmrc')
+      or die '[!] failed to open file \"/etc/yabsmrc\": $!';
     
     my %yabsmrc_hash;
     
-    foreach my $line (<$fh>) {
+    while (<$fh>) {
         
-        next if ($line =~ /^[^a-zA-Z]/);
+        next if /^[^a-zA-Z]/;
         
-        my ($key, $val) = split /=/, $line;
-        
-        chomp $val; # $val is appended with newline
-        
+        my ($key, $val) = split /=/;
+
+        # Create an array of subvolume paths that need to be snapped.
         if ($key eq 'I_want_to_snap_this_subvol') { 
-            push @{$yabsmrc_hash{$key}}, $val; # creating an array
+            push @{$yabsmrc_hash{$key}}, $val; 
         }
+
+	# All other fields are unique, so we will be able to look up their 
+	# values directly.
         else {
             $yabsmrc_hash{$key} = $val;
         }
@@ -66,10 +68,10 @@ sub write_cronjobs {
     my $tmp_file = '/tmp/yabsm_tmp';
     
     open (my $fh_crontab, '<', $crontab_file)
-      or die "failed to open file \"/etc/crontab\"";
+      or die "[!] failed to open file \"/etc/crontab\"";
 
     open (my $fh_tmp, '>', $tmp_file)
-      or die "failed to open tmp file at \"/tmp/yabsm_tmp\" $!";
+      or die "[!] failed to open tmp file at \"/tmp/yabsm_tmp\"";
 
     foreach (<$fh_crontab>) {
         if ($_ =~ /yabsm-take-snapshot/) {
@@ -87,7 +89,7 @@ sub write_cronjobs {
 
     close $fh_crontab;
     close $fh_tmp;
-    move $tmp_file, $crontab_file or die $!;
+    move($tmp_file, $crontab_file);
     return;
 } 
 
@@ -98,45 +100,51 @@ sub create_all_cronjob_strings {
     my @subvols_to_snap = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
 
     my $snapshot_dir = $YABSMRC_HASH{'snapshot_directory'}; 
-
+    
     foreach (@subvols_to_snap) {
 
         my ($subv_name, $mountpoint) = split /,/, $_;
         
+	# Every yabsm subvolume is required to specify a value for these fields
         my ($hourly_take, $hourly_keep,
             $daily_take, $daily_keep,
             $midnight_want, $midnight_keep,
-            $monthly_want, $monthly_keep) = gather_settings_for($subv_name); 
+            $monthly_want, $monthly_keep) 
+	  = gather_settings_for_subvol($subv_name); 
         
-        my $hourly_cron = ('*/' . int(60 / $hourly_take)
+        my $hourly_cron = ('*/' . int(60 / $hourly_take) # Max is every minute
                            . ' * * * * root /usr/local/sbin/yabsm-take-snapshot'
-                           . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                           . " --subvmntpoint $mountpoint --snapdir $snapshot_dir"
                            . " --subvname $subv_name --timeframe hourly"
                            . " --keeping $hourly_keep");
         
-        my $daily_cron = ('0 */' . int(24 / $daily_take)
+        my $daily_cron = ('0 */' . int(24 / $daily_take) # Max is every hour
                           . ' * * * root /usr/local/sbin/yabsm-take-snapshot'
-                          . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                          . " --subvmntpoint $mountpoint --snapdir $snapshot_dir"
                           . " --subvname $subv_name --timeframe daily"
                           . " --keeping $daily_keep");
         
         my $midnight_cron = ('0 0 * * * root'
                              . ' /usr/local/sbin/yabsm-take-snapshot'
-                             . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                             . " --subvmntpoint $mountpoint --snapdir $snapshot_dir"
                              . " --subvname $subv_name --timeframe midnight"
                              . " --keeping $midnight_keep")
-          unless $midnight_want eq 'no';
+	# The user may not want to take midnight snapshots.
+	    if $midnight_want eq 'yes';
         
         my $monthly_cron = ('0 0 1 * * root /usr/local/sbin/yabsm-take-snapshot'
-                            . " --mntpoint $mountpoint --snapdir $snapshot_dir"
+                            . " --subvmntpoint $mountpoint --snapdir $snapshot_dir"
                             . " --subvname $subv_name --timeframe monthly"
                             . " --keeping $monthly_keep")
-          unless $monthly_want eq 'no';
+	# The user may not want to take monthly snapshots.
+	    if $monthly_want eq 'yes';
 
+	# We grep for defined because the user may not want a midnight or 
+	# monthly snap, and if so those values will be undefined.
         push @all_cron_strings, grep { defined } ($hourly_cron,
-                                                  $daily_cron,
-                                                  $midnight_cron,
-                                                  $monthly_cron);
+						  $daily_cron,
+						  $midnight_cron,
+						  $monthly_cron);
     }
     return @all_cron_strings;
 }
@@ -151,11 +159,11 @@ sub check_valid_config {
     
     my $snapshot_dir = $YABSMRC_HASH{'snapshot_directory'};
 
-    die "$snapshot_dir does not exist" unless (-d $snapshot_dir);
+    die "[!] $snapshot_dir does not exist" unless (-e $snapshot_dir);
 
     foreach (@subvols_to_check) {
         
-        die ("parse error on \"I_want_to_snap_this_subvol=$_\":\n"
+        die ("[!] parse error on \"I_want_to_snap_this_subvol=$_\":\n"
              . 'space on the right hand side of of the equals sign')
           if $_ =~ ' ';
 
@@ -165,7 +173,7 @@ sub check_valid_config {
                            $daily_take, $daily_keep,
                            $midnight_want, $midnight_keep,
                            $monthly_want, $monthly_keep) 
-          = gather_settings_for($subv_name);
+          = gather_settings_for_subvol($subv_name);
         
         die ("\"$subv_name\" is missing one of these required settings:\n"
              . "${subv_name}_hourly_take   | ${subv_name}_hourly_keep\n"
@@ -174,20 +182,20 @@ sub check_valid_config {
              . "${subv_name}_monthly_want  | ${subv_name}_monthly_keep\n $!")
           if grep { ! defined } @settings;
         
-        die ("found a negative value for a \"$subv_name\" setting")
+        die ("[!] found a negative value for a \"$subv_name\" subvolume setting")
           if grep { looks_like_number $_ and $_ < 0 } @settings;
 
-        die ("max value for \"${subv_name}_hourly_take\" is '60'")
+        die ("[!] max value for \"${subv_name}_hourly_take\" is '60'")
           if ($hourly_take > 60);
         
-        die ("max value for \"${subv_name}_daily_take\" is '24'")
+        die ("[!] max value for \"${subv_name}_daily_take\" is '24'")
           if ($daily_take > 24);
         
-        die ("value for \"${subv_name}_midnight_want\""
+        die ("[!] value for \"${subv_name}_midnight_want\""
              . " must be \"yes\" or \"no\"")
           unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
         
-        die ("value for \"${subv_name}_monthly_want\""
+        die ("[!] value for \"${subv_name}_monthly_want\""
              . " must be \"yes\" or \"no\"")
           unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
     }
@@ -220,13 +228,13 @@ sub create_directories {
           if ($YABSMRC_HASH{"${subv_name}_monthly_want"} eq 'yes');
         }
     return:
-    }
+}
 
                  ####################################
                  #              HELPERS             #
                  ####################################
 
-sub gather_settings_for {
+sub gather_settings_for_subvol {
     
     my $subv_name = shift;
     

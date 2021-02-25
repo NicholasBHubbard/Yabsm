@@ -6,16 +6,18 @@
 #
 #  This script is used for taking and deleting a single snapshot.
 #  
-#  Snapshot names look something like this: 'day=2021_01_31,time=15:30'.
+#  Remember that snapshot names are: 'day=yyyy_mm_dd,time=hh_mm'
 #
-#  Exactly five arguments are required:
-#  1: '--subv' subvolume to be snapshotted.
-#  2: '--snapdir' root snapshot directory (typically /.snapshots).
-#  3: '--subvname' the yabsm name of the subvolume being snapshotted.
-#  4: '--timeframe' the timeframe for the snapshot (hourly, daily, etc). 
-#  5: '--keeping' the number of snapshots to keep for the subvolume/timeframe.
+#  Exactly five command line arguments are required:
+#  1: '--subvmmtpoint' = home would be /home, root would be /
+#  2: '--subvname'     = the yabsm name of the subvolume to snapshot
+#  3: '--snapdir'      = root snapshot directory, typically /.snapshots
+#  4: '--timeframe'    = can be one of: (hourly, daily, midnight, monthly)
+#  5: '--keeping'      = number of snapshots being kept in this timeframe
 #
 #  This script is not meant to be used by the end user.
+
+die "Permission denied\n" if ($<);
 
 use strict;
 use warnings;
@@ -33,50 +35,55 @@ my $YABSM_SUBVOL_NAME_ARG;
 my $TIMEFRAME_ARG;
 my $SNAPS_TO_KEEP_ARG;
 
-GetOptions ('mntpoint=s'  => \$SUBVOL_MOUNTPOINT_ARG,
-            'snapdir=s'   => \$SNAPSHOT_ROOT_DIR_ARG,
-            'subvname=s'  => \$YABSM_SUBVOL_NAME_ARG,
-            'timeframe=s' => \$TIMEFRAME_ARG,
-            'keeping=i'   => \$SNAPS_TO_KEEP_ARG);
+GetOptions ('subvmntpoint=s'  => \$SUBVOL_MOUNTPOINT_ARG,
+            'snapdir=s'       => \$SNAPSHOT_ROOT_DIR_ARG,
+            'subvname=s'      => \$YABSM_SUBVOL_NAME_ARG,
+            'timeframe=s'     => \$TIMEFRAME_ARG,
+            'keeping=i'       => \$SNAPS_TO_KEEP_ARG);
 
-foreach my $arg ($SUBVOL_MOUNTPOINT_ARG,
-                 $SNAPSHOT_ROOT_DIR_ARG,
-                 $YABSM_SUBVOL_NAME_ARG,
-                 $TIMEFRAME_ARG,
-                 $SNAPS_TO_KEEP_ARG) {
-    die ('missing one of: {--mntpoint, --snapdir, --subvname,'
-         . ' --timeframe, --keeping}')
-      if ! defined $arg;
+# All the options must be defined.
+foreach ($SUBVOL_MOUNTPOINT_ARG,
+	 $SNAPSHOT_ROOT_DIR_ARG,
+	 $YABSM_SUBVOL_NAME_ARG,
+	 $TIMEFRAME_ARG,
+	 $SNAPS_TO_KEEP_ARG) {
+    die '[!] missing one of: { --mntpoint, --snapdir, '
+                            . '--subvname, --timeframe, '
+	                    . '--keeping }'
+			    if ! defined;
 }
 
-my $WORKING_DIR =
+# $TARGET_DIRECTORY could look like '/.snapshots/home/midnight'
+my $TARGET_DIRECTORY =
   "${SNAPSHOT_ROOT_DIR_ARG}/${YABSM_SUBVOL_NAME_ARG}/$TIMEFRAME_ARG";
 
                  ####################################
                  #               MAIN               #
                  ####################################
 
-delete_appropriate_snapshots(); 
 take_new_snapshot();
+delete_appropriate_snapshots(); 
 
                  ####################################
                  #          SNAPSHOT CREATION       #
                  ####################################
 
 sub take_new_snapshot {
-    
-    system('btrfs subvolume snapshot -r ' # '-r' means read-only 
-           . $SUBVOL_MOUNTPOINT_ARG . ' '
-           . $WORKING_DIR . '/'
-           . create_snapshot_name()) == 0 # system() returns exit status
-             or die "unable to create new snapshot in \"${WORKING_DIR}\"";
+
+    # take a single read-only snapshot
+
+    my $snapshot_name = create_snapshot_name();
+
+    system( 'btrfs subvolume snapshot -r ' 
+	    . $SUBVOL_MOUNTPOINT_ARG # the path to take a snapshot of
+	    . " $TARGET_DIRECTORY/$snapshot_name"); 
     return;
 }
 
 sub create_snapshot_name { 
     
     my ($min, $hr, $day, $mon, $yr) =
-      map { sprintf '%02d', $_ }(localtime)[1..5];
+      map { sprintf '%02d', $_ } (localtime)[1..5]; # sprintf to always pad 0-9
     
     $mon++;      # month count starts at zero. 
     $yr += 1900; # year represents years since 1900. 
@@ -85,86 +92,78 @@ sub create_snapshot_name {
 }
 
                  ####################################
-                 #        SNAPSHOT DELETION         #
+                 #         SNAPSHOT DELETION        #
                  ####################################
+
+# An array of strings 'yyyy_mm_dd'
+my @EXISTING_SNAPS =
+  grep { $_ = $1 if /([^\/]+$)/ } glob "$TARGET_DIRECTORY/*";
 
 sub delete_appropriate_snapshots {
     
-    opendir(my $dh, $WORKING_DIR)
-      or die "failed to open directory $WORKING_DIR: $!";
-    
-    my @existing_snaps = grep(/^[^\.]/, readdir $dh); # exclude dot files
-    
-    closedir $dh;
-    
-    my $num_snaps = scalar @existing_snaps;
-    
-    if ($num_snaps < $SNAPS_TO_KEEP_ARG) { # don't delete any snapshots
-        return; 
-    } 
-    elsif ($num_snaps > $SNAPS_TO_KEEP_ARG) { # user changed prefs to keep less
-	
-        for (my $i = 0; $i <= $num_snaps - $SNAPS_TO_KEEP_ARG; $i++) {
-            
-            my $snap_to_delete = earliest_snap(\@existing_snaps);
-            
-            delete_snapshot($snap_to_delete);
-            
-            @existing_snaps = grep $_ ne $snap_to_delete, @existing_snaps;
-        }
-    } 
-    else { # delete just one snapshot.
-        delete_snapshot(earliest_snap(\@existing_snaps)); 
+    my $num_snaps = scalar @EXISTING_SNAPS;
+
+    # We expect there to be 1 more snap than what should be kept because we just
+    # took a snapshot.
+    if ($num_snaps == $SNAPS_TO_KEEP_ARG + 1) { 
+        delete_snapshot( earliest_snap() );
+	return;
     }
-    return;
+
+    # We haven't reached the snapshot quota yet so we don't delete anything.
+    elsif ($num_snaps <= $SNAPS_TO_KEEP_ARG) { return } 
+
+    # User changed their preferences to keep less snapshots. 
+    else { 
+	
+	while ($num_snaps > $SNAPS_TO_KEEP_ARG) {
+
+            my $earliest_snap = earliest_snap();
+            
+            delete_snapshot( $earliest_snap );
+            
+            @EXISTING_SNAPS = grep { $_ ne $earliest_snap } @EXISTING_SNAPS;
+
+	    $num_snaps--;
+        }
+	return;
+    } 
 }
 
 sub delete_snapshot {
+
+    # Delete a single snapshot
     
-    system('btrfs subvolume delete '
-           . $WORKING_DIR . '/'
-           . $_[0]) == 0 # system() returns exit status
-             or die "failed to delete subvolume \"${WORKING_DIR}/$_[0]\"";
+    # Just a string like: 'yyyy_mm_dd'
+    my $snap_to_delete = shift;
+
+    system("btrfs subvolume delete $TARGET_DIRECTORY/$snap_to_delete");
+
     return;
 }
 
 sub earliest_snap {
+
+    # Shift out a snapshot to get things rolling
+    my $earliest_snap  = shift @EXISTING_SNAPS;
     
-    my $earliest_snap = @{$_[0]}[0]; 
-    
-    foreach my $snap (@{$_[0]}) {
-        $earliest_snap = $_ if snapshot_lt($snap,$earliest_snap);
+    foreach (@EXISTING_SNAPS) {
+        $earliest_snap = $_ if snapshot_earlier_than($_, $earliest_snap);
     }
     return $earliest_snap;
 }
 
-sub snapshot_lt { 
-    return lexically_lt(snap_name_to_lex_ord_nums($_[0]),
-                        snap_name_to_lex_ord_nums($_[1]));
-}
+sub snapshot_earlier_than { 
 
-sub lexically_lt {
-    
-    my ($head1, @tail1) = @{$_[0]};
-    my ($head2, @tail2) = @{$_[1]};
-    
-    if ($head1 > $head2) {
-        return 0;
-    }
-    elsif ($head1 < $head2) {
-        return 1;
-    }
-    elsif (@tail1 == 0 && @tail2 == 0) { # array args must be equal length
-        return 0;
-    }
-    else {
-        return lexically_lt(\@tail1,\@tail2);
-    }
-}
+    my $snap1 = shift;
+    my $snap2 = shift;
 
-sub snap_name_to_lex_ord_nums {
-    
-    my ($yr, $mon, $day, $hr, $min) = $_[0] =~ m/([0-9]+)/g;
-    
-    return [$yr,$mon,$day,$hr,$min];
+    my @snap1_as_nums = $snap1 =~ m/([0-9]+)/g;
+    my @snap2_as_nums = $snap2 =~ m/([0-9]+)/g;
+
+    # Take the lexical order. We know the arrays are equal length.
+    for (my $i = 0; $i < scalar @snap1_as_nums; $i++) {
+      return 1 if $snap1_as_nums[$i] < $snap2_as_nums[$i];
+  }
+    return 0;
 }

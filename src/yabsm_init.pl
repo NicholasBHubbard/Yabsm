@@ -9,6 +9,8 @@
 #  placed in  '/usr/local/sbin/yabsm-take-snapshot',
 #  '/usr/local/sbin/yabsm-take-snapshot', and  '/usr/local/sbin/yabsm'.
 
+die "Permission denied\n" if ($<);
+
 use strict;
 use warnings;
 use 5.010;
@@ -16,21 +18,17 @@ use 5.010;
 use Cwd 'abs_path';
 use File::Copy qw(move);
 
-if (getpwuid($<) ne 'root') {
-    die "error: must be run by root user $!";
-}
-
-sub get_working_dir {
+sub get_dir_with_yabsm_scripts {
     my $abs_path = abs_path($0);
     $abs_path =~ s/\/[^\/]+$//;
     return $abs_path;
 }
 
-my $WORKING_DIR = get_working_dir();
+my $DIR_TO_YABSM_SCRIPTS = get_dir_with_yabsm_scripts();
 
-move "${WORKING_DIR}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
-move "${WORKING_DIR}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update";
-move "${WORKING_DIR}/yabsmrc", "/etc/yabsmrc";
+move "${DIR_TO_YABSM_SCRIPTS}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
+move "${DIR_TO_YABSM_SCRIPTS}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update";
+move "${DIR_TO_YABSM_SCRIPTS}/yabsmrc", "/etc/yabsmrc";
 
 chown 0, 0,
   "/usr/local/sbin/yabsm-update",

@@ -138,7 +138,7 @@ sub die_unless_config_is_valid {
                  #         CREATE DIRECTORIES       #
                  ####################################
 
-sub create_directories {
+sub initialize_directories {
 
     # This subroutine is only necessary the first time this script is run.
 
@@ -208,10 +208,10 @@ sub create_all_cronjob_strings {
         my $hourly_cron   = ( '*/' . int(60 / $hourly_take) # Max is every minute
 			    . ' * * * * root'
 			    . ' /usr/local/sbin/yabsm-take-snapshot'
+			    . ' --timeframe hourly'
 			    . " --subvmntpoint $mntpoint"
 			    . " --snapdir $YABSM_ROOT_DIR"
 			    . " --subvname $subv_name"
-			    . ' --timeframe hourly'
 			    . " --keeping $hourly_keep"
 			    );
         

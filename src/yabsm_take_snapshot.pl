@@ -11,7 +11,7 @@
 #  Exactly five command line arguments are required:
 #  1: '--subvmmtpoint' = home would be /home, root would be /
 #  2: '--subvname'     = the yabsm name of the subvolume to snapshot
-#  3: '--snapdir'      = root snapshot directory, typically /.snapshots
+#  3: '--snapdir'      = yabsm snapshot directory, typically /.snapshots/yabsm
 #  4: '--timeframe'    = can be one of: (hourly, daily, midnight, monthly)
 #  5: '--keeping'      = number of snapshots being kept in this timeframe
 #
@@ -28,21 +28,21 @@ use Getopt::Long;
                  ####################################
 
 my $SUBVOL_MOUNTPOINT_ARG;
-my $SNAPSHOT_ROOT_DIR_ARG;
-my $YABSM_SUBVOL_NAME_ARG;
+my $YABSM_ROOT_DIR_ARG;  
+my $SUBVOL_NAME_ARG;
 my $TIMEFRAME_ARG;
 my $SNAPS_TO_KEEP_ARG;
 
 GetOptions ('subvmntpoint=s'  => \$SUBVOL_MOUNTPOINT_ARG,
-            'snapdir=s'       => \$SNAPSHOT_ROOT_DIR_ARG,
-            'subvname=s'      => \$YABSM_SUBVOL_NAME_ARG,
+            'snapdir=s'       => \$YABSM_ROOT_DIR_ARG,
+            'subvname=s'      => \$SUBVOL_NAME_ARG,
             'timeframe=s'     => \$TIMEFRAME_ARG,
             'keeping=i'       => \$SNAPS_TO_KEEP_ARG);
 
 # All the options must be defined.
 foreach ($SUBVOL_MOUNTPOINT_ARG,
-	 $SNAPSHOT_ROOT_DIR_ARG,
-	 $YABSM_SUBVOL_NAME_ARG,
+	 $YABSM_ROOT_DIR_ARG,
+	 $SUBVOL_NAME_ARG,
 	 $TIMEFRAME_ARG,
 	 $SNAPS_TO_KEEP_ARG) {
     die '[!] missing one of: { --mntpoint, --snapdir, '
@@ -55,9 +55,9 @@ foreach ($SUBVOL_MOUNTPOINT_ARG,
                  #           SETUP GLOBALS          #
                  ####################################
 
-# $TARGET_DIRECTORY could look like '/.snapshots/yabsm/home/midnight'
+# $TARGET_DIRECTORY looks like '/.snapshots/yabsm/home/midnight'
 my $TARGET_DIRECTORY =
-  "${SNAPSHOT_ROOT_DIR_ARG}/yabsm/${YABSM_SUBVOL_NAME_ARG}/$TIMEFRAME_ARG";
+  "${YABSM_ROOT_DIR_ARG}/${SUBVOL_NAME_ARG}/$TIMEFRAME_ARG";
 
 # An array of strings 'yyyy_mm_dd'. We grep off the full paths.
 my @EXISTING_SNAPS =
@@ -80,16 +80,17 @@ sub take_new_snapshot {
 
     my $snapshot_name = create_snapshot_name();
 
-    system( 'btrfs subvolume snapshot -r ' 
-	    . $SUBVOL_MOUNTPOINT_ARG # the path to take a snapshot of
-	    . " $TARGET_DIRECTORY/$snapshot_name"); 
+    system( 'btrfs subvolume snapshot -r'
+	  . " $SUBVOL_MOUNTPOINT_ARG" # the path to take a snapshot of
+	  . " $TARGET_DIRECTORY/$snapshot_name"
+	  ); 
     return;
 }
 
 sub create_snapshot_name { 
     
     my ($min, $hr, $day, $mon, $yr) =
-      map { sprintf '%02d', $_ } (localtime)[1..5]; # sprintf() for padding 0-9
+      map { sprintf '%02d', $_ } (localtime)[1..5]; 
     
     $mon++;      # month count starts at zero. 
     $yr += 1900; # year represents years since 1900. 

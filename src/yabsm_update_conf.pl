@@ -58,6 +58,8 @@ sub yabsmrc_to_hash {
         
         my ($key, $val) = split /=/;
 
+	chomp $val; 
+
         # The 'I_want_to_snap_this_subvol' key points to an array of strings
 	# like ('home,/home', 'root,/'). 
         if ($key eq 'I_want_to_snap_this_subvol') { 
@@ -102,8 +104,6 @@ sub settings_for_subvol {
                  ####################################
 
 sub die_unless_config_is_valid {
-    
-    die "[!] $YABSM_ROOT_DIR does not exist\n" if ! (-e $YABSM_ROOT_DIR);
 
     foreach (@SUBVOLS_TO_SNAP) {
         

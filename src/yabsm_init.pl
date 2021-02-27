@@ -43,7 +43,7 @@ chown 0, 0,
   "/etc/yabsmrc";
 
 chmod 774, "$SCRIPTS_TARGET_DIR/yabsm-take-snapshot";
-chmod 775, "$SCRIPTS_TARGET_DIR/yabsm-update",
+chmod 775, "$SCRIPTS_TARGET_DIR/yabsm-update";
 chmod 664, '/etc/yabsmrc';
 
 say 'success!';

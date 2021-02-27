@@ -84,6 +84,9 @@ sub take_new_snapshot {
 	  . " $SUBVOL_MOUNTPOINT_ARG" # the path to take a snapshot of
 	  . " $TARGET_DIRECTORY/$snapshot_name"
 	  ); 
+    
+    push @EXISTING_SNAPS, $snapshot_name;
+
     return;
 }
 
@@ -104,6 +107,7 @@ sub create_snapshot_name {
 
 sub delete_appropriate_snapshots {
     
+    # We add one because we just took a snapshot
     my $num_snaps = scalar @EXISTING_SNAPS;
 
     # We expect there to be 1 more snap than what should be kept because we just

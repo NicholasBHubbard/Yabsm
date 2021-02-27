@@ -4,10 +4,8 @@
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
-#  This script initializes YABSM. The ownership of all YABSM executables is
-#  changed to the root user, and permissions are set to 0774. The scripts are
-#  placed in  '/usr/local/sbin/yabsm-take-snapshot',
-#  '/usr/local/sbin/yabsm-take-snapshot', and  '/usr/local/sbin/yabsm'.
+#  This script will be run just after the user clones the github repository, and
+#  can then be discarded.
 
 die "Permission denied\n" if ($<);
 
@@ -16,29 +14,31 @@ use warnings;
 use 5.010;
 
 use Cwd 'abs_path';
-use File::Copy qw(move);
+use File::Copy 'move';
 
-sub get_dir_with_yabsm_scripts {
+sub dir_holding_yabsm_scripts {
+
     my $abs_path = abs_path($0);
+
     $abs_path =~ s/\/[^\/]+$//;
+
     return $abs_path;
 }
 
-my $DIR_TO_YABSM_SCRIPTS = get_dir_with_yabsm_scripts();
-
-move "${DIR_TO_YABSM_SCRIPTS}/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
-move "${DIR_TO_YABSM_SCRIPTS}/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update";
-move "${DIR_TO_YABSM_SCRIPTS}/yabsmrc", "/etc/yabsmrc";
+# Should be '/home/user/yabsm/src' (because they just cloned the repo)
+my $DIR_TO_YABSM_SCRIPTS = dir_holding_yabsm_scripts();
 
 chown 0, 0,
-  "/usr/local/sbin/yabsm-update",
-  "/usr/local/sbin/yabsm-take-snapshot",
-  "/etc/yabsmrc";
+  "$DIR_TO_YABSM_SCRIPTS/yabsm-take-snapshot",
+  "$DIR_TO_YABSM_SCRIPTS/yabsm-update",
+  "$DIR_TO_YABSM_SCRIPTS/yabsmrc";
 
-chmod 755, "/usr/local/sbin/yabsm-update",
+chmod 774, "$DIR_TO_YABSM_SCRIPTS/yabsm-take-snapshot";
+chmod 775, "$DIR_TO_YABSM_SCRIPTS/yabsm-update",
+chmod 664, "$DIR_TO_YABSM_SCRIPTS/yabsmrc";
 
-chmod 744, "/usr/local/sbin/yabsm-take-snapshot";
+move "$DIR_TO_YABSM_SCRIPTS/yabsm_take_snapshot.pl", "/usr/local/sbin/yabsm-take-snapshot";
+move "$DIR_TO_YABSM_SCRIPTS/yabsm_update_conf.pl", "/usr/local/sbin/yabsm-update";
+move "$DIR_TO_YABSM_SCRIPTS/yabsmrc", "/etc/yabsmrc";
 
-chmod 644, "/etc/yabsmrc";
-
-print "success!\n";
+say "success!";

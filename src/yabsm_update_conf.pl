@@ -40,7 +40,7 @@ write_cronjobs();
 say "success!";
 
                  ####################################
-                 #         PROCESS CONFIG FILE      #
+                 #      PROCESS CONFIG INTO HASH    #
                  ####################################
 
 sub yabsmrc_to_hash {
@@ -73,30 +73,6 @@ sub yabsmrc_to_hash {
     }
     close $yabsmrc;
     return %yabsmrc_hash;
-}
-
-                 ####################################
-                 #   HELPER FOR GATHERING SETTINGS  #
-                 ####################################
-
-sub settings_for_subvol {
-    
-    my $subv_name = shift;
-    
-    # All of these values are required to be specified
-    my $hourly_take   = $YABSMRC_HASH{"${subv_name}_hourly_take"};
-    my $hourly_keep   = $YABSMRC_HASH{"${subv_name}_hourly_keep"};
-    my $daily_take    = $YABSMRC_HASH{"${subv_name}_daily_take"};
-    my $daily_keep    = $YABSMRC_HASH{"${subv_name}_daily_keep"};
-    my $midnight_want = $YABSMRC_HASH{"${subv_name}_midnight_want"};
-    my $midnight_keep = $YABSMRC_HASH{"${subv_name}_midnight_keep"};
-    my $monthly_want  = $YABSMRC_HASH{"${subv_name}_monthly_want"};
-    my $monthly_keep  = $YABSMRC_HASH{"${subv_name}_monthly_keep"};
-    
-    return ($hourly_take,   $hourly_keep,
-            $daily_take,    $daily_keep,
-            $midnight_want, $midnight_keep,
-            $monthly_want,  $monthly_keep);
 }
 
                  ####################################
@@ -209,9 +185,9 @@ sub create_all_cronjob_strings {
 			    . ' * * * * root'
 			    . ' /usr/local/sbin/yabsm-take-snapshot'
 			    . ' --timeframe hourly'
+			    . " --subvname $subv_name"
 			    . " --subvmntpoint $mntpoint"
 			    . " --snapdir $YABSM_ROOT_DIR"
-			    . " --subvname $subv_name"
 			    . " --keeping $hourly_keep"
 			    );
         
@@ -219,27 +195,27 @@ sub create_all_cronjob_strings {
                             . ' * * * root'
 			    . ' /usr/local/sbin/yabsm-take-snapshot'
 			    . ' --timeframe daily'
+                            . " --subvname $subv_name"
                             . " --subvmntpoint $mntpoint"
 			    . " --snapdir $YABSM_ROOT_DIR"
-                            . " --subvname $subv_name"
                             . " --keeping $daily_keep"
 			    );
         
         my $midnight_cron = ( '0 0 * * * root' # Every night at midnight
                             . ' /usr/local/sbin/yabsm-take-snapshot'
 			    . ' --timeframe midnight'
+                            . " --subvname $subv_name"
                             . " --subvmntpoint $mntpoint"
 			    . " --snapdir $YABSM_ROOT_DIR"
-                            . " --subvname $subv_name"
 			    . " --keeping $midnight_keep"
 			    ) if $midnight_want eq 'yes';
         
         my $monthly_cron  = ( '0 0 1 * * root' # First of every month
 			    . ' /usr/local/sbin/yabsm-take-snapshot'
 			    . ' --timeframe monthly'
+                            . " --subvname $subv_name"
                             . " --subvmntpoint $mntpoint"
 			    . " --snapdir $YABSM_ROOT_DIR"
-                            . " --subvname $subv_name"
                             . " --keeping $monthly_keep"
 			    ) if $monthly_want eq 'yes';
 
@@ -250,4 +226,28 @@ sub create_all_cronjob_strings {
 						  $monthly_cron);
     }
     return @all_cron_strings;
+}
+
+                 ####################################
+                 #   HELPER FOR GATHERING SETTINGS  #
+                 ####################################
+
+sub settings_for_subvol {
+    
+    my $subv_name = shift;
+    
+    # All of these values are required to be specified
+    my $hourly_take   = $YABSMRC_HASH{"${subv_name}_hourly_take"};
+    my $hourly_keep   = $YABSMRC_HASH{"${subv_name}_hourly_keep"};
+    my $daily_take    = $YABSMRC_HASH{"${subv_name}_daily_take"};
+    my $daily_keep    = $YABSMRC_HASH{"${subv_name}_daily_keep"};
+    my $midnight_want = $YABSMRC_HASH{"${subv_name}_midnight_want"};
+    my $midnight_keep = $YABSMRC_HASH{"${subv_name}_midnight_keep"};
+    my $monthly_want  = $YABSMRC_HASH{"${subv_name}_monthly_want"};
+    my $monthly_keep  = $YABSMRC_HASH{"${subv_name}_monthly_keep"};
+    
+    return ($hourly_take,   $hourly_keep,
+            $daily_take,    $daily_keep,
+            $midnight_want, $midnight_keep,
+            $monthly_want,  $monthly_keep);
 }

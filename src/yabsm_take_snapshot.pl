@@ -27,28 +27,28 @@ use Getopt::Long;
                  #     PROCESS INPUT PARAMETERS     #
                  ####################################
 
+my $TIMEFRAME_ARG;
+my $SUBVOL_NAME_ARG;
 my $SUBVOL_MOUNTPOINT_ARG;
 my $YABSM_ROOT_DIR_ARG;  
-my $SUBVOL_NAME_ARG;
-my $TIMEFRAME_ARG;
 my $SNAPS_TO_KEEP_ARG;
 
-GetOptions ('subvmntpoint=s'  => \$SUBVOL_MOUNTPOINT_ARG,
-            'snapdir=s'       => \$YABSM_ROOT_DIR_ARG,
+GetOptions ('timeframe=s'     => \$TIMEFRAME_ARG,
             'subvname=s'      => \$SUBVOL_NAME_ARG,
-            'timeframe=s'     => \$TIMEFRAME_ARG,
+	    'subvmntpoint=s'  => \$SUBVOL_MOUNTPOINT_ARG,
+            'snapdir=s'       => \$YABSM_ROOT_DIR_ARG,
             'keeping=i'       => \$SNAPS_TO_KEEP_ARG);
 
 # All the options must be defined.
-foreach ($SUBVOL_MOUNTPOINT_ARG,
-	 $YABSM_ROOT_DIR_ARG,
+foreach ($TIMEFRAME_ARG,
 	 $SUBVOL_NAME_ARG,
-	 $TIMEFRAME_ARG,
+	 $SUBVOL_MOUNTPOINT_ARG,
+	 $YABSM_ROOT_DIR_ARG,
 	 $SNAPS_TO_KEEP_ARG) {
-    die '[!] missing one of: { --mntpoint, --snapdir, '
-                            . '--subvname, --timeframe, '
-	                    . '--keeping }'
-			    if not defined;
+    die '[!] missing one of: { --timeframe, --subvname,'
+                           . ' --subvmntpoint, --snapdir,'
+	                   . ' --keeping }'
+			   if not defined;
 }
 
                  ####################################
@@ -157,6 +157,7 @@ sub snapshot_earlier_than {
     # Take the lexical order. We know the arrays are equal length.
     for (my $i = 0; $i < scalar @snap1_nums; $i++) {
 	return 1 if $snap1_nums[$i] < $snap2_nums[$i];
+	return 0 if $snap1_nums[$i] > $snap2_nums[$i];
     }
-    return 0;
+    return 0; # Arrays must have been equivalent
 }

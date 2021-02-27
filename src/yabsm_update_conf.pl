@@ -37,7 +37,7 @@ initialize_directories() unless -d $YABSM_ROOT_DIR;
 
 write_cronjobs();
 
-say "success!";
+say 'success!';
 
                  ####################################
                  #      PROCESS CONFIG INTO HASH    #

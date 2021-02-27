@@ -152,7 +152,10 @@ sub write_cronjobs {
     # Copy all lines from /etc/crontab into the tmp file, excluding the existing
     # yabsm cronjobs.
     while (<$etc_crontab>) {
-	print $tmp $_ unless /yabsm-take-snapshot/;
+
+	next if (/yabsm-take-snapshot/);
+
+	say $tmp $_;
     }
 
     # Now append the cronjob strings to $tmp file.

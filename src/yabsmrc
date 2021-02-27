@@ -28,7 +28,7 @@ home_hourly_take=12
 home_hourly_keep=100
 
 home_daily_take=13
-home_daily_keep=
+home_daily_keep=14
 
 home_midnight_want=no
 home_midnight_keep=0

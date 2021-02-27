@@ -37,13 +37,13 @@ move "$DIR_TO_YABSM_SCRIPTS/yabsm_update_conf.pl", "$SCRIPTS_TARGET_DIR/yabsm-up
 
 move "$DIR_TO_YABSM_SCRIPTS/yabsmrc", "/etc/yabsmrc";
 
-# chown 0, 0,
-#   "$SCRIPTS_TARGET_DIR/yabsm-take-snapshot",
-#   "$SCRIPTS_TARGET_DIR/yabsm-update",
-#   "/etc/yabsmrc";
+chown 0, 0,
+  "$SCRIPTS_TARGET_DIR/yabsm-take-snapshot",
+  "$SCRIPTS_TARGET_DIR/yabsm-update",
+  "/etc/yabsmrc";
 
-chmod 774, "$SCRIPTS_TARGET_DIR/yabsm-take-snapshot";
-chmod 775, "$SCRIPTS_TARGET_DIR/yabsm-update";
-chmod 664, '/etc/yabsmrc';
+chmod 0774, "$SCRIPTS_TARGET_DIR/yabsm-take-snapshot";
+chmod 0775, "$SCRIPTS_TARGET_DIR/yabsm-update";
+chmod 0664, '/etc/yabsmrc';
 
 say 'success!';

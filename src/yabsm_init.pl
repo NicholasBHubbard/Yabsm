@@ -42,8 +42,8 @@ move "$DIR_TO_YABSM_SCRIPTS/yabsmrc", "/etc/yabsmrc";
 #   "$SCRIPTS_TARGET_DIR/yabsm-update",
 #   "/etc/yabsmrc";
 
-# chmod 774, "$SCRIPTS_TARGET_DIR/yabsm-take-snapshot";
-# chmod 775, "$SCRIPTS_TARGET_DIR/yabsm-update";
-# chmod 664, '/etc/yabsmrc';
+chmod 774, "$SCRIPTS_TARGET_DIR/yabsm-take-snapshot";
+chmod 775, "$SCRIPTS_TARGET_DIR/yabsm-update";
+chmod 664, '/etc/yabsmrc';
 
 say 'success!';

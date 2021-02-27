@@ -6,7 +6,7 @@
 #
 #  This script is used for taking and deleting a single snapshot.
 #  
-#  Remember that snapshot names are: 'day=yyyy_mm_dd,time=hh_mm'
+#  Remember that snapshot names are formatted like: 'day=yyyy_mm_dd,time=hh_mm'
 #
 #  Exactly five command line arguments are required:
 #  1: '--subvmmtpoint' = home would be /home, root would be /
@@ -16,8 +16,6 @@
 #  5: '--keeping'      = number of snapshots being kept in this timeframe
 #
 #  This script is not meant to be used by the end user.
-
-die "Permission denied\n" if ($<);
 
 use strict;
 use warnings;
@@ -50,12 +48,20 @@ foreach ($SUBVOL_MOUNTPOINT_ARG,
     die '[!] missing one of: { --mntpoint, --snapdir, '
                             . '--subvname, --timeframe, '
 	                    . '--keeping }'
-			    if ! defined;
+			    if not defined;
 }
 
-# $TARGET_DIRECTORY could look like '/.snapshots/home/midnight'
+                 ####################################
+                 #           SETUP GLOBALS          #
+                 ####################################
+
+# $TARGET_DIRECTORY could look like '/.snapshots/yabsm/home/midnight'
 my $TARGET_DIRECTORY =
-  "${SNAPSHOT_ROOT_DIR_ARG}/${YABSM_SUBVOL_NAME_ARG}/$TIMEFRAME_ARG";
+  "${SNAPSHOT_ROOT_DIR_ARG}/yabsm/${YABSM_SUBVOL_NAME_ARG}/$TIMEFRAME_ARG";
+
+# An array of strings 'yyyy_mm_dd'. We grep off the full paths.
+my @EXISTING_SNAPS =
+  grep { $_ = $1 if /([^\/]+$)/ } glob "$TARGET_DIRECTORY/*";
 
                  ####################################
                  #               MAIN               #
@@ -83,7 +89,7 @@ sub take_new_snapshot {
 sub create_snapshot_name { 
     
     my ($min, $hr, $day, $mon, $yr) =
-      map { sprintf '%02d', $_ } (localtime)[1..5]; # sprintf to always pad 0-9
+      map { sprintf '%02d', $_ } (localtime)[1..5]; # sprintf() for padding 0-9
     
     $mon++;      # month count starts at zero. 
     $yr += 1900; # year represents years since 1900. 
@@ -95,10 +101,6 @@ sub create_snapshot_name {
                  #         SNAPSHOT DELETION        #
                  ####################################
 
-# An array of strings 'yyyy_mm_dd'
-my @EXISTING_SNAPS =
-  grep { $_ = $1 if /([^\/]+$)/ } glob "$TARGET_DIRECTORY/*";
-
 sub delete_appropriate_snapshots {
     
     my $num_snaps = scalar @EXISTING_SNAPS;
@@ -106,7 +108,8 @@ sub delete_appropriate_snapshots {
     # We expect there to be 1 more snap than what should be kept because we just
     # took a snapshot.
     if ($num_snaps == $SNAPS_TO_KEEP_ARG + 1) { 
-        delete_snapshot( earliest_snap() );
+	my $earliest_snap = earliest_snap();
+	system("btrfs subvolume delete $TARGET_DIRECTORY/$earliest_snap");
 	return;
     }
 
@@ -120,7 +123,7 @@ sub delete_appropriate_snapshots {
 
             my $earliest_snap = earliest_snap();
             
-            delete_snapshot( $earliest_snap );
+	    system("btrfs subvolume delete $TARGET_DIRECTORY/$earliest_snap");
             
             @EXISTING_SNAPS = grep { $_ ne $earliest_snap } @EXISTING_SNAPS;
 
@@ -128,18 +131,6 @@ sub delete_appropriate_snapshots {
         }
 	return;
     } 
-}
-
-sub delete_snapshot {
-
-    # Delete a single snapshot
-    
-    # Just a string like: 'yyyy_mm_dd'
-    my $snap_to_delete = shift;
-
-    system("btrfs subvolume delete $TARGET_DIRECTORY/$snap_to_delete");
-
-    return;
 }
 
 sub earliest_snap {
@@ -155,15 +146,16 @@ sub earliest_snap {
 
 sub snapshot_earlier_than { 
 
+    # These are strings like 'day=yyyy_mm_dd,time=hh_mm'
     my $snap1 = shift;
     my $snap2 = shift;
 
-    my @snap1_as_nums = $snap1 =~ m/([0-9]+)/g;
-    my @snap2_as_nums = $snap2 =~ m/([0-9]+)/g;
+    my @snap1_nums = $snap1 =~ m/([0-9]+)/g;
+    my @snap2_nums = $snap2 =~ m/([0-9]+)/g;
 
     # Take the lexical order. We know the arrays are equal length.
-    for (my $i = 0; $i < scalar @snap1_as_nums; $i++) {
-      return 1 if $snap1_as_nums[$i] < $snap2_as_nums[$i];
-  }
+    for (my $i = 0; $i < scalar @snap1_nums; $i++) {
+	return 1 if $snap1_nums[$i] < $snap2_nums[$i];
+    }
     return 0;
 }

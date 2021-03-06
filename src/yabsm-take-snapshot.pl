@@ -19,7 +19,7 @@
 #
 #  This script is not meant to be used by the end user.
 
-die "permission denied\n" if ($<);
+die "Permission denied\n" if ($<);
 
 use strict;
 use warnings;
@@ -52,7 +52,7 @@ foreach ($TIMEFRAME_ARG,
 	 $SNAPS_TO_KEEP_ARG) {
     die '[!] missing one of: { --timeframe, --subvname,'
                            . ' --subvmntpoint, --snapdir,'
-	                   . ' --keeping }'
+	                   . " --keeping }\n"
 			   if not defined;
 }
 

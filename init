@@ -6,7 +6,9 @@
 #
 #  This script should be run just after the user clones the github repository.
 
-die "permission denied\n" if ($<);
+die "Permission denied\n" if ($<);
+
+die "[!] Perl version must be at least 5.10\n" if ($] < 5.010000);
 
 use strict;
 use warnings;

@@ -26,4 +26,12 @@ my $YABSM_DIR = yabsm_dir();
 
 chown 0, 0, "$YABSM_DIR/*";
 
-chmod 0444, "$YABSM_DIR/src/Yabsm.pm";
+chmod 0664, "$YABSM_DIR/yabsmrc";
+chmod 0764, "$YABSM_DIR/src/yabsm-take-snapshot.pl";
+chmod 0774, "$YABSM_DIR/src/yabsm-update.pl";
+
+move "$YABSM_DIR/src/yabsm-update.pl", '/usr/local/sbin/yabsm-update';
+move "$YABSM_DIR/src/yabsm-take-snapshot.pl", '/usr/local/sbin/yabsm-take-snapshot';
+move "$YABSM_DIR/yabsmrc", '/etc/yabsmrc';
+
+say "success!";

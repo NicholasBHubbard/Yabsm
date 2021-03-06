@@ -44,7 +44,7 @@ GetOptions ('timeframe=s'    => \$TIMEFRAME_ARG,
             'snapdir=s'      => \$YABSM_ROOT_DIR_ARG,
             'keeping=i'      => \$SNAPS_TO_KEEP_ARG);
 
-# All the options must be defined.
+# All of the above options must be defined.
 foreach ($TIMEFRAME_ARG,
 	 $SUBVOL_NAME_ARG,
 	 $SUBVOL_MOUNTPOINT_ARG,

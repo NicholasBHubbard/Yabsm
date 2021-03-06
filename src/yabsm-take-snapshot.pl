@@ -29,7 +29,7 @@ use Getopt::Long;
 use lib '/home/nick/src/perl/yabsm/src/Yabsm';
 
                  ####################################
-                 #     PROCESS INPUT PARAMETERS     #
+                 #      PROCESS INPUT PARAMETERS    #
                  ####################################
 
 my $TIMEFRAME_ARG;

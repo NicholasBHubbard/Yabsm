@@ -8,7 +8,7 @@
 #  appropriate cronjobs to /etc/crontab. The cronjobs will call the
 #  '/usr/local/sbin/yabsm-take-snapshot' script.
 
-die "Permission denied\n" if ($<);
+die "permission denied\n" if ($<);
 
 use strict;
 use warnings;
@@ -30,7 +30,7 @@ my @SUBVOLS_TO_SNAP = @{$YABSMRC_HASH{'I_want_to_snap_this_subvol'}};
                  #               MAIN               #
                  ####################################
 
-die_unless_config_is_valid();
+check_config_for_errors();
 
 # Directories only need to be initialized the first time this script is run. 
 initialize_directories() unless -d $YABSM_ROOT_DIR; 
@@ -46,7 +46,7 @@ say 'success!';
 sub yabsmrc_to_hash {
     
     open (my $yabsmrc, '<', '/etc/yabsmrc')
-      or die "[!] failed to open file \"/etc/yabsmrc\"\n";
+      or die '[!] failed to open file /etc/yabsmrc';
     
     my %yabsmrc_hash;
     
@@ -54,11 +54,9 @@ sub yabsmrc_to_hash {
         
         next if /^[^a-zA-Z]/;
 
-	$_ =~ s/ //g; 
+	$_ =~ s/[\s\n]//g; 
         
         my ($key, $val) = split /=/;
-
-	chomp $val; 
 
         # The 'I_want_to_snap_this_subvol' key points to an array of strings
 	# like ('home,/home', 'root,/'). 
@@ -79,7 +77,7 @@ sub yabsmrc_to_hash {
                  #      CHECK CONFIG FOR ERRORS     #
                  ####################################
 
-sub die_unless_config_is_valid {
+sub check_config_for_errors {
 
     foreach (@SUBVOLS_TO_SNAP) {
         
@@ -111,38 +109,13 @@ sub die_unless_config_is_valid {
 }
 
                  ####################################
-                 #         CREATE DIRECTORIES       #
-                 ####################################
-
-sub initialize_directories {
-
-    # This subroutine is only necessary the first time this script is run.
-
-    foreach (@SUBVOLS_TO_SNAP) {
-
-        my ($subv_name, undef) = split /,/;
-
-        mkdir $YABSM_ROOT_DIR; # /.snapshots/yabsm
-
-        mkdir "$YABSM_ROOT_DIR/$subv_name";
-        mkdir "$YABSM_ROOT_DIR/$subv_name/hourly";
-        mkdir "$YABSM_ROOT_DIR/$subv_name/daily";
-
-        mkdir "$YABSM_ROOT_DIR/$subv_name/midnight"
-          if ($YABSMRC_HASH{"${subv_name}_midnight_want"} eq 'yes');
-        
-        mkdir "$YABSM_ROOT_DIR/$subv_name/monthly"
-          if ($YABSMRC_HASH{"${subv_name}_monthly_want"} eq 'yes');
-    }
-    return;
-}
-
-                 ####################################
                  #           WRITE CRONJOBS         #
                  ####################################
 
 sub write_cronjobs {
     
+    # Write the cronjobs to '/etc/crontab'
+
     open (my $etc_crontab, '<', '/etc/crontab')
       or die "[!] failed to open /etc/crontab\n";
 
@@ -155,8 +128,12 @@ sub write_cronjobs {
 
 	next if (/yabsm-take-snapshot/);
 
-	say $tmp $_;
+	print $tmp $_;
     }
+
+    # If there is text on the last line of the file then we must append a
+    # newline or else that text will prepend our first cronjob.
+    print $tmp "\n"; 
 
     # Now append the cronjob strings to $tmp file.
     say $tmp $_ for create_all_cronjob_strings();
@@ -253,4 +230,31 @@ sub settings_for_subvol {
             $daily_take,    $daily_keep,
             $midnight_want, $midnight_keep,
             $monthly_want,  $monthly_keep);
+}
+
+                 ####################################
+                 #         CREATE DIRECTORIES       #
+                 ####################################
+
+sub initialize_directories {
+
+    # This subroutine is only necessary the first time this script is run.
+
+    foreach (@SUBVOLS_TO_SNAP) {
+
+        my ($subv_name, undef) = split /,/;
+
+        mkdir $YABSM_ROOT_DIR; # /.snapshots/yabsm
+
+        mkdir "$YABSM_ROOT_DIR/$subv_name";
+        mkdir "$YABSM_ROOT_DIR/$subv_name/hourly";
+        mkdir "$YABSM_ROOT_DIR/$subv_name/daily";
+
+        mkdir "$YABSM_ROOT_DIR/$subv_name/midnight"
+          if ($YABSMRC_HASH{"${subv_name}_midnight_want"} eq 'yes');
+        
+        mkdir "$YABSM_ROOT_DIR/$subv_name/monthly"
+          if ($YABSMRC_HASH{"${subv_name}_monthly_want"} eq 'yes');
+    }
+    return;
 }

@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+
+#  Author: Nicholas Hubbard
+#  Email:  nhub73@keemail.me
+#  WWW:    https://github.com/NicholasBHubbard/yabsm
+#
+#  This script should be run just after the user clones the github repository.
+
+die "permission denied\n" if ($<);
+
+use strict;
+use warnings;
+use 5.010;
+
+use Cwd 'abs_path';
+use File::Copy 'move';
+
+sub yabsm_dir {
+    my $abs_path = abs_path($0);
+    $abs_path =~ s/\/[^\/]+$//;
+    return $abs_path;
+}
+
+# Should be '/home/user/yabsm'
+my $YABSM_DIR = yabsm_dir();
+
+chown 0, 0, "$YABSM_DIR/*";
+
+chmod 0444, "$YABSM_DIR/src/Yabsm.pm";

@@ -4,12 +4,14 @@
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
-#  This script is used for taking and deleting a single snapshot.
+#  This script is used for taking and deleting a single snapshot. The only time
+#  more than one snapshot is deleted is when the user changes their preferences
+#  
 #  
 #  Remember that snapshot names are formatted like: 'day=yyyy_mm_dd,time=hh_mm'
 #
 #  Exactly five command line arguments are required:
-#  1: '--subvmmtpoint' = home would be /home, root would be /
+#  1: '--subvmmtpoint' = 'home' would be mounted at /home, 'root' would be /
 #  2: '--subvname'     = the yabsm name of the subvolume to snapshot
 #  3: '--snapdir'      = yabsm snapshot directory, typically /.snapshots/yabsm
 #  4: '--timeframe'    = can be one of: (hourly, daily, midnight, monthly)
@@ -17,11 +19,14 @@
 #
 #  This script is not meant to be used by the end user.
 
+die "permission denied\n" if ($<);
+
 use strict;
 use warnings;
 use 5.010;
 
 use Getopt::Long;
+use lib '/home/nick/src/perl/yabsm/src/Yabsm';
 
                  ####################################
                  #     PROCESS INPUT PARAMETERS     #
@@ -33,11 +38,11 @@ my $SUBVOL_MOUNTPOINT_ARG;
 my $YABSM_ROOT_DIR_ARG;  
 my $SNAPS_TO_KEEP_ARG;
 
-GetOptions ('timeframe=s'     => \$TIMEFRAME_ARG,
-            'subvname=s'      => \$SUBVOL_NAME_ARG,
-	    'subvmntpoint=s'  => \$SUBVOL_MOUNTPOINT_ARG,
-            'snapdir=s'       => \$YABSM_ROOT_DIR_ARG,
-            'keeping=i'       => \$SNAPS_TO_KEEP_ARG);
+GetOptions ('timeframe=s'    => \$TIMEFRAME_ARG,
+            'subvname=s'     => \$SUBVOL_NAME_ARG,
+	    'subvmntpoint=s' => \$SUBVOL_MOUNTPOINT_ARG,
+            'snapdir=s'      => \$YABSM_ROOT_DIR_ARG,
+            'keeping=i'      => \$SNAPS_TO_KEEP_ARG);
 
 # All the options must be defined.
 foreach ($TIMEFRAME_ARG,
@@ -55,11 +60,13 @@ foreach ($TIMEFRAME_ARG,
                  #           SETUP GLOBALS          #
                  ####################################
 
-# $TARGET_DIRECTORY looks like '/.snapshots/yabsm/home/midnight'
+# $TARGET_DIRECTORY looks like '/.snapshots/yabsm/home/midnight'.
 my $TARGET_DIRECTORY =
   "${YABSM_ROOT_DIR_ARG}/${SUBVOL_NAME_ARG}/$TIMEFRAME_ARG";
 
-# An array of strings 'yyyy_mm_dd'. We grep off the full paths.
+# An array of strings like 'yyyy_mm_dd'. We grep off the actual snap names from 
+# the full paths. This variable is used as our interface to keep track of how we
+# have managed the snapshots.
 my @EXISTING_SNAPS =
   grep { $_ = $1 if /([^\/]+$)/ } glob "$TARGET_DIRECTORY/*";
 
@@ -76,7 +83,7 @@ delete_appropriate_snapshots();
 
 sub take_new_snapshot {
 
-    # take a single read-only snapshot
+    # take a single read-only snapshot.
 
     my $snapshot_name = create_snapshot_name();
 
@@ -107,14 +114,15 @@ sub create_snapshot_name {
 
 sub delete_appropriate_snapshots {
     
-    # We add one because we just took a snapshot
     my $num_snaps = scalar @EXISTING_SNAPS;
 
     # We expect there to be 1 more snap than what should be kept because we just
     # took a snapshot.
     if ($num_snaps == $SNAPS_TO_KEEP_ARG + 1) { 
+
 	my $earliest_snap = earliest_snap();
 	system("btrfs subvolume delete $TARGET_DIRECTORY/$earliest_snap");
+
 	return;
     }
 
@@ -128,40 +136,43 @@ sub delete_appropriate_snapshots {
 
             my $earliest_snap = earliest_snap();
             
-	    system("btrfs subvolume delete $TARGET_DIRECTORY/$earliest_snap");
-            
             @EXISTING_SNAPS = grep { $_ ne $earliest_snap } @EXISTING_SNAPS;
 
+	    system("btrfs subvolume delete $TARGET_DIRECTORY/$earliest_snap");
+
 	    $num_snaps--;
-        }
-	return;
-    } 
+	} 
+    }
+    return;
 }
 
 sub earliest_snap {
 
-    # Shift out a snapshot to get things rolling
-    my $earliest_snap  = shift @EXISTING_SNAPS;
+    # Shift out a snapshot to get things rolling.
+    my $earliest_snap = shift @EXISTING_SNAPS;
     
-    foreach (@EXISTING_SNAPS) {
-        $earliest_snap = $_ if snapshot_earlier_than($_, $earliest_snap);
+    foreach my $snap (@EXISTING_SNAPS) {
+        $earliest_snap = $snap if snap_earlier($snap, $earliest_snap);
     }
     return $earliest_snap;
 }
 
-sub snapshot_earlier_than { 
+sub snap_earlier { 
 
-    # These are strings like 'day=yyyy_mm_dd,time=hh_mm'
+    # True if $snap1 is earlier than $snap2
+
     my $snap1 = shift;
     my $snap2 = shift;
 
-    my @snap1_nums = $snap1 =~ m/([0-9]+)/g;
-    my @snap2_nums = $snap2 =~ m/([0-9]+)/g;
+    my @snap_nums1 = $snap1 =~ m/([0-9]+)/g;
+    my @snap_nums2 = $snap2 =~ m/([0-9]+)/g;
 
     # Take the lexical order. We know the arrays are equal length.
-    for (my $i = 0; $i < scalar @snap1_nums; $i++) {
-	return 1 if $snap1_nums[$i] < $snap2_nums[$i];
-	return 0 if $snap1_nums[$i] > $snap2_nums[$i];
+    for (my $i = 0; $i < scalar @snap_nums1; $i++) {
+
+	return 1 if $snap_nums1[$i] < $snap_nums2[$i]; 
+	return 0 if $snap_nums1[$i] > $snap_nums2[$i];
     }
-    return 0; # Arrays must have been equivalent
+
+    return 0; # The arrays must have been equivalent.
 }

@@ -25,7 +25,7 @@ use strict;
 use warnings;
 use 5.010;
 
-use Getopt::Long;
+use Getopt::Long qw(:config no_auto_abbrev);
 use lib '/home/nick/src/perl/yabsm/src/Yabsm';
 
                  ####################################

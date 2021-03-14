@@ -45,10 +45,9 @@ test_all_subvols();
 sub test_all_subvols {
 
     # This test only runs on my system.
+    my s = join Yabsm::all_subvols();
 
-    my $s = join '', Yabsm::all_subvols();
-
-    ok ( $s =~ /^root$/, 'all_subvols()' );
+    ok ( join Yabsm::all_subvols() eq 'root', 'all_subvols()' );
 }
  
 test_snap_later();

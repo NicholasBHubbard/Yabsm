@@ -181,7 +181,8 @@ sub create_all_cronjob_strings {
                             . " --keeping $daily_keep"
 			    );
         
-        my $midnight_cron = ( '0 0 * * * root' # Every night at midnight
+	# Every night just before midnight. This makes the the date the day of.
+        my $midnight_cron = ( '23 58 * * * root' 
                             . ' /usr/local/sbin/yabsm-take-snapshot'
 			    . ' --timeframe midnight'
                             . " --subvname $subv_name"

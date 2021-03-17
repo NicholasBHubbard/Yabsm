@@ -69,7 +69,9 @@ sub yabsmrc_to_hash {
             $yabsmrc_hash{$key} = $val;
         }
     }
+
     close $yabsmrc;
+
     return %yabsmrc_hash;
 }
 

@@ -6,6 +6,12 @@
 
 snapshot_directory=/.snapshots
 
+### Every subvolume requires 8 fields
+
+### subvolumes can be named whatever you want. These names only 
+### exits in the world of yabsm.
+
+### I_want_to_snap_this_subvol=NAME,PATH 
 
 I_want_to_snap_this_subvol=root,/
 
@@ -16,11 +22,13 @@ root_daily_take=24
 root_daily_keep=48
 
 root_midnight_want=yes
-root_midnight_keep=14
+root_midnight_keep=14 
 
 root_monthly_want=yes
 root_monthly_keep=12
 
+
+### I can snapshot as many subvolumes as I want
 
 I_want_to_snap_this_subvol=home,/home
 

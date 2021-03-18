@@ -6,7 +6,7 @@
 #
 #  This script is used for taking and deleting a single snapshot. The only time
 #  more than one snapshot is deleted is when the user changes their preferences
-#  
+#  to keep less snapshots than they were prior.
 #  
 #  Remember that snapshot names are formatted like: 'day=yyyy_mm_dd,time=hh_mm'
 #
@@ -26,7 +26,6 @@ use warnings;
 use 5.010;
 
 use Getopt::Long qw(:config no_auto_abbrev);
-use lib '/home/nick/src/perl/yabsm/src/Yabsm';
 
                  ####################################
                  #      PROCESS INPUT PARAMETERS    #

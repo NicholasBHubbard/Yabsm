@@ -4,11 +4,13 @@
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
-#  This script should be run just after the user clones the github repository.
+#  This script should be run right after the user clones the github repository.
 
 die "Permission denied\n" if ($<);
 
 die "[!] Perl version must be at least 5.10\n" if ($] < 5.010000);
+
+die "Missing dependency \"xclip\"\n" unless `which xclip 2> /dev/null`;
 
 use strict;
 use warnings;

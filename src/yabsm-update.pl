@@ -54,7 +54,7 @@ sub yabsmrc_to_hash {
         
         next if /^[^a-zA-Z]/;
 
-	$_ =~ s/[\s\n]//g; 
+	$_ =~ s/\s//g; 
         
         my ($key, $val) = split /=/;
 

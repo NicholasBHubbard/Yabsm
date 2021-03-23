@@ -3,32 +3,66 @@
 #  Author: Nicholas Hubbard
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
+#
+#  Script for quickly finding a snapshot. The heavy lifting is done by
+#  the Yabsm.pm library.
 
 use strict;
 use warnings;
 use 5.010;
 
-# Import Yabsm module. 
+# Import Yabsm module. This import is modified by the yabsm init scripts.
 use FindBin '$Bin';
 use lib "$Bin/library";
 use Yabsm;
 
                  ####################################
+                 #   DETERMINE SUBVOLUME AND QUERY  #
+                 ####################################
+
+my $subvol;
+my $query;
+
+# All of this (overly complicated) logic is designed to provides the user the 
+# option to provide their subvolume or query from the command line, without the
+# order in which they do so mattering.
+
+if (defined $ARGV[0]) {
+    if (Yabsm::is_subvol($ARGV[0])) {
+	$subvol = $ARGV[0];
+    }
+    elsif (Yabsm::valid_query($ARGV[0])) {
+	$query = $ARGV[0];
+    }
+    else { die "[!] invalid argument \"$ARGV[0]\"\n" }
+}
+
+if (defined $ARGV[1]) {
+    if (Yabsm::is_subvol($ARGV[1])) {
+	$subvol = $ARGV[1]
+    }
+    elsif (Yabsm::valid_query($ARGV[1])) {
+	$query = $ARGV[1]
+    }
+    else { die "[!] invalid argument \"$ARGV[1]\"\n" }
+}
+
+if (not defined $subvol) {
+    $subvol = Yabsm::ask_for_subvolume();
+}
+
+if (not defined $query) {
+    $query = Yabsm::ask_for_query();
+}
+
+                 ####################################
                  #                MAIN              #
                  ####################################
 
-my $subvol    = Yabsm::ask_for_subvolume();
-my $timeframe = Yabsm::ask_for_timeframe();
+my @all_snaps = Yabsm::all_snapshots($subvol);
 
-my @all_snaps = Yabsm::all_snapshots($subvol, $timeframe);
+my $snap_path = Yabsm::answer_query($query, \@all_snaps);
 
-print "enter search query:\n>>> ";
-my $query = <STDIN>;
-$query =~ s/^\s+|\s+$//g; # trim trailing and leading whitespace
+system "echo -n 'cd $snap_path' | xclip -selection clipboard";
 
-Yabsm::diagnose_query(Yabsm::test_valid_query($query));
-my @snapshots = Yabsm::answer_query(\@all_snaps, $query);
-
-Yabsm::print_the_snapshots();
-
-say 'successfully copied the cd command to your clipboard';
+say "successfully copied \"cd\" command to clipboard";

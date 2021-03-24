@@ -261,10 +261,12 @@ sub test_time_piece_obj_to_snap {
     ok ( $output eq  'day=2020_03_06,time=12:00', 'time_piece_obj_to_snap()' );
 }
 
-test_snap_n_units_ago();
-sub test_snap_n_units_ago {
+test_snap_closest_to();
+sub test_snap_closest_to {
 
     my $want_dump = 0;
+
+    my $target = Yabsm::n_units_ago(34, 'hr');
 
     my $t0 = Yabsm::n_units_ago(0,  'hr');
     my $t1 = Yabsm::n_units_ago(10, 'hr');
@@ -275,39 +277,42 @@ sub test_snap_n_units_ago {
 
     my @all_snaps = ($t0, $t1, $t2, $t3, $t4, $t5);
 
-    my $output = Yabsm::snap_n_units_ago(34, 'hr', \@all_snaps);
+    my $output = Yabsm::snap_closest_to($target, \@all_snaps);
 
     if ($want_dump) { print Dumper $output }
 
-    ok ( $output eq $t4, 'snap_n_units_ago()' );
+    ok ( $output eq $t4, 'snap_closest_to()' );
 }
 
-test_valid_query();
-sub test_valid_query {
+test_is_valid_query();
+sub test_is_valid_query {
 
     # these should all be true
-    my $t0 = Yabsm::valid_query('b 4 m');
-    my $t1 = Yabsm::valid_query('back 4 m');
-    my $t2 = Yabsm::valid_query('back    4 min');
-    my $t3 = Yabsm::valid_query('back  400   mins');
-    my $t4 = Yabsm::valid_query('b 400 h');
-    my $t5 = Yabsm::valid_query('b 400 hr');
-    my $t6 = Yabsm::valid_query('b   400   hrs');
-    my $t7 = Yabsm::valid_query('b 400 hour');
-    my $t8 = Yabsm::valid_query('b 400 hours');
+    my $t0 = Yabsm::is_valid_query('b 4 m');
+    my $t1 = Yabsm::is_valid_query('back-4-m');
+    my $t2 = Yabsm::is_valid_query('back 4 min');
+    my $t3 = Yabsm::is_valid_query('back_400_mins');
+    my $t4 = Yabsm::is_valid_query('b/400/h');
+    my $t5 = Yabsm::is_valid_query('b 400 hrs');
+    my $t6 = Yabsm::is_valid_query('2020-2-3-12-30');
+    my $t7 = Yabsm::is_valid_query('2020 02 03 12 30');
+    my $t8 = Yabsm::is_valid_query('b 400 hour');
 
     # these should all be false
-    my $f0 = Yabsm::valid_query('');
-    my $f1 = Yabsm::valid_query('someting 4 min');
-    my $f2 = Yabsm::valid_query('b 4 units');
-    my $f3 = Yabsm::valid_query('back 4 minss');
-    my $f4 = Yabsm::valid_query('back units');
-    my $f5 = Yabsm::valid_query('back m');
+    my $f0 = Yabsm::is_valid_query('');
+    my $f1 = Yabsm::is_valid_query('someting 4 min');
+    my $f2 = Yabsm::is_valid_query('b-4-units');
+    my $f3 = Yabsm::is_valid_query('back 4_minss');
+    my $f4 = Yabsm::is_valid_query('back units');
+    my $f5 = Yabsm::is_valid_query('2020-12-30-12');
+    my $f6 = Yabsm::is_valid_query('m');
+    my $f7 = Yabsm::is_valid_query('b 4    m');
+    my $f8 = Yabsm::is_valid_query('b 4 m ');
 
     my $trues  = ($t0 && $t2 && $t4 && $t5 && $t6 && $t7 && $t8);
-    my $falses = ! ($f0 || $f1 || $f2 || $f3 || $f4 || $f5);
+    my $falses = ! ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8);
 
-    ok ( $trues && $falses, 'valid_query()' );
+    ok ( $trues && $falses, 'is_valid_query()' );
 }
 
 test_is_subvol();
@@ -319,4 +324,53 @@ sub test_is_subvol {
     my $f = Yabsm::is_subvol('anything');
 
     ok ( $t && ! $f, 'is_subvol()' );
+}
+
+test_is_time();
+sub test_is_time {
+    
+    # These should be true
+    my $t1 = Yabsm::is_time('2020-12-20-13-40');
+    my $t2 = Yabsm::is_time('2020_12_20_13_40');
+    my $t3 = Yabsm::is_time('2020/12/2/1/4');
+    
+    # These should be false
+    my $f1 = Yabsm::is_time('202-12-30-12');
+    my $f2 = Yabsm::is_time('2020_12_30_12_30 ');
+    my $f3 = Yabsm::is_time('2020-12-30*12*30');
+
+    my $trues  = ($t1 && $t2 && $t3);
+    my $falses = ! ($f1 || $f2 || $f3);
+
+    ok ( $trues && $falses, 'is_time()' );
+}
+
+test_is_relative_query();
+sub test_is_relative_query {
+
+    # these should all be true
+    my $t0 = Yabsm::is_relative_query('b 4 m');
+    my $t1 = Yabsm::is_relative_query('back-4-m');
+    my $t2 = Yabsm::is_relative_query('back 4 min');
+    my $t3 = Yabsm::is_relative_query('back_400_mins');
+    my $t4 = Yabsm::is_relative_query('b/400/h');
+    my $t5 = Yabsm::is_relative_query('b/400/hr');
+    my $t6 = Yabsm::is_relative_query('b_400_hour');
+    my $t7 = Yabsm::is_relative_query('b 400 hours');
+
+    # these should all be false
+    my $f0 = Yabsm::is_relative_query('');
+    my $f1 = Yabsm::is_relative_query('someting 4 min');
+    my $f2 = Yabsm::is_relative_query('b-4-units');
+    my $f3 = Yabsm::is_relative_query('back-4-minss');
+    my $f4 = Yabsm::is_relative_query('back units');
+    my $f5 = Yabsm::is_relative_query('2020-12-30-12-20');
+    my $f6 = Yabsm::is_relative_query('m');
+    my $f7 = Yabsm::is_relative_query('b 4    m');
+    my $f8 = Yabsm::is_relative_query('b 4 m  ');
+
+    my $trues  = ($t0 && $t2 && $t4 && $t5 && $t6 && $t7);
+    my $falses = !($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8);
+
+    ok ( $trues && $falses, 'is_relative_query()' );
 }

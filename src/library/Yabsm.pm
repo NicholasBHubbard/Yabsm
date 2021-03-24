@@ -63,7 +63,7 @@ sub ask_for_subvolume { # no test
     }
 
     else {
-	print "$input is not valid! Try again!\n\n";
+	print "\"$input\" is not valid subvolume! Try again!\n\n";
 	return ask_for_subvolume();
     }
 }
@@ -79,10 +79,10 @@ sub ask_for_query { # no test
 
     if ($input eq 'help') { help() }
 
-    if (valid_query($input)) { return $input }  
+    if (is_valid_query($input)) { return $input }  
 
     else {
-	say "\"$input\" is not a valid query";
+	print "\"$input\" is not a valid query! Try again!\n\n";
 	return ask_for_query();
     }
 }
@@ -231,14 +231,16 @@ sub sort_snapshots { # has test
     my @bigger;
     my @smaller;
     my $pivot = pop @snapshots;
+
     foreach my $snap (@snapshots) {
 
 	if    (snap_later($snap, $pivot))   { push (@bigger,  $snap) }
 
 	elsif (snap_earlier($snap, $pivot)) { push (@smaller, $snap) }
 
-	else { next } 
+	else  { next } 
     }
+
     return sort_snapshots(\@bigger), $pivot, sort_snapshots(\@smaller);
 }
 
@@ -342,75 +344,109 @@ sub n_units_ago { # has test
     return time_piece_obj_to_snap($time_piece_obj);
 }
 
-sub snap_n_units_ago { # has test
- 
-    # Return from @all_snaps the one snapshot that is
-    # closest to the time $n $units ago. 
+                 ####################################
+                 #          FIND ONE SNAPSHOT       #
+                 ####################################
 
-    my $n         = $_[0];
-    my $unit      = $_[1];
-    my @all_snaps = @{$_[2]};
+sub snap_closest_to { # has test
 
-    my $n_units_ago = n_units_ago($n, $unit);
+    my $target_snap = $_[0];
+    my @all_snaps   = @{$_[1]};
 
     my $closest;
 
     for my $snap (@all_snaps) {
 
-	if (snap_earlier_or_eq($snap, $n_units_ago)) {
+	if (snap_earlier_or_eq($snap, $target_snap)) {
 	    $closest = $snap;
 	    last;
 	}
     }
 
     if (not defined $closest) {
-	die "[!] couldn't find a snapshot \"$n $unit\" ago\n";
+	die "[!] couldn't find a snapshot close to \"$target_snap\"\n";
     }
 
     return $closest;
 }
 
                  ####################################
-                 #              QUERIES             #
+                 #           QUERY ANSWERING        #
                  ####################################
 
 sub answer_query { # no test
 
     # This function takes a query and an array (ref) of all the snapshots
-    # and returns the desired snapshot
+    # and returns the desired snapshot. It is expected that a $query has
+    # already been proven valid.
 
     my $query     = $_[0];
     my @all_snaps = @{$_[1]}; 
 
-    my (undef, $n, $units) = split /\s+/, $query;
+    my $return_snap;
 
-    return snap_n_units_ago($n, $units, \@all_snaps);
+    if (is_time($query)) {
+
+	my @nums = $query =~ m/^(\d{4})([-\s_\/])(\d{1,2})\2(\d{1,2})\2(\d{1,2})\2(\d{1,2})$/;
+
+	@nums = grep { $_ ne $2 } @nums;
+
+	my $nums_as_snap = nums_to_snap(@nums);
+
+	$return_snap = snap_closest_to($nums_as_snap, \@all_snaps);
+    }
+
+    elsif (is_relative_query($query)) {
+
+	my (undef, $n, $units) = split /[-\s_\/]/, $query;
+
+	my $n_units_ago = n_units_ago($n, $units);
+
+	$return_snap = snap_closest_to($n_units_ago, \@all_snaps);
+    }
+    
+    return $return_snap;
 }
 
                  ####################################
                  #            VALIDATION            #
                  ####################################
 
-sub valid_query { # has test
+sub is_valid_query { # has test
+
+    # Return 1 iff $query is either a time like '2020-02-13-12-30' or
+    # it is a relative time like 'back 40 mins'. 
 
     my $query = shift;
 
-    my ($prefix, $n, $units) = split /\s+/, $query or return 0;
+    if    (is_time($query))           { return 1 }
+    elsif (is_relative_query($query)) { return 1 }
+    else  { return 0 }
+}
 
-    return 0 if (! defined $prefix || ! defined $n || ! defined $units);
+sub is_time { # has test
 
-    my $valid_prefix = $prefix =~ /^b(ack)?$/;
+    # Return 1 iff $query is a time string like '2020-5-13-12-30'.
 
-    my $valid_n = $n =~ /^\d+$/;
+    my $query = shift;
 
-    my $valid_unit = $units =~ /^(m|mins?)$/
-                  || $units =~ /^(h|(hr|hour)s?)$/
-		  || $units =~ /^(d|days?)$/;
+    return $query =~ /^\d{4}([-\s_\/])\d{1,2}\1\d{1,2}\1\d{1,2}\1\d{1,2}$/;
+}
 
-    return $valid_prefix && $valid_n && $valid_unit;
+sub is_relative_query { # has test
+
+    # Return 1 iff $query is a relative time like 'back 4 hours'.
+
+    my $query = shift;
+
+    return
+      $query =~ /^b(ack)?([-\s_\/])\d+\2(m$|mins?$|h$|hrs?$|hours?$|d$|days?$)/;
 }
 
 sub is_subvol { # has test
+
+    # Return 1 iff $subvol is the name of a subvolume that the
+    # user is taking snapshots of with Yabsm. 
 
     my $subvol = shift;
 
@@ -418,12 +454,11 @@ sub is_subvol { # has test
 
     for my $subv (@all_subvols) {
 
-	return 1 if $subvol eq $subv;
+	return 1 if $subv eq $subvol;
     }
 
     return 0;
 }
-
                  ####################################
                  #           MISCELLANEOUS          #
                  ####################################

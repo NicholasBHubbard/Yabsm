@@ -10,8 +10,6 @@ die "Permission denied\n" if ($<);
 
 die "[!] Perl version must be at least 5.10\n" if ($] < 5.010000);
 
-die "Missing dependency \"xclip\"\n" unless `which xclip 2> /dev/null`;
-
 use strict;
 use warnings;
 use 5.010;
@@ -28,14 +26,43 @@ sub yabsm_dir {
 # Should be '/home/user/yabsm'
 my $YABSM_DIR = yabsm_dir();
 
+# change the path to Yabsm.pm in the yabsm-find.pl script.
+open (my $yabsm_dot_pm, '<', "$YABSM_DIR/src/library/Yabsm.pm")
+  or die "[!] failed to open $YABSM_DIR/src/library/Yabsm.pm\n";
+
+open (my $tmp, '>', '/tmp/yabsm-init-tmp')
+  or die "[!] failed to open tmp file at /tmp/yabsm-init-tmp\n";
+
+while (<$yabsm_dot_pm>) {
+
+    next if /^use (FindBin|lib)/;
+
+    s/^# // if /^# use lib/ ;
+
+    print $tmp $_;
+}
+
+close $yabsm_dot_pm;
+close $tmp;
+
+move '/tmp/yabsm-init-tmp', "YABSM_DIR/src/library/Yabsm.pm";
+
 chown 0, 0, "$YABSM_DIR/*";
 
 chmod 0664, "$YABSM_DIR/yabsmrc";
 chmod 0764, "$YABSM_DIR/src/yabsm-take-snapshot.pl";
-chmod 0774, "$YABSM_DIR/src/yabsm-update.pl";
+chmod 0775, "$YABSM_DIR/src/yabsm-update.pl";
+chmod 0775, "$YABSM_DIR/src/yabsm-find.pl";
+chmod 0775, "$YABSM_DIR/src/library/Yabsm.pm";
+chmod 0775, "$YABSM_DIR/src/library/Yabsm.t";
 
-move "$YABSM_DIR/src/yabsm-update.pl", '/usr/local/sbin/yabsm-update';
-move "$YABSM_DIR/src/yabsm-take-snapshot.pl", '/usr/local/sbin/yabsm-take-snapshot';
+mkdir '/usr/local/lib/yabsm';
+
 move "$YABSM_DIR/yabsmrc", '/etc/yabsmrc';
+move "$YABSM_DIR/src/yabsm-take-snapshot.pl", '/usr/local/sbin/yabsm-take-snapshot';
+move "$YABSM_DIR/src/yabsm-update.pl", '/usr/local/sbin/yabsm-update';
+move "$YABSM_DIR/src/yabsm-find.pl", '/usr/local/sbin/yabsm-find';
+move "$YABSM_DIR/src/library/Yabsm.pm", '/usr/local/lib/yabsm/Yabsm.pm';
+move "$YABSM_DIR/src/library/Yabsm.t", '/usr/local/lib/yabsm/Yabsm.t';
 
 say "success!";

@@ -28,13 +28,6 @@ my $YABSM_DIR = yabsm_dir();
 
 chown 0, 0, "$YABSM_DIR/*";
 
-chmod 0664, "$YABSM_DIR/yabsmrc";
-chmod 0764, "$YABSM_DIR/src/yabsm-take-snapshot.pl";
-chmod 0775, "$YABSM_DIR/src/yabsm-update.pl";
-chmod 0775, "$YABSM_DIR/src/yabsm-find.pl";
-chmod 0775, "$YABSM_DIR/src/library/Yabsm.pm";
-chmod 0775, "$YABSM_DIR/src/library/Yabsm.t";
-
 mkdir '/usr/local/lib/yabsm';
 
 move "$YABSM_DIR/yabsmrc", '/etc/yabsmrc';
@@ -43,5 +36,12 @@ move "$YABSM_DIR/src/yabsm-update.pl", '/usr/local/sbin/yabsm-update';
 move "$YABSM_DIR/src/yabsm-find.pl", '/usr/local/sbin/yabsm-find';
 move "$YABSM_DIR/src/library/Yabsm.pm", '/usr/local/lib/yabsm/Yabsm.pm';
 move "$YABSM_DIR/src/library/Yabsm.t", '/usr/local/lib/yabsm/Yabsm.t';
+
+chmod 0664, "/etc/yabsmrc";
+chmod 0764, "/usr/local/sbin/yabsm-take-snapshot";
+chmod 0775, "/usr/local/sbin/yabsm-update";
+chmod 0775, "/usr/local/sbin/yabsm-find";
+chmod 0775, "/usr/local/lib/yabsm/Yabsm.pm";
+chmod 0775, "/usr/local/lib/yabsm/Yabsm.t";
 
 say "success!";

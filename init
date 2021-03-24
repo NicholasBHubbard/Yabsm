@@ -27,13 +27,13 @@ sub yabsm_dir {
 my $YABSM_DIR = yabsm_dir();
 
 # change the path to Yabsm.pm in the yabsm-find.pl script.
-open (my $yabsm_dot_pm, '<', "$YABSM_DIR/src/library/Yabsm.pm")
-  or die "[!] failed to open $YABSM_DIR/src/library/Yabsm.pm\n";
+open (my $yabsm_find, '<', "$YABSM_DIR/src/yabsm-find.pl")
+  or die "[!] failed to open $YABSM_DIR/src/yabsm-find.pl\n";
 
 open (my $tmp, '>', '/tmp/yabsm-init-tmp')
   or die "[!] failed to open tmp file at /tmp/yabsm-init-tmp\n";
 
-while (<$yabsm_dot_pm>) {
+while (<$yabsm_find>) {
 
     next if /^use (FindBin|lib)/;
 
@@ -42,7 +42,7 @@ while (<$yabsm_dot_pm>) {
     print $tmp $_;
 }
 
-close $yabsm_dot_pm;
+close $yabsm_find;
 close $tmp;
 
 move '/tmp/yabsm-init-tmp', "YABSM_DIR/src/library/Yabsm.pm";

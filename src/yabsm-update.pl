@@ -20,7 +20,7 @@ use File::Copy 'move';
                  #             GLOBALS              #
                  ####################################
 
-my %YABSMRC_HASH = yabsmrc_to_hash(); # Settings will be available globally
+my %YABSMRC_HASH = yabsmrc_to_hash(); 
 
 my $YABSM_ROOT_DIR = $YABSMRC_HASH{'snapshot_directory'} . '/yabsm';
 

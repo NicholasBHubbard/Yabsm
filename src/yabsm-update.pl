@@ -128,7 +128,7 @@ sub write_cronjobs {
     # yabsm cronjobs.
     while (<$etc_crontab>) {
 
-	next if (/yabsm-take-snapshot/);
+	next if /yabsm-take-snapshot/;
 
 	print $tmp $_;
     }

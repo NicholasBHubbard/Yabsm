@@ -13,10 +13,10 @@ use strict;
 use warnings;
 use 5.010;
 
-use FindBin '$Bin';
-use lib "$Bin/library";
+# use FindBin '$Bin';
+# use lib "$Bin/library";
 
-# use lib '/usr/local/lib/yabsm/Yabsm.pm';
+use lib '/usr/local/lib/yabsm/Yabsm.pm';
 
 use Yabsm;
 

@@ -39,8 +39,10 @@ sub ask_for_subvolume { # no test
 
     # Print prompt to stdout.
     say 'enter subvolume';
-    my $i = 1;
-    while (my ($key, $val) = each %int_subvol_hash) {
+    for (my $i = 1; $i <= scalar keys %int_subvol_hash; $i++) {
+
+	my $key = $i;
+	my $val = $int_subvol_hash{ $key };
 
 	# After every N subvolumes print a newline. This prevents a user with
 	# say 20 subvolumes from having them all printed as a giant string on
@@ -51,7 +53,6 @@ sub ask_for_subvolume { # no test
 	else {
 	    print "$key -> $val     ";
 	}
-	$i++
     }
     print "\n>>> ";
 

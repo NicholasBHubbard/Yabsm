@@ -45,7 +45,7 @@ while (<$yabsm_find>) {
 close $yabsm_find;
 close $tmp;
 
-move '/tmp/yabsm-init-tmp', "YABSM_DIR/src/library/Yabsm.pm";
+move '/tmp/yabsm-init-tmp', "YABSM_DIR/src/yabsm-find.pl";
 
 chown 0, 0, "$YABSM_DIR/*";
 

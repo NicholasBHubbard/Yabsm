@@ -143,7 +143,7 @@ sub write_cronjobs {
     close $etc_crontab;
     close $tmp;
 
-    move '/tmp/yabsm_tmp', '/etc/crontab';
+    move '/tmp/yabsm-update-tmp', '/etc/crontab';
 
     return;
 } 

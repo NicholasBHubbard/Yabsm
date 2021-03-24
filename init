@@ -35,9 +35,9 @@ open (my $tmp, '>', '/tmp/yabsm-init-tmp')
 
 while (<$yabsm_find>) {
 
-    next if /^use (FindBin|lib)/;
+    next if $_ =~ /^use (FindBin|lib)/;
 
-    s/^# // if /^# use lib/ ;
+    $_ =~ s/^# // if $_ =~ /^# use lib/;
 
     print $tmp $_;
 }

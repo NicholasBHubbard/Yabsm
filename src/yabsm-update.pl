@@ -121,8 +121,8 @@ sub write_cronjobs {
     open (my $etc_crontab, '<', '/etc/crontab')
       or die "[!] failed to open /etc/crontab\n";
 
-    open (my $tmp, '>', '/tmp/yabsm_tmp')
-      or die "[!] failed to open tmp file at /tmp/yabsm_tmp\n";
+    open (my $tmp, '>', '/tmp/yabsm-update-tmp')
+      or die "[!] failed to open tmp file at /tmp/yabsm-update-tmp\n";
 
     # Copy all lines from /etc/crontab into the tmp file, excluding the existing
     # yabsm cronjobs.

@@ -96,23 +96,29 @@ home_monthly_keep=100001
   + You must specify the mount point of the root of your snapshot
     subvolume. Traditionally this is =/.snapshots=.
 
+
   + For every subvolume you want to snapshot you must specify a
     =I_want_to_snap_this_subvol= field. On the right hand side of the equals
     sign should be the name of the subvolume and it's mount point, separated by
     a comma. The name you choose is only relevant to YABSM.
+
 
   + Every subvolume is required to have 8 fields associated with it.
 
 * What do the settings mean?
   + =*_*_keep=: How many of this type of snapshot do you want to keep around? 
 
+
   + =*_hourly_take=: How many snapshots do you want to take over the course of
     an hour? Max value is 60.
+
 
   + =*_daily_take=: How many snapshots do you want to take per day? These
     snapshots are taken at the beginning of the hour. Max value is 24.
 
+
   + =*_midnight_want=: Do you want to take a snapshot every night at midnight?
+
 
   + =*_monthly_want=: Do you want to take a snapshot on the first of every month?
 

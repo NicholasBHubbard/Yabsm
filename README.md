@@ -147,8 +147,9 @@ Here is the file tree structure for the example configuration.
 
   Three scripts, namely =yabsm-take-snapshot=, =yabsm-update=, and =yabsm-find=
   are placed into =/usr/local/sbin=. Only the =yabsm-update=, and =yabsm-find=
-  scripts are meant to be used by the user (you)! Helper files, namely =Yabsm.pm= and
-  =Yabsm.t= are placed into =/usr/local/lib/yabsm=.
+  scripts are meant to be used by the user.
+
+  Helper files, namely =Yabsm.pm= and =Yabsm.t= are placed into =/usr/local/lib/yabsm=.
 
 * yabsm-find
   YABSM comes with a program called =yabsm-find=. This program lets you access

@@ -27,6 +27,7 @@ sub yabsm_dir {
 my $YABSM_DIR = yabsm_dir();
 
 chown 0, 0, "$YABSM_DIR/src/*";
+chown 0, 0, "$YABSM_DIR/yabsmrc";
 
 mkdir '/usr/local/lib/yabsm';
 

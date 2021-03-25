@@ -157,7 +157,9 @@ Here is the file tree structure for the example configuration.
   type of query you can make is simply by entering a date formated like =yyyy-mm-dd-hh-mm=.
 
   Yabsm will copy to your clipboard a =cd= command to the root directory of your desired
-  snapshot. You must install xclip to use yabsm-find.
+  snapshot. 
+
+  You must install xclip to use yabsm-find.
 
   Unfortunately YABSM cannot directly change your directory due to a limitation of Perl. 
 

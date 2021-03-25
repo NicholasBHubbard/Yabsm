@@ -5,7 +5,7 @@
 #  Functions used in yabsm-show.pl.
 #
 #  Do not forget that we always expect the snapshots to be sorted from newest to
-#  oldest. The test script for this library is thrown away when the user
+#  oldest. The test script for this library is thrown away when the user 
 #  installs Yabsm.
 
 package Yabsm;
@@ -77,8 +77,6 @@ sub ask_for_query { # no test
 
     my $input = <STDIN>;
     $input =~ s/^\s+|[\s]+$//g; # trim both ends
-
-    if ($input eq 'help') { help() }
 
     if (is_valid_query($input)) { return $input }  
 
@@ -350,6 +348,8 @@ sub n_units_ago { # has test
                  ####################################
 
 sub snap_closest_to { # has test
+
+    # return the snapshot from @all_snaps that is closest to $target_snap
 
     my $target_snap = $_[0];
     my @all_snaps   = @{$_[1]};

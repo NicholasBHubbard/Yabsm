@@ -20,9 +20,8 @@
     quickly go back in time.
 
 * How do I use it?
-  You can tweak your configuration to your liking by editing the =/etc/yabsmrc=
-  file. After you're done simply run =sudo yabsm-update= and you are good to
-  go. 
+  You can tweak your configuration by editing the =/etc/yabsmrc= file. After
+  you're done simply run =sudo yabsm-update= and you're good to go. 
 
   Snapshots are named after the time they are taken in =yyyy_mm_dd_hh_mm= format. 
   For example a snapshot taken at 15:30 on March 20th 2021 will be named
@@ -49,9 +48,9 @@ This is what your config will look like out of the gate:
   #+BEGIN_SRC  
 # /etc/yabsmrc
                                       
-         #-----------------------------------------#
-         # WELCOME TO THE YABSM CONFIGURATION FILE #
-         #-----------------------------------------#
+            #-----------------------------------------#
+            # WELCOME TO THE YABSM CONFIGURATION FILE #
+            #-----------------------------------------#
 
 snapshot_directory=/.snapshots
 

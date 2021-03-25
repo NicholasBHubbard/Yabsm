@@ -26,7 +26,7 @@ sub yabsm_dir {
 # Should be '/home/user/yabsm'
 my $YABSM_DIR = yabsm_dir();
 
-chown 0, 0, "$YABSM_DIR/*";
+chown 0, 0, "$YABSM_DIR/src/*";
 
 mkdir '/usr/local/lib/yabsm';
 

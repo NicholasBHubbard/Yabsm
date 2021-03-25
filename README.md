@@ -149,7 +149,7 @@ Here is the file tree structure for the example configuration.
   snapshot taken 4 minuts ago. You can also go back by hours or days. The other
   type of query you can make is simply by entering a date formated like =yyyy-mm-dd-hh-mm=.
   Yabsm will copy to your clipboard a =cd= command to the root directory of your desired
-  snapshot.
+  snapshot. You must install xclip to use yabsm-find.
 
   Unfortunately YABSM cannot directly change your directory due to a limitation of Perl. 
 
@@ -186,5 +186,3 @@ Here is the file tree structure for the example configuration.
   #+END_SRC
   Fun fact: If you are only using YABSM to snapshot one subvolume then you
   don't need to mention it to yabsm-find
-
-  For more information try =yabsm-find -h=.

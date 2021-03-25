@@ -152,9 +152,10 @@ Here is the file tree structure for the example configuration.
 
 * yabsm-find
   YABSM comes with a program called =yabsm-find=. This program lets you access
-  a snapshot by making a simple query like =back-4-mins=, to jump to a
-  snapshot taken 4 minuts ago. You can also go back by hours or days. The other
+  a snapshot by making a simple query like =back-40-mins=, to jump to a
+  snapshot taken 40 minutes ago. You can also go back by hours or days. The other
   type of query you can make is simply by entering a date formated like =yyyy-mm-dd-hh-mm=.
+
   Yabsm will copy to your clipboard a =cd= command to the root directory of your desired
   snapshot. You must install xclip to use yabsm-find.
 
@@ -170,7 +171,7 @@ Here is the file tree structure for the example configuration.
     successfully copied "cd" command to clipboard
   #+END_SRC  
   You do not have to pass your subvolume or query on the command line (you can
-  pass just one if you'd like)
+  pass just one if you'd like).
   #+BEGIN_SRC  
   $ yabsm-find 
   select subvolume:
@@ -192,4 +193,4 @@ Here is the file tree structure for the example configuration.
   2020-3-20-12-30
   #+END_SRC
   Fun fact: If you are only using YABSM to snapshot one subvolume then you
-  don't need to mention it to yabsm-find
+  don't need to mention it to yabsm-find.

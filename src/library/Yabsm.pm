@@ -38,7 +38,7 @@ sub ask_for_subvolume { # no test
     }
 
     # Print prompt to stdout.
-    say 'select subvolume';
+    say 'select subvolume:';
     for (my $i = 1; $i <= scalar keys %int_subvol_hash; $i++) {
 
 	my $key = $i;

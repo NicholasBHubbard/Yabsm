@@ -80,6 +80,11 @@ sub yabsmrc_to_hash {
                  ####################################
 
 sub check_config_for_errors {
+    
+    if (! -d $YABSMRC_HASH{'snapshot_directory'}) {
+	my $snap_dir = $YABSMRC_HASH{'snapshot_directory'};
+	die "[!] could not find directory \"$snap_dir\"\n";
+    }
 
     foreach (@SUBVOLS_TO_SNAP) {
         

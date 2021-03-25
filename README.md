@@ -94,7 +94,7 @@ home_monthly_keep=100001
   #+END_SRC  
   There are a few things to note here:
   + You must specify the mount point of the root of your snapshot
-    subvolume. Traditionally this is /.snapshots
+    subvolume. Traditionally this is =/.snapshots=.
 
   + For every subvolume you want to snapshot you must specify a
     =I_want_to_snap_this_subvol= field. On the right hand side of the equals
@@ -112,7 +112,9 @@ home_monthly_keep=100001
   + =*_daily_take=: How many snapshots do you want to take per day? These
     snapshots are taken at the beginning of the hour. Max value is 24.
 
-  + =*_*_want=: Do you want to take a snapshot at midnight/first of the month?
+  + =*_midnight_want=: Do you want to take a snapshot every night at midnight?
+
+  + =*_monthly_want=: Do you want to take a snapshot on the first of every month?
 
 * Where do my snapshots go?
 Here is the file tree structure for the example configuration.

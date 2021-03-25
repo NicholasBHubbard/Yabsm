@@ -3,7 +3,7 @@
 #+author: Nicholas Hubbard
 
 * Why should I use YABSM?
-  The entire point of YABSM is to make it trivial to set up a custom snapshot
+  The entire point of YABSM is to make it effortless to set up a custom snapshot
   system. All you have to do is edit a simple configuration file and run one
   command. YABSM is a workflow tool more than a backup system. 
 
@@ -195,5 +195,5 @@ Here is the file tree structure for the example configuration.
   b 4 days
   2020-3-20-12-30
   #+END_SRC
-  Fun fact: If you are only using YABSM to snapshot one subvolume then you
-  don't need to mention it to yabsm-find.
+  Note: If you are only using YABSM to snapshot one subvolume then you don't need to
+  mention it to yabsm-find.

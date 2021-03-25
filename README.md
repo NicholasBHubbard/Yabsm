@@ -16,7 +16,7 @@
 
     These are the main features. I use this as a workflow tool. How many times
     have you been like, "I know this was working 10 hours ago, or 2 days ago,
-    or 15 minutes ago". Whenever I think this I just use `yabsm-find` to
+    or 15 minutes ago"? Whenever I think this I just use `yabsm-find` to
     quickly go back in time.
 
 * How do I use it?

@@ -49,9 +49,9 @@ This is what your config will look like out of the gate:
   #+BEGIN_SRC  
 # /etc/yabsmrc
                                       
-                         #-----------------------------------------#
-                         # WELCOME TO THE YABSM CONFIGURATION FILE #
-                         #-----------------------------------------#
+         #-----------------------------------------#
+         # WELCOME TO THE YABSM CONFIGURATION FILE #
+         #-----------------------------------------#
 
 snapshot_directory=/.snapshots
 

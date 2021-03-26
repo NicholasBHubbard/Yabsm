@@ -87,7 +87,7 @@ sub take_new_snapshot {
     my $snapshot_name = create_snapshot_name();
 
     system( 'btrfs subvolume snapshot -r'
-	  . " $SUBVOL_MOUNTPOINT_ARG" # the path to take a snapshot of
+	  . " $SUBVOL_MOUNTPOINT_ARG" 
 	  . " $TARGET_DIRECTORY/$snapshot_name"
 	  ); 
     

@@ -31,8 +31,8 @@ use Yabsm;
 my $subvol;
 my $query;
 
-# All of this (admittedly complicated) logic is designed to provide the user the 
-# option to enter their subvolume or query from the command line, without the 
+# All of this (admittedly complicated) logic is designed to provide the user the
+# option to enter their subvolume or query from the command line, without the
 # order in which they do so mattering.
 
 if (defined $ARGV[0]) {
@@ -69,9 +69,9 @@ if (not defined $query) {
 
 my @all_snaps = Yabsm::all_snapshots($subvol);
 
-my $snap_path = Yabsm::answer_query($query, \@all_snaps);
+my $snapshot_path = Yabsm::answer_query($query, \@all_snaps);
 
 #system "echo -n 'cd $snap_path' | wl-copy";
-system "echo -n 'cd $snap_path' | xclip -selection clipboard";
+system "echo -n 'cd $snapshot_path' | xclip -selection clipboard";
 
 say "successfully copied \"cd\" command to clipboard";

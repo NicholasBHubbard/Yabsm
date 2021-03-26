@@ -11,11 +11,11 @@
 #  Remember that snapshot names are formatted like: 'day=yyyy_mm_dd,time=hh_mm'
 #
 #  Exactly five command line arguments are required:
-#  1: '--subvmmtpoint' = 'home' would be mounted at /home, 'root' would be /
-#  2: '--subvname'     = the yabsm name of the subvolume to snapshot
-#  3: '--snapdir'      = yabsm snapshot directory, typically /.snapshots/yabsm
-#  4: '--timeframe'    = can be one of: (hourly, daily, midnight, monthly)
-#  5: '--keeping'      = number of snapshots being kept in this timeframe
+#  1: --subvmmtpoint = 'home' would be mounted at /home, 'root' would be /
+#  2: --subvname     = the yabsm name of the subvolume to snapshot
+#  3: --snapdir      = yabsm snapshot directory, typically /.snapshots/yabsm
+#  4: --timeframe    = can be one of: (hourly, daily, midnight, monthly)
+#  5: --keeping      = number of snapshots being kept in this timeframe
 #
 #  This script is not meant to be used by the end user.
 

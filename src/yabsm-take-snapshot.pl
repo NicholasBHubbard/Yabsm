@@ -63,9 +63,9 @@ foreach ($TIMEFRAME_ARG,
 my $TARGET_DIRECTORY =
   "${YABSM_ROOT_DIR_ARG}/${SUBVOL_NAME_ARG}/$TIMEFRAME_ARG";
 
-# An array of strings like 'yyyy_mm_dd'. We grep off the actual snap names from 
-# the full paths. This variable is used as our interface to keep track of how we
-# have managed the snapshots.
+# An array of strings like 'day=yyyy_mm_dd,time=hh:mm'. We grep off the actual
+# snap names from the full paths. This variable is used as our interface to keep
+# track of how we have managed the snapshots.
 my @EXISTING_SNAPS =
   grep { $_ = $1 if /([^\/]+$)/ } glob "$TARGET_DIRECTORY/*";
 

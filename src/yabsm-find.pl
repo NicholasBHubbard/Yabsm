@@ -31,7 +31,7 @@ use Yabsm;
 my $subvol;
 my $query;
 
-# All of this (overly complicated) logic is designed to provide the user the 
+# All of this (admittedly complicated) logic is designed to provide the user the 
 # option to enter their subvolume or query from the command line, without the
 # order in which they do so mattering.
 

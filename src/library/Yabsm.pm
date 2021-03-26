@@ -5,8 +5,7 @@
 #  Functions used in yabsm-show.pl.
 #
 #  Do not forget that we always expect the snapshots to be sorted from newest to
-#  oldest. The test script for this library is thrown away when the user 
-#  installs Yabsm.
+#  oldest. Please see Yabsm.t for testing.
 
 package Yabsm;
 

@@ -141,8 +141,10 @@ home_monthly_keep=100001
   #+BEGIN_SRC  
   $ yabsm-find home back-40-mins
     successfully copied "cd" command to clipboard
+
   $ yabsm-find root 'b 40 days'
     successfully copied "cd" command to clipboard
+
   $ yabsm-find home 2020-3-23-13-30
     successfully copied "cd" command to clipboard
   #+END_SRC  

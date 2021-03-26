@@ -10,7 +10,7 @@
 #
 #  By default this script expects the user to be using x11, and therefore should
 #  have "xclip" installed. If however the  user is on Wayland then they must
-#  uncomment line 74, delete line 75 and make sure that they have "wl-clipboard"
+#  uncomment line 74, delete line 75, and make sure that they have "wl-clipboard"
 #  installed.
 
 use strict;
@@ -32,7 +32,7 @@ my $subvol;
 my $query;
 
 # All of this (admittedly complicated) logic is designed to provide the user the 
-# option to enter their subvolume or query from the command line, without the
+# option to enter their subvolume or query from the command line, without the 
 # order in which they do so mattering.
 
 if (defined $ARGV[0]) {

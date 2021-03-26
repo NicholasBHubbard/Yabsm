@@ -134,8 +134,8 @@ home_monthly_keep=100001
 
   You must install xclip if using x11 or wl-clipboard if using Wayland.
 
-  If you are using Wayland then please remove the =#= from the beginning of line 68 in
-  =/usr/local/sbin/yabsm-find= and delete line 69.
+  If you are using Wayland then please remove the =#= from the beginning of line 74 in
+  =/usr/local/sbin/yabsm-find= and delete line 75.
 
   Here are some examples that should show how it works:
   #+BEGIN_SRC  

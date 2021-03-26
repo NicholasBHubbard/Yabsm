@@ -124,18 +124,18 @@ home_monthly_keep=100001
 
 * yabsm-find
   YABSM comes with a program called =yabsm-find=. This program lets you access
-  a snapshot by making a simple query like =back-40-mins=, to jump to a
+  a snapshot by making a simple query like =yabsm-find home back-40-mins=, to jump to a
   snapshot taken 40 minutes ago. You can also go back by hours or days. The other
-  type of query you can make is simply by entering a date formated like =yyyy-mm-dd-hh-mm=.
+  type of query you can make is entering a date formated like =yyyy-mm-dd-hh-mm=.
 
   Yabsm will copy to your clipboard a =cd= command to the root directory of your desired
-  snapshot. 
+  snapshot. Unfortunately YABSM cannot directly change your directory due to a
+  limitation of Perl.
 
-  You must install xclip if using x11 or wl-clipboard if using Wayland. If you
-  are using Wayland then please remove the =#= from the beginning of line 68 in
-  '/usr/local/sbin/yabsm-find' and delete line 69.
+  You must install xclip if using x11 or wl-clipboard if using Wayland.
 
-  Unfortunately YABSM cannot directly change your directory due to a limitation of Perl. 
+  If you are using Wayland then please remove the =#= from the beginning of line 68 in
+  =/usr/local/sbin/yabsm-find= and delete line 69.
 
   Here are some examples that should show how it works:
   #+BEGIN_SRC  

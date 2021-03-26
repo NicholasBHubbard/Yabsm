@@ -7,7 +7,7 @@
 #  Script for quickly finding a snapshot. The heavy lifting is done by
 #  the Yabsm.pm library. Upon successful execution of this script a "cd" command
 #  will copied to the system clipboard.
-
+#
 #  By default this script expects the user to be using x11, and therefore should
 #  have "xclip" installed. If however the  user is on Wayland then they must
 #  uncomment line 74, delete line 75 and make sure that they have "wl-clipboard"

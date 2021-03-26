@@ -6,7 +6,7 @@
 #
 #  This script parses /etc/yabsmrc, checks for errors, and then writes the
 #  appropriate cronjobs to /etc/crontab. The cronjobs will call the
-#  '/usr/local/sbin/yabsm-take-snapshot' script.
+#  /usr/local/sbin/yabsm-take-snapshot script.
 
 die "Permission denied\n" if ($<);
 

@@ -160,7 +160,9 @@ Here is the file tree structure for the example configuration.
   Yabsm will copy to your clipboard a =cd= command to the root directory of your desired
   snapshot. 
 
-  You must install xclip to use yabsm-find.
+  You must install xclip if using x11 or wl-clipboard if using Wayland. If you
+  are using Wayland then please remove the =#= from the beginning of line 68 in
+  '/usr/local/sbin/yabsm-find' and delete line 69.
 
   Unfortunately YABSM cannot directly change your directory due to a limitation of Perl. 
 

@@ -7,8 +7,6 @@
 #  Script for quickly finding a snapshot. The heavy lifting is done by
 #  the Yabsm.pm library.
 
-die "[!] Missing dependency \"xclip\"\n" unless `which xclip 2>/dev/null`;
-
 use strict;
 use warnings;
 use 5.010;
@@ -67,6 +65,7 @@ my @all_snaps = Yabsm::all_snapshots($subvol);
 
 my $snap_path = Yabsm::answer_query($query, \@all_snaps);
 
+#system "echo -n 'cd $snap_path' | wl-copy";
 system "echo -n 'cd $snap_path' | xclip -selection clipboard";
 
 say "successfully copied \"cd\" command to clipboard";

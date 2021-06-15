@@ -123,6 +123,7 @@ sub delete_appropriate_snapshots {
     if ($num_snaps == $SNAPS_TO_KEEP_ARG + 1) { 
 
 	my $earliest_snap = earliest_snap();
+
 	system("btrfs subvolume delete $TARGET_DIRECTORY/$earliest_snap");
 
 	return;

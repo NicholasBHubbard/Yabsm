@@ -74,6 +74,9 @@ my @EXISTING_SNAPS =
                  ####################################
 
 take_new_snapshot();
+
+# We will only delete more than 1 snapshot if the user changed their
+# settings to keep less snapshots than they were previously.
 delete_appropriate_snapshots(); 
 
                  ####################################
@@ -115,8 +118,8 @@ sub delete_appropriate_snapshots {
     
     my $num_snaps = scalar @EXISTING_SNAPS;
 
-    # We expect there to be 1 more snap than what should be kept because we just
-    # took a snapshot.
+    # The most common case is there is 1 more snapshot than what should be
+    # kept because we just took a snapshot.
     if ($num_snaps == $SNAPS_TO_KEEP_ARG + 1) { 
 
 	my $earliest_snap = earliest_snap();
@@ -128,7 +131,7 @@ sub delete_appropriate_snapshots {
     # We haven't reached the snapshot quota yet so we don't delete anything.
     elsif ($num_snaps <= $SNAPS_TO_KEEP_ARG) { return } 
 
-    # User changed their preferences to keep less snapshots. 
+    # User changed their settings to keep less snapshots. 
     else { 
 	
 	while ($num_snaps > $SNAPS_TO_KEEP_ARG) {

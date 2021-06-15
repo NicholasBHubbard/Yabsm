@@ -128,9 +128,8 @@ home_monthly_keep=100001
   snapshot taken 40 minutes ago. You can also go back by hours or days. The other
   type of query you can make is entering a date formated like =yyyy-mm-dd-hh-mm=.
 
-  Yabsm will copy to your clipboard a =cd= command to the root directory of your desired
-  snapshot. Unfortunately YABSM cannot directly change your directory due to a
-  limitation of Perl.
+  Yabsm will copy to the path of the root directory of your desired snapshot to
+  the clipboard. 
 
   You must install xclip if using x11 or wl-clipboard if using Wayland.
 
@@ -140,13 +139,13 @@ home_monthly_keep=100001
   Here are some examples that should show how it works:
   #+BEGIN_SRC  
   $ yabsm-find home back-40-mins
-    successfully copied "cd" command to clipboard
+    successfully copied snapshot path to clipboard
 
   $ yabsm-find root 'b 40 days'
-    successfully copied "cd" command to clipboard
+    successfully copied snapshot path to clipboard
 
   $ yabsm-find home 2020-3-23-13-30
-    successfully copied "cd" command to clipboard
+    successfully copied snapshot path to clipboard
   #+END_SRC  
   You do not have to pass your subvolume or query on the command line (you can
   pass just one if you'd like).
@@ -157,7 +156,7 @@ home_monthly_keep=100001
   >>> 1
   enter query:
   >>> b 5 h
-  successfully copied "cd" command to clipboard
+  successfully copied snapshot path to clipboard
   #+END_SRC  
   Here is a list of valid queries. 
   #+BEGIN_SRC

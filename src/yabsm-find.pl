@@ -71,7 +71,7 @@ my @all_snaps = Yabsm::all_snapshots($subvol);
 
 my $snapshot_path = Yabsm::answer_query($query, \@all_snaps);
 
-#system "echo -n 'cd $snapshot_path' | wl-copy";
-system "echo -n 'cd $snapshot_path' | xclip -selection clipboard";
+#system "echo -n '$snapshot_path' | wl-copy";
+system "echo -n '$snapshot_path' | xclip -selection clipboard";
 
-say "successfully copied \"cd\" command to clipboard";
+say "successfully copied snapshot path to clipboard";

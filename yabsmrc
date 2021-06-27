@@ -6,7 +6,7 @@
 
 snapshot_directory=/.snapshots
 
-### Every subvolume requires 8 fields
+### Every subvolume requires 10 fields
 
 ### subvolumes can be named whatever you want. These names only 
 ### exits in the world of yabsm.

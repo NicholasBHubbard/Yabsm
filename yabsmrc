@@ -19,7 +19,7 @@ root_hourly_want=no
 root_hourly_take=0
 root_hourly_keep=0
 
-root_want_daily=yes
+root_daily_want=yes
 root_daily_take=24
 root_daily_keep=48
 

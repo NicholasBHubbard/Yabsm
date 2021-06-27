@@ -54,18 +54,20 @@ This is what your config will look like out of the gate:
 
 snapshot_directory=/.snapshots
 
-### Every subvolume requires 8 fields
+### Every subvolume requires 10 fields
 
 ### subvolumes can be named whatever you want. These names only 
-### exits in the world of YABSM.
+### exits in the world of yabsm.
 
 ### I_want_to_snap_this_subvol=NAME,PATH 
 
 I_want_to_snap_this_subvol=root,/
 
-root_hourly_take=12
-root_hourly_keep=24
+root_hourly_want=no
+root_hourly_take=0
+root_hourly_keep=0
 
+root_want_daily=yes
 root_daily_take=24
 root_daily_keep=48
 
@@ -76,13 +78,15 @@ root_monthly_want=yes
 root_monthly_keep=12
 
 
-### I can snapshot as many subvolumes as I want
+### I can snapshot as many subvolumes as I want.
 
 I_want_to_snap_this_subvol=home,/home
 
+home_hourly_want=yes
 home_hourly_take=12
 home_hourly_keep=100
 
+home_daily_want=yes
 home_daily_take=13
 home_daily_keep=14
 
@@ -103,9 +107,12 @@ home_monthly_keep=100001
     a comma. The name you choose is only relevant to YABSM.
 
 
-  + Every subvolume is required to have 8 fields associated with it.
+  + Every subvolume is required to have 10 fields associated with it.
 
 * What do the settings mean?
+  + =*_*_want=: Do you want to take snapshots for this time frame?
+
+    
   + =*_*_keep=: How many of this type of snapshot do you want to keep around? 
 
 
@@ -115,12 +122,6 @@ home_monthly_keep=100001
 
   + =*_daily_take=: How many snapshots do you want to take per day? These
     snapshots are taken at the beginning of the hour. Max value is 24.
-
-
-  + =*_midnight_want=: Do you want to take a snapshot every night at midnight?
-
-
-  + =*_monthly_want=: Do you want to take a snapshot on the first of every month?
 
 * yabsm-find
   YABSM comes with a program called =yabsm-find=. This program lets you access
@@ -180,7 +181,6 @@ Here is the file tree structure for the example configuration.
 |── yabsm
     |
     |── root
-    |   |── hourly
     |   |── daily
     |   |── midnight
     |   |── monthly

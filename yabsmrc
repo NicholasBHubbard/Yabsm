@@ -38,7 +38,7 @@ home_hourly_want=yes
 home_hourly_take=12
 home_hourly_keep=100
 
-home_daily_want=no
+home_daily_want=yes
 home_daily_take=13
 home_daily_keep=14
 

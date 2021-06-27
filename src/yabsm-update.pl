@@ -91,8 +91,8 @@ sub check_config_for_errors {
 	# We don't care about the path.
         my ($subv_name, undef) = split /,/;
 
-        my @settings = my ($hourly_take,   $hourly_keep,
-			   $daily_take,    $daily_keep,
+        my @settings = my ($hourly_want,   $hourly_take, $hourly_keep,
+			   $daily_want,    $daily_take,  $daily_keep,
 			   $midnight_want, $midnight_keep,
 			   $monthly_want,  $monthly_keep) 
 	  = settings_for_subvol($subv_name);
@@ -106,6 +106,12 @@ sub check_config_for_errors {
         die "[!] max value for ${subv_name}_daily_take is 24\n"
           if ($daily_take > 24);
         
+        die "[!] ${subv_name}_hourly_want must equal \"yes\" or \"no\"\n"
+          unless ($hourly_want eq 'yes' || $hourly_want eq 'no');
+
+        die "[!] ${subv_name}_hourly_want must equal \"yes\" or \"no\"\n"
+          unless ($daily_want eq 'yes' || $daily_want eq 'no');
+
         die "[!] ${subv_name}_midnight_want must equal \"yes\" or \"no\"\n"
           unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
         
@@ -163,8 +169,8 @@ sub create_all_cronjob_strings {
         my ($subv_name, $mntpoint) = split /,/;
 
 	# Every yabsm subvolume is required to have a value for these fields
-        my ($hourly_take,   $hourly_keep,
-            $daily_take,    $daily_keep,
+        my ($hourly_want,   $hourly_take, $hourly_keep,
+            $daily_want,    $daily_take,  $daily_keep,
             $midnight_want, $midnight_keep,
             $monthly_want,  $monthly_keep) = settings_for_subvol($subv_name); 
         
@@ -176,7 +182,7 @@ sub create_all_cronjob_strings {
 			    . " --subvmntpoint $mntpoint"
 			    . " --snapdir $YABSM_ROOT_DIR"
 			    . " --keeping $hourly_keep"
-			    );
+			    ) if $hourly_want eq 'yes';
         
         my $daily_cron    = ( '0 */' . int(24 / $daily_take) # Max is every hour
                             . ' * * * root'
@@ -186,7 +192,7 @@ sub create_all_cronjob_strings {
                             . " --subvmntpoint $mntpoint"
 			    . " --snapdir $YABSM_ROOT_DIR"
                             . " --keeping $daily_keep"
-			    );
+			    ) if $daily_want eq 'yes';
         
 	# Every night just before midnight. This makes the the date the day of.
         my $midnight_cron = ( '58 23 * * * root' 
@@ -207,7 +213,7 @@ sub create_all_cronjob_strings {
                             . " --keeping $monthly_keep"
 			    ) if $monthly_want eq 'yes';
 
-	# $midnight_cron and $monthly_cron may be undefined
+	# Any of the cron strings may be undefined.
         push @all_cron_strings, grep { defined } ($hourly_cron,
 						  $daily_cron,
 						  $midnight_cron,
@@ -225,17 +231,22 @@ sub settings_for_subvol {
     my $subv_name = shift;
     
     # All of these values are required to be specified
+    my $hourly_want   = $YABSMRC_HASH{"${subv_name}_hourly_want"};
     my $hourly_take   = $YABSMRC_HASH{"${subv_name}_hourly_take"};
     my $hourly_keep   = $YABSMRC_HASH{"${subv_name}_hourly_keep"};
+
+    my $daily_want    = $YABSMRC_HASH{"${subv_name}_daily_want"};
     my $daily_take    = $YABSMRC_HASH{"${subv_name}_daily_take"};
     my $daily_keep    = $YABSMRC_HASH{"${subv_name}_daily_keep"};
+
     my $midnight_want = $YABSMRC_HASH{"${subv_name}_midnight_want"};
     my $midnight_keep = $YABSMRC_HASH{"${subv_name}_midnight_keep"};
+
     my $monthly_want  = $YABSMRC_HASH{"${subv_name}_monthly_want"};
     my $monthly_keep  = $YABSMRC_HASH{"${subv_name}_monthly_keep"};
     
-    return ($hourly_take,   $hourly_keep,
-            $daily_take,    $daily_keep,
+    return ($hourly_want,   $hourly_take, $hourly_keep,
+            $daily_want,    $daily_take,  $daily_keep,
             $midnight_want, $midnight_keep,
             $monthly_want,  $monthly_keep);
 }

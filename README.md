@@ -142,7 +142,7 @@ home_monthly_keep=100001
   $ yabsm-find home back-40-mins
     successfully copied snapshot path to clipboard
 
-  $ yabsm-find root 'b 40 days'
+  $ yabsm-find root b-40-m
     successfully copied snapshot path to clipboard
 
   $ yabsm-find home 2020-3-23-13-30
@@ -156,18 +156,18 @@ home_monthly_keep=100001
   1 -> home     2 -> root
   >>> 1
   enter query:
-  >>> b 5 h
+  >>> b-5-h
   successfully copied snapshot path to clipboard
   #+END_SRC  
   Here is a list of valid queries. 
   #+BEGIN_SRC
-  b 4 m
-  back 4 m
-  b 4 h
-  b 4 d
-  b 4 mins
-  b 4 hrs
-  b 4 days
+  b-4-m
+  b-4-mins
+  back-4-m
+  b-4-hrs
+  b-4-h
+  b-4-d
+  b-4-days
   2020-3-20-13-30
   #+END_SRC
   Note: If you are only using YABSM to snapshot one subvolume then you don't need to

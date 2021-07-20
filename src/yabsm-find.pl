@@ -4,9 +4,9 @@
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
-#  Script for quickly finding a snapshot. The heavy lifting is done by
-#  the Yabsm.pm library. Upon successful execution of this script a "cd" command
-#  will copied to the system clipboard.
+#  Script for quickly finding a snapshot. The heavy lifting is done by the
+#  Yabsm.pm library. Upon successful execution of this script the path to the
+#  desired snapshot is copied to the system clipboard.
 #
 #  By default this script expects the user to be using x11, and therefore should
 #  have "xclip" installed. If however the  user is on Wayland then they must

@@ -6,7 +6,6 @@
 #
 #  Do not forget that we always expect the snapshots to be sorted from newest to
 #  oldest. Please see Yabsm.t for testing.
-#  TEST
 
 package Yabsm;
 

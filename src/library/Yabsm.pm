@@ -335,7 +335,7 @@ sub n_units_ago { # has test
     elsif ($unit =~ /^(d|days?)$/)       { $seconds = 86400 }
     else  { croak "\"$unit\" is an invalid time unit" }
 
-    my $time_piece_obj = snap_to_time_piece_obj(current_time());
+    my $time_piece_obj = snap_to_time_piece_obj(current_time_string());
 
     $time_piece_obj -= ($n * $seconds);
 
@@ -463,10 +463,9 @@ sub is_subvol { # has test
                  #           MISCELLANEOUS          #
                  ####################################
 
-sub current_time { # no test
+sub current_time_string { # no test
     
-    # This is the exact same function as create_snapshot_name() in
-    # yabsm-take-snapshot.pl
+    # This is the function used to create a snapshot name.
     
     my ($min, $hr, $day, $mon, $yr) =
       map { sprintf '%02d', $_ } (localtime)[1..5]; 

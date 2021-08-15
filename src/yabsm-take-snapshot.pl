@@ -19,7 +19,7 @@
 #
 #  This script is not meant to be used by the end user.
 
-die "Permission denied\n" if ($<);
+die "Permission denied\n" if $<;
 
 use strict;
 use warnings;

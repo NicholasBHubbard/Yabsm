@@ -8,7 +8,7 @@
 #  appropriate cronjobs to /etc/crontab. The cronjobs will call the
 #  /usr/local/sbin/yabsm-take-snapshot script.
 
-die "Permission denied\n" if ($<);
+die "Permission denied\n" if $<;
 
 use strict;
 use warnings;

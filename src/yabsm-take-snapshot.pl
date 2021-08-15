@@ -80,37 +80,6 @@ take_new_snapshot();
 delete_appropriate_snapshots(); 
 
                  ####################################
-                 #          SNAPSHOT CREATION       #
-                 ####################################
-
-sub take_new_snapshot {
-
-    # take a single read-only snapshot.
-
-    my $snapshot_name = create_snapshot_name();
-
-    system( 'btrfs subvolume snapshot -r'
-	  . " $SUBVOL_MOUNTPOINT_ARG" 
-	  . " $TARGET_DIRECTORY/$snapshot_name"
-	  ); 
-    
-    push @EXISTING_SNAPS, $snapshot_name;
-
-    return;
-}
-
-sub create_snapshot_name { 
-    
-    my ($min, $hr, $day, $mon, $yr) =
-      map { sprintf '%02d', $_ } (localtime)[1..5]; 
-    
-    $mon++;      # month count starts at zero. 
-    $yr += 1900; # year represents years since 1900. 
-    
-    return "day=${yr}_${mon}_${day},time=${hr}:$min";
-}
-
-                 ####################################
                  #         SNAPSHOT DELETION        #
                  ####################################
 

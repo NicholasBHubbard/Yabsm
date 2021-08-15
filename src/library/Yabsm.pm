@@ -2,10 +2,9 @@
 #  Email:  nhub73@keemail.me
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
-#  Functions used in yabsm-show.pl.
+#  Core library of Yabsm.
 #
-#  Do not forget that we always expect the snapshots to be sorted from newest to
-#  oldest. Please see Yabsm.t for testing.
+#  See Yabsm.t for testing.
 
 package Yabsm;
 
@@ -177,8 +176,9 @@ sub snap_to_nums { # has test
 
 sub nums_to_snap { # has test
 
-    # Take 5 integer arguments representing, in order, the year, month, day, 
-    # hour, and minute then return a snapshot name string.
+    # Take 5 integer arguments representing, in order, the year,
+    # month, day, hour, and minute then return a snapshot name string
+    # that aligns with the format used in current_time_string().
 
     my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
 
@@ -242,6 +242,19 @@ sub sort_snapshots { # has test
     return sort_snapshots(\@bigger), $pivot, sort_snapshots(\@smaller);
 }
 
+sub latest_snap { # no test
+
+    my @all_snaps = @{$_[0]};
+    
+    my $latest_snap = $all_snaps[0];
+    
+    foreach my $snap (@all_snaps) {
+        $latest_snap = $snap if snap_later($snap, $latest_snap);
+    }
+    
+    return $latest_snap;
+}
+
 sub snap_later { # has test
 
     # True if $snap1 is a later snapshot than $snap2.
@@ -258,7 +271,9 @@ sub snap_later { # has test
 	return 1 if $snap_nums1[$i] > $snap_nums2[$i]; 
 	return 0 if $snap_nums1[$i] < $snap_nums2[$i];
     }
-    return 0; # The arrays must have been equivalent.
+
+    # The arrays must have been equivalent.
+    return 0; 
 }
 
 sub snap_later_or_eq { # has test
@@ -277,7 +292,22 @@ sub snap_later_or_eq { # has test
 	return 1 if $snap_nums1[$i] > $snap_nums2[$i]; 
 	return 0 if $snap_nums1[$i] < $snap_nums2[$i];
     }
-    return 1; # The arrays must have been equivalent.
+
+    # The arrays must have been equivalent.
+    return 1; 
+}
+
+sub earliest_snap { # no test
+
+    my @all_snaps = @{$_[0]};
+
+    my $earliest_snap = $all_snaps[0];
+
+    foreach my $snap (@all_snaps) {
+        $earliest_snap = $snap if snap_earlier($snap, $earliest_snap);
+    }
+
+    return $earliest_snap;
 }
 
 sub snap_earlier { # has test
@@ -296,7 +326,9 @@ sub snap_earlier { # has test
 	return 1 if $snap_nums1[$i] < $snap_nums2[$i]; 
 	return 0 if $snap_nums1[$i] > $snap_nums2[$i];
     }
-    return 0; # The arrays must have been equivalent.
+
+    # The arrays must have been equivalent.
+    return 0; 
 }
 
 sub snap_earlier_or_eq { # has test
@@ -315,7 +347,9 @@ sub snap_earlier_or_eq { # has test
 	return 1 if $snap_nums1[$i] < $snap_nums2[$i]; 
 	return 0 if $snap_nums1[$i] > $snap_nums2[$i];
     }
-    return 1; # The arrays must have been equivalent.
+
+    # The arrays must have been equivalent.
+    return 1; 
 }
 
                  ####################################
@@ -409,7 +443,7 @@ sub answer_query { # no test
 }
 
                  ####################################
-                 #            VALIDATION            #
+                 #         QUERY VALIDATION         #
                  ####################################
 
 sub is_valid_query { # has test
@@ -460,12 +494,25 @@ sub is_subvol { # has test
     return 0;
 }
                  ####################################
-                 #           MISCELLANEOUS          #
+                 #         SNAPSHOT CREATION        #
                  ####################################
+
+sub take_new_snapshot { # no test
+
+    # take a single read-only snapshot.
+
+    my ($snapshot_dir, $snapshot_name) = @_;
+
+    system( 'btrfs subvolume snapshot -r '
+	  . "$snapshot_dir/$snapshot_name" 
+	  ); 
+
+    return;
+}
 
 sub current_time_string { # no test
     
-    # This is the function used to create a snapshot name.
+    # This function should be used to create a snapshot name.
     
     my ($min, $hr, $day, $mon, $yr) =
       map { sprintf '%02d', $_ } (localtime)[1..5]; 

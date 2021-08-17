@@ -19,74 +19,121 @@ use FindBin '$Bin';
 use lib "$Bin";
 use Yabsm;
 
-# Only use this on arrays of strings.
+# Only use this to compare arrays of strings for equality.
 use experimental 'smartmatch';
+
+                 ####################################
+                 #          EXAMPLE CONFIG          #
+                 ####################################
+
+my @EXISTING_SNAPS = gen_n_random_snap_paths(100);
+
+say for @EXISTING_SNAPS;
+
+sub gen_example_config {
+
+    my @yabsm_subvols = ("root,/", "home,/home", "etc,/etc");
+
+    my %config = ( "yabsm_subvols" => \@yabsm_subvols
+
+		 , "snapshot_directory" => "/.snapshots"
+
+                 , "root_hourly_want"   => "no"
+                 , "root_hourly_take"   => 0
+                 , "root_hourly_keep"   => 0
+                 , "root_daily_want"    => "yes"
+                 , "root_daily_take"    => 24
+                 , "root_daily_keep"    => 72
+                 , "root_midnight_want" => "yes"
+                 , "root_midnight_keep" => 14 
+                 , "root_monthly_want"  => "yes"
+                 , "root_monthly_keep"  => 12
+
+                 , "home_hourly_want"   => "yes"
+                 , "home_hourly_take"   => 12
+                 , "home_hourly_keep"   => 50
+                 , "home_daily_want"    => "yes"
+                 , "home_daily_take"    => 24
+                 , "home_daily_keep"    => 48
+                 , "home_midnight_want" => "yes"
+                 , "home_midnight_keep" => 21
+                 , "home_monthly_want"  => "yes"
+                 , "home_monthly_keep"  => 12
+
+                 , "etc_hourly_want"   => "yes"
+                 , "etc_hourly_take"   => 10
+                 , "etc_hourly_keep"   => 21
+                 , "etc_daily_want"    => "no"
+                 , "etc_daily_take"    => 24
+                 , "etc_daily_keep"    => 48
+                 , "etc_midnight_want" => "yes"
+                 , "etc_midnight_keep" => 21
+                 , "etc_monthly_want"  => "no"
+                 , "etc_monthly_keep"  => 12
+		 );
+    
+    return wantarray ? %config : \%config;
+}
+  
+sub gen_n_random_snap_paths {
+
+    # Return a sorted array of $n random snapstrings.
+
+    my ($n) = @_;
+
+    # these potential paths align with the example config. They will
+    # chosen at random, and combined with a random snapsting to help
+    # generate random snapshots.
+    my @potential_paths = ( "/.snapshots/yabsm/root/daily/"
+			  , "/.snapshots/yabsm/root/midnight/"
+			  , "/.snapshots/yabsm/root/monthly/"
+			  
+			  , "/.snapshots/yabsm/home/hourly/"
+			  , "/.snapshots/yabsm/home/daily/"
+			  , "/.snapshots/yabsm/home/midnight/"
+			  , "/.snapshots/yabsm/home/monthly/"
+			  
+			  , "/.snapshots/yabsm/etc/hourly/"
+			  , "/.snapshots/yabsm/etc/midnight/"
+			  );
+
+    my @snaps;
+
+    for (my $i = 0; $i < $n; $i++) {
+
+	# small year range so other fields can be tested.
+	my $yr = 2020 + int(rand(5));
+
+	my $mon = 1 + int(rand(12));
+
+	# no need to worry about invalid days, it isn't relevant
+	my $day = 1 + int(rand(30));
+
+	my $hr = 1 + int(rand(24));
+
+	my $min = int(rand(60));
+
+	my $snapstring = Yabsm::nums_to_snapstring($yr, $mon, $day, $hr, $min);
+
+	my $path = $potential_paths[ rand @potential_paths ];
+
+	push @snaps, "${path}$snapstring";
+    }
+
+    my @snaps_sorted = Yabsm::sort_snapshots(\@snaps);
+
+    return wantarray ? @snaps_sorted : \@snaps_sorted;
+}
 
                  ####################################
                  #               TESTS              #
                  ####################################
 
-test_all_snapshots();
-sub test_all_snapshots {
-
-    # In order to run this test you must have a yabsm subvolume called 'root'
-
-    my $want_dump = 0;
-
-    my @tframes = ('hourly', 'daily', 'midnight', 'monthly');
-
-    my   @all_snaps;
-    push @all_snaps, glob "/.snapshots/yabsm/root/$_/*" for @tframes;
-
-    my @solution = Yabsm::sort_snapshots(\@all_snaps);
-
-    my @output = Yabsm::all_snapshots('root');
-
-    if ($want_dump) { print Dumper @output }
-
-    ok (@output ~~ @solution, 'all_snapshots()' );
-}
-
-test_all_subvols();
-sub test_all_subvols {
-
-    # This test runs on a system that only has a 'root' subvolume.
-
-    my $want_dump = 0;
-
-    my $output = join "", Yabsm::all_subvols();
-
-    if ($want_dump) { print Dumper $output }
-
-    ok ( $output eq 'root', 'all_subvols()' );
-}
-
+sub test_
 test_sort_snapshots();
 sub test_sort_snapshots {
 
-    my $want_dump = 0;
-
-    my @unsorted = ('day=2024_03_12,time=00:00',
-		    'day=2022_03_12,time=00:00',
-		    'day=2025_03_12,time=00:00',
-		    'day=2021_03_12,time=00:00',
-		    'day=2020_03_12,time=00:00',
-		    'day=2023_03_12,time=00:00'
-		   );
-
-    my @solution = ('day=2025_03_12,time=00:00',
-		    'day=2024_03_12,time=00:00',
-		    'day=2023_03_12,time=00:00',
-		    'day=2022_03_12,time=00:00',
-		    'day=2021_03_12,time=00:00',
-		    'day=2020_03_12,time=00:00'
-		   );
-
-    my @output = Yabsm::sort_snapshots(\@unsorted);
-
-    if ($want_dump) { print Dumper @output }
-
-    ok ( @output ~~ @solution, 'sort_snapshots()' );
+    
 }
 
 test_snap_later();

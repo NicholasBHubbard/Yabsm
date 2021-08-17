@@ -40,42 +40,6 @@ write_cronjobs();
 say 'success!';
 
                  ####################################
-                 #      PROCESS CONFIG INTO HASH    #
-                 ####################################
-
-sub yabsmrc_to_hash {
-    
-    open (my $yabsmrc, '<', '/etc/yabsmrc')
-      or die '[!] failed to open file /etc/yabsmrc';
-    
-    my %yabsmrc_hash;
-    
-    while (<$yabsmrc>) {
-        
-        next if /^[^a-zA-Z]/;
-
-	$_ =~ s/\s//g; 
-        
-        my ($key, $val) = split /=/;
-
-        # The 'I_want_to_snap_this_subvol' key points to an array of strings
-	# like ('home,/home', 'root,/'). 
-        if ($key eq 'I_want_to_snap_this_subvol') { 
-            push @{$yabsmrc_hash{$key}}, $val; 
-        }
-
-	# All other keys point to a single value
-        else {
-            $yabsmrc_hash{$key} = $val;
-        }
-    }
-
-    close $yabsmrc;
-
-    return %yabsmrc_hash;
-}
-
-                 ####################################
                  #      CHECK CONFIG FOR ERRORS     #
                  ####################################
 

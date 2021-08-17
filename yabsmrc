@@ -32,7 +32,7 @@ root_monthly_keep=12
 
 ### I can snapshot as many subvolumes as I want
 
-I_want_to_snap_this_subvol=home,/home
+define_subvol=home,/home
 
 home_hourly_want=yes
 home_hourly_take=12

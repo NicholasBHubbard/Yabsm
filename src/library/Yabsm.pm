@@ -4,7 +4,11 @@
 #
 #  Core library of Yabsm.
 #
-#  See Yabsm.t for testing.
+#  The array of @existing_snaps that is passed around this library is
+#  ALWAYS expected to be sorted from newest snapshot to oldest
+#  snapshot.
+#
+#  See Yabsm.t for the testing of this library.
 
 package Yabsm;
 
@@ -16,6 +20,54 @@ use Time::Piece;
 use Carp;
 
                  ####################################
+                 #              CONFIG              #
+                 ####################################
+
+sub yabsmrc_to_hash {
+    
+    open (my $yabsmrc, '<', '/etc/yabsmrc')
+      or die '[!] failed to open file /etc/yabsmrc';
+    
+    my %yabsmrc_hash;
+    
+    while (<$yabsmrc>) {
+        
+        next if /^[#|\s]/;
+
+	# strip off whitespace 
+	s/\s//g; 
+        
+        my ($key, $val) = split /=/;
+
+        # The 'yabsm_subvols' key associates to an array of strings
+	# like ('home,/home', 'root,/').
+        if ($key eq 'define_subvol') { 
+            push @{$yabsmrc_hash{yabsm_subvols}}, $val; 
+        }
+
+	# All other keys point to a single value
+        else {
+            $yabsmrc_hash{$key} = $val;
+        }
+    }
+
+    close $yabsmrc;
+
+    return wantarray ? %yabsmrc_hash : \%yabsmrc_hash;
+}
+
+sub target_dir {
+
+    # return path to the directory of a given subvolume and timeframe.
+
+    my ($config_ref, $yabsm_subvol, $timeframe) = @_;
+
+    my $snapshot_root_dir = $config_ref->{snapshot_directory};
+
+    return "$snapshot_root_dir/yabsm/$yabsm_subvol/$timeframe";
+}
+
+                 ####################################
                  #          USER INTERACTION        #
                  ####################################
 
@@ -24,7 +76,8 @@ sub ask_for_subvolume { # no test
     # Prompt user to enter their desired subvolume. For convenience they only
     # need to enter a corresponding integer instead of the full timeframe.
 
-    my @all_subvols = sort { $a cmp $b } all_subvols();
+    # sort the subvol names so they are displayed in alphabetical order.
+    my @all_subvols = sort { $a cmp $b } all_yabsm_subvols();
 
     # No need to prompt if there is only 1 subvolume.
     return $all_subvols[0] if scalar @all_subvols == 1;
@@ -42,7 +95,7 @@ sub ask_for_subvolume { # no test
 	my $key = $i;
 	my $val = $int_subvol_hash{ $key };
 
-	# After every N subvolumes print a newline. This prevents a user with
+	# After every 4 subvolumes print a newline. This prevents a user with
 	# say 20 subvolumes from having them all printed as a giant string on
 	# one line.
 	if ($i % 4 == 0) {
@@ -129,52 +182,24 @@ sub all_snapshots { # has test
     return sort_snapshots(\@all_snaps);
 }
 
-sub all_subvols { # has test
-
-    # Read /etc/yabsmrc and return an array of all the subvolumes being snapped.
-    
-    open (my $yabsmrc, '<', '/etc/yabsmrc')
-      or die '[!] failed to open file /etc/yabsmrc';
-    
-    my @subvols;
-    
-    while (<$yabsmrc>) {
-        
-        next if /^[^a-zA-Z]/;
-
-	$_ =~ s/\s//g; 
-        
-        my ($key, $val) = split /=/;
-
-	if ($key eq 'I_want_to_snap_this_subvol') {
-	    my ($subv_name, undef) = split /,/, $val;
-	    push @subvols, $subv_name;
-	}
-    }
-
-    close $yabsmrc;
-
-    return @subvols;
-}
-
                  ####################################
                  #           DATA CONVERSION        #
                  ####################################
 
-sub snap_to_nums { # has test
+sub snapstring_to_nums { # has test
 
-    # Take a snapshot name and return an array containing, in order, the year,
-    # month, day, hour, and minute. This works with both a full path or just a 
-    # snapshot name.
+    # Take a snapshot name string and return an array containing, in
+    # order, the year, month, day, hour, and minute. This works with
+    # both a full path or just a snapshot name.
 
-    my $snap = shift;
+    my ($snap) = @_;
 
     my @nums = $snap =~ m/day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})/;
 
-    return @nums;
+    return wantarray ? @nums : \@nums;
 }
 
-sub nums_to_snap { # has test
+sub nums_to_snapstring { # has test
 
     # Take 5 integer arguments representing, in order, the year,
     # month, day, hour, and minute then return a snapshot name string
@@ -185,171 +210,68 @@ sub nums_to_snap { # has test
     return "day=${yr}_${mon}_${day},time=${hr}:$min";
 }
 
-sub snap_to_time_piece_obj { # has test
+sub snapstring_to_time_piece_obj { # has test
 
-    # Turn a snapshot name into a Time::Peice object. This is useful because we
-    # can do time arithmetic (like adding hours or minutes) on the object.
+    # Turn a snapshot name string into a Time::Peice object. This is
+    # useful because we can do time arithmetic (like adding hours or
+    # minutes) on the object.
 
-    my $snap = shift;
+    my ($snap) = @_;
 
-    my ($yr, $mon, $day, $hr, $min) = snap_to_nums($snap);
+    my ($yr, $mon, $day, $hr, $min) = snapstring_to_nums($snap);
 
     return Time::Piece->strptime("$yr/$mon/$day/$hr/$min",'%Y/%m/%d/%H/%M');
 }
 
-sub time_piece_obj_to_snap { # has test
+sub time_piece_obj_to_snapstring { # has test
 
     # Turn a Time::Piece object into a snapshot name string.
 
-    my $t = shift;
+    my ($time_piece_obj) = @_;
 
-    my $yr  = $t->year;
-    my $mon = $t->mon;
-    my $day = $t->mday;
-    my $hr  = $t->hour;
-    my $min = $t->min;
+    my $yr  = $time_piece_obj->year;
+    my $mon = $time_piece_obj->mon;
+    my $day = $time_piece_obj->mday;
+    my $hr  = $time_piece_obj->hour;
+    my $min = $time_piece_obj->min;
 
-    return nums_to_snap($yr, $mon, $day, $hr, $min);
+    return nums_to_snapstring($yr, $mon, $day, $hr, $min);
 }
 
                  ####################################
-                 #              ORDERING            #
+                 #         SNAPSHOT ORDERING        #
                  ####################################
 
-sub sort_snapshots { # has test
+sub sort_snapshots { # no test
 
-    # Sort an array of snapshots from newest to oldest with quicksort algorithm.
+    # return a sorted version of the inputted array ref of
+    # snapshots. Sorted from newest to oldest. Works with either full
+    # paths or just snapstrings. 
 
-    my @snapshots = @{$_[0]};
-    
-    # base case
-    if (scalar @snapshots <= 1) { return @snapshots }
+    my ($snaps_ref) = @_;
 
-    # recursive case
-    my @bigger;
-    my @smaller;
-    my $pivot = pop @snapshots;
+    my @sorted_snaps = sort { -compare_snaps($a, $b) } @$snaps_ref;
 
-    foreach my $snap (@snapshots) {
-
-	if    (snap_later($snap, $pivot))   { push (@bigger,  $snap) }
-
-	elsif (snap_earlier($snap, $pivot)) { push (@smaller, $snap) }
-
-	else  { next } 
-    }
-
-    return sort_snapshots(\@bigger), $pivot, sort_snapshots(\@smaller);
+    return wantarray ? @sorted_snaps : \@sorted_snaps;
 }
 
-sub latest_snap { # no test
+sub compare_snaps { # no test
 
-    my @all_snaps = @{$_[0]};
-    
-    my $latest_snap = $all_snaps[0];
-    
-    foreach my $snap (@all_snaps) {
-        $latest_snap = $snap if snap_later($snap, $latest_snap);
-    }
-    
-    return $latest_snap;
-}
+    # return 1 if $snap1 is newer than $snap2, -1 if $snap2 is newer
+    # than $snap1 and 0 if they are the same.
 
-sub snap_later { # has test
+    my ($snap1, $snap2) = @_;
 
-    # True if $snap1 is a later snapshot than $snap2.
+    my @snap1_nums = snapstring_to_nums($snap1);
+    my @snap2_nums = snapstring_to_nums($snap2);
 
-    my $snap1 = shift;
-    my $snap2 = shift;
+    for (my $i = 0; $i < scalar @snap1_nums; $i++) {
 
-    my @snap_nums1 = snap_to_nums($snap1);
-    my @snap_nums2 = snap_to_nums($snap2);
-
-    # Take the lexical order
-    for (my $i = 0; $i < scalar @snap_nums1; $i++) {
-
-	return 1 if $snap_nums1[$i] > $snap_nums2[$i]; 
-	return 0 if $snap_nums1[$i] < $snap_nums2[$i];
+	return 1  if $snap1_nums[$i] > $snap2_nums[$i];
+	return -1 if $snap1_nums[$i] < $snap2_nums[$i];
     }
 
-    # The arrays must have been equivalent.
-    return 0; 
-}
-
-sub snap_later_or_eq { # has test
-
-    # True if $snap1 is either later or the same as $snap2.
-
-    my $snap1 = shift;
-    my $snap2 = shift;
-
-    my @snap_nums1 = snap_to_nums($snap1);
-    my @snap_nums2 = snap_to_nums($snap2);
-
-    # Take the lexical order
-    for (my $i = 0; $i < scalar @snap_nums1; $i++) {
-
-	return 1 if $snap_nums1[$i] > $snap_nums2[$i]; 
-	return 0 if $snap_nums1[$i] < $snap_nums2[$i];
-    }
-
-    # The arrays must have been equivalent.
-    return 1; 
-}
-
-sub earliest_snap { # no test
-
-    my @all_snaps = @{$_[0]};
-
-    my $earliest_snap = $all_snaps[0];
-
-    foreach my $snap (@all_snaps) {
-        $earliest_snap = $snap if snap_earlier($snap, $earliest_snap);
-    }
-
-    return $earliest_snap;
-}
-
-sub snap_earlier { # has test
-
-    # True if $snap1 is an earlier snapshot than $snap2.
-
-    my $snap1 = shift;
-    my $snap2 = shift;
-
-    my @snap_nums1 = snap_to_nums($snap1);
-    my @snap_nums2 = snap_to_nums($snap2);
-
-    # Take the lexical order
-    for (my $i = 0; $i < scalar @snap_nums1; $i++) {
-
-	return 1 if $snap_nums1[$i] < $snap_nums2[$i]; 
-	return 0 if $snap_nums1[$i] > $snap_nums2[$i];
-    }
-
-    # The arrays must have been equivalent.
-    return 0; 
-}
-
-sub snap_earlier_or_eq { # has test
-
-    # True if $snap1 is either earlier or the same as $snap2.
-
-    my $snap1 = shift;
-    my $snap2 = shift;
-
-    my @snap_nums1 = snap_to_nums($snap1);
-    my @snap_nums2 = snap_to_nums($snap2);
-
-    # Take the lexical order
-    for (my $i = 0; $i < scalar @snap_nums1; $i++) {
-
-	return 1 if $snap_nums1[$i] < $snap_nums2[$i]; 
-	return 0 if $snap_nums1[$i] > $snap_nums2[$i];
-    }
-
-    # The arrays must have been equivalent.
-    return 1; 
+    return 0;
 }
 
                  ####################################
@@ -358,7 +280,8 @@ sub snap_earlier_or_eq { # has test
 
 sub n_units_ago { # has test
 
-    # Subtract $n minutes, hours, or days from the current time.
+    # Subtract $n minutes, hours, or days from the current
+    # time. Returns a snapstring.
 
     my ($n, $unit) = @_;
 
@@ -369,11 +292,11 @@ sub n_units_ago { # has test
     elsif ($unit =~ /^(d|days?)$/)       { $seconds = 86400 }
     else  { croak "\"$unit\" is an invalid time unit" }
 
-    my $time_piece_obj = snap_to_time_piece_obj(current_time_string());
+    my $time_piece_obj = snapstring_to_time_piece_obj(current_time_string());
 
     $time_piece_obj -= ($n * $seconds);
 
-    return time_piece_obj_to_snap($time_piece_obj);
+    return time_piece_obj_to_snapstring($time_piece_obj);
 }
 
                  ####################################
@@ -384,12 +307,11 @@ sub snap_closest_to { # has test
 
     # return the snapshot from @all_snaps that is closest to $target_snap
 
-    my $target_snap = $_[0];
-    my @all_snaps   = @{$_[1]};
+    my ($target_snap, $all_snaps_ref) = @_;
 
     my $closest;
 
-    for my $snap (@all_snaps) {
+    for my $snap (@$all_snaps_ref) {
 
 	if (snap_earlier_or_eq($snap, $target_snap)) {
 	    $closest = $snap;
@@ -414,8 +336,7 @@ sub answer_query { # no test
     # and returns the desired snapshot. It is expected that a $query has
     # already been proven valid.
 
-    my $query     = $_[0];
-    my @all_snaps = @{$_[1]}; 
+    my ($query, $all_snaps_ref) = @_;
 
     my $return_snap;
 
@@ -425,9 +346,9 @@ sub answer_query { # no test
 
 	@nums = grep { $_ ne $2 } @nums;
 
-	my $nums_as_snap = nums_to_snap(@nums);
+	my $nums_as_snapstring = nums_to_snapstring(@nums);
 
-	$return_snap = snap_closest_to($nums_as_snap, \@all_snaps);
+	$return_snap = snap_closest_to($nums_as_snapstring, $all_snaps_ref);
     }
 
     elsif (is_relative_query($query)) {
@@ -436,14 +357,14 @@ sub answer_query { # no test
 
 	my $n_units_ago = n_units_ago($n, $units);
 
-	$return_snap = snap_closest_to($n_units_ago, \@all_snaps);
+	$return_snap = snap_closest_to($n_units_ago, $all_snaps_ref);
     }
     
     return $return_snap;
 }
 
                  ####################################
-                 #         QUERY VALIDATION         #
+                 #    SNAPSHOT QUERY VALIDATION     #
                  ####################################
 
 sub is_valid_query { # has test
@@ -451,7 +372,7 @@ sub is_valid_query { # has test
     # Return 1 iff $query is either a time like '2020-02-13-12-30' or
     # it is a relative time like 'back 40 mins'. 
 
-    my $query = shift;
+    my ($query) = @_;
 
     if    (is_time($query))           { return 1 }
     elsif (is_relative_query($query)) { return 1 }
@@ -462,7 +383,7 @@ sub is_time { # has test
 
     # Return 1 iff $query is a time string like '2020-5-13-12-30'.
 
-    my $query = shift;
+    my ($query) = @_;
 
     return $query =~ /^\d{4}([-\s_\/])\d{1,2}\1\d{1,2}\1\d{1,2}\1\d{1,2}$/;
 }
@@ -471,7 +392,7 @@ sub is_relative_query { # has test
 
     # Return 1 iff $query is a relative time like 'back 4 hours'.
 
-    my $query = shift;
+    my ($query) = @_;
 
     return
       $query =~ /^b(ack)?([-\s_\/])\d+\2(m$|mins?$|h$|hrs?$|hours?$|d$|days?$)/;
@@ -479,20 +400,19 @@ sub is_relative_query { # has test
 
 sub is_subvol { # has test
 
-    # Return 1 iff $subvol is the name of a subvolume that the
-    # user is taking snapshots of with Yabsm. 
+    # Return 1 iff $subvol is the name of a yabsm subvolume.
 
-    my $subvol = shift;
+    my ($subvol, $config_ref) = @_;
 
-    my @all_subvols = all_subvols();
+    my $all_subvols_ref = %$config_ref{yabsm_subvols};
 
-    for my $subv (@all_subvols) {
-
-	return 1 if $subv eq $subvol;
+    foreach my $subv (@$all_subvols_ref) {
+	return 1 if $subvol eq $subv;
     }
 
     return 0;
 }
+
                  ####################################
                  #         SNAPSHOT CREATION        #
                  ####################################
@@ -501,18 +421,19 @@ sub take_new_snapshot { # no test
 
     # take a single read-only snapshot.
 
-    my ($snapshot_dir, $snapshot_name) = @_;
+    my ($snapshot_dir) = @_;
 
-    system( 'btrfs subvolume snapshot -r '
-	  . "$snapshot_dir/$snapshot_name" 
-	  ); 
+    my $snapshot_name = current_time_string();
+
+    system("btrfs subvolume snapshot -r $snapshot_dir/$snapshot_name"); 
 
     return;
 }
 
 sub current_time_string { # no test
     
-    # This function should be used to create a snapshot name.
+    # This function should be used to create a snapshot string name of
+    # the current time.
     
     my ($min, $hr, $day, $mon, $yr) =
       map { sprintf '%02d', $_ } (localtime)[1..5]; 
@@ -521,6 +442,50 @@ sub current_time_string { # no test
     $yr += 1900; # year represents years since 1900. 
     
     return "day=${yr}_${mon}_${day},time=${hr}:$min";
+}
+
+                 ####################################
+                 #         SNAPSHOT DELETION        #
+                 ####################################
+
+sub delete_appropriate_snapshots { # no test
+    
+    my ($config_ref, $existing_snaps_ref, $yabsm_subvol, $timeframe) = @_;
+
+    my $target_dir = target_dir($config_ref, $yabsm_subvol, $timeframe);
+
+    my $num_snaps = scalar @$existing_snaps_ref;
+
+    my $num_to_keep = %$config_ref{"${timeframe}_${yabsm_subvol}_keep"};
+
+    # The most common case is there is 1 more snapshot than what should be
+    # kept because we just took a snapshot.
+    if ($num_snaps == $num_to_keep + 1) { 
+
+	my $oldest_snap = pop @$existing_snaps_ref;
+
+	system("btrfs subvolume delete $target_dir/$oldest_snap");
+
+	return;
+    }
+
+    # We haven't reached the snapshot quota yet so we don't delete anything.
+    elsif ($num_snaps <= $num_to_keep) { return } 
+
+    # User changed their settings to keep less snapshots. 
+    else { 
+	
+	while ($num_snaps > $num_to_keep) {
+
+	    # note that pop mutates existing_snaps
+            my $oldest_snap = pop @$existing_snaps_ref;
+            
+	    system("btrfs subvolume delete $target_dir/$oldest_snap");
+
+	    $num_snaps--;
+	} 
+    }
+    return;
 }
 
 1;

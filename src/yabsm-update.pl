@@ -48,10 +48,10 @@ sub write_cronjobs {
     # Write the cronjobs to '/etc/crontab'
 
     open (my $etc_crontab, '<', '/etc/crontab')
-      or die "[!] failed to open /etc/crontab\n";
+      or die "[!] Error: failed to open /etc/crontab\n";
 
     open (my $tmp, '>', '/tmp/yabsm-update-tmp')
-      or die "[!] failed to open tmp file at /tmp/yabsm-update-tmp\n";
+      or die "[!] Error: failed to open tmp file at /tmp/yabsm-update-tmp\n";
 
     # Copy all lines from /etc/crontab into the tmp file, excluding the existing
     # yabsm cronjobs.
@@ -81,7 +81,7 @@ sub generate_cron_strings {
 
     my ($config_ref) = @_;
 
-    my @all_cron_strings; # This will be returned
+    my @cron_strings; # This will be returned
 
     # Remember that these strings are 'name,path' for example 'home,/home'
     foreach (@SUBVOLS_TO_SNAP) {
@@ -134,12 +134,12 @@ sub generate_cron_strings {
 			    ) if $monthly_want eq 'yes';
 
 	# Any of the cron strings may be undefined.
-        push @all_cron_strings, grep { defined } ($hourly_cron,
-						  $daily_cron,
-						  $midnight_cron,
-						  $monthly_cron);
+        push @cron_strings, grep { defined } ($hourly_cron,
+					      $daily_cron,
+					      $midnight_cron,
+					      $monthly_cron);
     }
-    return @all_cron_strings;
+    return wantarray ? @cron_strings : \@cron_strings;
 }
 
                  ####################################

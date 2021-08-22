@@ -29,23 +29,23 @@ use experimental 'smartmatch';
 
 sub gen_random_config {
 
-    my @possible_subvols = shuffle ('root,/', 'home,/home', 'etc,/etc',
-				    'var,/var', 'tmp,/tmp', 'mnt,/mnt');
+    my @possible_subvols = shuffle ('root', 'home', 'etc', 'var', 'tmp', 'mnt');
+    my @possible_paths = shuffle ('/', '/home', '/etc', '/var', '/tmp', '/mnt');
 
-    my %subvols =
-      map { split /,/ } @possible_subvols[0 .. int(rand(@possible_subvols))];
+    my @subvols = @possible_subvols[0 .. int(rand(@possible_subvols))];
+    my @paths = @possible_paths[0 .. int(rand(@possible_paths))];
 
     # generate the random config
-    my %config = ( 'yabsm_subvols' => \%subvols
+    my %config = ( 'subvols' => \@subvols
 		 , 'snapshot_directory' => '/.snapshots'
 		 );
     
     # dynamically add config entries for each subvolume.
-    foreach (keys %subvols) {
-
-	my ($subv_name, $path) = split /,/;
+    foreach my $subv_name (@subvols) {
 
 	# generate random config values
+
+	my $path = pop @possible_paths;
 
 	my $hourly_want   = yes_or_no();
 	my $hourly_take   = int(rand(13));
@@ -62,6 +62,8 @@ sub gen_random_config {
 	my $monthly_keep  = int(rand(1000));
 
 	# add entries to the config
+
+	$config{"${subv_name}_path"} = $path;
 
 	$config{"${subv_name}_hourly_want"} = $hourly_want;
 	$config{"${subv_name}_hourly_take"} = $hourly_take;
@@ -287,6 +289,18 @@ sub test_snap_closest_to {
     ok ( $output eq $t4, 'snap_closest_to()' );
 }
 
+test_all_subvols();
+sub test_all_subvols {
+
+    my %config = gen_random_config();
+
+    my @subvols1 = @{$config{subvols}};
+
+    my @subvols2 = Yabsm::all_subvols(\%config);
+
+    ok ( @subvols1 ~~ @subvols2, 'all_subvols()' );
+}
+
 test_is_valid_query();
 sub test_is_valid_query {
 
@@ -300,7 +314,7 @@ sub test_is_valid_query {
     my $t6 = Yabsm::is_valid_query('2020-2-3-12-30');
     my $t7 = Yabsm::is_valid_query('2020 02 03 12 30');
     my $t8 = Yabsm::is_valid_query('b 2 d');
-    my $t9 = Yabsm::is_valid_query('b 80 days ');
+    my $t9 = Yabsm::is_valid_query('b 80 days');
 
     # these should all be false
     my $f0 = Yabsm::is_valid_query('');
@@ -312,9 +326,12 @@ sub test_is_valid_query {
     my $f6 = Yabsm::is_valid_query('202-12-25-5-13');
     my $f7 = Yabsm::is_valid_query('b 4    m');
     my $f8 = Yabsm::is_valid_query('b 4 hourss');
+    my $f9 = Yabsm::is_valid_query('b-4-h ');
+    my $f10 = Yabsm::is_valid_query(' b-4-h');
 
     my $trues  = ($t0 && $t2 && $t4 && $t5 && $t6 && $t7 && $t8 && $t9);
-    my $falses = ! ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8);
+    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6
+		   || $f7 || $f8 || $f9 || $f10);
 
     ok ( $trues && $falses, 'is_valid_query()' );
 }
@@ -324,11 +341,11 @@ sub test_is_subvol {
 
     my %config = gen_random_config();
 
-    my $subvols_ref = $config{yabsm_subvols};
+    my @subvols = @{$config{subvols}};
 
     # Yabsm::is_subvol() should return true for all subvols
     my $detected = 1;
-    foreach my $subv (keys %$subvols_ref) {
+    foreach my $subv (@subvols) {
 	$detected = 0 unless Yabsm::is_subvol(\%config, $subv);
     }
 
@@ -349,11 +366,13 @@ sub test_is_literal_time {
     
     # These should be false
     my $f1 = Yabsm::is_literal_time('202-12-25-12-30');
-    my $f2 = Yabsm::is_literal_time('2020  12  30  12  30');
-    my $f3 = Yabsm::is_literal_time('2020  12  30  12  30');
+    my $f2 = Yabsm::is_literal_time(' 2020-12-25-12-30');
+    my $f3 = Yabsm::is_literal_time('2020-12-25-12-30 ');
+    my $f4 = Yabsm::is_literal_time('2020  12  30  12  30');
+    my $f5 = Yabsm::is_literal_time('2020  12  30  12  30');
 
     my $trues  = ($t1 && $t2 && $t3);
-    my $falses = not ($f1 || $f2 || $f3);
+    my $falses = not ($f1 || $f2 || $f3 || $f4 || $f5);
 
     ok ( $trues && $falses, 'is_literal_time()' );
 }
@@ -381,11 +400,50 @@ sub test_is_relative_query {
     my $f6 = Yabsm::is_relative_query('b -12 hours');
     my $f7 = Yabsm::is_relative_query('back  4  m');
     my $f8 = Yabsm::is_relative_query('b 4 dayss');
+    my $f9 = Yabsm::is_relative_query('b 4 d ');
+    my $f10 = Yabsm::is_relative_query(' b 11 d');
+    my $f11 = Yabsm::is_relative_query(' b 11 d ');
 
     my $trues  = $t0 && $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7;
-    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8);
+    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6
+		      || $f7 || $f8 && $f9 || $f10 || $f11);
 
     ok ( $trues && $falses, 'is_relative_query()' );
+}
+
+test_is_timeframe();
+sub test_is_timeframe {
+
+    my $correct_hourly   = Yabsm::is_timeframe('hourly');
+    my $correct_daily    = Yabsm::is_timeframe('daily');
+    my $correct_midnight = Yabsm::is_timeframe('midnight');
+    my $correct_monthly  = Yabsm::is_timeframe('monthly');
+
+    my $f0 = Yabsm::is_timeframe('');
+
+    my $f1 = Yabsm::is_timeframe(' hourly');
+    my $f2 = Yabsm::is_timeframe(' daily');
+    my $f3 = Yabsm::is_timeframe(' midnight');
+    my $f4 = Yabsm::is_timeframe(' monthly');
+
+    my $f5 = Yabsm::is_timeframe('hourly ');
+    my $f6 = Yabsm::is_timeframe('daily ');
+    my $f7 = Yabsm::is_timeframe('midnight ');
+    my $f8 = Yabsm::is_timeframe('monthly ');
+
+    my $f9  = Yabsm::is_timeframe(' hourly ');
+    my $f10 = Yabsm::is_timeframe(' daily ');
+    my $f11 = Yabsm::is_timeframe(' midnight ');
+    my $f12 = Yabsm::is_timeframe(' monthly ');
+
+    my $f13 = Yabsm::is_timeframe('this is not a timeframe');
+
+    my $trues = $correct_hourly && $correct_daily && $correct_midnight && $correct_monthly;
+
+    my $falses = not ( $f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7
+		    || $f9 || $f10 || $f11 || $f12 || $f13);
+
+    ok ( $trues && $falses, 'is_timeframe()' );
 }
 
 test_current_time_string();
@@ -406,9 +464,9 @@ sub test_target_dir {
     my $snapshot_root_dir = $config{snapshot_directory};
     my $subvol = $config{(keys %config)[rand keys %config]};
 
-    my $target_dir = Yabsm::target_dir(\%config, $subvol, 'hourly');
+    my $target_dir = Yabsm::target_dir(\%config, $subvol);
 
-    my $expected = "$snapshot_root_dir/yabsm/$subvol/hourly";
+    my $expected = "$snapshot_root_dir/yabsm/$subvol";
 
     ok ( $expected eq $target_dir, 'target_dir()' );
 }

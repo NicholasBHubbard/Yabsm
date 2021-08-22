@@ -16,7 +16,7 @@ Usage: yabsm [OPTIONS] ...
 
   --find, -f <QUERY>                      find a snapshot based on QUERY
 
-  --upd-conf, -u                          update cronjobs in /etc/crontab, based
+  --update-conf, -u                       update cronjobs in /etc/crontab, based
                                           off settings specified in /etc/yabsmrc
 
   --quiet, -q                             suppress output
@@ -40,13 +40,13 @@ use Yabsm;
 my @YABSM_TAKE_SNAPSHOT;
 my $YABSM_UPDATE;
 my @YABSM_FIND;
+my $CHECK_CONFIG;
 my $HELP;
-my $QUIET;
 
 GetOptions( 'take-snap|s=s{2}' => \@YABSM_TAKE_SNAPSHOT
 	  , 'update|u'         => \$YABSM_UPDATE
 	  , 'find|f=s{0,2}'    => \@YABSM_FIND
-	  , 'quiet|q'          => \$QUIET
+	  , 'check-config|c'   => \$CHECK_CONFIG
 	  , 'help|h'           => \$HELP
 	  );
 
@@ -61,25 +61,35 @@ Yabsm::die_if_invalid_config(\%CONFIG);
 
 if (@YABSM_TAKE_SNAPSHOT) {
 
-    # --take-snapshot option takes two string args
+    die "[!] Error: must be root to take a new snapshot\n" if $<;
+
+    # --take-snapshot option takes two string args. We can be sure
+    # that both args are defined as Getopt::Long will kill the program
+    # if they are not.
     my ($subvol, $timeframe) = @YABSM_TAKE_SNAPSHOT;
     
     if (not is_subvol(\%CONFIG, $subvol)) {
-	die "[!] Error: \"$subvol\" does not exist\n";
+	die "[!] Error: \"$subvol\" is not a yabsm subvolume\n";
     }
 
-    if (not $timeframe) {
-	die "[!] Error: \"$timeframe\" is not a valid timeframe";
+    if (not is_timeframe($timeframe)) {
+	die "[!] Error: \"$timeframe\" is not a valid timeframe\n";
     }
+
+    Yabsm::take_new_snapshot(\%CONFIG, $subvol, $timeframe);
+    Yabsm::delete_appropiate_snapshots(\%CONFIG, $subvol, $timeframe);
+
+    exit 0;
 }
 
 
 if (@YABSM_FIND) {
 
-    my ($subvol, $query);
-
-    # these variables may or may not be defined
+    # these variables may or may not be defined.
     my ($arg1, $arg2) = @YABSM_FIND;
+
+    # the following logic exists to set the $subvol and $query variables
+    my ($subvol, $query);
 
     if ($arg1) {
 	if (Yabsm::is_subvol(\%CONFIG, $arg1)) {
@@ -89,7 +99,7 @@ if (@YABSM_FIND) {
 	    $query = $arg1;
 	}
 	else {
-	    die "[!] Error: \"$arg1\" is neither a subvolume or query";
+	    die "[!] Error: \"$arg1\" is neither a subvolume or query\n";
 	}
     }
     
@@ -101,7 +111,7 @@ if (@YABSM_FIND) {
 	    $query = $arg2;
 	}
 	else {
-	    die "[!] Error: \"$arg2\" is neither a subvolume or query";
+	    die "[!] Error: \"$arg2\" is neither a subvolume or query\n";
 	}
     }
 
@@ -113,9 +123,10 @@ if (@YABSM_FIND) {
 	$query = Yabsm::ask_for_query();
     }
 
-    my $all_snaps_ref = Yabsm::get_all_snapshots_of(\%CONFIG, $subvol);
-
-    my $snapshot_path = Yabsm::answer_query($all_snaps_ref, $query);
+    # $subvol and $query are properly set at this point
+    my $snapshot_path = Yabsm::answer_query(\%CONFIG, $subvol, $query);
 
     say $snapshot_path;
+
+    exit 0;
 }

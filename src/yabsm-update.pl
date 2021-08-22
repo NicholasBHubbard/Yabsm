@@ -40,52 +40,6 @@ write_cronjobs();
 say 'success!';
 
                  ####################################
-                 #      CHECK CONFIG FOR ERRORS     #
-                 ####################################
-
-sub check_config_for_errors {
-    
-    if (! -d $YABSMRC_HASH{'snapshot_directory'}) {
-	my $snap_dir = $YABSMRC_HASH{'snapshot_directory'};
-	die "[!] could not find directory \"$snap_dir\"\n";
-    }
-
-    foreach (@SUBVOLS_TO_SNAP) {
-        
-	# We don't care about the path.
-        my ($subv_name, undef) = split /,/;
-
-        my @settings = my ($hourly_want,   $hourly_take, $hourly_keep,
-			   $daily_want,    $daily_take,  $daily_keep,
-			   $midnight_want, $midnight_keep,
-			   $monthly_want,  $monthly_keep) 
-	  = settings_for_subvol($subv_name);
-        
-        die "[!] missing a required setting for $subv_name\n"
-	     if grep { not defined } @settings;
-        
-        die "[!] max value for ${subv_name}_hourly_take is 60\n"
-          if ($hourly_take > 60);
-        
-        die "[!] max value for ${subv_name}_daily_take is 24\n"
-          if ($daily_take > 24);
-        
-        die "[!] ${subv_name}_hourly_want must equal \"yes\" or \"no\"\n"
-          unless ($hourly_want eq 'yes' || $hourly_want eq 'no');
-
-        die "[!] ${subv_name}_hourly_want must equal \"yes\" or \"no\"\n"
-          unless ($daily_want eq 'yes' || $daily_want eq 'no');
-
-        die "[!] ${subv_name}_midnight_want must equal \"yes\" or \"no\"\n"
-          unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
-        
-        die "[!] ${subv_name}_monthly_want must equal \"yes\" or \"no\"\n"
-          unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
-    }
-    return;
-}
-
-                 ####################################
                  #           WRITE CRONJOBS         #
                  ####################################
 
@@ -123,8 +77,10 @@ sub write_cronjobs {
     return;
 } 
 
-sub create_all_cronjob_strings {
-    
+sub generate_cron_strings {
+
+    my ($config_ref) = @_;
+
     my @all_cron_strings; # This will be returned
 
     # Remember that these strings are 'name,path' for example 'home,/home'
@@ -215,29 +171,3 @@ sub settings_for_subvol {
             $monthly_want,  $monthly_keep);
 }
 
-                 ####################################
-                 #         CREATE DIRECTORIES       #
-                 ####################################
-
-sub initialize_directories {
-
-    # This subroutine is only necessary the first time this script is run.
-
-    foreach (@SUBVOLS_TO_SNAP) {
-
-        my ($subv_name, undef) = split /,/;
-
-        mkdir $YABSM_ROOT_DIR; # /.snapshots/yabsm
-
-        mkdir "$YABSM_ROOT_DIR/$subv_name";
-        mkdir "$YABSM_ROOT_DIR/$subv_name/hourly";
-        mkdir "$YABSM_ROOT_DIR/$subv_name/daily";
-
-        mkdir "$YABSM_ROOT_DIR/$subv_name/midnight"
-          if ($YABSMRC_HASH{"${subv_name}_midnight_want"} eq 'yes');
-        
-        mkdir "$YABSM_ROOT_DIR/$subv_name/monthly"
-          if ($YABSMRC_HASH{"${subv_name}_monthly_want"} eq 'yes');
-    }
-    return;
-}

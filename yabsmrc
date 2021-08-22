@@ -13,7 +13,7 @@ snapshot_directory=/.snapshots
 
 ### I_want_to_snap_this_subvol=NAME,PATH 
 
-I_want_to_snap_this_subvol=root,/
+define_subvol=root,/
 
 root_hourly_want=no
 root_hourly_take=0

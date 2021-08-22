@@ -16,17 +16,25 @@ use strict;
 use warnings;
 use 5.010;
 
+use File::Copy 'move';
 use Time::Piece;
+use List::Util 'any';
 use Carp;
 
                  ####################################
-                 #              CONFIG              #
+                 #            YABSMRC IO            #
                  ####################################
 
 sub yabsmrc_to_hash {
     
-    open (my $yabsmrc, '<', '/etc/yabsmrc')
-      or die '[!] failed to open file /etc/yabsmrc';
+    # Read /etc/yabsmrc into a hash of key value pairs. This function
+    # is used to create the config hash that is passed constantly
+    # around the program.
+
+    my ($yabsmrc_absolute_path) = @_;
+
+    open (my $yabsmrc, '<', $yabsmrc_absolute_path)
+      or croak "[!] Error: failed to open file \"$yabsmrc_absolute_path\"\n";
     
     my %yabsmrc_hash;
     
@@ -34,15 +42,17 @@ sub yabsmrc_to_hash {
         
         next if /^[#|\s]/;
 
-	# strip off whitespace 
 	s/\s//g; 
         
         my ($key, $val) = split /=/;
 
-        # The 'yabsm_subvols' key associates to an array of strings
-	# like ('home,/home', 'root,/').
+        # The 'yabsm_subvols' key holds a hash of subvolume names
+        # to paths.
         if ($key eq 'define_subvol') { 
-            push @{$yabsmrc_hash{yabsm_subvols}}, $val; 
+
+	    my ($subv_name, $path) = split /,/, $val, 2;
+
+	    $yabsmrc_hash{yabsm_subvols}{$subv_name} = $path;
         }
 
 	# All other keys point to a single value
@@ -56,7 +66,100 @@ sub yabsmrc_to_hash {
     return wantarray ? %yabsmrc_hash : \%yabsmrc_hash;
 }
 
-sub target_dir {
+sub die_if_invalid_config { # no test
+    
+    my ($config_ref) = @_;
+
+    if (not -d $config_ref->{snapshot_directory}) {
+	my $snap_dir = $config_ref->{snapshot_directory};
+	croak "[!] Error: could not find directory \"$snap_dir\"\n";
+    }
+
+    # for each yabsm subvolume
+    foreach my $subv_name (keys %{$config_ref->{yabsm_subvols}}) {
+        
+	my $subv_path = $config_ref->{yabsm_subvols}{$subv_name};
+	
+	croak "[!] Error: the subvolume \"$subv_name\" does not associate with a path\n"
+	  if not defined $subv_path;
+	
+	croak "[!] Error: could not find directory \"$subv_path\"\n"
+	  if not -d $subv_path;
+
+	my $hourly_want = $config_ref->{"${subv_name}_hourly_want"};
+	my $hourly_take = $config_ref->{"${subv_name}_hourly_take"};
+	my $hourly_keep = $config_ref->{"${subv_name}_hourly_keep"};
+
+	my $daily_want = $config_ref->{"${subv_name}_daily_want"};
+	my $daily_take = $config_ref->{"${subv_name}_daily_take"};
+	my $daily_keep = $config_ref->{"${subv_name}_daily_keep"};
+
+	my $midnight_want = $config_ref->{"${subv_name}_midnight_want"};
+	my $midnight_keep = $config_ref->{"${subv_name}_midnight_keep"};
+
+	my $monthly_want = $config_ref->{"${subv_name}_monthly_want"};
+	my $monthly_keep = $config_ref->{"${subv_name}_monthly_keep"};
+
+	my @subv_settings = ( $hourly_want,   $hourly_take, $hourly_keep
+			    , $daily_want,    $daily_take,  $daily_keep
+		            , $midnight_want, $midnight_keep
+		            , $monthly_want,  $monthly_keep
+		            );
+
+        croak "[!] Error: missing at least one required setting for \"$subv_name\"\n"
+	     if grep { not defined } @subv_settings;
+
+        croak "[!] Error: value for ${subv_name}_hourly_take must be an integer between 0 and 60\n"
+          if ($hourly_take > 60 || $hourly_take < 0);
+        
+        croak "[!] Error: value for ${subv_name}_daily_take is must be an integer between 0 and 24\n"
+          if ($daily_take > 24 || $daily_take < 0);
+        
+        croak "[!] Error: ${subv_name}_hourly_want must be either \"yes\" or \"no\"\n"
+          unless ($hourly_want eq 'yes' || $hourly_want eq 'no');
+
+        croak "[!] Error: ${subv_name}_hourly_want must be either \"yes\" or \"no\"\n"
+          unless ($daily_want eq 'yes' || $daily_want eq 'no');
+
+        croak "[!] Error: ${subv_name}_midnight_want must be either \"yes\" or \"no\"\n"
+          unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
+        
+        croak "[!] Error: ${subv_name}_monthly_want must be either \"yes\" or \"no\"\n"
+          unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
+    }
+
+    return;
+}
+
+sub initialize_directories { # no test
+
+    my ($config_ref) = @_;
+
+    my $yabsm_root_dir = $config_ref->{snapshot_dir} . "/yabsm";
+
+    mkdir $yabsm_root_dir;
+
+    foreach my $subv_name (keys %{$config_ref->{yabsm_subvols}}) {
+
+        mkdir "$yabsm_root_dir/$subv_name";
+	
+        mkdir "$yabsm_root_dir/$subv_name/hourly"
+          if ($config_ref->{"${subv_name}_hourly_want"} eq 'yes');
+
+        mkdir "$yabsm_root_dir/$subv_name/daily"
+          if ($config_ref->{"${subv_name}_daily_want"} eq 'yes');
+
+        mkdir "$yabsm_root_dir/$subv_name/midnight"
+          if ($config_ref->{"${subv_name}_midnight_want"} eq 'yes');
+        
+        mkdir "$yabsm_root_dir/$subv_name/monthly"
+          if ($config_ref->{"${subv_name}_monthly_want"} eq 'yes');
+    }
+
+    return;
+}
+
+sub target_dir { # has test 
 
     # return path to the directory of a given subvolume and timeframe.
 
@@ -73,11 +176,13 @@ sub target_dir {
 
 sub ask_for_subvolume { # no test
 
-    # Prompt user to enter their desired subvolume. For convenience they only
-    # need to enter a corresponding integer instead of the full timeframe.
+    # Prompt user to select their desired subvolume. Used for --find
+    # option. 
+
+    my ($config_ref) = @_;
 
     # sort the subvol names so they are displayed in alphabetical order.
-    my @all_subvols = sort { $a cmp $b } all_yabsm_subvols();
+    my @all_subvols = sort { $a cmp $b } all_yabsm_subvols($config_ref);
 
     # No need to prompt if there is only 1 subvolume.
     return $all_subvols[0] if scalar @all_subvols == 1;
@@ -108,7 +213,9 @@ sub ask_for_subvolume { # no test
     print "\n>>> ";
 
     my $input = <STDIN>;
-    $input =~ s/[\s]//g; 
+    $input =~ s/\s//g; 
+
+    exit 0 if $input =~ /^q(uit)?$/;
 
     if (defined $int_subvol_hash{ $input }) {
 	return $int_subvol_hash{ $input };
@@ -127,7 +234,9 @@ sub ask_for_query { # no test
     print "enter query:\n>>> ";
 
     my $input = <STDIN>;
-    $input =~ s/^\s+|[\s]+$//g; # trim both ends
+    $input =~ s/^\s+|[\s]+$//g; # remove whitespace from both ends
+
+    exit 0 if $input =~ /^q(uit)?$/;
 
     if (is_valid_query($input)) { return $input }  
 
@@ -141,12 +250,13 @@ sub ask_for_query { # no test
                  #           DATA GATHERING         #
                  ####################################
 
-sub all_snapshots { # has test
+# TODO (make this function work without reading /etc/yabsmrc)
+sub get_all_snapshots_of { # no test
 
-    # Gather all the snapshots (paths) for a given subvolume 
-    # and return them sorted from newest to oldest.
+    # Read filesystem to gather all the snapshots (paths) for a given
+    # subvolume and return them sorted from newest to oldest.
 
-    my $yabsm_subvol = $_[0];
+    my ($config_ref, $yabsm_subvol) = @_;
 
     open (my $yabsmrc, '<', '/etc/yabsmrc')
       or die '[!] failed to open file /etc/yabsmrc';
@@ -179,7 +289,16 @@ sub all_snapshots { # has test
     }
     
     # The snapshots will be returned sorted from newest to oldest.
-    return sort_snapshots(\@all_snaps);
+    my $all_snaps_sorted_ref = sort_snapshots(\@all_snaps);
+
+    return wantarray ? @$all_snaps_sorted_ref : $all_snaps_sorted_ref;
+}
+
+sub all_yabsm_subvols { # no test
+
+    my ($config_ref) = @_;
+
+    return keys %{$config_ref->{yabsm_subvols}};
 }
 
                  ####################################
@@ -242,23 +361,25 @@ sub time_piece_obj_to_snapstring { # has test
                  #         SNAPSHOT ORDERING        #
                  ####################################
 
-sub sort_snapshots { # no test
+sub sort_snapshots { # has test
 
     # return a sorted version of the inputted array ref of
     # snapshots. Sorted from newest to oldest. Works with either full
-    # paths or just snapstrings. 
+    # paths or just snapstrings.
 
     my ($snaps_ref) = @_;
 
-    my @sorted_snaps = sort { -compare_snaps($a, $b) } @$snaps_ref;
+    my @sorted_snaps = sort { compare_snapshots($a, $b) } @$snaps_ref;
 
     return wantarray ? @sorted_snaps : \@sorted_snaps;
 }
 
-sub compare_snaps { # no test
+sub compare_snapshots { # has test
 
-    # return 1 if $snap1 is newer than $snap2, -1 if $snap2 is newer
-    # than $snap1 and 0 if they are the same.
+    # Return 1 if $snap1 is newer than $snap2.
+    # Return -1 if $snap1 is older than $snap2
+    # Return 0 if $snap1 and $snap2 are the same. 
+    # Works with either full paths or just snapstrings.
 
     my ($snap1, $snap2) = @_;
 
@@ -267,10 +388,11 @@ sub compare_snaps { # no test
 
     for (my $i = 0; $i < scalar @snap1_nums; $i++) {
 
-	return 1  if $snap1_nums[$i] > $snap2_nums[$i];
-	return -1 if $snap1_nums[$i] < $snap2_nums[$i];
+	return 1  if $snap1_nums[$i] < $snap2_nums[$i];
+	return -1 if $snap1_nums[$i] > $snap2_nums[$i];
     }
 
+    # Must be the same
     return 0;
 }
 
@@ -285,16 +407,16 @@ sub n_units_ago { # has test
 
     my ($n, $unit) = @_;
 
-    my $seconds;
+    my $seconds_per_unit;
 
-    if    ($unit =~ /^(m|mins?)$/)       { $seconds = 60    }
-    elsif ($unit =~ /^(h|(hr|hour)s?)$/) { $seconds = 3600  }
-    elsif ($unit =~ /^(d|days?)$/)       { $seconds = 86400 }
+    if    ($unit =~ /^(m|mins|minutes)$/) { $seconds_per_unit = 60    }
+    elsif ($unit =~ /^(h|hrs|hours)$/   ) { $seconds_per_unit = 3600  }
+    elsif ($unit =~ /^(d|days)$/        ) { $seconds_per_unit = 86400 }
     else  { croak "\"$unit\" is an invalid time unit" }
 
     my $time_piece_obj = snapstring_to_time_piece_obj(current_time_string());
 
-    $time_piece_obj -= ($n * $seconds);
+    $time_piece_obj -= ($n * $seconds_per_unit);
 
     return time_piece_obj_to_snapstring($time_piece_obj);
 }
@@ -309,21 +431,17 @@ sub snap_closest_to { # has test
 
     my ($target_snap, $all_snaps_ref) = @_;
 
-    my $closest;
+    foreach my $snap (@$all_snaps_ref) {
 
-    for my $snap (@$all_snaps_ref) {
+	my $cmp = compare_snapshots($snap, $target_snap);
 
-	if (snap_earlier_or_eq($snap, $target_snap)) {
-	    $closest = $snap;
-	    last;
-	}
+	return $snap if $cmp == 0 || $cmp == 1;
     }
 
-    if (not defined $closest) {
-	die "[!] couldn't find a snapshot close to \"$target_snap\"\n";
-    }
+    warn "WARNING: couldn't find a snapshot close to \"$target_snap\""
+       . "instead returning the oldest snapshot on the system";
 
-    return $closest;
+    return @$all_snaps_ref[-1];
 }
 
                  ####################################
@@ -336,11 +454,11 @@ sub answer_query { # no test
     # and returns the desired snapshot. It is expected that a $query has
     # already been proven valid.
 
-    my ($query, $all_snaps_ref) = @_;
+    my ($all_snaps_ref, $query) = @_;
 
-    my $return_snap;
+    my $snap_to_return;
 
-    if (is_time($query)) {
+    if (is_literal_time($query)) {
 
 	my @nums = $query =~ m/^(\d{4})([-\s_\/])(\d{1,2})\2(\d{1,2})\2(\d{1,2})\2(\d{1,2})$/;
 
@@ -348,23 +466,23 @@ sub answer_query { # no test
 
 	my $nums_as_snapstring = nums_to_snapstring(@nums);
 
-	$return_snap = snap_closest_to($nums_as_snapstring, $all_snaps_ref);
+	$snap_to_return = snap_closest_to($nums_as_snapstring, $all_snaps_ref);
     }
 
     elsif (is_relative_query($query)) {
 
-	my (undef, $n, $units) = split /[-\s_\/]/, $query;
+	my (undef, $n, $units) = split /[- ]/, $query;
 
 	my $n_units_ago = n_units_ago($n, $units);
 
-	$return_snap = snap_closest_to($n_units_ago, $all_snaps_ref);
+	$snap_to_return = snap_closest_to($n_units_ago, $all_snaps_ref);
     }
     
-    return $return_snap;
+    return $snap_to_return;
 }
 
                  ####################################
-                 #    SNAPSHOT QUERY VALIDATION     #
+                 #    YABSM-FIND QUERY VALIDATION   #
                  ####################################
 
 sub is_valid_query { # has test
@@ -374,54 +492,63 @@ sub is_valid_query { # has test
 
     my ($query) = @_;
 
-    if    (is_time($query))           { return 1 }
+    if    (is_literal_time($query))   { return 1 }
     elsif (is_relative_query($query)) { return 1 }
     else  { return 0 }
 }
 
-sub is_time { # has test
+sub is_literal_time { # has test
 
     # Return 1 iff $query is a time string like '2020-5-13-12-30'.
 
     my ($query) = @_;
 
-    return $query =~ /^\d{4}([-\s_\/])\d{1,2}\1\d{1,2}\1\d{1,2}\1\d{1,2}$/;
+    return $query =~ /^\d{4}([- ])\d{1,2}\1\d{1,2}\1\d{1,2}\1\d{1,2}$/;
 }
 
 sub is_relative_query { # has test
 
-    # Return 1 iff $query is a relative time like 'back 4 hours'.
+    # Return 1 iff $query is a syntactically valid relative query.
+    # Relative queries take the form of mode-amount-unit.
+    # At this time the only mode field is 'back'.
+    # The amount field must be a positive integer.
+    # The unit field must be a time unit like minutes, hours, or days.
 
     my ($query) = @_;
 
-    return
-      $query =~ /^b(ack)?([-\s_\/])\d+\2(m$|mins?$|h$|hrs?$|hours?$|d$|days?$)/;
+    my ($mode, $amount, $unit) = split /[- ]/, $query;
+
+    return 0 if any { not defined } ($mode, $amount, $unit);
+
+    my $mode_correct = $mode =~ /^b(ack)?$/;
+
+    my $amount_correct = $amount =~ /^[0-9]+$/;
+
+    my $unit_correct = any { $_ eq $unit } qw/m mins minutes h hrs hours d days/;
+
+    return $mode_correct && $amount_correct && $unit_correct;
 }
 
 sub is_subvol { # has test
 
     # Return 1 iff $subvol is the name of a yabsm subvolume.
 
-    my ($subvol, $config_ref) = @_;
+    my ($config_ref, $subvol) = @_;
 
-    my $all_subvols_ref = %$config_ref{yabsm_subvols};
-
-    foreach my $subv (@$all_subvols_ref) {
-	return 1 if $subvol eq $subv;
-    }
-
-    return 0;
+    return exists $config_ref->{yabsm_subvols}{$subvol};
 }
 
                  ####################################
-                 #         SNAPSHOT CREATION        #
+                 #           SNAPSHOT IO            #
                  ####################################
 
 sub take_new_snapshot { # no test
 
     # take a single read-only snapshot.
 
-    my ($snapshot_dir) = @_;
+    my ($config_ref, $yabsm_subvol, $timeframe) = @_;
+
+    my $snapshot_dir = target_dir($config_ref, $yabsm_subvol, $timeframe);
 
     my $snapshot_name = current_time_string();
 
@@ -443,10 +570,6 @@ sub current_time_string { # no test
     
     return "day=${yr}_${mon}_${day},time=${hr}:$min";
 }
-
-                 ####################################
-                 #         SNAPSHOT DELETION        #
-                 ####################################
 
 sub delete_appropriate_snapshots { # no test
     

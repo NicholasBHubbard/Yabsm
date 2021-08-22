@@ -227,11 +227,7 @@ sub test_n_units_ago {
 test_nums_to_snapstring();
 sub test_nums_to_snapstring {
 
-    my $want_dump = 0;
-
     my $output = Yabsm::nums_to_snapstring(2020, 3, 2, 23, 15);
-
-    if ($want_dump) { print Dumper $output }
 
     ok( $output eq 'day=2020_03_02,time=23:15', 'nums_to_snapstring()' );
 }
@@ -239,13 +235,9 @@ sub test_nums_to_snapstring {
 test_snapstring_to_nums();
 sub test_snapstring_to_nums {
 
-    my $want_dump = 0;
-
     my $time = 'day=2020_03_02,time=23:15';
 
     my @output = Yabsm::snapstring_to_nums($time);
-
-    if ($want_dump) { print Dumper @output }
 
     my @solution = ('2020','03','02','23','15');
 
@@ -255,15 +247,11 @@ sub test_snapstring_to_nums {
 test_snapstring_to_time_piece_obj();
 sub test_snapstring_to_time_piece_obj {
     
-    my $want_dump = 0;
-
     my $time = 'day=2020_03_02,time=23:15';
 
     my $time_piece_obj = Yabsm::snapstring_to_time_piece_obj($time);
 
     my $output = $time_piece_obj->year;
-
-    if ($want_dump) { print Dumper $output }
 
     ok ( $output eq '2020', 'snapstring_to_time_piece_obj()' );
 }
@@ -276,7 +264,7 @@ sub test_time_piece_obj_to_snapstring {
 
     my $output = Yabsm::time_piece_obj_to_snapstring($time_piece_obj);
 
-    ok ( $output eq  'day=2020_03_06,time=12:00'
+    ok ( $output eq 'day=2020_03_06,time=12:00'
        , 'time_piece_obj_to_snapstring()' );
 }
 
@@ -348,7 +336,7 @@ sub test_is_subvol {
     my $fail = 1;
     $fail = 0 if Yabsm::is_subvol(\%config, 'this is an invalid subvol name');
 
-    ok ($detected && $fail, 'is_subvol()');
+    ok ( $detected && $fail, 'is_subvol()' );
 }
 
 test_is_literal_time();

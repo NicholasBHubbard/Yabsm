@@ -16,10 +16,8 @@ Usage: yabsm [OPTIONS] ...
 
   --find, -f <QUERY>                      find a snapshot based on QUERY
 
-  --update-conf, -u                       update cronjobs in /etc/crontab, based
+  --update-crontab, -u                    update cronjobs in /etc/crontab, based
                                           off settings specified in /etc/yabsmrc
-
-  --quiet, -q                             suppress output
 
   --help, -h                              print help (this message) and exit
 
@@ -38,14 +36,14 @@ use Yabsm;
 # takes two args. See the documentation of Getopt::Long for more
 # information on multi-arg options.
 my @YABSM_TAKE_SNAPSHOT;
-my $YABSM_UPDATE;
+my $UPDATE_CRONTAB;
 my @YABSM_FIND;
 my $CHECK_CONFIG;
 my $HELP;
 
 GetOptions( 'take-snap|s=s{2}' => \@YABSM_TAKE_SNAPSHOT
-	  , 'update|u'         => \$YABSM_UPDATE
 	  , 'find|f=s{0,2}'    => \@YABSM_FIND
+	  , 'update-crontab|u' => \$UPDATE_CRONTAB
 	  , 'check-config|c'   => \$CHECK_CONFIG
 	  , 'help|h'           => \$HELP
 	  );
@@ -58,6 +56,13 @@ if ($HELP) {
 # TODO: change this to /etc/yabsmrc for production
 my %CONFIG = Yabsm::yabsmrc_to_hash('../yabsmrc');
 Yabsm::die_if_invalid_config(\%CONFIG);
+
+if ($UPDATE_CRONTAB) {
+
+    die "[!] Error: must be root to update /etc/crontab\n" if $<;
+
+    update_etc_crontab(\%CONFIG);
+}
 
 if (@YABSM_TAKE_SNAPSHOT) {
 

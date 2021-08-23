@@ -542,70 +542,96 @@ sub is_timeframe { # has test
                  #             CRONJOBS             #
                  ####################################
 
-# sub generate_cron_strings {
+sub update_etc_crontab { # no test
+    
+    # Write the cronjobs to '/etc/crontab'
 
-#     my ($config_ref) = @_;
+    my ($config_ref) = @_;
 
-#     my @cron_strings; # This will be returned
+    open (my $etc_crontab, '<', '/etc/crontab')
+      or die "[!] Error: failed to open /etc/crontab\n";
 
-#     my @subvols = keys %{$config_ref->{yabsm_subvols}};
+    open (my $tmp, '>', '/tmp/yabsm-update-tmp')
+      or die "[!] Error: failed to open tmp file at /tmp/yabsm-update-tmp\n";
 
-#     # Remember that these strings are 'name,path' for example 'home,/home'
-#     while (my ($subv_name, $path) = each %{$config_ref->{yabsm_subvols}}) {
+    # Copy all lines from /etc/crontab into the tmp file, excluding the existing
+    # yabsm cronjobs.
+    while (<$etc_crontab>) {
 
-# 	# Every yabsm subvolume is required to have a value for these fields
-#         my ($hourly_want,   $hourly_take, $hourly_keep,
-#             $daily_want,    $daily_take,  $daily_keep,
-#             $midnight_want, $midnight_keep,
-#             $monthly_want,  $monthly_keep) = settings_for_subvol($subv_name); 
+	next if /yabsm --take-snap/;
+
+	print $tmp $_;
+    }
+
+    # If there is text on the last line of the file then we must append a
+    # newline or else that text will prepend our first cronjob.
+    print $tmp "\n"; 
+
+    # Now append the cronjob strings to $tmp file.
+    my @cron_strings = generate_cron_strings($config_ref);
+
+    say $tmp $_ for @cron_strings;
+
+    close $etc_crontab;
+    close $tmp;
+
+    move '/tmp/yabsm-update-tmp', '/etc/crontab';
+
+    return;
+} 
+
+sub generate_cron_strings { # no test
+
+    my ($config_ref) = @_;
+
+    my @cron_strings; # This will be returned
+
+    # Remember that these strings are 'name,path' for example 'home,/home'
+    foreach my $subv_name (@{$config_ref->{subvols}}) {
+
+	# Every yabsm subvolume is required to have a value for these fields
+	my $hourly_want = $config_ref->{"${subv_name}_hourly_want"};
+	my $hourly_take = $config_ref->{"${subv_name}_hourly_take"};
+
+	my $daily_want = $config_ref->{"${subv_name}_daily_want"};
+	my $daily_take = $config_ref->{"${subv_name}_daily_take"};
+
+	my $midnight_want = $config_ref->{"${subv_name}_midnight_want"};
+
+	my $monthly_want = $config_ref->{"${subv_name}_monthly_want"};
         
-#         my $hourly_cron   = ( '*/' . int(60 / $hourly_take) # Max is every minute
-# 			    . ' * * * * root'
-# 			    . ' /usr/local/sbin/yabsm-take-snapshot'
-# 			    . ' --timeframe hourly'
-# 			    . " --subvname $subv_name"
-# 			    . " --subvmntpoint $mntpoint"
-# 			    . " --snapdir $YABSM_ROOT_DIR"
-# 			    . " --keeping $hourly_keep"
-# 			    ) if $hourly_want eq 'yes';
+        my $hourly_cron   = ( '*/' . int(60 / $hourly_take) # Max is every minute
+			    . ' * * * * root'
+			    . ' /usr/local/bin/yabsm'
+			    . " --take-snap $subv_name hourly"
+			    ) if $hourly_want eq 'yes';
         
-#         my $daily_cron    = ( '0 */' . int(24 / $daily_take) # Max is every hour
-#                             . ' * * * root'
-# 			    . ' /usr/local/sbin/yabsm-take-snapshot'
-# 			    . ' --timeframe daily'
-#                             . " --subvname $subv_name"
-#                             . " --subvmntpoint $mntpoint"
-# 			    . " --snapdir $YABSM_ROOT_DIR"
-#                             . " --keeping $daily_keep"
-# 			    ) if $daily_want eq 'yes';
+        my $daily_cron    = ( '0 */' . int(24 / $daily_take) # Max is every hour
+                            . ' * * * root'
+			    . ' /usr/local/bin/yabsm'
+			    . " --take-snap $subv_name daily"
+			    ) if $daily_want eq 'yes';
         
-# 	# Every night just before midnight. This makes the the date the day of.
-#         my $midnight_cron = ( '58 23 * * * root' 
-#                             . ' /usr/local/sbin/yabsm-take-snapshot'
-# 			    . ' --timeframe midnight'
-#                             . " --subvname $subv_name"
-#                             . " --subvmntpoint $mntpoint"
-# 			    . " --snapdir $YABSM_ROOT_DIR"
-# 			    . " --keeping $midnight_keep"
-# 			    ) if $midnight_want eq 'yes';
+	# Every night just before midnight. Note that the date is the day of.
+        my $midnight_cron = ( '59 23 * * * root' 
+                            . ' /usr/local/bin/yabsm'
+			    . " --take-snap $subv_name midnight"
+			    ) if $midnight_want eq 'yes';
         
-#         my $monthly_cron  = ( '0 0 1 * * root' # First of every month
-# 			    . ' /usr/local/sbin/yabsm-take-snapshot'
-# 			    . ' --timeframe monthly'
-#                             . " --subvname $subv_name"
-#                             . " --subvmntpoint $mntpoint"
-# 			    . " --snapdir $YABSM_ROOT_DIR"
-#                             . " --keeping $monthly_keep"
-# 			    ) if $monthly_want eq 'yes';
+        my $monthly_cron  = ( '0 0 1 * * root' # First of every month
+			    . ' /usr/local/bin/yabsm'
+			    . " --take-snap $subv_name monthly"
+			    ) if $monthly_want eq 'yes';
 
-# 	# Any of the cron strings may be undefined.
-#         push @cron_strings, grep { defined } ($hourly_cron,
-# 					      $daily_cron,
-# 					      $midnight_cron,
-# 					      $monthly_cron);
-#     }
-#     return wantarray ? @cron_strings : \@cron_strings;
-# }
+	# Any of the cron strings may be undefined.
+        push @cron_strings, grep { defined } ($hourly_cron,
+					      $daily_cron,
+					      $midnight_cron,
+					      $monthly_cron);
+    }
+
+    return wantarray ? @cron_strings : \@cron_strings;
+}
 
 
                  ####################################

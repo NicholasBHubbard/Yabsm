@@ -1,23 +1,23 @@
 # /etc/yabsmrc
                                       
-                         #-----------------------------------------#
-                         # WELCOME TO THE YABSM CONFIGURATION FILE #
-                         #-----------------------------------------#
+              #-----------------------------------------#
+              # WELCOME TO THE YABSM CONFIGURATION FILE #
+              #-----------------------------------------#
 
 snapshot_directory=/.snapshots
 
-### Every subvolume requires 10 fields
+### Every subvolume requires 11 fields
 
 ### subvolumes can be named whatever you want. These names only 
-### exits in the world of yabsm.
+### exist in the world of yabsm.
 
-### I_want_to_snap_this_subvol=NAME,PATH 
+define_subvol=root
 
-define_subvol=root,/
+root_path=/
 
-root_hourly_want=no
-root_hourly_take=0
-root_hourly_keep=0
+root_hourly_want=yes
+root_hourly_take=12
+root_hourly_keep=24
 
 root_daily_want=yes
 root_daily_take=24
@@ -26,24 +26,25 @@ root_daily_keep=48
 root_midnight_want=yes
 root_midnight_keep=14 
 
-root_monthly_want=yes
-root_monthly_keep=12
+root_monthly_want=no
+root_monthly_keep=0
 
+### You can define as many subvols as you want
 
-### I can snapshot as many subvolumes as I want
+define_subvol=home
 
-define_subvol=home,/home
+home_path=/home
 
 home_hourly_want=yes
 home_hourly_take=12
-home_hourly_keep=100
+home_hourly_keep=36
 
 home_daily_want=yes
-home_daily_take=13
-home_daily_keep=14
+home_daily_take=24
+home_daily_keep=72
 
-home_midnight_want=no
-home_midnight_keep=0
+home_midnight_want=yes
+home_midnight_keep=21
 
 home_monthly_want=no
-home_monthly_keep=100001
+home_monthly_keep=0

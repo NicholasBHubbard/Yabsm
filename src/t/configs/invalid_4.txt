@@ -1,0 +1,25 @@
+#
+# This config is invalid because the root_hourly_take field is set
+# greater than 60. It is not possible to take more than a snapshot per
+# minute for the hourly category.
+#
+
+snapshot_directory=/
+
+define_subvol=root
+
+root_path=/
+
+root_hourly_want=yes
+root_hourly_take=61 # GREATER THAN 60
+root_hourly_keep=0
+
+root_daily_want=no
+root_daily_take=0
+root_daily_keep=0
+
+root_midnight_want=no
+root_midnight_keep=0 
+
+root_monthly_want=no
+root_monthly_keep=0

@@ -1,0 +1,26 @@
+#
+# This config shows that comments are ignored
+#
+
+snapshot_directory=/ # COMMENT
+
+# COMMENT
+define_subvol=root # COMMENT
+
+root_path=/#COMMENT
+
+root_hourly_want=yes #COMMENT
+root_hourly_take=0 #COMMENT
+root_hourly_keep=0 #COMMENT
+
+root_daily_want=no #COMMENT
+root_daily_take=0 #COMMENT
+#COMMENT
+root_daily_keep=48 #COMMENT
+#COMMENT
+root_midnight_want=yes #COMMENT
+root_midnight_keep=14 #COMMENT 
+
+root_monthly_want=yes #COMMENT
+root_monthly_keep=12 #COMMENT
+#COMMENT

@@ -1,0 +1,7 @@
+Every directory specified in the configs that is not obviously a fake directory 
+is a FHS compliant directory in order for these tests to work properly
+on any GNU/Linux OS.
+
+The configs being tested are nonsensical. For example they define
+subvolumes that have the same path as the snapshot_directory, which is
+allowed but probably not something anybody would want.

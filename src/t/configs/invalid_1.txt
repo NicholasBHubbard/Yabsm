@@ -1,0 +1,22 @@
+#
+# This is invalid because the 'snapshot_directory'
+# field was not specified
+#
+
+define_subvol=root
+
+root_path=/
+
+root_hourly_want=0
+root_hourly_take=0 
+root_hourly_keep=0
+
+root_daily_want=no
+root_daily_take=0
+root_daily_keep=0
+
+root_midnight_want=no 
+root_midnight_keep=0 
+
+root_monthly_want=no
+root_monthly_keep=0

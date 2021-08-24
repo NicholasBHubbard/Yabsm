@@ -10,18 +10,23 @@ use 5.010;
 
 sub usage {
     print <<END_USAGE;
-Usage: yabsm [OPTIONS] ...
+Usage: yabsm [OPTION]
 
   --take-snap, -s <SUBVOL> <TIMEFRAME>    take a new snapshot
 
-  --find, -f <QUERY>                      find a snapshot based on QUERY
+  --find, -f <?SUBVOL> <?QUERY>           find a snapshot of SUBVOL using QUERY
 
   --update-crontab, -u                    update cronjobs in /etc/crontab, based
                                           off settings specified in /etc/yabsmrc
 
+  --check-config, -c                      check /etc/yabsmrc for errors. If
+                                          errors are present print their info
+                                          to stdout. Exit with code 0 in either
+                                          case.
+
   --help, -h                              print help (this message) and exit
 
-  Run 'man yabsm' for more help with yabsm
+  Please see 'man yabsm' for more detailed information about yabsm.
 END_USAGE
 }
 
@@ -32,9 +37,6 @@ use FindBin '$Bin';
 use lib "$Bin/lib";
 use Yabsm;
 
-# @YABSM_TAKE_SNAPSHOT is an array because the --take-snap option
-# takes two args. See the documentation of Getopt::Long for more
-# information on multi-arg options.
 my @YABSM_TAKE_SNAPSHOT;
 my $UPDATE_CRONTAB;
 my @YABSM_FIND;
@@ -53,8 +55,14 @@ if ($HELP) {
     exit 0;
 }
 
+if ($CHECK_CONFIG) {
+    my %CONFIG = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');  
+    Yabsm::die_if_invalid_config(\%CONFIG);
+    exit 0;
+}
+
 # TODO: change this to /etc/yabsmrc for production
-my %CONFIG = Yabsm::yabsmrc_to_hash('../yabsmrc');
+my %CONFIG = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');
 Yabsm::die_if_invalid_config(\%CONFIG);
 
 if ($UPDATE_CRONTAB) {
@@ -62,6 +70,8 @@ if ($UPDATE_CRONTAB) {
     die "[!] Error: must be root to update /etc/crontab\n" if $<;
 
     update_etc_crontab(\%CONFIG);
+
+    exit 0;
 }
 
 if (@YABSM_TAKE_SNAPSHOT) {
@@ -135,3 +145,7 @@ if (@YABSM_FIND) {
 
     exit 0;
 }
+
+# no options were passed
+usage();
+exit 1;

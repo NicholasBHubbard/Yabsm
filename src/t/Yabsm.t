@@ -273,18 +273,18 @@ sub test_time_piece_obj_to_snapstring {
 test_snap_closest_to();
 sub test_snap_closest_to {
 
-    my $target = Yabsm::n_units_ago(34, 'hours');
+    my $target = Yabsm::n_units_ago(34, 'h');
 
     my $t0 = Yabsm::n_units_ago(0,  'hours');
-    my $t1 = Yabsm::n_units_ago(10, 'hours');
-    my $t2 = Yabsm::n_units_ago(20, 'hours');
+    my $t1 = Yabsm::n_units_ago(10, 'hrs');
+    my $t2 = Yabsm::n_units_ago(20, 'h');
     my $t3 = Yabsm::n_units_ago(30, 'hours');
-    my $t4 = Yabsm::n_units_ago(40, 'hours');
+    my $t4 = Yabsm::n_units_ago(40, 'hrs');
     my $t5 = Yabsm::n_units_ago(50, 'hours');
 
     my @all_snaps = ($t0, $t1, $t2, $t3, $t4, $t5);
 
-    my $output = Yabsm::snap_closest_to($target, \@all_snaps);
+    my $output = Yabsm::snap_closest_to(\@all_snaps, $target);
 
     ok ( $output eq $t4, 'snap_closest_to()' );
 }
@@ -377,38 +377,38 @@ sub test_is_literal_time {
     ok ( $trues && $falses, 'is_literal_time()' );
 }
 
-test_is_relative_query();
-sub test_is_relative_query {
+test_is_relative_time();
+sub test_is_relative_time {
 
     # these should all be true
-    my $t0 = Yabsm::is_relative_query('b 4 m');
-    my $t1 = Yabsm::is_relative_query('back-4-mins');
-    my $t2 = Yabsm::is_relative_query('back 100 minutes');
-    my $t3 = Yabsm::is_relative_query('b-400-h');
-    my $t4 = Yabsm::is_relative_query('b-10-hrs');
-    my $t5 = Yabsm::is_relative_query('b-400-hours');
-    my $t6 = Yabsm::is_relative_query('b-400-d');
-    my $t7 = Yabsm::is_relative_query('b 12 days');
+    my $t0 = Yabsm::is_relative_time('b 4 m');
+    my $t1 = Yabsm::is_relative_time('back-4-mins');
+    my $t2 = Yabsm::is_relative_time('back 100 minutes');
+    my $t3 = Yabsm::is_relative_time('b-400-h');
+    my $t4 = Yabsm::is_relative_time('b-10-hrs');
+    my $t5 = Yabsm::is_relative_time('b-400-hours');
+    my $t6 = Yabsm::is_relative_time('b-400-d');
+    my $t7 = Yabsm::is_relative_time('b 12 days');
 
     # these should all be false
-    my $f0 = Yabsm::is_relative_query('');
-    my $f1 = Yabsm::is_relative_query('WRONG 4 m');
-    my $f2 = Yabsm::is_relative_query('b-WRONG-m');
-    my $f3 = Yabsm::is_relative_query('b-4-WRONG');
-    my $f4 = Yabsm::is_relative_query('back 5');
-    my $f5 = Yabsm::is_relative_query('2020-12-25-12-20');
-    my $f6 = Yabsm::is_relative_query('b -12 hours');
-    my $f7 = Yabsm::is_relative_query('back  4  m');
-    my $f8 = Yabsm::is_relative_query('b 4 dayss');
-    my $f9 = Yabsm::is_relative_query('b 4 d ');
-    my $f10 = Yabsm::is_relative_query(' b 11 d');
-    my $f11 = Yabsm::is_relative_query(' b 11 d ');
+    my $f0 = Yabsm::is_relative_time('');
+    my $f1 = Yabsm::is_relative_time('WRONG 4 m');
+    my $f2 = Yabsm::is_relative_time('b-WRONG-m');
+    my $f3 = Yabsm::is_relative_time('b-4-WRONG');
+    my $f4 = Yabsm::is_relative_time('back 5');
+    my $f5 = Yabsm::is_relative_time('2020-12-25-12-20');
+    my $f6 = Yabsm::is_relative_time('b -12 hours');
+    my $f7 = Yabsm::is_relative_time('back  4  m');
+    my $f8 = Yabsm::is_relative_time('b 4 dayss');
+    my $f9 = Yabsm::is_relative_time('b 4 d ');
+    my $f10 = Yabsm::is_relative_time(' b 11 d');
+    my $f11 = Yabsm::is_relative_time(' b 11 d ');
 
     my $trues  = $t0 && $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7;
     my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6
 		      || $f7 || $f8 && $f9 || $f10 || $f11);
 
-    ok ( $trues && $falses, 'is_relative_query()' );
+    ok ( $trues && $falses, 'is_relative_time()' );
 }
 
 test_is_timeframe();
@@ -469,4 +469,4 @@ sub test_target_dir {
     my $expected = "$snapshot_root_dir/yabsm/$subvol";
 
     ok ( $expected eq $target_dir, 'target_dir()' );
-}
+ }

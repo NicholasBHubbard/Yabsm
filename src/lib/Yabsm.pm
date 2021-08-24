@@ -25,16 +25,19 @@ use Carp;
                  #            YABSMRC IO            #
                  ####################################
 
-sub yabsmrc_to_hash {
+sub yabsmrc_to_hash { # no test
     
-    # Read /etc/yabsmrc into a hash of key value pairs. This function
-    # is used to create the config hash that is passed constantly
-    # around the program.
+    # Read /etc/yabsmrc into a hash of key value pairs. Every setting
+    # in /etc/yabsmrc has the form key=val, so we can naturally split
+    # every line on the '=' sign. All in the hash simple scalar values
+    # except for the 'subvols' key which associated to an array of
+    # strings that represent the names of the subvolumes that the user
+    # defined with the 'define_subvol' option.
 
-    my ($yabsmrc_absolute_path) = @_;
+    my ($yabsmrc_abs_path) = @_;
 
-    open (my $yabsmrc, '<', $yabsmrc_absolute_path)
-      or croak "[!] Error: failed to open file \"$yabsmrc_absolute_path\"\n";
+    open (my $yabsmrc, '<', $yabsmrc_abs_path)
+      or die "[!] Error: failed to open file \"$yabsmrc_abs_path\"\n";
     
     my %yabsmrc_hash;
     
@@ -42,7 +45,8 @@ sub yabsmrc_to_hash {
         
         next if /^[#\s]/;
 
-	s/\s//g; 
+	# remove whitespace and end of line comments
+	s/\s|#.*//g; 
         
         my ($key, $val) = split /=/;
 
@@ -65,80 +69,200 @@ sub yabsmrc_to_hash {
 
 sub die_if_invalid_config { # no test
     
+    # Comprehensively analyze the config hash produced by
+    # yabsmrc_to_hash(). If errors exist print their messages to
+    # STDERR and then die.
+
     my ($config_ref) = @_;
 
-    if (not exists $config_ref->{snapshot_directory}) {
-	die "[!] Error: missing required setting: \"snapshot_directory\"\n";
-    }
+    # make a copy of the config to avoid modifying the actual config
+    my %tmp_config = %$config_ref;
 
-    if (not -d $config_ref->{snapshot_directory}) {
-	my $snap_dir = $config_ref->{snapshot_directory};
-	die "[!] Error: could not find directory \"$snap_dir\"\n";
+    my @errors;
+
+    # check snapshot_directory
+    my $snapshot_directory = $tmp_config{snapshot_directory}; 
+    if (not defined $snapshot_directory) {
+	push @errors, "[!] Config Error: missing required setting: \"snapshot_directory\"\n";
+    }
+    elsif (not -d $snapshot_directory) {
+	push @errors, "[!] Config Error: could not find directory \"$snapshot_directory\"\n";
     }
 
     # for each defined subvolume
-    foreach my $subv_name (@{$config_ref->{subvols}}) {
+    foreach my $subv_name (@{$tmp_config{subvols}}) {
+
+	# check this subvolumes timeframe settings
+	my $subv_path      = $tmp_config{"${subv_name}_path"};
+	my $hourly_want    = $tmp_config{"${subv_name}_hourly_want"};
+	my $hourly_take    = $tmp_config{"${subv_name}_hourly_take"};
+	my $hourly_keep    = $tmp_config{"${subv_name}_hourly_keep"};
+	my $daily_want     = $tmp_config{"${subv_name}_daily_want"};
+	my $daily_take     = $tmp_config{"${subv_name}_daily_take"};
+	my $daily_keep     = $tmp_config{"${subv_name}_daily_keep"};
+	my $midnight_want  = $tmp_config{"${subv_name}_midnight_want"};
+	my $midnight_keep  = $tmp_config{"${subv_name}_midnight_keep"};
+	my $monthly_want   = $tmp_config{"${subv_name}_monthly_want"};
+	my $monthly_keep   = $tmp_config{"${subv_name}_monthly_keep"};
+
+	# Deleting these values is important because later we can make
+	# sure that we have processed every valid option, by asserting
+	# that our hash has no more keys. Any left over keys must be
+	# erroneous.
+	delete $tmp_config{"${subv_name}_path"};
+	delete $tmp_config{"${subv_name}_hourly_want"};
+	delete $tmp_config{"${subv_name}_hourly_take"};
+	delete $tmp_config{"${subv_name}_hourly_keep"};
+	delete $tmp_config{"${subv_name}_daily_want"};
+	delete $tmp_config{"${subv_name}_daily_take"};
+	delete $tmp_config{"${subv_name}_daily_keep"};
+	delete $tmp_config{"${subv_name}_midnight_want"};
+	delete $tmp_config{"${subv_name}_midnight_keep"};
+	delete $tmp_config{"${subv_name}_monthly_want"};
+	delete $tmp_config{"${subv_name}_monthly_keep"};
         
-	# check this subvolumes path
-	if (not exists $config_ref->{"${subv_name}_path"}) {
-	    die "[!] Error: missing required setting \"${subv_name}_path\"\n";
+	# subvolume names must start with alphabetical character
+	if (not $subv_name =~ /^[a-zA-Z]/) {
+	    push @errors, "[!] Config Error: invalid subvolume name \"$subv_name\" starts with non-alphabetical character\n";
 	}
 
-	my $subv_path = $config_ref->{"${subv_name}_path"};
+	# check that this subvolumes path is defined and is actually a
+	# directory
+	if (not defined $subv_path) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_path\"\n"
+	}
+	elsif (not -d $subv_path) {
+	    push @errors, "[!] Config Error: could not find directory \"$subv_path\"\n"
+	}
+	else {} # all good
+
+
+
 	
-	die "[!] Error: could not find directory \"$subv_name\"\n"
-	  if not -d $subv_name;
+	if (not defined $hourly_want) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_hourly_want\"\n"
+	}
+	elsif (not ($hourly_want eq 'yes' || $hourly_want eq 'no')) {
+	    push @errors, "[!] Config Error: ${subv_name}_hourly_want must be either \"yes\" or \"no\"\n";
+	}
+	else {} # all good
 
-	# check this subvolumes timeframe args
-	my $hourly_want = $config_ref->{"${subv_name}_hourly_want"}
-	  or die "[!] Error: missing required setting \"${subv_name}_hourly_want\"\n";
 
-	my $hourly_take = $config_ref->{"${subv_name}_hourly_take"}
-	  or die "[!] Error: missing required setting \"${subv_name}_hourly_take\"\n";
 
-	my $hourly_keep = $config_ref->{"${subv_name}_hourly_keep"}
-	  or die "[!] Error: missing required setting \"${subv_name}_hourly_keep\"\n";
 
-	my $daily_want = $config_ref->{"${subv_name}_daily_want"}
-	  or die "[!] Error: missing required setting \"${subv_name}_daily_want\"\n";
+	if (not defined $hourly_take) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_hourly_take\"\n";
+	}
+	elsif (not ($hourly_take =~ /^\d+$/ && $hourly_take <= 60)) {
+	    push @errors, "[!] Config Error: value for ${subv_name}_hourly_take must be an integer between 0 and 60\n";
+	}
+	else {} # all good
 
-	my $daily_take = $config_ref->{"${subv_name}_daily_take"}
-	  or die "[!] Error: missing required setting \"${subv_name}_daily_take\"\n";
-
-	my $daily_keep = $config_ref->{"${subv_name}_daily_keep"}
-	  or die "[!] Error: missing required setting \"${subv_name}_daily_keep\"\n";
-
-	my $midnight_want = $config_ref->{"${subv_name}_midnight_want"}
-	  or die "[!] Error: missing required setting \"${subv_name}_midnight_want\"\n";
-
-	my $midnight_keep = $config_ref->{"${subv_name}_midnight_keep"}
-	  or die "[!] Error: missing required setting \"${subv_name}_midnight_keep\"\n";
-
-	my $monthly_want = $config_ref->{"${subv_name}_monthly_want"}
-	  or die "[!] Error: missing required setting \"${subv_name}_monthly_want\"\n";
-
-	my $monthly_keep = $config_ref->{"${subv_name}_monthly_keep"}
-	  or die "[!] Error: missing required setting \"${subv_name}_monthly_keep\"\n";
-
-        die "[!] Error: value for ${subv_name}_hourly_take must be an integer between 0 and 60\n"
-          unless ($hourly_take =~ /^\d+$/ && $hourly_take <= 60);
         
-        die "[!] Error: value for ${subv_name}_daily_take must be an integer between 0 and 24\n"
-          unless ($daily_take =~ /^\d+$/ && $daily_take <= 24);
-        
-        die "[!] Error: ${subv_name}_hourly_want must be either \"yes\" or \"no\"\n"
-          unless ($hourly_want eq 'yes' || $hourly_want eq 'no');
 
-        die "[!] Error: ${subv_name}_hourly_want must be either \"yes\" or \"no\"\n"
-          unless ($daily_want eq 'yes' || $daily_want eq 'no');
 
-        die "[!] Error: ${subv_name}_midnight_want must be either \"yes\" or \"no\"\n"
-          unless ($midnight_want eq 'yes' || $midnight_want eq 'no');
+	if (not defined $hourly_keep) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_hourly_keep\"\n";
+	}
+	elsif (not ($hourly_keep =~ /^\d+$/)) {
+	    push @errors, "[!] Config Error: value for ${subv_name}_hourly_keep must be a positive integer\n";
+	}
+	else {} # all good
+
+
+
+
+	if (not defined $daily_want) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_daily_want\"\n";
+	}
+	elsif (not ($daily_want eq 'yes' || $daily_want eq 'no')) {
+	    push @errors, "[!] Config Error: ${subv_name}_hourly_want must be either \"yes\" or \"no\"\n";
+	}
+	else {} # all good
+
+
+	
+
+	if (not defined $daily_take) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_daily_take\"\n";
+	}
+	elsif (not ($daily_take =~ /^\d+$/ && $daily_take <= 24)) {
+	    push @errors, "[!] Config Error: value for ${subv_name}_daily_take must be an integer between 0 and 24\n";
+	}
+	else {} # all good
         
-        die "[!] Error: ${subv_name}_monthly_want must be either \"yes\" or \"no\"\n"
-          unless ($monthly_want eq 'yes' || $monthly_want eq 'no');
+
+
+
+	if (not defined $daily_keep) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_daily_keep\"\n";
+	}
+	elsif (not ($daily_keep =~ /^\d+$/)) {
+	    push @errors, "[!] Config Error: value for ${subv_name}_daily_keep must be a positive integer\n";
+	}
+	else {} # all good
+
+
+
+
+	if (not defined $midnight_want) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_midnight_want\"\n";
+	}
+	elsif (not ($midnight_want eq 'yes' || $midnight_want eq 'no')) {
+	    push @errors, "[!] Config Error: ${subv_name}_midnight_want must be either \"yes\" or \"no\"\n";
+	}
+	else {} # all good
+
+
+
+
+	if (not defined $midnight_keep) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_midnight_keep\"\n";
+	}
+	elsif (not ($midnight_keep =~ /^\d+$/)) {
+	    push @errors, "[!] Config Error: value for ${subv_name}_midnight_keep must be a positive integer\n";
+	}
+	else {} # all good
+
+
+
+
+	if (not defined $monthly_want) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_monthly_want\"\n";
+	}
+	elsif (not ($monthly_want eq 'yes' || $monthly_want eq 'no')) {
+	    push @errors, "[!] Config Error: ${subv_name}_monthly_want must be either \"yes\" or \"no\"\n";
+	}
+	else {} # all good
+
+
+
+
+	if (not defined $monthly_keep) {
+	    push @errors, "[!] Config Error: missing required setting \"${subv_name}_monthly_keep\"\n";
+	}
+	elsif (not ($monthly_keep =~ /^\d+$/)) {
+	    push @errors, "[!] Config Error: value for ${subv_name}_monthly_keep must be a positive integer\n";
+	}
+	else {} # all good
+
+    } # end of loop
+
+    # delete non timeframe related keys
+    delete $tmp_config{snapshot_directory};  
+    delete $tmp_config{subvols};
+
+    # Any key still not deleted must be erroneous
+    foreach my $key (keys %tmp_config) {
+	push @errors, "[!] Config Error: unknown setting \"$key\"\n";
     }
 
+    if (@errors) {
+	print STDERR for @errors;
+	exit 1;
+    }
+
+    # all good
     return;
 }
 
@@ -172,13 +296,14 @@ sub initialize_directories { # no test
 
 sub target_dir { # has test 
 
-    # return path to the directory of a given subvolume.
+    # return path to the directory of a given subvolume. Likely
+    # returns a string like '/.snapshots/yabsm/root'
 
-    my ($config_ref, $yabsm_subvol) = @_;
+    my ($config_ref, $subvol) = @_;
 
     my $snapshot_root_dir = $config_ref->{snapshot_directory};
     
-    return "$snapshot_root_dir/yabsm/$yabsm_subvol";
+    return "$snapshot_root_dir/yabsm/$subvol";
 }
 
                  ####################################
@@ -187,13 +312,14 @@ sub target_dir { # has test
 
 sub ask_for_subvolume { # no test
 
-    # Prompt user to select their desired subvolume. Used for --find
-    # option. 
+    # Prompt user to select their desired subvolume. Used for the
+    # --find option when the user doesn't explicitly pass the
+    # subvolume on the command line.
 
     my ($config_ref) = @_;
 
     # sort the subvol names so they are displayed in alphabetical order.
-    my @all_subvols = sort { $a cmp $b } all_subvols($config_ref);
+    my @all_subvols = sort { $a cmp $b } @{$config_ref->{subvols}};
 
     # No need to prompt if there is only 1 subvolume.
     return $all_subvols[0] if scalar @all_subvols == 1;
@@ -233,14 +359,16 @@ sub ask_for_subvolume { # no test
     }
 
     else {
-	print "\"$input\" is not valid subvolume! Try again!\n\n";
-	return ask_for_subvolume();
+	print "No option \"$input\"! Try again!\n\n";
+	ask_for_subvolume($config_ref);
     }
 }
 
 sub ask_for_query { # no test
 
-    # Prompt user for query
+    # Prompt user for query. Used for the --find option when the user
+    # doesn't explicitly pass their query on the command line.
+
 
     print "enter query:\n>>> ";
 
@@ -263,7 +391,7 @@ sub ask_for_query { # no test
 
 sub get_all_snapshots_of { # no test
 
-    # Read filesystem to gather all the snapshot (paths) for a given
+    # Read filesystem to gather all the snapshots for a given
     # subvolume and return them sorted from newest to oldest.
 
     my ($config_ref, $subvol) = @_;
@@ -271,19 +399,23 @@ sub get_all_snapshots_of { # no test
     # Find our target directory. It should look like '/.snapshots/yabsm/home'
     my $target_dir = target_dir($config_ref, $subvol);
 
-    my @all_snaps; # return this
-
-    for my $tf (('hourly', 'daily', 'midnight', 'monthly')) {
-	push @all_snaps, glob "$target_dir/$tf/*"; 
+    my @all_snaps; 
+    for my $tf ('hourly', 'daily', 'midnight', 'monthly') {
+	if (-d "$target_dir/$tf/") {
+	    push @all_snaps, glob "$target_dir/$tf/*"; 
+	}
     }
     
-    # The snapshots will be returned sorted from newest to oldest.
     my $snaps_sorted_ref = sort_snapshots(\@all_snaps);
 
     return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
 }
 
 sub all_subvols { # has test
+
+    # Return an array of the yabsm names of every subvolume that the
+    # user wants to snapshot. These are all the values for the
+    # 'define_subvol' field the users /etc/yabsmrc.
 
     my ($config_ref) = @_;
 
@@ -293,14 +425,14 @@ sub all_subvols { # has test
 }
 
                  ####################################
-                 #    REPRESENTATION CONVERSIONS    #
+                 #      SNAPSTRING CONVERSIONS      #
                  ####################################
 
 sub snapstring_to_nums { # has test
 
-    # Take a snapshot name string and return an array containing, in
-    # order, the year, month, day, hour, and minute. This works with
-    # both a full path or just a snapshot name.
+    # Take a snapshot name string and return an array containing in
+    # order the year, month, day, hour, and minute. This works with
+    # both a full path and just a snapshot name string.
 
     my ($snap) = @_;
 
@@ -311,9 +443,10 @@ sub snapstring_to_nums { # has test
 
 sub nums_to_snapstring { # has test
 
-    # Take 5 integer arguments representing, in order, the year,
-    # month, day, hour, and minute then return a snapshot name string
-    # that aligns with the format used in current_time_string().
+    # Take 5 integer arguments representing in order the year, month,
+    # day, hour, and minute and then return a snapshot name string
+    # that aligns with the format used in current_time_string() which
+    # is the function used to create snapshot names in the first place.
 
     my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
 
@@ -323,8 +456,8 @@ sub nums_to_snapstring { # has test
 sub snapstring_to_time_piece_obj { # has test
 
     # Turn a snapshot name string into a Time::Peice object. This is
-    # useful because we can do time arithmetic (like adding hours or
-    # minutes) on the object.
+    # useful because we can do time arithmetic like adding hours or
+    # minutes on the object.
 
     my ($snap) = @_;
 
@@ -377,6 +510,7 @@ sub compare_snapshots { # has test
     my @snap1_nums = snapstring_to_nums($snap1);
     my @snap2_nums = snapstring_to_nums($snap2);
 
+    # lexicographic order
     for (my $i = 0; $i < scalar @snap1_nums; $i++) {
 
 	return 1  if $snap1_nums[$i] < $snap2_nums[$i];
@@ -397,6 +531,8 @@ sub n_units_ago { # has test
     # time. Returns a snapstring.
 
     my ($n, $unit) = @_;
+
+    # Can only add/subtract by seconds with Time::Piece objects.
 
     my $seconds_per_unit;
 
@@ -420,20 +556,22 @@ sub n_units_ago { # has test
 
 sub snap_closest_to { # has test
 
-    # return the snapshot from @all_snaps that is closest to $target_snap
+    # return the snapshot from $all_snaps_ref that is closest to
+    # $target_snap. Note that we expect that $all_snaps_ref is a ref
+    # to a sorted array of snapshots. It does not matter if these
+    # snapshots are full paths or just snapstrings.
 
-    my ($target_snap, $all_snaps_ref) = @_;
+    my ($all_snaps_ref, $target_snap) = @_;
 
     foreach my $snap (@$all_snaps_ref) {
-
+	
 	my $cmp = compare_snapshots($snap, $target_snap);
-
+	
 	return $snap if $cmp == 0 || $cmp == 1;
     }
-
-    warn "WARNING: couldn't find a snapshot close to \"$target_snap\""
-       . "instead returning the oldest snapshot on the system";
-
+    
+    warn "[!] WARNING: couldn't find a snapshot close to \"$target_snap\", instead returning the oldest snapshot\n";
+    
     return @$all_snaps_ref[-1];
 }
 
@@ -443,28 +581,29 @@ sub snap_closest_to { # has test
 
 sub answer_query { # no test
 
-    # This function takes a query and an array (ref) of all the snapshots
-    # and returns the desired snapshot. It is expected that a $query has
-    # already been proven valid.
+    # This function answers $query to find the appropiate snapshot
+    # of $subvol.
 
     my ($config_ref, $subvol, $query) = @_;
 
+    # snapshots are sorted from newest to oldest
     my $all_snaps_ref = get_all_snapshots_of($config_ref, $subvol);
 
     my $snap_to_return;
 
     if (is_literal_time($query)) {
 
-	my @nums = $query =~ m/^(\d{4})([-\s_\/])(\d{1,2})\2(\d{1,2})\2(\d{1,2})\2(\d{1,2})$/;
+	my @nums = $query =~ m/^(\d{4})([- ])(\d{1,2})\2(\d{1,2})\2(\d{1,2})\2(\d{1,2})$/;
 
+	# remove the delimiter '[- ]' in the above regexp.
 	@nums = grep { $_ ne $2 } @nums;
 
 	my $nums_as_snapstring = nums_to_snapstring(@nums);
 
-	$snap_to_return = snap_closest_to($nums_as_snapstring, $all_snaps_ref);
+	$snap_to_return = snap_closest_to($all_snaps_ref, $nums_as_snapstring);
     }
 
-    elsif (is_relative_query($query)) {
+    elsif (is_relative_time($query)) {
 
 	my (undef, $n, $units) = split /[- ]/, $query;
 
@@ -478,28 +617,29 @@ sub answer_query { # no test
 
 sub is_valid_query { # has test
 
-    # Return 1 iff $query is either a time like '2020-02-13-12-30' or
-    # it is a relative time like 'back 40 mins'. 
+    # Return 1 iff $query is either a literal time like
+    # '2020-02-13-12-30' or it is a relative time like 'back-40-mins'.
 
     my ($query) = @_;
 
-    if    (is_literal_time($query))   { return 1 }
-    elsif (is_relative_query($query)) { return 1 }
+    if    (is_literal_time($query))  { return 1 }
+    elsif (is_relative_time($query)) { return 1 }
     else  { return 0 }
 }
 
 sub is_literal_time { # has test
 
-    # Return 1 iff $query is a time string like '2020-5-13-12-30'.
+    # Return 1 iff $query is a literal time string like
+    # '2020-5-13-12-30'.
 
     my ($query) = @_;
 
     return $query =~ /^\d{4}([- ])\d{1,2}\1\d{1,2}\1\d{1,2}\1\d{1,2}$/;
 }
 
-sub is_relative_query { # has test
+sub is_relative_time { # has test
 
-    # Return 1 iff $query is a syntactically valid relative query.
+    # Return 1 iff $query is a syntactically valid relative time.
     # Relative queries take the form of 'mode-amount-unit'.
     # At this time the only valid mode field is 'back'.
     # The amount field must be a positive integer.
@@ -522,7 +662,7 @@ sub is_relative_query { # has test
 
 sub is_subvol { # has test
 
-    # Return 1 iff $subvol is the name of a yabsm subvolume.
+    # Return 1 iff $subvol is the name of a defined yabsm subvolume.
     
     my ($config_ref, $subvol) = @_;
     
@@ -544,7 +684,7 @@ sub is_timeframe { # has test
 
 sub update_etc_crontab { # no test
     
-    # Write the cronjobs to '/etc/crontab'
+    # Write cronjobs to '/etc/crontab'
 
     my ($config_ref) = @_;
 
@@ -582,6 +722,8 @@ sub update_etc_crontab { # no test
 
 sub generate_cron_strings { # no test
 
+    # Generate all the cron strings by reading the users config settings
+    
     my ($config_ref) = @_;
 
     my @cron_strings; # This will be returned
@@ -633,7 +775,6 @@ sub generate_cron_strings { # no test
     return wantarray ? @cron_strings : \@cron_strings;
 }
 
-
                  ####################################
                  #           SNAPSHOT IO            #
                  ####################################
@@ -642,9 +783,9 @@ sub take_new_snapshot { # no test
 
     # take a single read-only snapshot.
 
-    my ($config_ref, $yabsm_subvol, $timeframe) = @_;
+    my ($config_ref, $subvol, $timeframe) = @_;
 
-    my $target_dir = target_dir($config_ref, $yabsm_subvol);
+    my $target_dir = target_dir($config_ref, $subvol);
 
     my $snapshot_name = current_time_string();
 
@@ -655,8 +796,8 @@ sub take_new_snapshot { # no test
 
 sub current_time_string { # no test
     
-    # This function should be used to create a snapshot string name of
-    # the current time.
+    # This function is used be used to create a snapstring name
+    # of the current time.
     
     my ($min, $hr, $day, $mon, $yr) =
       map { sprintf '%02d', $_ } (localtime)[1..5]; 
@@ -669,20 +810,26 @@ sub current_time_string { # no test
 
 sub delete_appropriate_snapshots { # no test
     
+    # Delete snapshot(s) based off $subvol_$timeframe_keep setting
+    # defined in the users config. This function should be called
+    # after take_new_snapshot().
+
     my ($config_ref, $subvol, $timeframe) = @_;
 
+    # these snaps are sorted from newest to oldest
     my $existing_snaps_ref = get_all_snapshots_of($config_ref, $subvol);
 
     my $target_dir = target_dir($config_ref, $subvol);
 
     my $num_snaps = scalar @$existing_snaps_ref;
 
-    my $num_to_keep = %$config_ref{"${subvol}_${timeframe}_keep"};
+    my $num_to_keep = $config_ref->{"${subvol}_${timeframe}_keep"};
 
     # The most common case is there is 1 more snapshot than what should be
     # kept because we just took a snapshot.
     if ($num_snaps == $num_to_keep + 1) { 
 
+	# pop takes from the end of the array
 	my $oldest_snap = pop @$existing_snaps_ref;
 
 	system("btrfs subvolume delete $target_dir/$timeframe/$oldest_snap");
@@ -693,7 +840,8 @@ sub delete_appropriate_snapshots { # no test
     # We haven't reached the snapshot quota yet so we don't delete anything.
     elsif ($num_snaps <= $num_to_keep) { return } 
 
-    # User changed their settings to keep less snapshots. 
+    # User changed their settings to keep less snapshots than they
+    # were keeping prior. 
     else { 
 	
 	while ($num_snaps > $num_to_keep) {
@@ -706,6 +854,7 @@ sub delete_appropriate_snapshots { # no test
 	    $num_snaps--;
 	} 
     }
+
     return;
 }
 

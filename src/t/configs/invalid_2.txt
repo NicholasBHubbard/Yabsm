@@ -1,0 +1,24 @@
+#
+# This config is invalid because we have a *_*_want value does not
+# equal yes or no
+#
+
+snapshot_directory=/
+
+define_subvol=root
+
+root_path=/
+
+root_hourly_want=FOOBAR
+root_hourly_take=0
+root_hourly_keep=0
+
+root_daily_want=no
+root_daily_take=0
+root_daily_keep=0
+
+root_midnight_want=no
+root_midnight_keep=0 
+
+root_monthly_want=no
+root_monthly_keep=0

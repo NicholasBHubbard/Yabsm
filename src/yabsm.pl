@@ -56,20 +56,20 @@ if ($HELP) {
 }
 
 if ($CHECK_CONFIG) {
-    my %CONFIG = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');  
-    Yabsm::die_if_invalid_config(\%CONFIG);
+    my $CONFIG_REF = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');  
+    Yabsm::die_if_invalid_config($CONFIG_REF);
     exit 0;
 }
 
-# TODO: change this to /etc/yabsmrc for production
-my %CONFIG = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');
-Yabsm::die_if_invalid_config(\%CONFIG);
+my $CONFIG_REF = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');
+Yabsm::die_if_invalid_config($CONFIG_REF);
 
 if ($UPDATE_CRONTAB) {
 
     die "[!] Error: must be root to update /etc/crontab\n" if $<;
 
-    Yabsm::update_etc_crontab(\%CONFIG);
+    Yabsm::initialize_yabsm_directories($CONFIG_REF);
+    Yabsm::update_etc_crontab($CONFIG_REF);
 
     exit 0;
 }
@@ -82,8 +82,8 @@ if (@YABSM_TAKE_SNAPSHOT) {
     # that both args are defined as Getopt::Long will kill the program
     # if they are not.
     my ($subvol, $timeframe) = @YABSM_TAKE_SNAPSHOT;
-    
-    if (not Yabsm::is_subvol(\%CONFIG, $subvol)) {
+
+    if (not Yabsm::is_subvol(\$CONFIG_REF, $subvol)) {
 	die "[!] Error: \"$subvol\" is not a yabsm subvolume\n";
     }
 
@@ -91,8 +91,9 @@ if (@YABSM_TAKE_SNAPSHOT) {
 	die "[!] Error: \"$timeframe\" is not a valid timeframe\n";
     }
 
-    Yabsm::take_new_snapshot(\%CONFIG, $subvol, $timeframe);
-    Yabsm::delete_appropriate_snapshots(\%CONFIG, $subvol, $timeframe);
+    Yabsm::initialize_yabsm_directories($CONFIG_REF);
+    Yabsm::take_new_snapshot($CONFIG_REF, $subvol, $timeframe);
+    Yabsm::delete_appropriate_snapshots($CONFIG_REF, $subvol, $timeframe);
 
     exit 0;
 }
@@ -107,7 +108,7 @@ if (@YABSM_FIND) {
     my ($subvol, $query);
 
     if ($arg1) {
-	if (Yabsm::is_subvol(\%CONFIG, $arg1)) {
+	if (Yabsm::is_subvol($CONFIG_REF, $arg1)) {
 	    $subvol = $arg1;
 	}
 	elsif (Yabsm::is_valid_query($arg1)) {
@@ -119,7 +120,7 @@ if (@YABSM_FIND) {
     }
     
     if ($arg2) {
-	if (Yabsm::is_subvol(\%CONFIG, $arg2)) {
+	if (Yabsm::is_subvol($CONFIG_REF, $arg2)) {
 	    $subvol = $arg2;
 	}
 	elsif (Yabsm::is_valid_query($arg2)) {
@@ -131,7 +132,7 @@ if (@YABSM_FIND) {
     }
 
     if (not defined $subvol) {
-	$subvol = Yabsm::ask_for_subvolume(\%CONFIG);
+	$subvol = Yabsm::ask_for_subvolume($CONFIG_REF);
     }
 
     if (not defined $query) {
@@ -139,7 +140,7 @@ if (@YABSM_FIND) {
     }
 
     # $subvol and $query are properly set at this point
-    my $snapshot_path = Yabsm::answer_query(\%CONFIG, $subvol, $query);
+    my $snapshot_path = Yabsm::answer_query($CONFIG_REF, $subvol, $query);
 
     say $snapshot_path;
 

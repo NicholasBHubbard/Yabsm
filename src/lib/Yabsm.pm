@@ -266,29 +266,42 @@ sub die_if_invalid_config { # no test
     return;
 }
 
-sub initialize_directories { # no test
+sub initialize_yabsm_directories { # no test
 
     my ($config_ref) = @_;
 
-    my $yabsm_root_dir = $config_ref->{snapshot_dir} . "/yabsm";
+    my $yabsm_root_dir = $config_ref->{snapshot_directory} . "/yabsm";
 
-    mkdir $yabsm_root_dir;
+    mkdir $yabsm_root_dir if not -d $yabsm_root_dir;
 
-    foreach my $subv_name (keys %{$config_ref->{yabsm_subvols}}) {
+    foreach my $subv_name (@{$config_ref->{subvols}}) {
 
-        mkdir "$yabsm_root_dir/$subv_name";
+	my $subv_dir = $yabsm_root_dir/$subv_name;
+
+	if (not -d $subv_dir) {
+	    mkdir "$yabsm_root_dir/$subv_name";
+	}
+
+	my $hourly_want   = $config_ref->{"${subv_name}_hourly_want"};
+	my $daily_want    = $config_ref->{"${subv_name}_daily_want"};
+	my $midnight_want = $config_ref->{"${subv_name}_midnight_want"};
+	my $monthly_want  = $config_ref->{"${subv_name}_monthly_want"};
+
+	if ($hourly_want eq 'yes' && not -d "$subv_dir/hourly") {
+	    mkdir "$subv_dir/hourly";
+	}
 	
-        mkdir "$yabsm_root_dir/$subv_name/hourly"
-          if ($config_ref->{"${subv_name}_hourly_want"} eq 'yes');
-	
-        mkdir "$yabsm_root_dir/$subv_name/daily"
-          if ($config_ref->{"${subv_name}_daily_want"} eq 'yes');
-	
-        mkdir "$yabsm_root_dir/$subv_name/midnight"
-          if ($config_ref->{"${subv_name}_midnight_want"} eq 'yes');
-        
-        mkdir "$yabsm_root_dir/$subv_name/monthly"
-          if ($config_ref->{"${subv_name}_monthly_want"} eq 'yes');
+	if ($daily_want eq 'yes' && not -d "$subv_dir/daily") {
+	    mkdir "$subv_dir/daily";
+	}
+
+	if ($midnight_want eq 'yes' && not -d "$subv_dir/midnight") {
+	    mkdir "$subv_dir/midnight";
+	}
+
+	if ($monthly_want eq 'yes' && not -d "$subv_dir/monthly") {
+	    mkdir "$subv_dir/monthly";
+	}
     }
     
     return;

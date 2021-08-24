@@ -92,7 +92,7 @@ if (@YABSM_TAKE_SNAPSHOT) {
     }
 
     Yabsm::take_new_snapshot(\%CONFIG, $subvol, $timeframe);
-    Yabsm::delete_appropiate_snapshots(\%CONFIG, $subvol, $timeframe);
+    Yabsm::delete_appropriate_snapshots(\%CONFIG, $subvol, $timeframe);
 
     exit 0;
 }

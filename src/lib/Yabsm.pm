@@ -276,10 +276,10 @@ sub initialize_yabsm_directories { # no test
 
     foreach my $subv_name (@{$config_ref->{subvols}}) {
 
-	my $subv_dir = $yabsm_root_dir/$subv_name;
+	my $subv_dir = "$yabsm_root_dir/$subv_name";
 
 	if (not -d $subv_dir) {
-	    mkdir "$yabsm_root_dir/$subv_name";
+	    mkdir $subv_dir;
 	}
 
 	my $hourly_want   = $config_ref->{"${subv_name}_hourly_want"};

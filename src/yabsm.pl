@@ -83,7 +83,7 @@ if (@YABSM_TAKE_SNAPSHOT) {
     # if they are not.
     my ($subvol, $timeframe) = @YABSM_TAKE_SNAPSHOT;
 
-    if (not Yabsm::is_subvol(\$CONFIG_REF, $subvol)) {
+    if (not Yabsm::is_subvol($CONFIG_REF, $subvol)) {
 	die "[!] Error: \"$subvol\" is not a yabsm subvolume\n";
     }
 

@@ -621,7 +621,7 @@ sub answer_query { # no test
 
 	my $n_units_ago = n_units_ago($n, $units);
 
-	$snap_to_return = snap_closest_to($n_units_ago, $all_snaps_ref);
+	$snap_to_return = snap_closest_to($all_snaps_ref, $n_units_ago);
     }
     
     return $snap_to_return;

@@ -32,6 +32,6 @@ move "$YABSM_DIR/yabsmrc", '/etc/yabsmrc';
 move "$YABSM_DIR/yabsm-fatpacked.pl", '/usr/local/bin/yabsm';
 
 chmod 0644, '/etc/yabsmrc';
-chmod 0751, "/usr/local/bin/yabsm";
+chmod 0755, "/usr/local/bin/yabsm";
 
 say "success!";

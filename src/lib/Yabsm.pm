@@ -784,11 +784,16 @@ sub take_new_snapshot { # no test
 
     my ($config_ref, $subvol, $timeframe) = @_;
 
+    my $mountpoint = $config_ref->{"${subvol}_path"};
+
     my $target_dir = target_dir($config_ref, $subvol);
 
     my $snapshot_name = current_time_string();
 
-    system("btrfs subvolume snapshot -r $target_dir/$timeframe/$snapshot_name"); 
+    system( 'btrfs subvolume snapshot -r '
+	  . $mountpoint
+	  . " $target_dir/$timeframe/$snapshot_name"
+	  ); 
 
     return;
 }

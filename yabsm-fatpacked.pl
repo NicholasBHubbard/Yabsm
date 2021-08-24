@@ -115,7 +115,7 @@ if ($UPDATE_CRONTAB) {
 
     die "[!] Error: must be root to update /etc/crontab\n" if $<;
 
-    update_etc_crontab(\%CONFIG);
+    Yabsm::update_etc_crontab(\%CONFIG);
 
     exit 0;
 }

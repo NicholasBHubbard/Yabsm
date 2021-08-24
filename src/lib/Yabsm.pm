@@ -369,7 +369,6 @@ sub ask_for_query { # no test
     # Prompt user for query. Used for the --find option when the user
     # doesn't explicitly pass their query on the command line.
 
-
     print "enter query:\n>>> ";
 
     my $input = <STDIN>;

@@ -29,7 +29,7 @@ sub yabsm_dir {
 my $YABSM_DIR = yabsm_dir();
 
 move "$YABSM_DIR/yabsmrc", '/etc/yabsmrc';
-move "$YABSM_DIR/src/yabsm-fatpacked.pl", '/usr/local/bin/yabsm';
+move "$YABSM_DIR/yabsm-fatpacked.pl", '/usr/local/bin/yabsm';
 
 chmod 0664, '/etc/yabsmrc';
 chmod 0777, "/usr/local/bin/yabsm-take-snapshot";

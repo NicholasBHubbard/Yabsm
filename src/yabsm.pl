@@ -10,7 +10,7 @@ use 5.010;
 
 sub usage {
     print <<END_USAGE;
-Usage: yabsm [OPTION]
+Usage: yabsm [OPTION] [arg...]
 
   --take-snap, -s <SUBVOL> <TIMEFRAME>    take a new snapshot
 

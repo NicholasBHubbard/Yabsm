@@ -28,8 +28,8 @@ sub yabsm_dir {
 # Should be '/home/user/yabsm'
 my $YABSM_DIR = yabsm_dir();
 
-move "$YABSM_DIR/yabsmrc", '/etc/yabsmrc';
-move "$YABSM_DIR/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
+move "$YABSM_DIR/export/yabsmrc", '/etc/yabsmrc';
+move "$YABSM_DIR/export/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
 
 chmod 0644, '/etc/yabsmrc';
 chmod 0755, '/usr/local/bin/yabsm';

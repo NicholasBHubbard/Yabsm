@@ -634,9 +634,20 @@ sub is_valid_query { # has test
 
     my ($query) = @_;
 
-    if    (is_literal_time($query))  { return 1 }
-    elsif (is_relative_time($query)) { return 1 }
+    if    (is_immediate($query))     { return 1 }
+    elsif (is_before_query($query))  { return 1 }
+    elsif (is_after_query($query))   { return 1 }
+    elsif (is_between_query($query)) { return 1 }
     else  { return 0 }
+}
+
+sub is_immediate { # TODO no test
+
+    # An immediate is either a literal time or a relative time.
+
+    my ($time) = @_;
+    
+    return is_literal_time($time) || is_relative_time($time);
 }
 
 sub is_literal_time { # has test
@@ -646,30 +657,83 @@ sub is_literal_time { # has test
 
     my ($query) = @_;
 
-    return $query =~ /^\d{4}([- ])\d{1,2}\1\d{1,2}\1\d{1,2}\1\d{1,2}$/;
+    return $query =~ /^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$/;
 }
 
 sub is_relative_time { # has test
 
     # Return 1 iff $query is a syntactically valid relative time.
-    # Relative queries take the form of 'mode-amount-unit'.
-    # At this time the only valid mode field is 'back'.
-    # The amount field must be a positive integer.
+    # Relative queries take the form of 'back-amount-unit'.
+    # 'back' can be abbreviated to b.
+    # The amount field must be a whole number.
     # The unit field must be a time unit like minutes, hours, or days.
 
     my ($query) = @_;
 
-    my ($mode, $amount, $unit) = split /[- ]/, $query, 3;
+    my ($back, $amount, $unit) = split '-', $query, 3;
 
-    return 0 if any { not defined } ($mode, $amount, $unit);
+    return 0 if any { not defined } ($back, $amount, $unit);
 
-    my $mode_correct = $mode =~ /^(b|back)$/;
+    my $back_correct = $back =~ /^b(ack)?$/;
 
     my $amount_correct = $amount =~ /^[0-9]+$/;
     
-    my $unit_correct = any { $_ eq $unit } qw/m mins minutes h hrs hours d days/;
+    my $unit_correct = any { $_ eq $unit } qw/minutes mins m hours hrs h days d/;
     
-    return $mode_correct && $amount_correct && $unit_correct;
+    return $back_correct && $amount_correct && $unit_correct;
+}
+
+sub is_before_query { # TODO no test
+
+    # Return 1 iff $query is a syntactically valid 'before' query.
+
+    my ($query) = @_;
+
+    my ($keyword, $imm) = split ' ', $query, 2;
+
+    return 0 if any { not defined } ($keyword, $imm);
+
+    my $keyword_correct = $keyword =~ /^bef(ore)?$/;
+
+    my $imm_correct = is_immediate($imm);
+
+    return $keyword_correct && $imm_correct;
+}
+
+sub is_after_query { # TODO no test
+
+    # Return 1 iff $query is a syntactically valid 'after' query.
+
+    my ($query) = @_;
+
+    my ($keyword, $imm) = split ' ', $query, 2;
+
+    return 0 if any { not defined } ($keyword, $imm);
+
+    my $keyword_correct = $keyword =~ /^aft(er)?$/;
+
+    my $imm_correct = is_immediate($imm);
+
+    return $keyword_correct && $imm_correct;
+}
+
+sub is_between_query { # TODO no test
+
+    # Return 1 iff $query is a syntactically valid 'after' query.
+
+    my ($query) = @_;
+
+    my ($keyword, $imm1, $imm2) = split ' ', $query, 3;
+
+    return 0 if any { not defined } ($keyword, $imm1, $imm2);
+
+    my $keyword_correct = $keyword =~ /^bet(ween)?$/;
+
+    my $imm1_correct = is_immediate($imm1);
+
+    my $imm2_correct = is_immediate($imm2);
+
+    return $keyword_correct && $imm1_correct && $imm2_correct;
 }
 
 sub is_subvol { # has test

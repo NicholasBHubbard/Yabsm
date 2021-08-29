@@ -934,45 +934,63 @@ sub is_relative_time { # has test
 
     my $back_correct = $back =~ /^b(ack)?$/;
 
-    my $amount_correct = $amount =~ /^[0-9]+$/;
+    my $amount_correct = $amount =~ /^\d+$/;
     
     my $unit_correct = any { $_ eq $unit } qw/minutes mins m hours hrs h days d/;
     
     return $back_correct && $amount_correct && $unit_correct;
 }
 
-sub is_before_query { # TODO no test
+sub is_newer_query { # has test
 
-    # Return 1 iff $query is a syntactically valid 'before' query.
+    # Return 1 iff $query is a syntactically valid 'newer' query.
 
     my ($query) = @_;
 
-    my ($keyword, $imm) = split ' ', $query, 2;
+    my ($keyword, $imm) = split /\s/, $query, 2;
 
     return 0 if any { not defined } ($keyword, $imm);
 
-    my $keyword_correct = $keyword =~ /^bef(ore)?$/;
+    my $keyword_correct = $keyword =~ /^newer$/;
 
     my $imm_correct = is_immediate($imm);
 
     return $keyword_correct && $imm_correct;
 }
 
-sub is_after_query { # TODO no test
+sub is_older_query { # has test
 
-    # Return 1 iff $query is a syntactically valid 'after' query.
+    # Return 1 iff $query is a syntactically valid 'older' query.
 
     my ($query) = @_;
 
-    my ($keyword, $imm) = split ' ', $query, 2;
+    my ($keyword, $imm) = split /\s/, $query, 2;
 
     return 0 if any { not defined } ($keyword, $imm);
 
-    my $keyword_correct = $keyword =~ /^aft(er)?$/;
+    my $keyword_correct = $keyword =~ /^older$/;
 
     my $imm_correct = is_immediate($imm);
 
     return $keyword_correct && $imm_correct;
+}
+
+sub is_newest_query { # has test
+    
+    # Return 1 iff $query is a syntactically valid 'newest' query.
+
+    my ($query) = @_;
+
+    return $query =~ /^newest$/;
+}
+
+sub is_oldest_query { # has test
+    
+    # Return 1 iff $query is a syntactically valid 'oldest' query.
+
+    my ($query) = @_;
+
+    return $query =~ /^oldest$/;
 }
 
 sub is_between_query { # TODO no test

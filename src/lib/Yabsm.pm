@@ -586,6 +586,59 @@ sub relative_time_to_snapstring { # TODO no test
     return $n_units_ago_snapstring; 
 }
 
+sub snapstring_to_nums { # Has test. Is pure.
+
+    # Take a snapshot name string and return an array containing in
+    # order the year, month, day, hour, and minute. This works with
+    # both a full path and just a snapshot name string.
+
+    my ($snap) = @_;
+
+    my @nums = $snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;
+
+    return wantarray ? @nums : \@nums;
+}
+
+sub nums_to_snapstring { # Has test. Is pure.
+
+    # Take 5 integer arguments representing in order the year, month,
+    # day, hour, and minute and then return a snapshot name string
+    # that aligns with the format used in current_time_string() which
+    # is the function used to create snapshot names in the first place.
+
+    my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
+
+    return "day=${yr}_${mon}_${day},time=${hr}:$min";
+}
+
+sub snapstring_to_time_piece_obj { # Has test. Is pure.
+
+    # Turn a snapshot name string into a Time::Peice object. This is
+    # useful because we can do time arithmetic like adding hours or
+    # minutes on the object.
+
+    my ($snap) = @_;
+
+    my ($yr, $mon, $day, $hr, $min) = snapstring_to_nums($snap);
+
+    return Time::Piece->strptime("$yr/$mon/$day/$hr/$min",'%Y/%m/%d/%H/%M');
+}
+
+sub time_piece_obj_to_snapstring { # Has test. Is pure.
+
+    # Turn a Time::Piece object into a snapshot name string.
+
+    my ($time_piece_obj) = @_;
+
+    my $yr  = $time_piece_obj->year;
+    my $mon = $time_piece_obj->mon;
+    my $day = $time_piece_obj->mday;
+    my $hr  = $time_piece_obj->hour;
+    my $min = $time_piece_obj->min;
+
+    return nums_to_snapstring($yr, $mon, $day, $hr, $min);
+}
+
                  ####################################
                  #         SNAPSHOT ORDERING        #
                  ####################################

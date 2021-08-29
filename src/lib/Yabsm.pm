@@ -70,7 +70,7 @@ sub yabsmrc_to_hash { # No test. Is not pure.
     return wantarray ? %yabsmrc_hash : \%yabsmrc_hash;
 }
 
-sub die_if_invalid_config { # no test
+sub die_if_invalid_config { # No test. Is not pure.
     
     # Comprehensively analyze the config hash produced by
     # yabsmrc_to_hash(). If errors exist print their messages to
@@ -269,7 +269,7 @@ sub die_if_invalid_config { # no test
     return;
 }
 
-sub initialize_yabsm_directories { # no test
+sub initialize_yabsm_directories { # No test. Is not pure.
 
     my ($config_ref) = @_;
 
@@ -310,7 +310,7 @@ sub initialize_yabsm_directories { # no test
     return;
 }
 
-sub target_dir { # has test 
+sub target_dir { # Has test. Is pure.
 
     # return path to the directory of a given subvolume. Likely
     # returns a string like '/.snapshots/yabsm/root'
@@ -326,7 +326,7 @@ sub target_dir { # has test
                  #          USER INTERACTION        #
                  ####################################
 
-sub ask_for_subvolume { # no test
+sub ask_for_subvolume { # No test. Is not pure.
 
     # Prompt user to select their desired subvolume. Used for the
     # --find option when the user doesn't explicitly pass the
@@ -380,7 +380,7 @@ sub ask_for_subvolume { # no test
     }
 }
 
-sub ask_for_query { # no test
+sub ask_for_query { # No test. Is not pure.
 
     # Prompt user for query. Used for the --find option when the user
     # doesn't explicitly pass their query on the command line.
@@ -404,7 +404,7 @@ sub ask_for_query { # no test
                  #           DATA GATHERING         #
                  ####################################
 
-sub get_all_snapshots_of { # no test
+sub get_all_snapshots_of { # No test. Is not pure.
 
     # Read filesystem to gather all the snapshots for a given
     # subvolume and return them sorted from newest to oldest.
@@ -426,7 +426,7 @@ sub get_all_snapshots_of { # no test
     return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
 }
 
-sub all_subvols { # has test
+sub all_subvols { # Has test. Is pure.
 
     # Return an array of the yabsm names of every subvolume that the
     # user wants to snapshot. These are all the values for the
@@ -443,7 +443,7 @@ sub all_subvols { # has test
                  #      SNAPSTRING CONVERSIONS      #
                  ####################################
 
-sub snapstring_to_nums { # has test
+sub snapstring_to_nums { # Has test. Is pure.
 
     # Take a snapshot name string and return an array containing in
     # order the year, month, day, hour, and minute. This works with
@@ -456,7 +456,7 @@ sub snapstring_to_nums { # has test
     return wantarray ? @nums : \@nums;
 }
 
-sub nums_to_snapstring { # has test
+sub nums_to_snapstring { # Has test. Is pure.
 
     # Take 5 integer arguments representing in order the year, month,
     # day, hour, and minute and then return a snapshot name string
@@ -468,7 +468,7 @@ sub nums_to_snapstring { # has test
     return "day=${yr}_${mon}_${day},time=${hr}:$min";
 }
 
-sub snapstring_to_time_piece_obj { # has test
+sub snapstring_to_time_piece_obj { # Has test. Is pure.
 
     # Turn a snapshot name string into a Time::Peice object. This is
     # useful because we can do time arithmetic like adding hours or
@@ -481,7 +481,7 @@ sub snapstring_to_time_piece_obj { # has test
     return Time::Piece->strptime("$yr/$mon/$day/$hr/$min",'%Y/%m/%d/%H/%M');
 }
 
-sub time_piece_obj_to_snapstring { # has test
+sub time_piece_obj_to_snapstring { # Has test. Is pure.
 
     # Turn a Time::Piece object into a snapshot name string.
 
@@ -590,7 +590,7 @@ sub relative_time_to_snapstring { # TODO no test
                  #         SNAPSHOT ORDERING        #
                  ####################################
 
-sub sort_snapshots { # has test
+sub sort_snapshots { # Has test. Is pure.
 
     # return a sorted version of the inputted array ref of
     # snapshots. Sorted from newest to oldest. Works with either full
@@ -603,7 +603,7 @@ sub sort_snapshots { # has test
     return wantarray ? @sorted_snaps : \@sorted_snaps;
 }
 
-sub cmp_snaps { # has test
+sub cmp_snaps { # Has test. Is pure.
 
     # Return -1 if $snap1 is newer than $snap2.
     # Return 1 if $snap1 is older than $snap2
@@ -630,7 +630,7 @@ sub cmp_snaps { # has test
                  #          TIME ARITHMETIC         #
                  ####################################
 
-sub n_units_ago { # has test
+sub n_units_ago { # Has test. Is pure.
 
     # Subtract $n minutes, hours, or days from the current
     # time. Returns a snapstring.
@@ -659,7 +659,7 @@ sub n_units_ago { # has test
                  #         SNAPSHOT FILTERING       #
                  ####################################
 
-sub snap_closest_to { # has test
+sub snap_closest_to { # Has test. Is pure.
 
     # return the snapshot from $all_snaps_ref that is closest to
     # $target_snap. $all_snaps_ref is sorted from newest to oldest.
@@ -717,7 +717,7 @@ sub snap_closer { # has test
     else            { return $snap2 }
 }
 
-sub snaps_newer { # has test
+sub snaps_newer { # Has test. Is pure.
 
     my ($all_snaps_ref, $target_snap) = @_;
 
@@ -739,7 +739,7 @@ sub snaps_newer { # has test
     return wantarray ? @snaps_newer : \@snaps_newer;
 }
 
-sub snaps_older { # has test
+sub snaps_older { # Has test. Is pure.
 
     my ($all_snaps_ref, $target_snap) = @_;
 
@@ -763,7 +763,7 @@ sub snaps_older { # has test
     return wantarray ? @snaps_older : \@snaps_older;
 }
 
-sub snaps_between { # has test
+sub snaps_between { # Has test. Is pure.
 
     # Return all of the snapshots between (inclusive) $target_snap1
     # and $target_snap2. $all_snapshots_ref references an array of
@@ -830,7 +830,7 @@ sub snaps_between { # has test
     return wantarray ? @snaps_between : \@snaps_between;
 }
 
-sub newest_snap { # has test
+sub newest_snap { # Has test. Is pure.
 
     # this works because the snapshots are always sorted newest to oldest
 
@@ -839,7 +839,7 @@ sub newest_snap { # has test
     return $all_snaps_ref->[0];
 }
 
-sub oldest_snap { # has test
+sub oldest_snap { # Has test. Is pure.
 
     # this works because the snapshots are always sorted newest to oldest
 
@@ -852,7 +852,7 @@ sub oldest_snap { # has test
                  #              QUERIES             #
                  ####################################
 
-sub answer_query { # no test
+sub answer_query { # TODO no test
 
     # This function answers $query to find the appropiate snapshot(s)
     # of $subvol. 
@@ -921,7 +921,7 @@ sub answer_query { # no test
     return wantarray ? @snaps_to_return : \@snaps_to_return;
 }
 
-sub is_valid_query { # has test
+sub is_valid_query { # Has test. Is pure.
 
     my ($query) = @_;
 
@@ -934,7 +934,7 @@ sub is_valid_query { # has test
     else  { return 0 }
 }
 
-sub is_immediate { # has test
+sub is_immediate { # Has test. Is pure.
 
     # An immediate is either a literal time or a relative time.
 
@@ -943,7 +943,7 @@ sub is_immediate { # has test
     return is_literal_time($imm) || is_relative_time($imm);
 }
 
-sub is_literal_time { # has test
+sub is_literal_time { # Has test. Is pure.
 
     # Literal times can come in one of 5 different forms. 
 
@@ -963,7 +963,7 @@ sub is_literal_time { # has test
     return any { $lit_time =~ /$_/ } ($re1, $re2, $re3, $re4, $re5);
 }
 
-sub is_relative_time { # has test
+sub is_relative_time { # Has test. Is pure.
 
     # Return 1 iff $query is a syntactically valid relative time.
     # Relative queries take the form of 'back-amount-unit'.
@@ -986,7 +986,7 @@ sub is_relative_time { # has test
     return $back_correct && $amount_correct && $unit_correct;
 }
 
-sub is_newer_query { # has test
+sub is_newer_query { # Has test. Is pure.
 
     # Return 1 iff $query is a syntactically valid 'newer' query.
 
@@ -1003,7 +1003,7 @@ sub is_newer_query { # has test
     return $keyword_correct && $imm_correct;
 }
 
-sub is_older_query { # has test
+sub is_older_query { # Has test. Is pure.
 
     # Return 1 iff $query is a syntactically valid 'older' query.
 
@@ -1020,7 +1020,7 @@ sub is_older_query { # has test
     return $keyword_correct && $imm_correct;
 }
 
-sub is_newest_query { # has test
+sub is_newest_query { # Has test. Is pure.
     
     # Return 1 iff $query is a syntactically valid 'newest' query.
 
@@ -1029,7 +1029,7 @@ sub is_newest_query { # has test
     return $query =~ /^newest$/;
 }
 
-sub is_oldest_query { # has test
+sub is_oldest_query { # Has test. Is pure.
     
     # Return 1 iff $query is a syntactically valid 'oldest' query.
 
@@ -1057,7 +1057,7 @@ sub is_between_query { # TODO no test
     return $keyword_correct && $imm1_correct && $imm2_correct;
 }
 
-sub is_subvol { # has test
+sub is_subvol { # Has test. Is pure.
 
     # Return 1 iff $subvol is the name of a defined yabsm subvolume.
     
@@ -1066,7 +1066,7 @@ sub is_subvol { # has test
     return any { $_ eq $subvol } @{$config_ref->{subvols}};
 }
 
-sub is_timeframe { # has test
+sub is_timeframe { # Has test. Is pure.
 
     # Return 1 iff $timeframe is a valid timeframe
 
@@ -1079,7 +1079,7 @@ sub is_timeframe { # has test
                  #             CRONJOBS             #
                  ####################################
 
-sub update_etc_crontab { # no test
+sub update_etc_crontab { # No test. Is not pure.
     
     # Write cronjobs to '/etc/crontab'
 
@@ -1117,7 +1117,7 @@ sub update_etc_crontab { # no test
     return;
 } 
 
-sub generate_cron_strings { # no test
+sub generate_cron_strings { # no test. Is pure.
 
     # Generate all the cron strings by reading the users config settings
     
@@ -1176,7 +1176,7 @@ sub generate_cron_strings { # no test
                  #           SNAPSHOT IO            #
                  ####################################
 
-sub take_new_snapshot { # no test
+sub take_new_snapshot { # No test. Is not pure.
 
     # take a single read-only snapshot.
 
@@ -1196,7 +1196,7 @@ sub take_new_snapshot { # no test
     return;
 }
 
-sub current_time_string { # no test
+sub current_time_string { # No test. Is not pure.
     
     # This function is used be used to create a snapstring name
     # of the current time.
@@ -1210,7 +1210,7 @@ sub current_time_string { # no test
     return "day=${yr}_${mon}_${day},time=${hr}:$min";
 }
 
-sub delete_appropriate_snapshots { # no test
+sub delete_appropriate_snapshots { # No test. Is not pure.
     
     # Delete snapshot(s) based off $subvol_$timeframe_keep setting
     # defined in the users config. This function should be called

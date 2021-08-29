@@ -693,13 +693,13 @@ sub snap_closest_to { # Has test. Is pure.
     }
 
     if (not defined $snap) {
-	$snap= oldest_snap($all_snaps_ref);
+	$snap = oldest_snap($all_snaps_ref);
     }
     
     return $snap;
 }
 
-sub snap_closer { # has test
+sub snap_closer { # Has test. Is pure.
 
     # Return either $snap1 or $snap2, depending on which is closer to
     # $target_snap. If they are equidistant return $snap1.

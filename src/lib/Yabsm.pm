@@ -25,16 +25,19 @@ use Carp;
                  #            YABSMRC IO            #
                  ####################################
 
-sub yabsmrc_to_hash { # no test
+sub yabsmrc_to_hash { # No test. Is not pure.
     
-    # Read /etc/yabsmrc into a hash of key value pairs. Every setting
-    # in /etc/yabsmrc has the form key=val, so we can naturally split
-    # every line on the '=' sign. All in the hash simple scalar values
-    # except for the 'subvols' key which associated to an array of
-    # strings that represent the names of the subvolumes that the user
-    # defined with the 'define_subvol' option.
+    # Take an absolute path to a config file and parse the file into a
+    # config hash. This function will make invalid yabsm
+    # configurations, so after using this function it is neccesary to
+    # call 'die_if_invalid_config()' on the config this function
+    # returns.
 
     my ($yabsmrc_abs_path) = @_;
+
+    if (not defined $yabsmrc_abs_path) {
+	$yabsmrc_abs_path = '/etc/yabsmrc';
+    }
 
     open (my $yabsmrc, '<', $yabsmrc_abs_path)
       or die "[!] Error: failed to open file \"$yabsmrc_abs_path\"\n";

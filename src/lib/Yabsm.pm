@@ -533,49 +533,26 @@ sub literal_time_to_snapstring { # TODO no test
     }
 
     if ($lit_time =~ /$mon_day/) {
-
 	my $t = localtime;
-
-	my $yr  = $t->year;
-	my $mon = $1;
-	my $day = $2;
-	my $hr  = 0;
-	my $min = 0;
-
-	return nums_to_snapstring($yr, $mon, $day, $hr, $min);
+	return nums_to_snapstring($t->year, $1, $2, 0, 0);
     }
 
     if ($lit_time =~ /$mon_day_hr/) {
-
 	my $t = localtime;
-
-	my $yr  = $t->year;
-	my $mon = $1;
-	my $day = $2;
-	my $hr  = $3;
-	my $min = 0;
-
-	return nums_to_snapstring($yr, $mon, $day, $hr, $min);
+	return nums_to_snapstring($t->year, $1, $2, $3, 0);
     }
 
     if ($lit_time =~ /$mon_day_hr_min/) {
-
 	my $t = localtime;
-
-	my $yr  = $t->year;
-	my $mon = $1;
-	my $day = $2;
-	my $hr  = $3;
-	my $min = $4;
-
-	return nums_to_snapstring($yr, $mon, $day, $hr, $min);
+	return nums_to_snapstring($t->year, $1, $2, $3, $5);
     }
 
-    # should never happen because input has already been cleansed. 
-    croak "[!] Internal: $lit_time is not a valid literal time";
+    croak "[!] Internal Error: $lit_time is not a valid literal time";
 }
 
 sub relative_time_to_snapstring { # TODO no test
+
+    # resolve a relative time to a snapstring
 
     my ($rel_time) = @_;
 

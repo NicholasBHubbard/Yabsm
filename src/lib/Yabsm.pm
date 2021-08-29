@@ -493,6 +493,96 @@ sub time_piece_obj_to_snapstring { # has test
     return nums_to_snapstring($yr, $mon, $day, $hr, $min);
 }
 
+sub immediate_to_snapstring {
+
+    # resolve an immediate to a snapstring
+
+    my ($imm) = @_;
+
+    if (is_literal_time($imm)) {
+	return literal_time_to_snapstring($imm);
+    }
+    elsif (is_relative_time($imm)) {
+	return relative_time_to_snapstring($imm);
+    }
+    else {
+	croak "[!] Internal Error: \"$imm\" is not an immediate";
+    }
+}
+
+sub literal_time_to_snapstring { # TODO no test
+
+    my ($lit_time) = @_;
+
+    # literal time forms
+    my $yr_mon_day_hr_min = '^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';
+    my $yr_mon_day        = '^(\d{4})-(\d{1,2})-(\d{1,2})$';
+    my $mon_day           = '^(\d{1,2})-(\d{1,2})$';
+    my $mon_day_hr        = '^(\d{1,2})-(\d{1,2})-(\d{1,2})$';
+    my $mon_day_hr_min    = '^(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';
+
+    if ($lit_time =~ /$yr_mon_day_hr_min/) {
+	return nums_to_snapstring($1, $2, $3, $4, $5);
+    }
+
+    if ($lit_time =~ /$yr_mon_day/) {
+	return nums_to_snapstring($1, $2, $3, 0, 0);
+    }
+
+    if ($lit_time =~ /$mon_day/) {
+
+	my $t = localtime;
+
+	my $yr  = $t->year;
+	my $mon = $1;
+	my $day = $2;
+	my $hr  = 0;
+	my $min = 0;
+
+	return nums_to_snapstring($yr, $mon, $day, $hr, $min);
+    }
+
+    if ($lit_time =~ /$mon_day_hr/) {
+
+	my $t = localtime;
+
+	my $yr  = $t->year;
+	my $mon = $1;
+	my $day = $2;
+	my $hr  = $3;
+	my $min = 0;
+
+	return nums_to_snapstring($yr, $mon, $day, $hr, $min);
+    }
+
+    if ($lit_time =~ /$mon_day_hr_min/) {
+
+	my $t = localtime;
+
+	my $yr  = $t->year;
+	my $mon = $1;
+	my $day = $2;
+	my $hr  = $3;
+	my $min = $4;
+
+	return nums_to_snapstring($yr, $mon, $day, $hr, $min);
+    }
+
+    # should never happen because input has already been cleansed. 
+    croak "[!] Internal: $lit_time is not a valid literal time";
+}
+
+sub relative_time_to_snapstring { # TODO no test
+
+    my ($rel_time) = @_;
+
+    my (undef, $amount, $unit) = split '-', $rel_time, 3;
+
+    my $n_units_ago_snapstring = n_units_ago($amount, $unit);
+
+    return $n_units_ago_snapstring; 
+}
+
                  ####################################
                  #         SNAPSHOT ORDERING        #
                  ####################################

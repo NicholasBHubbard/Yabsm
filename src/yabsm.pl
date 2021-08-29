@@ -12,7 +12,7 @@ sub usage {
     print <<END_USAGE;
 Usage: yabsm [OPTION] [arg...]
 
-  --take-snap, -s <SUBVOL> <TIMEFRAME>    take a new snapshot
+  --take-snap, -s <SUBVOL> <CATEGORY>     take a new snapshot
 
   --find, -f <?SUBVOL> <?QUERY>           find a snapshot of SUBVOL using QUERY
 
@@ -40,14 +40,14 @@ use Yabsm;
 my @YABSM_TAKE_SNAPSHOT;
 my $UPDATE_CRONTAB;
 my @YABSM_FIND;
-my $CHECK_CONFIG;
+my @CHECK_CONFIG;
 my $HELP;
 
-GetOptions( 'take-snap|s=s{2}' => \@YABSM_TAKE_SNAPSHOT
-	  , 'find|f=s{0,2}'    => \@YABSM_FIND
-	  , 'update-crontab|u' => \$UPDATE_CRONTAB
-	  , 'check-config|c'   => \$CHECK_CONFIG
-	  , 'help|h'           => \$HELP
+GetOptions( 'take-snap|s=s{2}'    => \@YABSM_TAKE_SNAPSHOT
+	  , 'find|f=s{0,2}'       => \@YABSM_FIND
+	  , 'update-crontab|u'    => \$UPDATE_CRONTAB
+	  , 'check-config|c{0,1}' => \@CHECK_CONFIG
+	  , 'help|h'              => \$HELP
 	  );
 
 if ($HELP) {
@@ -55,13 +55,27 @@ if ($HELP) {
     exit 0;
 }
 
-if ($CHECK_CONFIG) {
-    my $CONFIG_REF = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');  
-    Yabsm::die_if_invalid_config($CONFIG_REF);
+if (@CHECK_CONFIG) {
+
+    # The user can optionally pass the absolute path to a config. If
+    # no path is given we just check '/etc/yabsmrc'.
+    my ($config_path) = @CHECK_CONFIG;
+
+    my $config_ref;
+
+    if ($config_path) {
+	$config_ref = Yabsm::yabsmrc_to_hash($config_path);  
+    }
+    else {
+	$config_ref = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');  
+    }
+
+    Yabsm::die_if_invalid_config($config_ref);
+
     exit 0;
 }
 
-my $CONFIG_REF = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');
+my $CONFIG_REF = Yabsm::yabsmrc_to_hash();
 Yabsm::die_if_invalid_config($CONFIG_REF);
 
 if ($UPDATE_CRONTAB) {

@@ -851,71 +851,113 @@ sub oldest_snap { # has test
 
 sub answer_query { # no test
 
-    # This function answers $query to find the appropiate snapshot
-    # of $subvol.
+    # This function answers $query to find the appropiate snapshot(s)
+    # of $subvol. 
 
     my ($config_ref, $subvol, $query) = @_;
 
     # snapshots are sorted from newest to oldest
     my $all_snaps_ref = get_all_snapshots_of($config_ref, $subvol);
 
-    my $snap_to_return;
+    my @snaps_to_return = ();
 
     if (is_literal_time($query)) {
 
-	my @nums = $query =~ m/^(\d{4})([- ])(\d{1,2})\2(\d{1,2})\2(\d{1,2})\2(\d{1,2})$/;
+	my $target = literal_time_to_snapstring($all_snaps_ref, $query);
 
-	# remove the delimiter '[- ]' in the above regexp.
-	@nums = grep { $_ ne $2 } @nums;
+	my $snap = snap_closest_to($all_snaps_ref, $target); 
 
-	my $nums_as_snapstring = nums_to_snapstring(@nums);
-
-	$snap_to_return = snap_closest_to($all_snaps_ref, $nums_as_snapstring);
+	push @snaps_to_return, $snap;
     }
 
     elsif (is_relative_time($query)) {
 
-	my (undef, $n, $units) = split /[- ]/, $query;
+	my $target = relative_time_to_snaptring($query);
 
-	my $n_units_ago = n_units_ago($n, $units);
+	my $snap = snap_closest_to($all_snaps_ref, $target);
 
-	$snap_to_return = snap_closest_to($all_snaps_ref, $n_units_ago);
+	push @snaps_to_return, $snap;
     }
-    
-    return $snap_to_return;
+
+    elsif (is_newer_query($query)) {
+
+	my (undef, $immediate) = split /\s/, $query, 2;
+
+	my $target = immediate_to_snapstring($immediate);
+
+	@snaps_to_return = snaps_newer($all_snaps_ref, $target);
+    }
+
+    elsif (is_older_query($query)) {
+
+	my (undef, $immediate) = split /\s/, $query, 2;
+
+	my $target = immediate_to_snapstring($immediate);
+
+	@snaps_to_return = snaps_older($all_snaps_ref, $target);
+    }
+
+    elsif (is_newest_query($query)) {
+
+	my $snap = newest_snap($all_snaps_ref);
+
+	push @snaps_to_return, $snap;
+    }
+
+    elsif (is_oldest_query($query)) {
+
+	my $snap = oldest_snap($all_snaps_ref);
+
+	push @snaps_to_return, $snap;
+    }
+
+    else {
+	croak "[!] Internal Error: \"$query\" is not a valid query";
+    }
+
+    return wantarray ? @snaps_to_return : \@snaps_to_return;
 }
 
 sub is_valid_query { # has test
 
-    # Return 1 iff $query is either a literal time like
-    # '2020-02-13-12-30' or it is a relative time like 'back-40-mins'.
-
     my ($query) = @_;
 
     if    (is_immediate($query))     { return 1 }
-    elsif (is_before_query($query))  { return 1 }
-    elsif (is_after_query($query))   { return 1 }
+    elsif (is_newer_query($query))   { return 1 }
+    elsif (is_older_query($query))   { return 1 }
+    elsif (is_newest_query($query))  { return 1 }
+    elsif (is_oldest_query($query))  { return 1 }
     elsif (is_between_query($query)) { return 1 }
     else  { return 0 }
 }
 
-sub is_immediate { # TODO no test
+sub is_immediate { # has test
 
     # An immediate is either a literal time or a relative time.
 
-    my ($time) = @_;
+    my ($imm) = @_;
     
-    return is_literal_time($time) || is_relative_time($time);
+    return is_literal_time($imm) || is_relative_time($imm);
 }
 
 sub is_literal_time { # has test
 
-    # Return 1 iff $query is a literal time string like
-    # '2020-5-13-12-30'.
+    # Literal times can come in one of 5 different forms. 
 
-    my ($query) = @_;
+    my ($lit_time) = @_;
 
-    return $query =~ /^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$/;
+    # yr-mon-day-hr-min
+    my $re1 = '^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';
+    # yr-mon-day
+    my $re2 = '^\d{4}-\d{1,2}-\d{1,2}$';
+    # mon-day
+    my $re3 = '^\d{1,2}-\d{1,2}$';
+    # mon-day-hr
+    my $re4 = '^\d{1,2}-\d{1,2}-\d{1,2}$';
+    # mon-day-hr-min
+    my $re5 = '^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';
+
+    return any { $lit_time =~ /$_/ } ($re1, $re2, $re3, $re4, $re5);
 }
 
 sub is_relative_time { # has test

@@ -544,7 +544,7 @@ sub literal_time_to_snapstring { # TODO no test
 
     if ($lit_time =~ /$mon_day_hr_min/) {
 	my $t = localtime;
-	return nums_to_snapstring($t->year, $1, $2, $3, $5);
+	return nums_to_snapstring($t->year, $1, $2, $3, $4);
     }
 
     croak "[!] Internal Error: $lit_time is not a valid literal time";

@@ -525,8 +525,8 @@ sub compare_snapshots { # has test
     # lexicographic order
     for (my $i = 0; $i < scalar @snap1_nums; $i++) {
 
-	return 1  if $snap1_nums[$i] < $snap2_nums[$i];
 	return -1 if $snap1_nums[$i] > $snap2_nums[$i];
+	return 1  if $snap1_nums[$i] < $snap2_nums[$i];
     }
 
     # Must be the same

@@ -641,7 +641,7 @@ sub n_units_ago { # has test
     if    ($unit =~ /^(m|mins|minutes)$/) { $seconds_per_unit = 60    }
     elsif ($unit =~ /^(h|hrs|hours)$/   ) { $seconds_per_unit = 3600  }
     elsif ($unit =~ /^(d|days)$/        ) { $seconds_per_unit = 86400 }
-    else  { croak "\"$unit\" is an invalid time unit\n" }
+    else  { croak "\"$unit\" is not a valid time unit" }
 
     my $current_time = current_time_string();
 

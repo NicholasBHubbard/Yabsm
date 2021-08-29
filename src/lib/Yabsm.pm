@@ -653,28 +653,196 @@ sub n_units_ago { # has test
 }
 
                  ####################################
-                 #          FIND ONE SNAPSHOT       #
+                 #         SNAPSHOT FILTERING       #
                  ####################################
 
 sub snap_closest_to { # has test
 
     # return the snapshot from $all_snaps_ref that is closest to
-    # $target_snap. Note that we expect that $all_snaps_ref is a ref
-    # to a sorted array of snapshots. It does not matter if these
-    # snapshots are full paths or just snapstrings.
+    # $target_snap. $all_snaps_ref is sorted from newest to oldest.
 
     my ($all_snaps_ref, $target_snap) = @_;
 
-    foreach my $snap (@$all_snaps_ref) {
+    # this is returned
+    my $snap;
+
+    for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
 	
-	my $cmp = compare_snapshots($snap, $target_snap);
+	my $this_snap = $all_snaps_ref->[$i];
+
+	my $cmp = cmp_snaps($this_snap, $target_snap);
 	
-	return $snap if $cmp == 0 || $cmp == 1;
+	if ($cmp == 0) {
+	    $snap = $this_snap;
+	    last;
+	}
+
+	if ($cmp == 1) {
+	    if ($i == 0) {
+		$snap = $this_snap;
+	    }
+	    else {
+		my $prev_snap = $all_snaps_ref->[$i-1];
+		$snap = snap_closer($target_snap, $prev_snap, $this_snap);
+	    }
+	    last;
+	}
+    }
+
+    if (not defined $snap) {
+	$snap= oldest_snap($all_snaps_ref);
     }
     
-    warn "[!] WARNING: couldn't find a snapshot close to \"$target_snap\", instead returning the oldest snapshot\n";
+    return $snap;
+}
+
+sub snap_closer { # has test
+
+    # Return either $snap1 or $snap2, depending on which is closer to
+    # $target_snap. If they are equidistant return $snap1.
+
+    my ($target_snap, $snap1, $snap2) = @_;
+
+    my $target_epoch = snapstring_to_time_piece_obj($target_snap)->epoch;
+    my $snap1_epoch  = snapstring_to_time_piece_obj($snap1)->epoch;
+    my $snap2_epoch  = snapstring_to_time_piece_obj($snap2)->epoch;
+
+    my $v1 = abs($target_epoch - $snap1_epoch);
+    my $v2 = abs($target_epoch - $snap2_epoch);
+
+    if ($v1 <= $v2) { return $snap1 }
+    else            { return $snap2 }
+}
+
+sub snaps_newer { # has test
+
+    my ($all_snaps_ref, $target_snap) = @_;
+
+    my @snaps_newer = ();
+
+    for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
+
+	my $this_snap = $all_snaps_ref->[$i];
+
+	my $cmp = cmp_snaps($this_snap, $target_snap);  
+
+	# if this snap is newer than the target
+	if ($cmp == -1) {
+	    push @snaps_newer, $this_snap;
+	}
+	else { last }
+    }
+
+    return wantarray ? @snaps_newer : \@snaps_newer;
+}
+
+sub snaps_older { # has test
+
+    my ($all_snaps_ref, $target_snap) = @_;
+
+    my @snaps_older = ();
     
-    return @$all_snaps_ref[-1];
+    my $last_idx = $#{ $all_snaps_ref };
+
+    for (my $i = 0; $i <= $last_idx; $i++) {
+
+	my $this_snap = $all_snaps_ref->[$i];
+
+	my $cmp = cmp_snaps($this_snap, $target_snap);  
+
+	# if this snap is older than the target
+	if ($cmp == 1) {
+	    @snaps_older = @{ $all_snaps_ref }[$i .. $last_idx];
+	    last;
+	}
+    }
+
+    return wantarray ? @snaps_older : \@snaps_older;
+}
+
+sub snaps_between { # has test
+
+    # Return all of the snapshots between (inclusive) $target_snap1
+    # and $target_snap2. $all_snapshots_ref references an array of
+    # snapshots sorted from newest to oldest.
+
+    my ($all_snaps_ref, $target_snap1, $target_snap2) = @_;
+
+    # figure out which target snap is newer/older.
+
+    my $older;
+    my $newer;
+
+    if (-1 == cmp_snaps($target_snap1, $target_snap2)) {
+	$newer = $target_snap1; 
+	$older = $target_snap2;
+    }
+    else {
+	$newer = $target_snap2; 
+	$older = $target_snap1;
+    }
+
+    # find the snaps between (inclusive) $newer and $older
+
+    my @snaps_between = ();
+
+    my $last_idx = $#{ $all_snaps_ref };
+
+    for (my $i = 0; $i <= $last_idx; $i++) {
+
+	my $this_snap = $all_snaps_ref->[$i];
+
+	my $cmp = cmp_snaps($this_snap, $newer);
+
+	# if this snap is older or equal to the newer target
+	if ($cmp == 1 || $cmp == 0) {
+
+	    # between (inclusive)
+	    push @snaps_between, $this_snap if $cmp == 0;
+	    
+	    for (my $j = $i+1; $j <= $last_idx; $j++) {
+
+		my $this_snap = $all_snaps_ref->[$j];
+
+		my $cmp = cmp_snaps($this_snap, $older);
+
+		# if this snap is older than or equal to the older target
+		if ($cmp == 1 || $cmp == 0) {
+
+		    # between (inclusive)
+		    push @snaps_between, $this_snap if $cmp == 0;
+
+		    # Were done. The outer loop will also be broken.
+		    last;
+		}
+
+		# else
+		push @snaps_between, $this_snap;
+	    }
+	    
+	    last;
+	}
+    }
+
+    return wantarray ? @snaps_between : \@snaps_between;
+}
+
+sub newest_snap { # has test
+
+    # this works because the snapshots are always sorted newest to oldest
+
+    my ($all_snaps_ref) = @_;
+
+    return $all_snaps_ref->[0];
+}
+
+sub oldest_snap { # has test
+
+    # this works because the snapshots are always sorted newest to oldest
+
+    my ($all_snaps_ref) = @_;
+
+    return $all_snaps_ref->[-1];
 }
 
                  ####################################

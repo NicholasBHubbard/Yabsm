@@ -1022,32 +1022,32 @@ sub update_etc_crontab { # no test
 
     my ($config_ref) = @_;
 
-    open (my $etc_crontab, '<', '/etc/crontab')
+    open (my $etc_crontab_fh, '<', '/etc/crontab')
       or die "[!] Error: failed to open /etc/crontab\n";
 
-    open (my $tmp, '>', '/tmp/yabsm-update-tmp')
+    open (my $tmp_fh, '>', '/tmp/yabsm-update-tmp')
       or die "[!] Error: failed to open tmp file at /tmp/yabsm-update-tmp\n";
 
     # Copy all lines from /etc/crontab into the tmp file, excluding the existing
     # yabsm cronjobs.
-    while (<$etc_crontab>) {
+    while (<$etc_crontab_fh>) {
 
 	next if /yabsm --take-snap/;
 
-	print $tmp $_;
+	print $tmp_fh $_;
     }
 
     # If there is text on the last line of the file then we must append a
     # newline or else that text will prepend our first cronjob.
-    print $tmp "\n"; 
+    print $tmp_fh "\n"; 
 
     # Now append the cronjob strings to $tmp file.
     my @cron_strings = generate_cron_strings($config_ref);
 
-    say $tmp $_ for @cron_strings;
+    say $tmp_fh $_ for @cron_strings;
 
-    close $etc_crontab;
-    close $tmp;
+    close $etc_crontab_fh;
+    close $tmp_fh;
 
     move '/tmp/yabsm-update-tmp', '/etc/crontab';
 

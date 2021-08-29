@@ -580,7 +580,7 @@ sub nums_to_snapstring { # Has test. Is pure.
 
     # Take 5 integer arguments representing in order the year, month,
     # day, hour, and minute and then return a snapshot name string
-    # that aligns with the format used in current_time_string() which
+    # that aligns with the format used in current_time_snapstring() which
     # is the function used to create snapshot names in the first place.
 
     my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
@@ -676,7 +676,7 @@ sub n_units_ago { # Has test. Is pure.
     elsif ($unit =~ /^(d|days)$/        ) { $seconds_per_unit = 86400 }
     else  { croak "\"$unit\" is not a valid time unit" }
 
-    my $current_time = current_time_string();
+    my $current_time = current_time_snapstring();
 
     my $time_piece_obj = snapstring_to_time_piece_obj($current_time);
 
@@ -1216,7 +1216,7 @@ sub take_new_snapshot { # No test. Is not pure.
 
     my $target_dir = target_dir($config_ref, $subvol);
 
-    my $snapshot_name = current_time_string();
+    my $snapshot_name = current_time_snapstring();
 
     system( 'btrfs subvolume snapshot -r '
 	  . $mountpoint
@@ -1226,7 +1226,7 @@ sub take_new_snapshot { # No test. Is not pure.
     return;
 }
 
-sub current_time_string { # No test. Is not pure.
+sub current_time_snapstring { # No test. Is not pure.
     
     # This function is used be used to create a snapstring name
     # of the current time.

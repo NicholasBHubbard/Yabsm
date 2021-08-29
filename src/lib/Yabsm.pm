@@ -595,15 +595,15 @@ sub sort_snapshots { # has test
 
     my ($snaps_ref) = @_;
 
-    my @sorted_snaps = sort { compare_snapshots($a, $b) } @$snaps_ref;
+    my @sorted_snaps = sort { cmp_snaps($a, $b) } @$snaps_ref;
 
     return wantarray ? @sorted_snaps : \@sorted_snaps;
 }
 
-sub compare_snapshots { # has test
+sub cmp_snaps { # has test
 
-    # Return 1 if $snap1 is newer than $snap2.
-    # Return -1 if $snap1 is older than $snap2
+    # Return -1 if $snap1 is newer than $snap2.
+    # Return 1 if $snap1 is older than $snap2
     # Return 0 if $snap1 and $snap2 are the same. 
     # Works with either full paths or just snapstrings.
 

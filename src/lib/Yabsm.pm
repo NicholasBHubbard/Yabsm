@@ -19,25 +19,21 @@ use 5.010;
 use File::Copy 'move';
 use Time::Piece;
 use List::Util 'any';
-use Carp;
 
                  ####################################
                  #            YABSMRC IO            #
                  ####################################
 
-sub yabsmrc_to_hash { # No test. Is not pure.
+sub yabsmrc_to_hash { # no test
     
-    # Take an absolute path to a config file and parse the file into a
-    # config hash. This function will make invalid yabsm
-    # configurations, so after using this function it is neccesary to
-    # call 'die_if_invalid_config()' on the config this function
-    # returns.
+    # Read /etc/yabsmrc into a hash of key value pairs. Every setting
+    # in /etc/yabsmrc has the form key=val, so we can naturally split
+    # every line on the '=' sign. All in the hash simple scalar values
+    # except for the 'subvols' key which associated to an array of
+    # strings that represent the names of the subvolumes that the user
+    # defined with the 'define_subvol' option.
 
-    my ($yabsmrc_abs_path) = @_;
-
-    if (not defined $yabsmrc_abs_path) {
-	$yabsmrc_abs_path = '/etc/yabsmrc';
-    }
+    my $yabsmrc_abs_path = shift // '/etc/yabsmrc';
 
     open (my $yabsmrc, '<', $yabsmrc_abs_path)
       or die "[!] Error: failed to open file \"$yabsmrc_abs_path\"\n";
@@ -388,7 +384,7 @@ sub ask_for_query { # No test. Is not pure.
     print "enter query:\n>>> ";
 
     my $input = <STDIN>;
-    $input =~ s/^\s+|[\s]+$//g; # remove whitespace from both ends
+    $input =~ s/^\s+|\s+$//g; # remove whitespace from both ends
 
     exit 0 if $input =~ /^q(uit)?$/;
 
@@ -443,64 +439,12 @@ sub all_subvols { # Has test. Is pure.
                  #      SNAPSTRING CONVERSIONS      #
                  ####################################
 
-sub snapstring_to_nums { # Has test. Is pure.
+sub immediate_to_snapstring { # TODO no test.
 
-    # Take a snapshot name string and return an array containing in
-    # order the year, month, day, hour, and minute. This works with
-    # both a full path and just a snapshot name string.
+    # Resolve an immediate to a snapstring. An immediate is either a
+    # literal time or a relative time.
 
-    my ($snap) = @_;
-
-    my @nums = $snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;
-
-    return wantarray ? @nums : \@nums;
-}
-
-sub nums_to_snapstring { # Has test. Is pure.
-
-    # Take 5 integer arguments representing in order the year, month,
-    # day, hour, and minute and then return a snapshot name string
-    # that aligns with the format used in current_time_string() which
-    # is the function used to create snapshot names in the first place.
-
-    my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
-
-    return "day=${yr}_${mon}_${day},time=${hr}:$min";
-}
-
-sub snapstring_to_time_piece_obj { # Has test. Is pure.
-
-    # Turn a snapshot name string into a Time::Peice object. This is
-    # useful because we can do time arithmetic like adding hours or
-    # minutes on the object.
-
-    my ($snap) = @_;
-
-    my ($yr, $mon, $day, $hr, $min) = snapstring_to_nums($snap);
-
-    return Time::Piece->strptime("$yr/$mon/$day/$hr/$min",'%Y/%m/%d/%H/%M');
-}
-
-sub time_piece_obj_to_snapstring { # Has test. Is pure.
-
-    # Turn a Time::Piece object into a snapshot name string.
-
-    my ($time_piece_obj) = @_;
-
-    my $yr  = $time_piece_obj->year;
-    my $mon = $time_piece_obj->mon;
-    my $day = $time_piece_obj->mday;
-    my $hr  = $time_piece_obj->hour;
-    my $min = $time_piece_obj->min;
-
-    return nums_to_snapstring($yr, $mon, $day, $hr, $min);
-}
-
-sub immediate_to_snapstring {
-
-    # resolve an immediate to a snapstring
-
-    my ($imm) = @_;
+    my ($all_snaps_ref, $imm) = @_;
 
     if (is_literal_time($imm)) {
 	return literal_time_to_snapstring($imm);
@@ -508,12 +452,22 @@ sub immediate_to_snapstring {
     elsif (is_relative_time($imm)) {
 	return relative_time_to_snapstring($imm);
     }
+    elsif (is_newest_time($imm)) {
+	return newest_snap($all_snaps_ref);
+    }
+    elsif (is_oldest_time($imm)) {
+	return oldest_snap($all_snaps_ref);
+    }
+
+    # should never happen because input has already been cleansed. 
     else {
-	croak "[!] Internal Error: \"$imm\" is not an immediate";
+	die "[!] Internal Error: \"$imm\" is not an immediate";
     }
 }
 
-sub literal_time_to_snapstring { # TODO no test
+sub literal_time_to_snapstring { # Has test. Is pure.
+
+    # resolve a literal time to a snapstring
 
     my ($lit_time) = @_;
 
@@ -547,10 +501,10 @@ sub literal_time_to_snapstring { # TODO no test
 	return nums_to_snapstring($t->year, $1, $2, $3, $4);
     }
 
-    croak "[!] Internal Error: $lit_time is not a valid literal time";
+    die "[!] Internal Error: \"$lit_time\" is not a valid literal time";
 }
 
-sub relative_time_to_snapstring { # TODO no test
+sub relative_time_to_snapstring { # Has test. Is not pure.
 
     # resolve a relative time to a snapstring
 
@@ -660,7 +614,7 @@ sub cmp_snaps { # Has test. Is pure.
                  #          TIME ARITHMETIC         #
                  ####################################
 
-sub n_units_ago { # Has test. Is pure.
+sub n_units_ago { # Has test. Is not pure.
 
     # Subtract $n minutes, hours, or days from the current
     # time. Returns a snapstring.
@@ -674,7 +628,7 @@ sub n_units_ago { # Has test. Is pure.
     if    ($unit =~ /^(m|mins|minutes)$/) { $seconds_per_unit = 60    }
     elsif ($unit =~ /^(h|hrs|hours)$/   ) { $seconds_per_unit = 3600  }
     elsif ($unit =~ /^(d|days)$/        ) { $seconds_per_unit = 86400 }
-    else  { croak "\"$unit\" is not a valid time unit" }
+    else  { die "\"$unit\" is not a valid time unit" }
 
     my $current_time = current_time_snapstring();
 
@@ -894,20 +848,11 @@ sub answer_query { # TODO no test
 
     my @snaps_to_return = ();
 
-    if (is_literal_time($query)) {
+    if (is_immediate($query)) {
 
-	my $target = literal_time_to_snapstring($all_snaps_ref, $query);
+	my $target = immediate_to_snapstring($all_snaps_ref, $query); 
 
-	my $snap = snap_closest_to($all_snaps_ref, $target); 
-
-	push @snaps_to_return, $snap;
-    }
-
-    elsif (is_relative_time($query)) {
-
-	my $target = relative_time_to_snaptring($query);
-
-	my $snap = snap_closest_to($all_snaps_ref, $target);
+	my $snap = snap_closest_to(, $target);
 
 	push @snaps_to_return, $snap;
     }
@@ -916,7 +861,7 @@ sub answer_query { # TODO no test
 
 	my (undef, $immediate) = split /\s/, $query, 2;
 
-	my $target = immediate_to_snapstring($immediate);
+	my $target = immediate_to_snapstring($all_snaps_ref, $immediate);
 
 	@snaps_to_return = snaps_newer($all_snaps_ref, $target);
     }
@@ -925,27 +870,24 @@ sub answer_query { # TODO no test
 
 	my (undef, $immediate) = split /\s/, $query, 2;
 
-	my $target = immediate_to_snapstring($immediate);
+	my $target = immediate_to_snapstring($all_snaps_ref, $immediate);
 
 	@snaps_to_return = snaps_older($all_snaps_ref, $target);
     }
 
-    elsif (is_newest_query($query)) {
+    elsif (is_between_query($query)) {
 
-	my $snap = newest_snap($all_snaps_ref);
+	my (undef, $imm1, $imm2) = split /\s/, $query, 3;
 
-	push @snaps_to_return, $snap;
-    }
+	my $target1 = immediate_to_snapstring($all_snaps_ref, $imm1);
 
-    elsif (is_oldest_query($query)) {
+	my $target2 = immediate_to_snapstring($all_snaps_ref, $imm2);
 
-	my $snap = oldest_snap($all_snaps_ref);
-
-	push @snaps_to_return, $snap;
+	@snaps_to_return = snaps_between($all_snaps_ref, $target1, $target2);
     }
 
     else {
-	croak "[!] Internal Error: \"$query\" is not a valid query";
+	die "[!] Internal Error: \"$query\" is not a valid query";
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;
@@ -955,13 +897,12 @@ sub is_valid_query { # Has test. Is pure.
 
     my ($query) = @_;
 
-    if    (is_immediate($query))     { return 1 }
-    elsif (is_newer_query($query))   { return 1 }
-    elsif (is_older_query($query))   { return 1 }
-    elsif (is_newest_query($query))  { return 1 }
-    elsif (is_oldest_query($query))  { return 1 }
-    elsif (is_between_query($query)) { return 1 }
-    else  { return 0 }
+    if (is_immediate($query))     { return 1 }
+    if (is_newer_query($query))   { return 1 }
+    if (is_older_query($query))   { return 1 }
+    if (is_between_query($query)) { return 1 }
+
+    return 0;
 }
 
 sub is_immediate { # Has test. Is pure.
@@ -970,7 +911,10 @@ sub is_immediate { # Has test. Is pure.
 
     my ($imm) = @_;
     
-    return is_literal_time($imm) || is_relative_time($imm);
+    return is_newest_time($imm)
+        || is_oldest_time($imm)
+        || is_literal_time($imm)
+        || is_relative_time($imm);
 }
 
 sub is_literal_time { # Has test. Is pure.
@@ -1050,22 +994,22 @@ sub is_older_query { # Has test. Is pure.
     return $keyword_correct && $imm_correct;
 }
 
-sub is_newest_query { # Has test. Is pure.
+sub is_newest_time { # Has test. Is pure.
     
-    # Return 1 iff $query is a syntactically valid 'newest' query.
+    # Return 1 iff $query equals 'newest'.
 
     my ($query) = @_;
 
-    return $query =~ /^newest$/;
+    return $query eq 'newest';
 }
 
-sub is_oldest_query { # Has test. Is pure.
+sub is_oldest_time { # Has test. Is pure.
     
-    # Return 1 iff $query is a syntactically valid 'oldest' query.
+    # Return 1 iff $query equals 'oldest'.
 
     my ($query) = @_;
 
-    return $query =~ /^oldest$/;
+    return $query eq 'oldest';
 }
 
 sub is_between_query { # TODO no test
@@ -1074,7 +1018,7 @@ sub is_between_query { # TODO no test
 
     my ($query) = @_;
 
-    my ($keyword, $imm1, $imm2) = split ' ', $query, 3;
+    my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
 
     return 0 if any { not defined } ($keyword, $imm1, $imm2);
 

@@ -25,6 +25,8 @@ sub initialize_yabsm_directories { # No test. Is not pure. TODO document
 
     mkdir $yabsm_root_dir if not -d $yabsm_root_dir;
 
+    mkdir $yabsm_root_dir . '/.tmp' if not -d $yabsm_root_dir . '/.tmp';
+
     foreach my $subvol (all_subvols($config_ref)) {
 
 	my $subvol_dir = "$yabsm_root_dir/$subvol";

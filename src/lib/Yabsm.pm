@@ -35,10 +35,10 @@ sub initialize_yabsm_directories { # No test. Is not pure. TODO document
 	    mkdir $subvol_dir;
 	}
 
-	my $hourly_want   = $config_ref->{"${subvol}_hourly_want"};
-	my $daily_want    = $config_ref->{"${subvol}_daily_want"};
-	my $midnight_want = $config_ref->{"${subvol}_midnight_want"};
-	my $monthly_want  = $config_ref->{"${subvol}_monthly_want"};
+	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
+	my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
+	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
+	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
 
 	if ($hourly_want eq 'yes' && not -d "$subvol_dir/hourly") {
 	    mkdir "$subvol_dir/hourly";

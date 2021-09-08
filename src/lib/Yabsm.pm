@@ -881,7 +881,7 @@ sub update_etc_crontab { # No test. Is not pure.
     # Now append the cronjob strings to $tmp file.
     my @cron_strings = generate_cron_strings($config_ref);
 
-    say $tmp_fh for @cron_strings;
+    say $tmp_fh $_ for @cron_strings;
 
     close $etc_crontab_fh;
     close $tmp_fh;
@@ -927,7 +927,6 @@ sub generate_cron_strings { # No test. Is pure.
 			    . " --take-snap $subvol daily"
 			    ) if $daily_want eq 'yes';
         
-	# Every night just before midnight. Note that the date is the day of.
         my $midnight_cron = ( '59 23 * * * root' 
                             . ' /usr/local/bin/yabsm'
 			    . " --take-snap $subvol midnight"
@@ -1040,7 +1039,7 @@ sub delete_appropriate_snapshots { # No test. Is not pure.
 
     my $num_snaps = scalar @$existing_snaps_ref;
 
-    my $num_to_keep = $config_ref->{subvols}{$subvol}{"{$timeframe}_keep"};
+    my $num_to_keep = $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
 
     # The most common case is there is 1 more snapshot than what should be
     # kept because we just took a snapshot.

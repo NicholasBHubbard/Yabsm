@@ -197,6 +197,13 @@ sub _check_subvol_setting {
 
     # key must be valid
 
+    if ($key eq 'mountpoint') {
+	if (not -d $val) {
+	    push @$errors_ref, "[!] Config Error (line $.): no such directory '$val'";
+	}
+	else { return 1 }
+    }
+
     if ($key =~ /_want$/) {
 	if (not ($val eq 'yes' || $val eq 'no')) {
 	    push @$errors_ref, "[!] Config Error (line $.): '$val' does not equal 'yes' or 'no'";

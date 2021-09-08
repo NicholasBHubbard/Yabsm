@@ -38,6 +38,8 @@ use lib "$Bin/lib";
 use Yabsm;
 use Yabsmrc;
 
+use Data::Dumper;
+
 my @YABSM_TAKE_SNAPSHOT;
 my $UPDATE_CRONTAB;
 my $YABSM_BACKUP;
@@ -50,7 +52,6 @@ GetOptions( 'take-snap|s=s{2}'      => \@YABSM_TAKE_SNAPSHOT
 	  , 'update-crontab|u'      => \$UPDATE_CRONTAB
 	  , 'check-config|c=s{0,1}' => \@CHECK_CONFIG
 	  , 'backup|b=s'            => \$YABSM_BACKUP
-	  , 'send-backup|b=s'       => \$YABSM_BACKUP
 	  , 'help|h'                => \$HELP
 	  );
 
@@ -72,7 +73,8 @@ if (@CHECK_CONFIG) {
     exit 0;
 }
 
-my $CONFIG_REF = Yabsmrc::read_config('../export/yabsmrc');
+my $CONFIG_REF = Yabsmrc::read_config('/etc/yabsmrc');
+# print Dumper $CONFIG_REF;
 
 if ($UPDATE_CRONTAB) {
 
@@ -92,6 +94,9 @@ if (@YABSM_TAKE_SNAPSHOT) {
     # that both args are defined as Getopt::Long will kill the program
     # if they are not.
     my ($subvol, $timeframe) = @YABSM_TAKE_SNAPSHOT;
+
+    print Dumper $subvol;
+    print Dumper $timeframe;
 
     if (not Yabsm::is_subvol($CONFIG_REF, $subvol)) {
 	die "[!] Error: '$subvol' is not a yabsm subvolume\n";

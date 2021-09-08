@@ -29,7 +29,7 @@ sub yabsm_dir {
 my $YABSM_DIR = yabsm_dir();
 
 copy "$YABSM_DIR/export/yabsmrc", '/etc/yabsmrc';
-copy "$YABSM_DIR/export/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
+copy "$YABSM_DIR/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
 
 chmod 0644, '/etc/yabsmrc';
 chmod 0755, '/usr/local/bin/yabsm';

@@ -1,5 +1,144 @@
-.TH YABSM(1)                    YABSM Reference Guide                       YABSM(1)
-.SH NAME
-yabsm - btrfs snapshot manager
-.SH SYNOPSIS
-yabsm [Option...]
+.TH "YABSM" "1" "August 2021" "YABSM" "YABSM User Guide"
+.SH "NAME"
+yabsm \- btrfs snapshot manager
+
+.SH "SYNOPSIS"
+.B yabsm
+[\fB\-f\fR \fI?subvol ?query\fR]
+[\fB\-s\fR \fIsubvol category\fR]
+[\fB\-u\fR]
+[\fB\-c\fR \fI?config\fR]
+[\fB\-h\fR]
+
+.SH "OPTIONS"
+.TP
+.BR \-f ", " \-\-find\ \fI?subvol\ ?query\fR
+Find a snapshot of '?subvol' that matches '?query'. Both the subvol
+and query arguments are optional, and can be passed in different
+order. If these arguments are omitted you will be prompted for
+them. If you are only using yabsm to snapshot only one subvolume it is not
+neccesary to pass it as an argument.
+.TP
+.BR \-s ", " \-\-take\-snap\ \fIsubvol\ category\fR
+Take a new snapshot of 'subvol' and insert it into the directory
+for 'category'. Must be root to use this option.
+.TP
+.BR \-u ", " \-\-update-crontab
+Read /etc/yabsmrc and write the proper cronjobs to /etc/crontab for
+taking snapshots. Must be root to use this option.
+.TP
+.BR \-c ", " \-\-check\-config\ \fI?config\fR
+Check that ?config is a valid yabsm configuration file. If the ?config
+argument is omitted then /etc/yabsmrc is checked. If errors are found
+they be printed to STDERR and the program will exit with a non-zero
+status.
+.TP
+.BR \-h ", " \-\-help
+Display help information
+
+.SH "QUERIES"
+Queries are used as arguments to the \fB--find\fR option to find one
+or more snapshots.
+
+.SS "EXAMPLES"
+
+\(bu back-10-hours
+
+\(bu b-10-h
+
+\(bu 2021-12-25-12-30
+
+\(bu before b-10-mins
+
+\(bu before 2021-12-25-12-30
+
+\(bu after b-10-days
+
+\(bu after b-57-d
+
+\(bu between b-10-d 2021-12-25-12-30
+
+\(bu between 2021-12-25-12-30 b-10-days
+
+.SS "IMMEDIATES"
+
+An \fIimmediate\fR is a time representation that can take one of
+two forms.
+
+The first form is a literal time such as '2020-12-25-7-0'. Literal
+times are formatted as \fByyyy-mm-dd-hh-mm\fR.
+
+The second form is a relative time such as 'back-2-hours'.
+Relative times are relative to the time when the
+program is invoked. The above relative time can be read as 'the time 2
+hours ago'. Relative times are made up of three fields formatted as
+\fBback-amount-unit\fR.  The three fields must be delimited by a dash
+(\fB\-\fR).
+
+All relative times start with \fBback\-\fR. The \fIback\fR field can
+be abbreviated to \fIb\fR.
+
+The \fIamount\fR field can be any whole number.
+
+The \fIunit\fR field can be either \fIminutes\fR, \fIhours\fR, or
+\fIdays\fR. The \fIminutes\fR unit can be abbreviated as \fImins\fR or
+\fIm\fR. The \fIhours\fR unit can be abbreviated as \fIhrs\fR or
+\fIh\fR. The \fIdays\fR unit can be abbreviated as \fId\fR.
+
+A query that is made up of just an \fIimmediate\fR matches the single
+snapshot closest to the denoted time.
+
+.SS "BEFORE"
+
+A before query takes one immediate as an argument and
+matches all snapshots taken before the time denoted by the
+immediate.
+
+Can be abbreviated as \fBbef\fR
+
+.SS "AFTER"
+
+An after query takes one immediate as an argument and 
+matches all the snapshots taken after the time denoted
+by the immediate.
+
+Can be abbreviated to \fBaft\fR.
+
+.SS "BETWEEN"
+
+Takes two immediates and matches all snapshots taken between
+(inclusive) the two times.
+
+Can be abbreviated to \fBbet\fR.
+
+.SH "CONFIGURATION"
+TODO
+
+.SH "AUTHOR"
+Written by Nicholas Hubbard
+
+.SH "REPORTING BUGS"
+Please report bugs at 
+.UR https://github.com/NicholasBHubbard/yabsm/issues
+.UE .
+
+.SH "COPYRIGHT"
+Copyright (c) 2021 Nicholas Hubbard
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

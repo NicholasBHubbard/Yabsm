@@ -11,40 +11,63 @@ snapshot_directory=/.snapshots
 ### subvolumes can be named whatever you want. These names only 
 ### exist in the world of yabsm.
 
-define_subvol=root
+define_subvol root {
 
-root_path=/
+    mountpoint=/
 
-root_hourly_want=yes
-root_hourly_take=12
-root_hourly_keep=24
+    hourly_want=yes
+    hourly_take=12
+    hourly_keep=2
 
-root_daily_want=yes
-root_daily_take=24
-root_daily_keep=48
-
-root_midnight_want=yes
-root_midnight_keep=14 
-
-root_monthly_want=no
-root_monthly_keep=0
+    daily_want=yes
+    daily_take=24
+    daily_keep=48
+    
+    midnight_want=yes
+    midnight_keep=21
+    
+    monthly_want=no
+    monthly_keep=0
+}
 
 ### You can define as many subvols as you want
 
-define_subvol=home
+define_subvol home {
 
-home_path=/home
+    mountpoint=/home
 
-home_hourly_want=yes
-home_hourly_take=12
-home_hourly_keep=36
+    hourly_want=yes
+    hourly_take=12
+    hourly_keep=36
 
-home_daily_want=yes
-home_daily_take=24
-home_daily_keep=72
+    daily_want=yes
+    daily_take=24
+    daily_keep=72
 
-home_midnight_want=yes
-home_midnight_keep=21
+    midnight_want=yes
+    midnight_keep=21
 
-home_monthly_want=no
-home_monthly_keep=0
+    monthly_want=no
+    monthly_keep=0
+}
+
+define_backup homeDebianServer {
+
+    subvol=home
+
+    path=debianServer:/home/easystore/
+
+    hourly_want=no
+    hourly_take=0
+    hourly_keep=0
+
+    daily_want=no
+    daily_take=0
+    daily_keep=0
+
+    midnight_want=yes
+    midnight_keep=100
+
+    monthly_want=no
+    monthly_keep=0
+}

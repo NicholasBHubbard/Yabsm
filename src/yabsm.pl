@@ -36,18 +36,22 @@ use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
 use FindBin '$Bin';
 use lib "$Bin/lib";
 use Yabsm;
+use Yabsmrc;
 
 my @YABSM_TAKE_SNAPSHOT;
 my $UPDATE_CRONTAB;
+my $YABSM_BACKUP;
 my @YABSM_FIND;
 my @CHECK_CONFIG;
 my $HELP;
 
-GetOptions( 'take-snap|s=s{2}'    => \@YABSM_TAKE_SNAPSHOT
-	  , 'find|f=s{0,2}'       => \@YABSM_FIND
-	  , 'update-crontab|u'    => \$UPDATE_CRONTAB
-	  , 'check-config|c{0,1}' => \@CHECK_CONFIG
-	  , 'help|h'              => \$HELP
+GetOptions( 'take-snap|s=s{2}'      => \@YABSM_TAKE_SNAPSHOT
+	  , 'find|f=s{0,2}'         => \@YABSM_FIND
+	  , 'update-crontab|u'      => \$UPDATE_CRONTAB
+	  , 'check-config|c=s{0,1}' => \@CHECK_CONFIG
+	  , 'backup|b=s'            => \$YABSM_BACKUP
+	  , 'send-backup|b=s'       => \$YABSM_BACKUP
+	  , 'help|h'                => \$HELP
 	  );
 
 if ($HELP) {
@@ -58,29 +62,21 @@ if ($HELP) {
 if (@CHECK_CONFIG) {
 
     # The user can optionally pass the absolute path to a config. If
-    # no path is given we just check '/etc/yabsmrc'.
+    # no path is given we just check '/etc/yabsmrc'. 
     my ($config_path) = @CHECK_CONFIG;
 
-    my $config_ref;
+    $config_path = $config_path || '/etc/yabsmrc';
 
-    if ($config_path) {
-	$config_ref = Yabsm::yabsmrc_to_hash($config_path);  
-    }
-    else {
-	$config_ref = Yabsm::yabsmrc_to_hash('/etc/yabsmrc');  
-    }
-
-    Yabsm::die_if_invalid_config($config_ref);
+    Yabsmrc::read_config($config_path);
 
     exit 0;
 }
 
-my $CONFIG_REF = Yabsm::yabsmrc_to_hash();
-Yabsm::die_if_invalid_config($CONFIG_REF);
+my $CONFIG_REF = Yabsmrc::read_config('../export/yabsmrc');
 
 if ($UPDATE_CRONTAB) {
 
-    die "[!] Error: must be root to update /etc/crontab\n" if $<;
+    die "[!] Permission Error: must be root to update /etc/crontab\n" if $<;
 
     Yabsm::initialize_yabsm_directories($CONFIG_REF);
     Yabsm::update_etc_crontab($CONFIG_REF);
@@ -90,7 +86,7 @@ if ($UPDATE_CRONTAB) {
 
 if (@YABSM_TAKE_SNAPSHOT) {
 
-    die "[!] Error: must be root to take a new snapshot\n" if $<;
+    die "[!] Permission Error: must be root to take a new snapshot\n" if $<;
 
     # --take-snapshot option takes two string args. We can be sure
     # that both args are defined as Getopt::Long will kill the program
@@ -98,11 +94,11 @@ if (@YABSM_TAKE_SNAPSHOT) {
     my ($subvol, $timeframe) = @YABSM_TAKE_SNAPSHOT;
 
     if (not Yabsm::is_subvol($CONFIG_REF, $subvol)) {
-	die "[!] Error: \"$subvol\" is not a yabsm subvolume\n";
+	die "[!] Error: '$subvol' is not a yabsm subvolume\n";
     }
 
     if (not Yabsm::is_timeframe($timeframe)) {
-	die "[!] Error: \"$timeframe\" is not a valid timeframe\n";
+	die "[!] Error: '$timeframe' is not a valid timeframe\n";
     }
 
     Yabsm::initialize_yabsm_directories($CONFIG_REF);
@@ -111,7 +107,6 @@ if (@YABSM_TAKE_SNAPSHOT) {
 
     exit 0;
 }
-
 
 if (@YABSM_FIND) {
 
@@ -129,7 +124,7 @@ if (@YABSM_FIND) {
 	    $query = $arg1;
 	}
 	else {
-	    die "[!] Error: \"$arg1\" is neither a subvolume or query\n";
+	    die "[!] Error: '$arg1' is neither a subvolume or query\n";
 	}
     }
     
@@ -141,22 +136,29 @@ if (@YABSM_FIND) {
 	    $query = $arg2;
 	}
 	else {
-	    die "[!] Error: \"$arg2\" is neither a subvolume or query\n";
+	    die "[!] Error: '$arg2' is neither a subvolume or query\n";
 	}
     }
 
     if (not defined $subvol) {
-	$subvol = Yabsm::ask_for_subvolume($CONFIG_REF);
+	$subvol = Yabsm::ask_user_for_subvolume($CONFIG_REF);
     }
 
     if (not defined $query) {
-	$query = Yabsm::ask_for_query();
+	$query = Yabsm::ask_user_for_query();
     }
 
     # $subvol and $query are properly set at this point
-    my $snapshot_path = Yabsm::answer_query($CONFIG_REF, $subvol, $query);
+    my @snaps = Yabsm::answer_query($CONFIG_REF, $subvol, $query);
 
-    say $snapshot_path;
+    say for @snaps;
+
+    exit 0;
+}
+
+if ($YABSM_BACKUP) {
+
+    Yabsm::do_ssh_backup($CONFIG_REF, $YABSM_BACKUP, 'test');
 
     exit 0;
 }

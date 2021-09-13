@@ -1,0 +1,8 @@
+#
+# this config shows that comments work and that only required 
+# settings are neccesary.
+#
+
+# beginning of line comment
+    # befinning of line comment with leading whitespace
+snapshot_dir=/#end of line comment

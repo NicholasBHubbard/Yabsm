@@ -6,7 +6,7 @@
 #
 #  See Yabsm.t for the testing of this library.
 
-package Yabsm;
+package Yabsm::Base;
 
 use strict;
 use warnings;
@@ -21,11 +21,11 @@ sub initialize_yabsm_directories { # No test. Is not pure. TODO document
 
     my ($config_ref) = @_;
 
-    my $yabsm_root_dir = target_dir($config_ref);
+    my $yabsm_root_dir = local_snapshot_dir($config_ref);
 
     mkdir $yabsm_root_dir if not -d $yabsm_root_dir;
 
-    mkdir $yabsm_root_dir . '/.tmp' if not -d $yabsm_root_dir . '/.tmp';
+    mkdir $yabsm_root_dir . '/.tmp' if not -d $yabsm_root_dir . '/.cache'; # TODO
 
     foreach my $subvol (all_subvols($config_ref)) {
 
@@ -124,6 +124,7 @@ sub ask_user_for_query { # No test. Is not pure.
     my $query;
 
     while (not defined $query) {
+
 	print "enter query:\n>>> ";
 	
 	my $input = <STDIN>;
@@ -147,20 +148,26 @@ sub ask_user_for_query { # No test. Is not pure.
                  #           CONFIG GATHERING       #
                  ####################################
 
-sub all_snapshots_of { # No test. Is not pure.
+sub all_snapshots_of { # No test. Is not pure. TODO DOCUMENT
 
     # Read filesystem to gather all the snapshots for a given
     # subvolume and return them sorted from newest to oldest. 
 
-    my ($config_ref, $subvol) = @_;
+    my ($config_ref, $subvol, @timeframes) = @_;
+
+    # default to all timeframes
+    if (not @timeframes) {
+	@timeframes = qw(hourly daily midnight monthly);
+    }
 
     my @all_snaps; 
-    foreach my $tf ('hourly', 'daily', 'midnight', 'monthly') {
 
-	my $target_dir = target_dir($config_ref, $subvol, $tf);
+    foreach my $tf (@timeframes) {
 
-	if (-d "$target_dir") {
-	    push @all_snaps, glob "$target_dir/*"; 
+	my $snap_dir = local_snapshot_dir($config_ref, $subvol, $tf);
+
+	if (-d $snap_dir) {
+	    push @all_snaps, glob "$snap_dir/*"; 
 	}
     }
     
@@ -191,32 +198,39 @@ sub all_backups { # TODO no test.
     return wantarray ? @backups : \@backups;
 }
 
-sub target_dir { # Has test. Is pure.
+sub local_snapshot_dir { # Has test. Is pure.
 
-    # Return a target dir for yabsm snapshots. The $subvol and
-    # $timeframe arguments are optional.
+    # Return the local directory path for yabsm snapshots. The $subvol
+    # and $timeframe arguments are optional.
 
     my ($config_ref, $subvol, $timeframe) = @_;
 
-    my $target_dir = $config_ref->{misc}{snapshot_directory} . '/yabsm';
+    my $snap_dir = $config_ref->{misc}{snapshot_dir} . '/yabsm';
 
-    if (defined $subvol) {
-	if ($subvol eq 'tmp') {
-	    return $target_dir . '/.tmp';
-	}
-	else {
-	    $target_dir .= "/$subvol" if defined $subvol;
-	}
-    }
+    $snap_dir .= "/$subvol" if defined $subvol;
 
-    $target_dir .= "/$timeframe" if defined $timeframe;
+    $snap_dir .= "/$timeframe" if defined $timeframe;
 
-    return $target_dir;
+    return $snap_dir;
 }
 
                  ####################################
-                 #      SNAPSTRING CONVERSIONS      #
+                 #            SNAPSTRINGS           #
                  ####################################
+
+sub current_time_snapstring { # No test. Is not pure.
+    
+    # This function is used be used to create a snapstring name
+    # of the current time.
+    
+    my ($min, $hr, $day, $mon, $yr) =
+      map { sprintf '%02d', $_ } (localtime)[1..5]; 
+    
+    $mon++;      # month count starts at zero. 
+    $yr += 1900; # year represents years since 1900. 
+    
+    return "day=${yr}_${mon}_${day},time=${hr}:$min";
+}
 
 sub immediate_to_snapstring { # TODO no test.
 
@@ -917,24 +931,20 @@ sub generate_cron_strings { # No test. Is pure.
         
         my $hourly_cron   = ( '*/' . int(60 / $hourly_take) # Max is every minute
 			    . ' * * * * root'
-			    . ' /usr/local/bin/yabsm'
-			    . " --take-snap $subvol hourly"
+			    . " yabsm --take-snap $subvol hourly"
 			    ) if $hourly_want eq 'yes';
         
         my $daily_cron    = ( '0 */' . int(24 / $daily_take) # Max is every hour
                             . ' * * * root'
-			    . ' /usr/local/bin/yabsm'
-			    . " --take-snap $subvol daily"
+			    . " yabsm --take-snap $subvol daily"
 			    ) if $daily_want eq 'yes';
         
         my $midnight_cron = ( '59 23 * * * root' 
-                            . ' /usr/local/bin/yabsm'
-			    . " --take-snap $subvol midnight"
+                            . " yabsm --take-snap $subvol midnight"
 			    ) if $midnight_want eq 'yes';
         
         my $monthly_cron  = ( '0 0 1 * * root' # First of every month
-			    . ' /usr/local/bin/yabsm'
-			    . " --take-snap $subvol monthly"
+			    . " yabsm --take-snap $subvol monthly"
 			    ) if $monthly_want eq 'yes';
 
         push @cron_strings, grep { defined } ($hourly_cron,
@@ -943,53 +953,67 @@ sub generate_cron_strings { # No test. Is pure.
 					      $monthly_cron);
     }
 
-
-
     return wantarray ? @cron_strings : \@cron_strings;
 }
 
-sub do_ssh_backup { # No test. Is not pure. # TODO document
+                 ####################################
+                 #              BACKUPS             #
+                 ####################################
 
-    # Perform a single incremental backup over ssh.
+sub do_backup_ssh { # No test. Is not pure. # TODO document
 
-    my ($config_ref, $backup, $timeframe) = @_;
+    # Perform a single incremental backup over ssh. Assume that
+    # bootstrapping has already happened.
+    
+    my ($config_ref, $backup) = @_;
 
-    if (is_ssh_backup($config_ref, $backup)) {
-	do_ssh_backup($config_ref, $backup, $timeframe);
-	return 1;
-    }
-
-    # the subvol that we are backing up.
+    # the subvol that is being backed up
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
-    my $newest_snap = newest_snap($config_ref, $subvol);
-
-    my $target_dir = target_dir($config_ref, 'tmp');
-
-    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-
-    # take a new tmp snapshot.
-    my $snap = $target_dir . current_time_snapstring();
-
-    my ($ssh_name, $backup_path) =
+    my ($ssh_host, $backup_path) =
       split /:/, $config_ref->{backups}{$backup}{path}, 2;
 
-    $backup_path .= '/$yabsm/$subvol/$timeframe';
+    $backup_path .= "/yabsm/$subvol";
+    
+    my $newest_local_snap = newest_snap($config_ref, $subvol);
 
-    # take a new snapshot
-    system("btrfs subvol snapshot -r $mountpoint $snap");
+    # open an ssh connection
+    my $ssh = Net::OpenSSH->new($ssh_host, batch_mode => 1);
+    if ($ssh->error) {
+	die "[!] SSH Error: could not establish connection to $ssh_host: " . $ssh->error;
+    }
 
-    # send the new snapshot over ssh
-    system( "btrfs send -p $newest_snap $snap |"
-	  . " ssh $ssh_name \"sudo -n btrfs receive $backup_path\""
-	  );
+    # If there are not already backup snaps on the remote machine then
+    # we need to bootstrap.
+    my @backup_snaps = $ssh->capture("ls $backup_path");
 
-    # delete the snapshot locally
-    system("btrfs subvol delete $snap");
+    # We need to bootstrap.
+    if (not @backup_snaps) {
+	system qq(btrfs send $newest_local_snap | ssh -o "BatchMode yes" $ssh_host "sudo -n btrfs receive $backup_path");
+    }
 
-    # cleanup_ssh($config_ref, $backup, $timeframe);
+    else { # we have already bootstrapped. Do an incremental backup.
 
-    return 1;
+	my $local_snapshot_dir = local_snapshot_dir($config_ref, '.tmp');
+	
+	my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+	
+	my $tmp_snap = $local_snapshot_dir . '/' . current_time_snapstring();
+	
+	# take a new snapshot
+	system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+	
+	# send the new snapshot over ssh
+	system( "btrfs send -p $newest_local_snap $tmp_snap | "
+		. qq(ssh -o "BatchMode yes" $ssh_host "sudo -n btrfs receive $backup_path")
+	      );
+	
+	system("btrfs subvol delete $tmp_snap");
+	
+	# cleanup_ssh($config_ref, $backup, $timeframe);
+    }
+
+    return;
 }
 
 sub take_new_snapshot { # No test. Is not pure.
@@ -1000,30 +1024,16 @@ sub take_new_snapshot { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    my $target_dir = target_dir($config_ref, $subvol, $timeframe);
+    my $local_snapshot_dir = local_snapshot_dir($config_ref, $subvol, $timeframe);
 
     my $snapshot_name = current_time_snapstring();
 
     system( 'btrfs subvol snapshot -r '
 	  . $mountpoint
-	  . " $target_dir/$snapshot_name"
+	  . " $local_snapshot_dir/$snapshot_name"
 	  ); 
 
     return 1;
-}
-
-sub current_time_snapstring { # No test. Is not pure.
-    
-    # This function is used be used to create a snapstring name
-    # of the current time.
-    
-    my ($min, $hr, $day, $mon, $yr) =
-      map { sprintf '%02d', $_ } (localtime)[1..5]; 
-    
-    $mon++;      # month count starts at zero. 
-    $yr += 1900; # year represents years since 1900. 
-    
-    return "day=${yr}_${mon}_${day},time=${hr}:$min";
 }
 
 sub delete_appropriate_snapshots { # No test. Is not pure.
@@ -1035,13 +1045,13 @@ sub delete_appropriate_snapshots { # No test. Is not pure.
     my ($config_ref, $subvol, $timeframe) = @_;
 
     # these snaps are sorted from newest to oldest
-    my $existing_snaps_ref = all_snapshots_of($config_ref, $subvol);
+    my $existing_snaps_ref = all_snapshots_of($config_ref, $subvol, $timeframe);
 
     my $num_snaps = scalar @$existing_snaps_ref;
 
     my $num_to_keep = $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
 
-    # The most common case is there is 1 more snapshot than what should be
+    # The most common case is there is 1 more snapshot than should be
     # kept because we just took a snapshot.
     if ($num_snaps == $num_to_keep + 1) { 
 
@@ -1071,7 +1081,7 @@ sub delete_appropriate_snapshots { # No test. Is not pure.
 	} 
     }
 
-    return;
+    return 1;
 }
 
 1;

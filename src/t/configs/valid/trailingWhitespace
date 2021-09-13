@@ -1,0 +1,46 @@
+#
+# this config shows that trailing whitespace is ignored
+#
+
+# has trailing whitespace
+snapshot_dir=/       
+    
+# all these settings have trailing whitespace
+define_subvol home {         
+
+    mountpoint=/home      
+
+    hourly_want=no 
+    hourly_take=0 
+    hourly_keep=0     
+
+    daily_want=no       
+    daily_take=0      
+    daily_keep=0     
+
+    midnight_want=no           
+    midnight_keep=0         
+
+    monthly_want=no       
+    monthly_keep=0         
+}         
+
+# all these settings have trailing whitespace followed by a comment
+define_subvol tmp {   # comment
+
+    mountpoint=/tmp      #comment
+
+    hourly_want=no #comment
+    hourly_take=0    #comment 
+    hourly_keep=0    #comment     
+
+    daily_want=no #comment       
+    daily_take=0 #comment      
+    daily_keep=0             #comment     
+
+    midnight_want=no      #comment           
+    midnight_keep=0  #comment         
+
+    monthly_want=no #comment       
+    monthly_keep=0 #comment         
+}         

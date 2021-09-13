@@ -1,3 +1,0 @@
-#
-# This config shows we can define multiple backups
-#

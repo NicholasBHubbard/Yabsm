@@ -4,7 +4,7 @@
               # WELCOME TO THE YABSM CONFIGURATION FILE #
               #-----------------------------------------#
 
-snapshot_directory=/.snapshots
+snapshot_dir=/.snapshots
 
 ### Every subvolume requires 11 fields
 
@@ -57,17 +57,9 @@ define_backup homeDebianServer {
 
     path=debianServer:/home/easystore/
 
-    hourly_want=no
-    hourly_take=0
-    hourly_keep=0
+    is_ssh=yes
 
-    daily_want=no
-    daily_take=0
-    daily_keep=0
+    cron=cd
 
-    midnight_want=yes
-    midnight_keep=100
-
-    monthly_want=no
-    monthly_keep=0
+    keep=100
 }

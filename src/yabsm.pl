@@ -12,8 +12,6 @@ sub usage {
     print <<END_USAGE;
 Usage: yabsm [OPTION] [arg...]
 
-  --take-snap, -s <SUBVOL> <CATEGORY>     take a new snapshot
-
   --find, -f <?SUBVOL> <?QUERY>           find a snapshot of SUBVOL using QUERY
 
   --update-crontab, -u                    update cronjobs in /etc/crontab, based
@@ -26,17 +24,17 @@ Usage: yabsm [OPTION] [arg...]
 
   --help, -h                              print help (this message) and exit
 
-  Please see 'man yabsm' for more detailed information about yabsm.
+  Please see 'man yabsm' for detailed information about yabsm.
 END_USAGE
 }
 
-use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
-
-# Import Yabsm.pm
 use FindBin '$Bin';
 use lib "$Bin/lib";
-use Yabsm;
-use Yabsmrc;
+
+use Yabsm::Base;
+use Yabsm::Config;
+
+use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
 
 use Data::Dumper;
 
@@ -68,20 +66,20 @@ if (@CHECK_CONFIG) {
 
     $config_path = $config_path || '/etc/yabsmrc';
 
-    Yabsmrc::read_config($config_path);
+    Yabsm::Config::read_config($config_path);
 
     exit 0;
 }
 
-my $CONFIG_REF = Yabsmrc::read_config('/etc/yabsmrc');
+my $CONFIG_REF = Yabsm::Config::read_config('/etc/yabsmrc');
 # print Dumper $CONFIG_REF;
 
 if ($UPDATE_CRONTAB) {
 
     die "[!] Permission Error: must be root to update /etc/crontab\n" if $<;
 
-    Yabsm::initialize_yabsm_directories($CONFIG_REF);
-    Yabsm::update_etc_crontab($CONFIG_REF);
+    Yabsm::Base::initialize_yabsm_directories($CONFIG_REF);
+    Yabsm::Base::update_etc_crontab($CONFIG_REF);
 
     exit 0;
 }
@@ -98,17 +96,17 @@ if (@YABSM_TAKE_SNAPSHOT) {
     print Dumper $subvol;
     print Dumper $timeframe;
 
-    if (not Yabsm::is_subvol($CONFIG_REF, $subvol)) {
+    if (not Yabsm::Base::is_subvol($CONFIG_REF, $subvol)) {
 	die "[!] Error: '$subvol' is not a yabsm subvolume\n";
     }
 
-    if (not Yabsm::is_timeframe($timeframe)) {
+    if (not Yabsm::Base::is_timeframe($timeframe)) {
 	die "[!] Error: '$timeframe' is not a valid timeframe\n";
     }
 
-    Yabsm::initialize_yabsm_directories($CONFIG_REF);
-    Yabsm::take_new_snapshot($CONFIG_REF, $subvol, $timeframe);
-    Yabsm::delete_appropriate_snapshots($CONFIG_REF, $subvol, $timeframe);
+    Yabsm::Base::initialize_yabsm_directories($CONFIG_REF);
+    Yabsm::Base::take_new_snapshot($CONFIG_REF, $subvol, $timeframe);
+    Yabsm::Base::delete_appropriate_snapshots($CONFIG_REF, $subvol, $timeframe);
 
     exit 0;
 }
@@ -122,10 +120,10 @@ if (@YABSM_FIND) {
     my ($subvol, $query);
 
     if ($arg1) {
-	if (Yabsm::is_subvol($CONFIG_REF, $arg1)) {
+	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg1)) {
 	    $subvol = $arg1;
 	}
-	elsif (Yabsm::is_valid_query($arg1)) {
+	elsif (Yabsm::Base::is_valid_query($arg1)) {
 	    $query = $arg1;
 	}
 	else {
@@ -134,10 +132,10 @@ if (@YABSM_FIND) {
     }
     
     if ($arg2) {
-	if (Yabsm::is_subvol($CONFIG_REF, $arg2)) {
+	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg2)) {
 	    $subvol = $arg2;
 	}
-	elsif (Yabsm::is_valid_query($arg2)) {
+	elsif (Yabsm::Base::is_valid_query($arg2)) {
 	    $query = $arg2;
 	}
 	else {
@@ -146,15 +144,15 @@ if (@YABSM_FIND) {
     }
 
     if (not defined $subvol) {
-	$subvol = Yabsm::ask_user_for_subvolume($CONFIG_REF);
+	$subvol = Yabsm::Base::ask_user_for_subvolume($CONFIG_REF);
     }
 
     if (not defined $query) {
-	$query = Yabsm::ask_user_for_query();
+	$query = Yabsm::Base::ask_user_for_query();
     }
 
     # $subvol and $query are properly set at this point
-    my @snaps = Yabsm::answer_query($CONFIG_REF, $subvol, $query);
+    my @snaps = Yabsm::Base::answer_query($CONFIG_REF, $subvol, $query);
 
     say for @snaps;
 
@@ -163,7 +161,8 @@ if (@YABSM_FIND) {
 
 if ($YABSM_BACKUP) {
 
-    Yabsm::do_ssh_backup($CONFIG_REF, $YABSM_BACKUP, 'test');
+    # Yabsm::Base::backup_bootstrap_ssh($CONFIG_REF, $YABSM_BACKUP);
+    Yabsm::Base::do_backup_ssh($CONFIG_REF, $YABSM_BACKUP);
 
     exit 0;
 }

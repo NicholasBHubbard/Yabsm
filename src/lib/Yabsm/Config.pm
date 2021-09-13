@@ -239,7 +239,7 @@ sub _check_config {
 	    }
 
 	    elsif ($key eq 'keep') {
-		if (not ($key =~ /^\d+$/ && $key > 0)) {
+		if (not ($val =~ /^\d+$/ && $val > 0)) {
 		    push @errors, "[!] Config Error: backup '$backup': '$key' is not a positive integer";
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;

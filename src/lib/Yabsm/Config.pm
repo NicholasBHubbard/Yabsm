@@ -221,7 +221,7 @@ sub _check_config {
     # check backups
     foreach my $backup (keys %{$config_ref->{backups}}) {
 
-	my @required_settings = qw(subvol path);
+	my @required_settings = qw(subvol path keep);
 	
 	# go through all of the settings for $backup
 	while (my ($key, $val) = each %{$config_ref->{backups}{$backup}}) {

@@ -1,6 +1,4 @@
 #
-# this config shows that a config file with max vals for hourly_take
-# and daily_take can be parsed
 #
 
 snapshot_dir=/#always required
@@ -9,13 +7,11 @@ define_subvol home {
 
     mountpoint=/home
 
-    hourly_want=yes
-    hourly_take=60
-    hourly_keep=500000
+    5minute_want=yes
+    5minute_keep=0
 
-    daily_want=yes
-    daily_take=24
-    daily_keep=0
+    hourly_want=yes
+    hourly_keep=500000
 
     midnight_want=yes
     midnight_keep=1000000000000

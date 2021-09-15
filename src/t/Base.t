@@ -863,31 +863,31 @@ sub test_is_subvol {
 test_is_timeframe();
 sub test_is_timeframe {
 
+    my $correct_5minute  = Yabsm::Base::is_timeframe('5minute');
     my $correct_hourly   = Yabsm::Base::is_timeframe('hourly');
-    my $correct_daily    = Yabsm::Base::is_timeframe('daily');
     my $correct_midnight = Yabsm::Base::is_timeframe('midnight');
     my $correct_monthly  = Yabsm::Base::is_timeframe('monthly');
 
     my $f0 = Yabsm::Base::is_timeframe('');
 
-    my $f1 = Yabsm::Base::is_timeframe(' hourly');
-    my $f2 = Yabsm::Base::is_timeframe(' daily');
+    my $f1 = Yabsm::Base::is_timeframe(' 5minute');
+    my $f2 = Yabsm::Base::is_timeframe(' hourly');
     my $f3 = Yabsm::Base::is_timeframe(' midnight');
     my $f4 = Yabsm::Base::is_timeframe(' monthly');
 
-    my $f5 = Yabsm::Base::is_timeframe('hourly ');
-    my $f6 = Yabsm::Base::is_timeframe('daily ');
+    my $f5 = Yabsm::Base::is_timeframe('5minute ');
+    my $f6 = Yabsm::Base::is_timeframe('hourly ');
     my $f7 = Yabsm::Base::is_timeframe('midnight ');
     my $f8 = Yabsm::Base::is_timeframe('monthly ');
 
-    my $f9  = Yabsm::Base::is_timeframe(' hourly ');
-    my $f10 = Yabsm::Base::is_timeframe(' daily ');
+    my $f9  = Yabsm::Base::is_timeframe(' 5minute ');
+    my $f10 = Yabsm::Base::is_timeframe(' hourly ');
     my $f11 = Yabsm::Base::is_timeframe(' midnight ');
     my $f12 = Yabsm::Base::is_timeframe(' monthly ');
 
     my $f13 = Yabsm::Base::is_timeframe('this is not a timeframe');
 
-    my $trues = $correct_hourly && $correct_daily && $correct_midnight && $correct_monthly;
+    my $trues = $correct_5minute && $correct_hourly && $correct_midnight && $correct_monthly;
 
     my $falses = not ( $f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7
 		    || $f9 || $f10 || $f11 || $f12 || $f13);

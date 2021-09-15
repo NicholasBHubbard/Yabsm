@@ -10,13 +10,11 @@ define_subvol home {
 
     mountpoint=/home      
 
-    hourly_want=no 
-    hourly_take=0 
-    hourly_keep=0     
+    5minute_want=no       
+    5minute_keep=0     
 
-    daily_want=no       
-    daily_take=0      
-    daily_keep=0     
+    hourly_want=no 
+    hourly_keep=0     
 
     midnight_want=no           
     midnight_keep=0         
@@ -30,13 +28,11 @@ define_subvol tmp {   # comment
 
     mountpoint=/tmp      #comment
 
-    hourly_want=no #comment
-    hourly_take=0    #comment 
-    hourly_keep=0    #comment     
+    5minute_want=no #comment       
+    5minute_keep=0             #comment     
 
-    daily_want=no #comment       
-    daily_take=0 #comment      
-    daily_keep=0             #comment     
+    hourly_want=no #comment
+    hourly_keep=0    #comment     
 
     midnight_want=no      #comment           
     midnight_keep=0  #comment         

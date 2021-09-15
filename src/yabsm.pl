@@ -38,18 +38,20 @@ use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
 
 use Data::Dumper;
 
-my @YABSM_TAKE_SNAPSHOT;
+my @TAKE_SNAPSHOT;
 my $UPDATE_CRONTAB;
-my $YABSM_BACKUP;
-my @YABSM_FIND;
+my $DO_BACKUP;
+my $BACKUP_BOOTSTRAP;
+my @FIND;
 my @CHECK_CONFIG;
 my $HELP;
 
-GetOptions( 'take-snap|s=s{2}'      => \@YABSM_TAKE_SNAPSHOT
-	  , 'find|f=s{0,2}'         => \@YABSM_FIND
+GetOptions( 'take-snap|s=s{2}'      => \@TAKE_SNAPSHOT
+	  , 'find|f=s{0,2}'         => \@FIND
 	  , 'update-crontab|u'      => \$UPDATE_CRONTAB
 	  , 'check-config|c=s{0,1}' => \@CHECK_CONFIG
-	  , 'backup|b=s'            => \$YABSM_BACKUP
+	  , 'do-backup|b=s'         => \$DO_BACKUP
+	  , 'bootstrap-backup|k=s'  => \$BACKUP_BOOTSTRAP
 	  , 'help|h'                => \$HELP
 	  );
 
@@ -60,8 +62,6 @@ if ($HELP) {
 
 if (@CHECK_CONFIG) {
 
-    # The user can optionally pass the absolute path to a config. If
-    # no path is given we just check '/etc/yabsmrc'. 
     my ($config_path) = @CHECK_CONFIG;
 
     $config_path = $config_path || '/etc/yabsmrc';
@@ -72,29 +72,25 @@ if (@CHECK_CONFIG) {
 }
 
 my $CONFIG_REF = Yabsm::Config::read_config('/etc/yabsmrc');
-# print Dumper $CONFIG_REF;
+Yabsm::Base::initialize_directories($CONFIG_REF);
 
 if ($UPDATE_CRONTAB) {
 
     die "[!] Permission Error: must be root to update /etc/crontab\n" if $<;
 
-    Yabsm::Base::initialize_yabsm_directories($CONFIG_REF);
     Yabsm::Base::update_etc_crontab($CONFIG_REF);
 
     exit 0;
 }
 
-if (@YABSM_TAKE_SNAPSHOT) {
+if (@TAKE_SNAPSHOT) {
 
     die "[!] Permission Error: must be root to take a new snapshot\n" if $<;
 
     # --take-snapshot option takes two string args. We can be sure
     # that both args are defined as Getopt::Long will kill the program
     # if they are not.
-    my ($subvol, $timeframe) = @YABSM_TAKE_SNAPSHOT;
-
-    print Dumper $subvol;
-    print Dumper $timeframe;
+    my ($subvol, $timeframe) = @TAKE_SNAPSHOT;
 
     if (not Yabsm::Base::is_subvol($CONFIG_REF, $subvol)) {
 	die "[!] Error: '$subvol' is not a yabsm subvolume\n";
@@ -104,17 +100,16 @@ if (@YABSM_TAKE_SNAPSHOT) {
 	die "[!] Error: '$timeframe' is not a valid timeframe\n";
     }
 
-    Yabsm::Base::initialize_yabsm_directories($CONFIG_REF);
     Yabsm::Base::take_new_snapshot($CONFIG_REF, $subvol, $timeframe);
-    Yabsm::Base::delete_appropriate_snapshots($CONFIG_REF, $subvol, $timeframe);
+    Yabsm::Base::delete_old_snapshots($CONFIG_REF, $subvol, $timeframe);
 
     exit 0;
 }
 
-if (@YABSM_FIND) {
+if (@FIND) {
 
     # these variables may or may not be defined.
-    my ($arg1, $arg2) = @YABSM_FIND;
+    my ($arg1, $arg2) = @FIND;
 
     # the following logic exists to set the $subvol and $query variables
     my ($subvol, $query);
@@ -159,10 +154,33 @@ if (@YABSM_FIND) {
     exit 0;
 }
 
-if ($YABSM_BACKUP) {
+if ($BACKUP_BOOTSTRAP) {
 
-    # Yabsm::Base::backup_bootstrap_ssh($CONFIG_REF, $YABSM_BACKUP);
-    Yabsm::Base::do_backup_ssh($CONFIG_REF, $YABSM_BACKUP);
+    die "[!] Permission Error: must be root to perform backup\n" if $<;
+
+    # option takes backup arg
+    my $backup = $BACKUP_BOOTSTRAP;
+
+    if (not is_backup($CONFIG_REF, $backup)) {
+	die "[!] Error: no such defined backup '$backup'" 
+    }
+    
+    Yabsm::Base::do_backup_bootstrap($CONFIG_REF, $backup);
+
+    exit 0;
+}
+
+if ($DO_BACKUP) {
+
+    die "[!] Permission Error: must be root to perform backup\n" if $<;
+
+    my $backup = $DO_BACKUP;
+
+    if (not is_backup($CONFIG_REF, $backup)) {
+	die "[!] Error: no such defined backup '$backup'" 
+    }
+
+    Yabsm::Base::do_incremental_backup($CONFIG_REF, $backup);
 
     exit 0;
 }

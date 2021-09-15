@@ -17,15 +17,25 @@ use Time::Piece;
 use List::Util 'any';
 use Net::OpenSSH;
 
-sub initialize_yabsm_directories { # No test. Is not pure. TODO document
+sub initialize_directories { # No test. Is not pure.
+
+    # This subroutine is called everytime the yabsm script is run
+    # (unless using --help or --check-config flag). This subroutine
+    # allows us to be assured that all needed directories have been
+    # created.
 
     my ($config_ref) = @_;
 
-    my $yabsm_root_dir = local_snapshot_dir($config_ref);
+    my $yabsm_root_dir = $config_ref->{misc}{snapshot_dir} . '/yabsm';
 
-    mkdir $yabsm_root_dir if not -d $yabsm_root_dir;
+    if (not -d $yabsm_root_dir) {
+	mkdir $yabsm_root_dir;
+    }
 
-    mkdir $yabsm_root_dir . '/.tmp' if not -d $yabsm_root_dir . '/.cache'; # TODO
+    # .tmp dir holds tmp snaps for backups
+    if (not -d $yabsm_root_dir . '/.tmp') {
+	mkdir $yabsm_root_dir . '/.tmp';
+    }
 
     foreach my $subvol (all_subvols($config_ref)) {
 
@@ -35,17 +45,23 @@ sub initialize_yabsm_directories { # No test. Is not pure. TODO document
 	    mkdir $subvol_dir;
 	}
 
+	# .cache can hold a snapshot to be the parent of an incremental backup
+	if (not -d "$subvol_dir/.cache") {
+	    mkdir "$subvol_dir/.cache";
+	}
+
+	my $_5minute_want = $config_ref->{subvols}{$subvol}{_5minute_want};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
-	my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
 
+	
+	if ($_5minute_want eq 'yes' && not -d "$subvol_dir/5minute") {
+	    mkdir "$subvol_dir/5minute";
+	}
+
 	if ($hourly_want eq 'yes' && not -d "$subvol_dir/hourly") {
 	    mkdir "$subvol_dir/hourly";
-	}
-	
-	if ($daily_want eq 'yes' && not -d "$subvol_dir/daily") {
-	    mkdir "$subvol_dir/daily";
 	}
 
 	if ($midnight_want eq 'yes' && not -d "$subvol_dir/midnight") {
@@ -57,20 +73,24 @@ sub initialize_yabsm_directories { # No test. Is not pure. TODO document
 	}
     }
     
-    return 1;
+    return;
 }
+
+                 ####################################
+                 #          USER INTERACTION        #
+                 ####################################
 
 sub ask_user_for_subvolume { # No test. Is not pure.
 
-    # Prompt user to select their desired subvolume. Used for the
+    # Prompt user to select one of their defined subvols. Used for the
     # --find option when the user doesn't explicitly pass the
-    # subvolume on the command line.
+    # subvol on the command line.
 
     my ($config_ref) = @_;
 
     my @all_subvols = all_subvols($config_ref);
 
-    # Initialize the integer to subvolume hash.
+    # Initialize the integer to subvol-name hash.
     my %int_subvol_hash;
     for (my $i = 0; $i <= $#all_subvols; $i++) {
 	$int_subvol_hash{ $i + 1 } = $all_subvols[$i];
@@ -80,16 +100,16 @@ sub ask_user_for_subvolume { # No test. Is not pure.
 
     while (not defined $subvol) {
 
-	# Print prompt to stdout.
+	# print prompt to stdout.
 	say 'select subvolume:';
 	for (my $i = 1; $i <= keys %int_subvol_hash; $i++) {
 	
 	    my $int = $i;
 	    my $subvol = $int_subvol_hash{ $int };
 	    
-	    # After every 4 subvolumes print a newline. This prevents a user with
-	    # say 20 subvolumes from having them all printed as a giant string on
-	    # one line.
+	    # After every 4 subvolumes print a newline. This prevents
+	    # a user with say 20 subvolumes from having them all
+	    # printed as a giant string on one line.
 	    if ($i % 4 == 0) {
 		print "$int -> $subvol\n";
 	    }
@@ -99,6 +119,7 @@ sub ask_user_for_subvolume { # No test. Is not pure.
 	}
 	print "\n>>> ";
 	
+	# process input
 	my $input = <STDIN>;
 	$input =~ s/\s//g; 
 	
@@ -157,7 +178,7 @@ sub all_snapshots_of { # No test. Is not pure. TODO DOCUMENT
 
     # default to all timeframes
     if (not @timeframes) {
-	@timeframes = qw(hourly daily midnight monthly);
+	@timeframes = qw(5minute hourly midnight monthly);
     }
 
     my @all_snaps; 
@@ -174,28 +195,6 @@ sub all_snapshots_of { # No test. Is not pure. TODO DOCUMENT
     my $snaps_sorted_ref = sort_snapshots(\@all_snaps);
 
     return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
-}
-
-sub all_subvols { # Has test. Is pure.
-
-    # Return an array of the names of every user defined subvolume.
-
-    my ($config_ref) = @_;
-
-    my @subvols = sort keys %{$config_ref->{subvols}};
-
-    return wantarray ? @subvols : \@subvols;
-}
-
-sub all_backups { # TODO no test.
-
-    # Return an array of the names of every user defined backup
-
-    my ($config_ref) = @_;
-
-    my @backups = sort keys %{$config_ref->{backups}};
-
-    return wantarray ? @backups : \@backups;
 }
 
 sub local_snapshot_dir { # Has test. Is pure.
@@ -403,7 +402,7 @@ sub cmp_snaps { # Has test. Is pure.
 }
 
                  ####################################
-                 #          TIME ARITHMETIC         #
+                 #        TODO NAME THIS SECTION #
                  ####################################
 
 sub n_units_ago_snapstring { # Has test. Is not pure.
@@ -705,6 +704,10 @@ sub answer_query { # TODO no test
     return wantarray ? @snaps_to_return : \@snaps_to_return;
 }
 
+                 ####################################
+                 #          QUERY DIAGNOSIS         #
+                 ####################################
+
 sub is_valid_query { # Has test. Is pure.
 
     my ($query) = @_;
@@ -843,6 +846,41 @@ sub is_between_query { # TODO no test
     return $keyword_correct && $imm1_correct && $imm2_correct;
 }
 
+                 ####################################
+                 #         CONFIG QUESTIONS         #
+                 ####################################
+
+sub all_subvols { # Has test. Is pure.
+
+    # Return an array of the names of every user defined subvolume.
+
+    my ($config_ref) = @_;
+
+    my @subvols = sort keys %{$config_ref->{subvols}};
+
+    return wantarray ? @subvols : \@subvols;
+}
+
+sub all_backups { # TODO no test.
+
+    # Return an array of the names of every user defined backup
+
+    my ($config_ref) = @_;
+
+    my @backups = sort keys %{$config_ref->{backups}};
+
+    return wantarray ? @backups : \@backups;
+}
+
+sub all_timeframes { # TODO no test
+
+    # an array of all valid timeframes
+
+    my @tframes = qw(5minute hourly midnight monthly);
+
+    return wantarray ? @tframes : \@tframes;
+}
+
 sub is_subvol { # Has test. Is pure.
 
     # Return 1 iff $subvol is the name of a defined yabsm subvolume.
@@ -852,13 +890,20 @@ sub is_subvol { # Has test. Is pure.
     return any { $_ eq $subvol } all_subvols($config_ref);
 }
 
+sub is_backup { # TODO no test
+
+    my ($config_ref, $backup) = @_;
+    
+    return any { $_ eq $backup } all_backups($config_ref);
+}
+
 sub is_timeframe { # Has test. Is pure.
 
     # Return 1 iff $tframe is a valid timeframe
 
     my ($tframe) = @_;
 
-    return any { $_ eq $tframe } qw/hourly daily midnight monthly/;
+    return any { $_ eq $tframe } all_timeframes();
 }
 
                  ####################################
@@ -907,50 +952,37 @@ sub update_etc_crontab { # No test. Is not pure.
 
 sub generate_cron_strings { # No test. Is pure.
 
-    # Generate all the cron strings for taking snapshots and backups
+    # Use the users config to generate all the cron strings for taking
+    # snapshots and performing backups.
     
     my ($config_ref) = @_;
 
-    my @cron_strings; # This will be returned
+    my @cron_strings;
 
-    # Remember that these strings are 'name,path' for example 'home,/home'
     foreach my $subvol (all_subvols($config_ref)) {
 
-	# Every yabsm subvolume is required to have a value for these
-	# fields, and this assertion should have been made before this
-	# function is ever called.
-	my $hourly_want = $config_ref->{subvols}{$subvol}{hourly_want};
-	my $hourly_take = $config_ref->{subvols}{$subvol}{hourly_take};
-
-	my $daily_want = $config_ref->{subvols}{$subvol}{daily_want};
-	my $daily_take = $config_ref->{subvols}{$subvol}{daily_take};
-
+	my $_5minute_want = $config_ref->{subvols}{$subvol}{_5minute_want};
+	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
-
-	my $monthly_want = $config_ref->{subvols}{$subvol}{monthly_want};
+	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
         
-        my $hourly_cron   = ( '*/' . int(60 / $hourly_take) # Max is every minute
-			    . ' * * * * root'
+        my $_5minute_cron = ( '*/5 * * * * root' # every 5 minutes
+			    . " yabsm --take-snap $subvol 5minute"
+			    ) if $_5minute_want eq 'yes';
+        
+        my $hourly_cron   = ( '0 */1 * * * root' # beginning of every hour
 			    . " yabsm --take-snap $subvol hourly"
 			    ) if $hourly_want eq 'yes';
         
-        my $daily_cron    = ( '0 */' . int(24 / $daily_take) # Max is every hour
-                            . ' * * * root'
-			    . " yabsm --take-snap $subvol daily"
-			    ) if $daily_want eq 'yes';
-        
-        my $midnight_cron = ( '59 23 * * * root' 
+        my $midnight_cron = ( '59 23 * * * root' # 11:59 every night
                             . " yabsm --take-snap $subvol midnight"
 			    ) if $midnight_want eq 'yes';
         
-        my $monthly_cron  = ( '0 0 1 * * root' # First of every month
+        my $monthly_cron  = ( '0 0 1 * * root' # First day of every month
 			    . " yabsm --take-snap $subvol monthly"
 			    ) if $monthly_want eq 'yes';
 
-        push @cron_strings, grep { defined } ($hourly_cron,
-					      $daily_cron,
-					      $midnight_cron,
-					      $monthly_cron);
+        push @cron_strings, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron);
     }
 
     return wantarray ? @cron_strings : \@cron_strings;
@@ -959,6 +991,68 @@ sub generate_cron_strings { # No test. Is pure.
                  ####################################
                  #              BACKUPS             #
                  ####################################
+
+sub do_incremental_backup { # TODO DOCUMENT
+
+    my ($config_ref, $backup) = @_;
+    
+    my $is_remote = $config_ref->{backups}{$backup}{remote} eq 'yes';
+
+    if ($is_remote) {
+	do_backup_ssh($config_ref, $backup);
+    }
+
+    else {
+	do_backup_local($config_ref, $backup);
+    }
+}
+
+sub do_backup_bootstrap {# TODO DOCUMENT
+
+    my ($config_ref, $backup) = @_;
+
+    my $is_remote = $config_ref->{backups}{$backup}{remote} eq 'yes';
+
+    if ($is_remote) {
+	bootstrap_backup_ssh($config_ref, $backup);
+    }
+
+    else {
+	bootstrap_backup_local($config_ref, $backup);
+    }
+}
+
+sub bootstrap_backup_ssh { # TODO DOCUMENT
+
+    my ($config_ref, $backup) = @_;
+
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my $cache_dir = local_snapshot_dir($config_ref, $subvol, '.cache');
+
+    # delete old cache snap. In a loop in case there are multiple.
+    for my $old_cache_snap (glob "$cache_dir/*") {
+	system("btrfs subvol delete $old_cache_snap");
+    }
+
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    
+    my $cache_snap = $cache_dir . '/' . current_time_snapstring();
+    
+    system("btrfs subvol snapshot -r $mountpoint $cache_snap");
+
+    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    my $ssh = Net::OpenSSH->new($config_ref->{backups}{$backup}{host}
+			       , batch_mode => 1
+			       );
+
+    # send an incremental backup over ssh
+    $ssh->system({stdin_file => ['-|', "btrfs send $cache_snap"]}
+		, "sudo -n btrfs receive $remote_backup_dir"
+	        );
+
+}
 
 sub do_backup_ssh { # No test. Is not pure. # TODO document
 
@@ -970,77 +1064,119 @@ sub do_backup_ssh { # No test. Is not pure. # TODO document
     # the subvol that is being backed up
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
-    my ($ssh_host, $backup_path) =
-      split /:/, $config_ref->{backups}{$backup}{path}, 2;
+    my $ssh_host = $config_ref->{backups}{$backup}{host};
 
-    $backup_path .= "/yabsm/$subvol";
-    
-    my $newest_local_snap = newest_snap($config_ref, $subvol);
+    my $remote_backup_dir =
+      $config_ref->{backups}{$backup}{backup_dir};
 
-    # open an ssh connection
     my $ssh = Net::OpenSSH->new($ssh_host, batch_mode => 1);
-    if ($ssh->error) {
-	die "[!] SSH Error: could not establish connection to $ssh_host: " . $ssh->error;
+
+    my $cached_snap =
+      (glob local_snapshot_dir($config_ref, $subvol, '.cache') . '/*')[0];
+
+    if (not defined $cached_snap) {
+	die "[!] Internal Error: no cached snapshot for subvol '$subvol'";
     }
 
-    # If there are not already backup snaps on the remote machine then
-    # we need to bootstrap.
-    my @backup_snaps = $ssh->capture("ls $backup_path");
+    my $tmp_snap =
+      local_snapshot_dir($config_ref) . '/.tmp/' . current_time_snapstring();
 
-    # We need to bootstrap.
-    if (not @backup_snaps) {
-	system qq(btrfs send $newest_local_snap | ssh -o "BatchMode yes" $ssh_host "sudo -n btrfs receive $backup_path");
-    }
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+	
+    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    
+    # send an incremental backup over ssh
+    $ssh->system({stdin_file => ['-|', "btrfs send -p $cached_snap $tmp_snap"]}
+		, "sudo -n btrfs receive $remote_backup_dir"
+		);
 
-    else { # we have already bootstrapped. Do an incremental backup.
-
-	my $local_snapshot_dir = local_snapshot_dir($config_ref, '.tmp');
+    system("btrfs subvol delete $tmp_snap");
 	
-	my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-	
-	my $tmp_snap = $local_snapshot_dir . '/' . current_time_snapstring();
-	
-	# take a new snapshot
-	system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-	
-	# send the new snapshot over ssh
-	system( "btrfs send -p $newest_local_snap $tmp_snap | "
-		. qq(ssh -o "BatchMode yes" $ssh_host "sudo -n btrfs receive $backup_path")
-	      );
-	
-	system("btrfs subvol delete $tmp_snap");
-	
-	# cleanup_ssh($config_ref, $backup, $timeframe);
-    }
+    delete_old_backups_ssh($ssh, $config_ref, $backup);
 
     return;
 }
 
+sub delete_old_backups_ssh { # TODO DOCUMENT
+
+    # Delete old backup snapshot(s) based off $backup's
+    # $keep setting defined in the users config. This
+    # function should be called after do_backup_ssh;
+
+    my ($ssh, $config_ref, $backup) = @_;
+
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my ($ssh_host, $backup_path) =
+      split /:/, $config_ref->{backups}{$backup}{path}, 2;
+
+    $backup_path .= "/yabsm/$subvol";
+
+    my @existing_backups = sort_snapshots($ssh->capture("ls $backup_path"));
+
+    my $num_backups = scalar @existing_backups;
+
+    my $num_to_keep = $config_ref->{backups}{$backup}{keep};
+
+    # The most common case is there is 1 more backup than should be
+    # kept because we just performed a backup.
+    if ($num_backups == $num_to_keep + 1) {
+
+	# pop takes from the end of the array. This is the oldest backup
+	# because they are sorted newest to oldest.
+	my $oldest_backup = $backup_path . pop @existing_backups;
+
+	$ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+
+	return;
+    }
+
+    # We haven't reached the backup quota yet so we don't delete anything.
+    elsif ($num_backups <= $num_to_keep) { return } 
+
+    # User changed their settings to keep less backups than they
+    # were keeping prior. 
+    else { 
+	
+	while ($num_backups > $num_to_keep) {
+
+	    # note that pop mutates existing_snaps
+	    my $oldest_backup = $backup_path . pop @existing_backups;
+            
+	    $ssh->system("sudo -n btrfs subvolume delete $oldest_backup");
+
+	    $num_backups--;
+	} 
+
+	return;
+    }
+}
+
 sub take_new_snapshot { # No test. Is not pure.
 
-    # take a single read-only snapshot.
+    # take a single $timeframe read-only snapshot of $subvol.
 
     my ($config_ref, $subvol, $timeframe) = @_;
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    my $local_snapshot_dir = local_snapshot_dir($config_ref, $subvol, $timeframe);
+    my $snap_dir = local_snapshot_dir($config_ref, $subvol, $timeframe);
 
     my $snapshot_name = current_time_snapstring();
 
     system( 'btrfs subvol snapshot -r '
 	  . $mountpoint
-	  . " $local_snapshot_dir/$snapshot_name"
+	  . " $snap_dir/$snapshot_name"
 	  ); 
 
     return 1;
 }
 
-sub delete_appropriate_snapshots { # No test. Is not pure.
+sub delete_old_snapshots { # No test. Is not pure.
     
-    # Delete snapshot(s) based off $subvol_$timeframe_keep setting
-    # defined in the users config. This function should be called
-    # after take_new_snapshot().
+    # Delete old snapshot(s) based off $subvol's $timeframe_keep
+    # setting defined in the users config. This function should be
+    # called after take_new_snapshot().
 
     my ($config_ref, $subvol, $timeframe) = @_;
 
@@ -1055,7 +1191,8 @@ sub delete_appropriate_snapshots { # No test. Is not pure.
     # kept because we just took a snapshot.
     if ($num_snaps == $num_to_keep + 1) { 
 
-	# pop takes from the end of the array
+	# pop takes from the end of the array. This is the oldest snap
+	# because they are sorted newest to oldest.
 	my $oldest_snap = pop @$existing_snaps_ref;
 
 	system("btrfs subvolume delete $oldest_snap");
@@ -1079,9 +1216,9 @@ sub delete_appropriate_snapshots { # No test. Is not pure.
 
 	    $num_snaps--;
 	} 
-    }
 
-    return 1;
+	return;
+    }
 }
 
 1;

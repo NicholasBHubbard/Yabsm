@@ -15,14 +15,12 @@ define_subvol root {
 
     mountpoint=/
 
-    hourly_want=yes
-    hourly_take=12
-    hourly_keep=2
+    5minute_want=yes
+    5minute_keep=24
 
-    daily_want=yes
-    daily_take=24
-    daily_keep=48
-    
+    hourly_want=yes
+    hourly_keep=36
+
     midnight_want=yes
     midnight_keep=21
     
@@ -36,13 +34,11 @@ define_subvol home {
 
     mountpoint=/home
 
-    hourly_want=yes
-    hourly_take=12
-    hourly_keep=36
+    5minute_want=yes
+    5minute_keep=24
 
-    daily_want=yes
-    daily_take=24
-    daily_keep=72
+    hourly_want=yes
+    hourly_keep=36
 
     midnight_want=yes
     midnight_keep=21
@@ -53,11 +49,13 @@ define_subvol home {
 
 define_backup homeDebianServer {
 
+    remote=yes
+
+    host=debianServer
+
     subvol=home
 
-    path=debianServer:/home/easystore/
-
-    is_ssh=yes
+    backup_dir=/home/easystore/
 
     cron=cd
 

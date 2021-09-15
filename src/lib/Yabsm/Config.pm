@@ -34,7 +34,7 @@ sub read_config {
 
     open(my $fh, '<', $file) or die "[!] Error: failed to open file '$file'\n";
 
-    # this is returned
+    # %config will be returned.
     my %config; 
 
     while (<$fh>) {
@@ -67,7 +67,7 @@ sub read_config {
 		next if /^\s*$/; # skip blank lines
 		next if /^\s*#/; # skip comment lines
 		
-		s/#.*//g;        # remove eol comments
+		s/#.*//;         # remove eol comments
 		s/\s+//g;        # remove all whitespace
 
 		last if /^}$/;   # terminate on closing brace
@@ -78,6 +78,9 @@ sub read_config {
 		    die "[!] Parse Error (line $.): cannot parse '$_'\n";
 		}
 
+		# perl hash keys cant start with numbers.
+		$key = '_5minute' if $key eq '5minute';
+		
 		$config{subvols}{$subvol}{$key} = $val;
 	    } 
 	}
@@ -104,7 +107,7 @@ sub read_config {
 		next if /^\s*$/; # skip blank lines
 		next if /^\s*#/; # skip comment lines
 		
-		s/#.*//g;        # remove eol comments
+		s/#.*//;         # remove eol comments
 		s/\s+//g;        # remove all whitespace
 		
 		last if /^}$/;   # terminate on closing brace
@@ -162,55 +165,41 @@ sub _check_config {
     # check all defined subvols
     foreach my $subvol (keys %{$config_ref->{subvols}}) {
 
-	# We remove from this array as we find their definitions for $subvol
-	my @required_settings = qw(mountpoint hourly_want hourly_take hourly_keep daily_want daily_take daily_keep midnight_want midnight_keep monthly_want monthly_keep);
+	# we will confirm that all of these settings have been defined.
+	my @required_settings = qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
 
 	# go through all of the settings for $subvol
 	while (my ($key, $val) = each %{$config_ref->{subvols}{$subvol}}) {
 
 	    if ($key eq 'mountpoint') {
+		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not -d $val) {
 		    push @errors, "[!] Config Error: subvol '$subvol': no such directory '$val'"
 		}
-		@required_settings = grep { $_ ne $key } @required_settings;
 	    }
 
 	    # *_want setting
-	    elsif ($key =~ /^(hourly|daily|midnight|monthly)_want$/) {
+	    elsif ($key =~ /^(5minute|hourly|midnight|monthly)_want$/) {
+		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not ($val eq 'yes' || $val eq 'no')) {
 		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' does not equal yes or no";
 		}
-		@required_settings = grep { $_ ne $key } @required_settings;
 	    }
 
 	    # *_keep setting
-	    elsif ($key =~ /^(hourly|daily|midnight|monthly)_keep$/) {
+	    elsif ($key =~ /^(5minute|hourly|midnight|monthly)_keep$/) {
+		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not $val =~ /^\d+$/) {
 		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0";
 		}
-		@required_settings = grep { $_ ne $key } @required_settings;
-	    }
-
-	    elsif ($key eq 'hourly_take') {
-		if (not ($val =~ /^\d+$/ && $val <= 60)) {
-		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' is not an integer between 0 and 60";
-		}
-		@required_settings = grep { $_ ne $key } @required_settings;
-	    }
-
-	    elsif ($key eq 'daily_take') {
-		if (not ($val =~ /^\d+$/ && $val <= 24)) {
-		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' is not an integer between 0 and 24";
-		}
-		@required_settings = grep { $_ ne $key } @required_settings;
 	    }
 
 	    else {
 		push @errors, "[!] Config Error: subvol '$subvol': '$key' is not a valid subvol setting";
 	    }
-	} # end of inner loop
+	} # end of while each loop
 	
-	# missing one or more required settings
+	# are we missing required settings?
 	if (@required_settings) {
 	    for (@required_settings) {
 		push @errors, "[!] Config Error: subvol '$subvol': missing required setting '$_'";

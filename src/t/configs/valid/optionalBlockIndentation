@@ -8,17 +8,16 @@ define_subvol home {
 
 mountpoint=/home
 
-hourly_want=no
-hourly_take=0
-hourly_keep=0
-
-daily_want=no
-daily_take=0
-daily_keep=0
-
 midnight_want=no
 midnight_keep=0
 
 monthly_want=no
 monthly_keep=0
+
+hourly_want=no
+hourly_keep=0
+
+5minute_want=no
+5minute_keep=0
+
 }

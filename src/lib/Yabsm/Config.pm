@@ -207,45 +207,45 @@ sub _check_config {
 	} 
     } # end of outer loop
 
-    # check backups
-    foreach my $backup (keys %{$config_ref->{backups}}) {
+    # # check backups
+    # foreach my $backup (keys %{$config_ref->{backups}}) {
 
-	my @required_settings = qw(subvol path keep);
+    # 	my @required_settings = qw(subvol path keep);
 	
-	# go through all of the settings for $backup
-	while (my ($key, $val) = each %{$config_ref->{backups}{$backup}}) {
+    # 	# go through all of the settings for $backup
+    # 	while (my ($key, $val) = each %{$config_ref->{backups}{$backup}}) {
 
-	    if ($key eq 'subvol') {
-		if (not any { $val eq $_ } keys %{$config_ref->{subvols}}) {
-		    push @errors, "[!] Config Error: backup '$backup': no defined subvol '$val'";
-		}
-		@required_settings = grep { $_ ne $key } @required_settings;
-	    }
+    # 	    if ($key eq 'subvol') {
+    # 		if (not any { $val eq $_ } keys %{$config_ref->{subvols}}) {
+    # 		    push @errors, "[!] Config Error: backup '$backup': no defined subvol '$val'";
+    # 		}
+    # 		@required_settings = grep { $_ ne $key } @required_settings;
+    # 	    }
 
-	    elsif ($key eq 'path') {
-		# TODO figure out how to validate backup path
-		@required_settings = grep { $_ ne $key } @required_settings;
-	    }
+    # 	    elsif ($key eq 'path') {
+    # 		# TODO figure out how to validate backup path
+    # 		@required_settings = grep { $_ ne $key } @required_settings;
+    # 	    }
 
-	    elsif ($key eq 'keep') {
-		if (not ($val =~ /^\d+$/ && $val > 0)) {
-		    push @errors, "[!] Config Error: backup '$backup': '$key' is not a positive integer";
-		}
-		@required_settings = grep { $_ ne $key } @required_settings;
-	    }
+    # 	    elsif ($key eq 'keep') {
+    # 		if (not ($val =~ /^\d+$/ && $val > 0)) {
+    # 		    push @errors, "[!] Config Error: backup '$backup': '$key' is not a positive integer";
+    # 		}
+    # 		@required_settings = grep { $_ ne $key } @required_settings;
+    # 	    }
 
-	    else {
-		push @errors, "[!] Config Error: backup '$backup': '$key' is not a valid backup setting";
-	    }
-	} #end of inner loop
+    # 	    else {
+    # 		push @errors, "[!] Config Error: backup '$backup': '$key' is not a valid backup setting";
+    # 	    }
+    # 	} #end of inner loop
 
-	# missing one or more required settings
-	if (@required_settings) {
-	    for (@required_settings) {
-		push @errors, "[!] Config Error: backup '$backup': missing required setting '$_'";
-	    }
-	} 
-    } # end of outer loop
+    # 	# missing one or more required settings
+    # 	if (@required_settings) {
+    # 	    for (@required_settings) {
+    # 		push @errors, "[!] Config Error: backup '$backup': missing required setting '$_'";
+    # 	    }
+    # 	} 
+    # } # end of outer loop
 
     # check misc settings
     my @required_misc_settings = qw(snapshot_dir);

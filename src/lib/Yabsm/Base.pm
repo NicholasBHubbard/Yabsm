@@ -46,11 +46,6 @@ sub initialize_directories { # No test. Is not pure.
 	    make_path($subvol_dir);
 	}
 
-	# .cache can hold a snapshot to be the parent of an incremental backup
-	if (not -d "$subvol_dir/.cache") {
-	    make_path("$subvol_dir/.cache");
-	}
-
 	my $_5minute_want = $config_ref->{subvols}{$subvol}{_5minute_want};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
@@ -71,6 +66,13 @@ sub initialize_directories { # No test. Is not pure.
 
 	if ($monthly_want eq 'yes' && not -d "$subvol_dir/monthly") {
 	    make_path("$subvol_dir/monthly");
+	}
+
+	# backup bootstrap snapshot dirs
+	foreach my $backup (all_backups_of_subvol($config_ref, $subvol)) {
+	    if (not -d "$subvol_dir/.backups/$backup/cache") {
+		make_path("$subvol_dir/.backups/$backup/bootstrap-snap");
+	    }
 	}
     }
     
@@ -187,7 +189,7 @@ sub all_snapshots_of { # No test. Is not pure.
 
     foreach my $tf (@timeframes) {
 
-	my $snap_dir = local_snapshot_dir($config_ref, $subvol, $tf);
+	my $snap_dir = local_snap_dir($config_ref, $subvol, $tf);
 
 	if (-d $snap_dir) {
 	    push @all_snaps, glob "$snap_dir/*"; 
@@ -199,20 +201,35 @@ sub all_snapshots_of { # No test. Is not pure.
     return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
 }
 
-sub local_snapshot_dir { # Has test. Is pure.
+sub local_snap_dir { # Has test. Is pure.
 
     # Return the local directory path for yabsm snapshots. The $subvol
-    # and $timeframe arguments are optional.
+    # and $timeframe arguments are optional. Note that this function
+    # does not check that $subvol and $timeframe are valid.
 
     my ($config_ref, $subvol, $timeframe) = @_;
 
-    my $snap_dir = $config_ref->{misc}{yabsm_snapshot_dir};
+    my $yabsm_dir = $config_ref->{misc}{yabsm_snapshot_dir};
 
-    $snap_dir .= "/$subvol" if defined $subvol;
+    $yabsm_dir .= "/$subvol" if defined $subvol;
 
-    $snap_dir .= "/$timeframe" if defined $timeframe;
+    $yabsm_dir .= "/$timeframe" if defined $timeframe;
 
-    return $snap_dir;
+    return $yabsm_dir;
+}
+
+sub bootstrap_snap_dir { # Has test. Is pure.
+
+    # Return the path the the directory holding the bootstrap snapshot
+    # for $backup. The bootstrap snapshot is vital for incremental backups.
+
+    my ($config_ref, $backup) = @_;
+
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my $yabsm_dir = $config_ref->{misc}{yabsm_snapshot_dir};
+
+    return "$yabsm_dir/$subvol/.backups/$backup/bootstrap-snap";
 }
 
                  ####################################
@@ -1069,18 +1086,18 @@ sub bootstrap_backup_ssh { # TODO: document
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
-    my $cache_dir = local_snapshot_dir($config_ref, $subvol, '.cache');
+    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
-    # delete old cache snap. In a loop in case there are multiple.
-    for my $old_cache_snap (glob "$cache_dir/*") {
-	system("btrfs subvol delete $old_cache_snap");
+    # delete old cache snap. In a loop in case there are somehow multiple.
+    for my $old_bootstrap_snap (glob "$bootstrap_snap_dir/*") {
+	system("btrfs subvol delete $old_bootstrap_snap");
     }
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     
-    my $cache_snap = $cache_dir . '/' . current_time_snapstring();
+    my $bootstrap_snap = "$bootstrap_snap_dir/" . current_time_snapstring();
     
-    system("btrfs subvol snapshot -r $mountpoint $cache_snap");
+    system("btrfs subvol snapshot -r $mountpoint $bootstrap_snap");
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
@@ -1091,16 +1108,15 @@ sub bootstrap_backup_ssh { # TODO: document
     $ssh->error and
       die "Couldn't establish SSH connection: " . $ssh->error;
  
-    # initialize remote dir
+    # initialize remote dir if it does not exist
     $ssh->system( "if [ ! -d \"$remote_backup_dir\" ];"
 		. "then mkdir -p $remote_backup_dir; fi"
 		);
 
     # send an incremental backup over ssh
-    $ssh->system({stdin_file => ['-|', "btrfs send $cache_snap"]}
+    $ssh->system({stdin_file => ['-|', "btrfs send $bootstrap_snap"]}
 		, "sudo -n btrfs receive $remote_backup_dir"
 	        );
-
 }
 
 sub do_backup_ssh { # TODO: document
@@ -1123,22 +1139,22 @@ sub do_backup_ssh { # TODO: document
     $ssh->error and
       die "Couldn't establish SSH connection: " . $ssh->error;
 
-    my $cached_snap =
-      (glob local_snapshot_dir($config_ref, $subvol, '.cache') . '/*')[0];
+    my $bootstrap_snap =
+      (glob (bootstrap_snap_dir($config_ref, $backup) . '/*'))[0];
 
-    if (not defined $cached_snap) {
-	die "[!] Internal Error: no cached snapshot for subvol '$subvol'";
+    if (not defined $bootstrap_snap) {
+	die "[!] Internal Error: no bootstrap snapshot for subvol '$subvol'";
     }
 
     my $tmp_snap =
-      local_snapshot_dir($config_ref) . '/.tmp/' . current_time_snapstring();
+      local_snap_dir($config_ref) . '/.tmp/' . current_time_snapstring();
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 	
     system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
     
     # send an incremental backup over ssh
-    $ssh->system({stdin_file => ['-|', "btrfs send -p $cached_snap $tmp_snap"]}
+    $ssh->system({stdin_file => ['-|', "btrfs send -p $bootstrap_snap $tmp_snap"]}
 		, "sudo -n btrfs receive $remote_backup_dir"
 		);
 
@@ -1211,7 +1227,7 @@ sub take_new_snapshot { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    my $snap_dir = local_snapshot_dir($config_ref, $subvol, $timeframe);
+    my $snap_dir = local_snap_dir($config_ref, $subvol, $timeframe);
 
     my $snapshot_name = current_time_snapstring();
 

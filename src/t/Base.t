@@ -1001,18 +1001,18 @@ sub test_current_time_snapstring {
     ok ( $test, 'current_time_snapstring()' );
 }
 
-test_local_snapshot_dir();
-sub test_local_snapshot_dir {
+test_local_snap_dir();
+sub test_local_snap_dir {
 
     my %config = gen_random_config();
 
     my $snapshot_root_dir = $config{misc}{yabsm_snapshot_dir};
 
-    my $subvol = $config{(keys %config)[rand keys %config]};
+    my $subvol = [Yabsm::Base::all_subvols(\%config)]->[0];
 
     # TEST 1
 
-    my $output1 = Yabsm::Base::local_snapshot_dir(\%config);
+    my $output1 = Yabsm::Base::local_snap_dir(\%config);
 
     my $solution1 = "$snapshot_root_dir";
 
@@ -1020,7 +1020,7 @@ sub test_local_snapshot_dir {
 
     # TEST 2
 
-    my $output2 = Yabsm::Base::local_snapshot_dir(\%config, $subvol);
+    my $output2 = Yabsm::Base::local_snap_dir(\%config, $subvol);
 
     my $solution2 = "$snapshot_root_dir/$subvol";
 
@@ -1028,11 +1028,29 @@ sub test_local_snapshot_dir {
 
     # TEST 3
 
-    my $output3 = Yabsm::Base::local_snapshot_dir(\%config, $subvol, 'midnight');
+    my $output3 = Yabsm::Base::local_snap_dir(\%config, $subvol, 'midnight');
 
     my $solution3 = "$snapshot_root_dir/$subvol/midnight";
 
     my $correct3 = $output3 eq $solution3;
 
-    ok ( $correct1 && $correct2 && $correct3, 'local_snapshot_dir()' );
+    ok ( $correct1 && $correct2 && $correct3, 'local_snap_dir()' );
  }
+
+test_bootstrap_snap_dir();
+sub test_bootstrap_snap_dir {
+    
+    my %config = gen_random_config();
+
+    my $yabsm_dir = $config{misc}{yabsm_snapshot_dir};
+
+    my $backup = [Yabsm::Base::all_backups(\%config)]->[0];
+
+    my $subvol = $config{backups}{$backup}{subvol};
+
+    my $got = Yabsm::Base::bootstrap_snap_dir(\%config, $backup);
+
+    my $expected = "$yabsm_dir/$subvol/.backups/$backup/bootstrap-snap";
+
+    ok ( $got eq $expected, 'bootstrap_snap_dir()' );
+}

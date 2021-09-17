@@ -31,16 +31,16 @@ use experimental 'smartmatch';
 
 sub gen_random_config {
 
-    my @possible_subvols = shuffle ('root', 'home', 'etc', 'var', 'tmp', 'mnt');
-    my @possible_mountpoints = shuffle ('/', '/home', '/etc', '/var', '/tmp', '/mnt');
-
-    my @subvols = @possible_subvols[0 .. int(rand(@possible_subvols))];
-
-    # generate the random config
     my %config; 
 
-    $config{misc}{snapshot_dir} = '/.snapshots';
-    
+    # misc settings
+    $config{misc}{yabsm_snapshot_dir} = '/.snapshots/yabsm';
+
+    # subvols
+    my @possible_subvols = shuffle ('root', 'home', 'etc', 'var', 'tmp', 'mnt');
+    my @possible_mountpoints = shuffle ('/', '/home', '/etc', '/var', '/tmp', '/mnt');
+    my @subvols = @possible_subvols[0 .. int(rand(@possible_subvols))];
+
     # dynamically add config entries for each subvolume.
     foreach my $subvol (@subvols) {
 
@@ -49,18 +49,18 @@ sub gen_random_config {
 	my $mountpoint = pop @possible_mountpoints;
 
 	my $hourly_want   = yes_or_no();
-	my $hourly_take   = int(rand(13));
-	my $hourly_keep   = int(rand(1000));
+	my $hourly_take   = 1 + int(rand(13));
+	my $hourly_keep   = 1 + int(rand(1000));
 
 	my $daily_want    = yes_or_no();
-	my $daily_take    = int(rand(25));
-	my $daily_keep    = int(rand(1000));
+	my $daily_take    = 1 + int(rand(25));
+	my $daily_keep    = 1 + int(rand(1000));
 
 	my $midnight_want = yes_or_no();
-	my $midnight_keep = int(rand(1000));
+	my $midnight_keep = 1 + int(rand(1000));
 
 	my $monthly_want  = yes_or_no();
-	my $monthly_keep  = int(rand(1000));
+	my $monthly_keep  = 1 + int(rand(1000));
 
 	# add entries to the config
 
@@ -81,6 +81,26 @@ sub gen_random_config {
 	$config{subvols}{$subvol}{monthly_keep} = $monthly_keep;
     }
 
+    # backups
+    foreach my $subvol (@subvols) {
+
+	my $backup = $subvol . 'Backup';
+
+	$config{backups}{$backup}{subvol} = $subvol;
+
+	$config{backups}{$backup}{backup_dir} = '/whatever';
+
+	$config{backups}{$backup}{remote} = yes_or_no();
+
+	if ($config{backups}{$backup}{remote} eq 'yes') {
+	    $config{backups}{$backup}{host} = 'whatever';
+	}
+
+	$config{backups}{$backup}{timeframe} = rand_backup_timeframe();
+
+	$config{backups}{$backup}{keep} = 1 + int(rand(1000));
+    }
+    
     return wantarray ? %config : \%config;
 }
   
@@ -140,6 +160,17 @@ sub yes_or_no {
 
     if ($rand == 1) { return 'yes' }
     else            { return 'no'  }
+}
+
+sub rand_backup_timeframe {
+
+    # randomly return a backup timeframe
+
+    my $rand = int(rand(3));
+
+    if    ($rand == 1) { return 'hourly' }
+    elsif ($rand == 2) { return 'midnight' }
+    else               { return 'monthly' }
 }
 
                  ####################################
@@ -339,6 +370,22 @@ sub test_relative_time_to_snapstring {
     my $correct = $t1 && $t2 && $t3;
 
     ok ( $correct, 'relative_time_to_snapstring()' );
+}
+
+test_immediate_to_snapstring();
+sub test_immediate_to_snapstring {
+
+    my $ss1 = 'day=2026_08_24,time=00:00';
+    my $ss2 = 'day=2025_08_24,time=00:00';
+    my $ss3 = 'day=2024_08_24,time=00:00';
+
+    # sorted from newest to oldest
+    my $all_snaps_ref = [$ss1, $ss2, $ss3];
+
+    my $o1 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, 'b-4-m');
+    my $o2 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, 'oldest');
+    my $o3 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, 'newest');
+    my $o4 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, '12-24');
 }
 
 test_snap_closer();
@@ -610,11 +657,42 @@ sub test_all_subvols {
 
     my %config = gen_random_config();
 
-    my @subvols1 = sort keys %{$config{subvols}};
+    my @got = Yabsm::Base::all_subvols(\%config);
 
-    my @subvols2 = Yabsm::Base::all_subvols(\%config);
+    my @expected = sort keys %{$config{subvols}};
 
-    ok ( @subvols1 ~~ @subvols2, 'all_subvols()' );
+    ok ( @got ~~ @expected, 'all_subvols()' );
+}
+
+test_all_backups();
+sub test_all_backups {
+
+    my %config = gen_random_config();
+
+    my @got = Yabsm::Base::all_backups(\%config);
+
+    my @expected = sort keys %{$config{backups}};
+
+    ok ( @got ~~ @expected, 'all_backups()' );
+}
+
+test_all_backups_of_subvol();
+sub test_all_backups_of_subvol {
+
+    my %config = gen_random_config();
+
+    my $subvol = [Yabsm::Base::all_subvols(\%config)]->[0];
+
+    my @expected = ();
+    foreach my $backup (Yabsm::Base::all_backups(\%config)) {
+	if ($config{backups}{$backup}{subvol} eq $subvol) {
+	    push @expected, $backup;
+	}
+    }
+
+    my @got = Yabsm::Base::all_backups_of_subvol(\%config, $subvol);
+
+    ok ( @got ~~ @expected, 'all_backups_of_subvol()' );
 }
 
 test_is_literal_time();
@@ -741,6 +819,8 @@ sub test_is_newer_query {
     # these should all be true
     my $t0 = Yabsm::Base::is_newer_query('newer b-45-m');
     my $t1 = Yabsm::Base::is_newer_query('newer 12-30');
+    my $t2 = Yabsm::Base::is_newer_query('after b-45-m');
+    my $t3 = Yabsm::Base::is_newer_query('after 12-30');
     
     # these should all be false
     my $f0 = Yabsm::Base::is_newer_query('newer b-5-d 12-30'); 
@@ -749,9 +829,11 @@ sub test_is_newer_query {
     my $f3 = Yabsm::Base::is_newer_query(''); 
     my $f4 = Yabsm::Base::is_newer_query(' newer b-6-h'); 
     my $f5 = Yabsm::Base::is_newer_query('newer b-6-h '); 
+    my $f6 = Yabsm::Base::is_newer_query(' after b-6-h'); 
+    my $f7 = Yabsm::Base::is_newer_query('after b-6-h '); 
 
-    my $trues = $t0 && $t1;
-    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5);
+    my $trues = $t0 && $t1 && $t2 && $t3;
+    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
 
     ok ( $trues && $falses, 'is_newer_query()' );
 }
@@ -762,6 +844,8 @@ sub test_is_older_query {
     # these should all be true
     my $t0 = Yabsm::Base::is_older_query('older b-45-m');
     my $t1 = Yabsm::Base::is_older_query('older 12-30');
+    my $t2 = Yabsm::Base::is_older_query('before b-45-m');
+    my $t3 = Yabsm::Base::is_older_query('before 12-30');
     
     # these should all be false
     my $f0 = Yabsm::Base::is_older_query('older b-5-d 12-30'); 
@@ -770,9 +854,11 @@ sub test_is_older_query {
     my $f3 = Yabsm::Base::is_older_query(''); 
     my $f4 = Yabsm::Base::is_older_query(' older b-6-h'); 
     my $f5 = Yabsm::Base::is_older_query('older b-6-h '); 
+    my $f6 = Yabsm::Base::is_older_query(' before b-6-h'); 
+    my $f7 = Yabsm::Base::is_older_query('before b-6-h '); 
 
-    my $trues = $t0 && $t1;
-    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5);
+    my $trues = $t0 && $t1 && $t2 && $t3;
+    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
 
     ok ( $trues && $falses, 'is_older_query()' );
 }
@@ -818,6 +904,8 @@ sub test_is_valid_query {
     my $t9 = Yabsm::Base::is_valid_query('bet 12-25 b-5-d');
     my $t10 = Yabsm::Base::is_valid_query('oldest');
     my $t11 = Yabsm::Base::is_valid_query('newest');
+    my $t12 = Yabsm::Base::is_valid_query('before b-8-mins');
+    my $t13 = Yabsm::Base::is_valid_query('after b-8-mins');
 
     # these should all be false
     my $f0 = Yabsm::Base::is_valid_query('');
@@ -834,7 +922,7 @@ sub test_is_valid_query {
     my $f11 = Yabsm::Base::is_valid_query('before after b-8-h');
 
     my $trues = ($t0 && $t2 && $t4 && $t5 && $t6
-	      && $t7 && $t8 && $t9 && $t10 && $t11);
+	      && $t7 && $t8 && $t9 && $t10 && $t11 && $t12 && $t13);
 
     my $falses = not ($f0 || $f1 || $f2 || $f3  || $f4 || $f5 || $f6
 		   || $f7 || $f8 || $f9 || $f10 || $f11);
@@ -854,45 +942,53 @@ sub test_is_subvol {
 	$t1 = 0 unless Yabsm::Base::is_subvol(\%config, $subvol);
     }
 
-    my $t2 = 1;
-    $t2 = 0 if Yabsm::Base::is_subvol(\%config, 'this is not a subvol');
+    my $f1 = 1;
+    $f1 = 0 if Yabsm::Base::is_subvol(\%config, 'this is not a subvol');
 
-    ok ( $t1 && $t2, 'is_subvol()' );
+    ok ( $t1 && $f1, 'is_subvol()' );
 }
 
-test_is_timeframe();
-sub test_is_timeframe {
+test_is_backup();
+sub test_is_backup {
+    
+    my %config = gen_random_config();
 
-    my $correct_5minute  = Yabsm::Base::is_timeframe('5minute');
-    my $correct_hourly   = Yabsm::Base::is_timeframe('hourly');
-    my $correct_midnight = Yabsm::Base::is_timeframe('midnight');
-    my $correct_monthly  = Yabsm::Base::is_timeframe('monthly');
+    my @all_backups = Yabsm::Base::all_backups(\%config);
 
-    my $f0 = Yabsm::Base::is_timeframe('');
+    my $t1 = 1;
+    foreach my $backup (@all_backups) {
+	$t1 = 0 unless Yabsm::Base::is_backup(\%config, $backup);
+    }
 
-    my $f1 = Yabsm::Base::is_timeframe(' 5minute');
-    my $f2 = Yabsm::Base::is_timeframe(' hourly');
-    my $f3 = Yabsm::Base::is_timeframe(' midnight');
-    my $f4 = Yabsm::Base::is_timeframe(' monthly');
+    my $f1 = 1;
+    $f1 = 0 if Yabsm::Base::is_backup(\%config, 'this is not a backup');
 
-    my $f5 = Yabsm::Base::is_timeframe('5minute ');
-    my $f6 = Yabsm::Base::is_timeframe('hourly ');
-    my $f7 = Yabsm::Base::is_timeframe('midnight ');
-    my $f8 = Yabsm::Base::is_timeframe('monthly ');
+    ok ( $t1 && $f1, 'is_backup()' );
+}
 
-    my $f9  = Yabsm::Base::is_timeframe(' 5minute ');
-    my $f10 = Yabsm::Base::is_timeframe(' hourly ');
-    my $f11 = Yabsm::Base::is_timeframe(' midnight ');
-    my $f12 = Yabsm::Base::is_timeframe(' monthly ');
+test_is_snapstring();
+sub test_is_snapstring {
 
-    my $f13 = Yabsm::Base::is_timeframe('this is not a timeframe');
+    my $t1 = Yabsm::Base::is_snapstring('/some/path/day=2020_12_25,time=10:40');
+    my $t2 = Yabsm::Base::is_snapstring('day=2020_12_25,time=10:40');
+    my $t3 = Yabsm::Base::is_snapstring('day=8459_34_98,time=67:90');
+    my $t4 = Yabsm::Base::is_snapstring('  day=2020_12_25,time=12:30');
 
-    my $trues = $correct_5minute && $correct_hourly && $correct_midnight && $correct_monthly;
+    my $f1 = Yabsm::Base::is_snapstring('');
+    my $f2 = Yabsm::Base::is_snapstring(' ');
+    my $f3 = Yabsm::Base::is_snapstring('da=2020_12_25,time=10:30');
+    my $f4 = Yabsm::Base::is_snapstring('/some/path/day=202_12_25,time=10:40');
+    my $f5 = Yabsm::Base::is_snapstring('day=2020_1_25,time=10:40');
+    my $f6 = Yabsm::Base::is_snapstring('day=2020_12_2,time=10:40');
+    my $f7 = Yabsm::Base::is_snapstring('day=2020_12_25,time=1:40');
+    my $f8 = Yabsm::Base::is_snapstring('day=2020_12_25,time=10:4');
+    my $f9 = Yabsm::Base::is_snapstring('day=2020_12_25,time=12:30   ');
 
-    my $falses = not ( $f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7
-		    || $f9 || $f10 || $f11 || $f12 || $f13);
+    my $trues = $t1 && $t2 && $t3 && $t4;
 
-    ok ( $trues && $falses, 'is_timeframe()' );
+    my $falses = not ($f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8 || $f9);
+
+    ok ( $trues && $falses, 'is_snapstring()')
 }
 
 test_current_time_snapstring();
@@ -910,7 +1006,7 @@ sub test_local_snapshot_dir {
 
     my %config = gen_random_config();
 
-    my $snapshot_root_dir = $config{misc}{snapshot_dir};
+    my $snapshot_root_dir = $config{misc}{yabsm_snapshot_dir};
 
     my $subvol = $config{(keys %config)[rand keys %config]};
 
@@ -918,7 +1014,7 @@ sub test_local_snapshot_dir {
 
     my $output1 = Yabsm::Base::local_snapshot_dir(\%config);
 
-    my $solution1 = "$snapshot_root_dir/yabsm";
+    my $solution1 = "$snapshot_root_dir";
 
     my $correct1 = $output1 eq $solution1;
 
@@ -926,7 +1022,7 @@ sub test_local_snapshot_dir {
 
     my $output2 = Yabsm::Base::local_snapshot_dir(\%config, $subvol);
 
-    my $solution2 = "$snapshot_root_dir/yabsm/$subvol";
+    my $solution2 = "$snapshot_root_dir/$subvol";
 
     my $correct2 = $output2 eq $solution2;
 
@@ -934,7 +1030,7 @@ sub test_local_snapshot_dir {
 
     my $output3 = Yabsm::Base::local_snapshot_dir(\%config, $subvol, 'midnight');
 
-    my $solution3 = "$snapshot_root_dir/yabsm/$subvol/midnight";
+    my $solution3 = "$snapshot_root_dir/$subvol/midnight";
 
     my $correct3 = $output3 eq $solution3;
 

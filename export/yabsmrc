@@ -4,7 +4,7 @@
               # WELCOME TO THE YABSM CONFIGURATION FILE #
               #-----------------------------------------#
 
-snapshot_dir=/.snapshots
+yabsm_snapshot_dir=/.snapshots/yabsm
 
 ### Every subvolume requires 11 fields
 
@@ -47,17 +47,17 @@ define_subvol home {
     monthly_keep=0
 }
 
-define_backup homeDebianServer {
+define_backup homeBackup {
 
     remote=yes
 
-    host=debianServer
+    host=myHost
 
     subvol=home
 
-    backup_dir=/home/easystore/
+    backup_dir=/some/remote/dir
 
-    cron=cd
+    timeframe=hourly
 
     keep=100
 }

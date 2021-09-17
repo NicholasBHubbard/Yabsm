@@ -1,0 +1,51 @@
+#
+# This config shows we can have multiple backups of the same subvol
+#
+
+yabsm_snapshot_dir=/
+
+define_subvol home {
+
+    mountpoint=/home
+
+    midnight_want=no
+    midnight_keep=0
+    
+    monthly_want=no
+    monthly_keep=0
+    
+    hourly_want=no
+    hourly_keep=0
+    
+    5minute_want=no
+    5minute_keep=0
+
+}
+
+define_backup homeBackup1 {
+
+    remote=yes
+    
+    host=whatever
+
+    subvol=home
+    
+    backup_dir=/
+    
+    timeframe=hourly
+    
+    keep=100
+}
+
+define_backup homeBackup2 {
+
+    remote=no
+    
+    subvol=home
+    
+    backup_dir=/
+    
+    timeframe=midnight
+    
+    keep=10
+}

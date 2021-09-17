@@ -1,0 +1,22 @@
+#
+# This config shows we cannot define an invalid define_subvol header
+#
+
+yabsm_snapshot_dir=/#always required
+
+define_subvolhome{# no spaces
+
+    mountpoint=/home
+
+    5minute_want=no
+    5minute_keep=0
+
+    hourly_want=no
+    hourly_keep=0
+
+    midnight_want=no
+    midnight_keep=0
+
+    monthly_want=no
+    monthly_keep=0
+}

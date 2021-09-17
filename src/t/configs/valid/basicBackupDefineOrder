@@ -1,0 +1,37 @@
+#
+# This config shows that we can define a backup before the subvol and
+# misc settings anywhere.
+#
+
+define_backup homeBackup {
+
+    remote=no
+    
+    subvol=home
+
+    backup_dir=/
+
+    timeframe=hourly
+
+    keep=100
+}
+
+define_subvol home {
+
+    mountpoint=/home
+
+    5minute_want=no
+    5minute_keep=0
+
+    hourly_want=no
+    hourly_keep=0
+
+    midnight_want=no
+    midnight_keep=0
+
+    monthly_want=no
+    monthly_keep=0
+}
+
+
+yabsm_snapshot_dir=/#always required

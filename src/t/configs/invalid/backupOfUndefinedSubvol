@@ -1,0 +1,18 @@
+#
+# This config shows that we cannot define a backup for an undefined subvol
+#
+
+yabsm_snapshot_dir=/
+
+define_backup homeDebianServer {
+
+    remote=no
+
+    subvol=notASubvol
+
+    backup_dir=/home/easystore/yabsm/
+
+    timeframe=midnight
+
+    keep=50
+}

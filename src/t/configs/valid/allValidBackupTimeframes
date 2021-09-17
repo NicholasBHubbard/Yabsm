@@ -1,0 +1,61 @@
+#
+# This config shows that all valid backup timeframe settings are allowed
+#
+
+yabsm_snapshot_dir=/
+
+define_subvol home {
+
+    mountpoint=/home
+
+    5minute_want=no
+    5minute_keep=0
+
+    hourly_want=no
+    hourly_keep=0
+
+    midnight_want=no
+    midnight_keep=0
+
+    monthly_want=no
+    monthly_keep=0
+}
+
+define_backup homeHourly {
+
+    remote=no
+
+    subvol=home
+
+    backup_dir=/
+
+    timeframe=hourly
+
+    keep=50
+}
+
+define_backup homeMidnight {
+
+    remote=no
+
+    subvol=home
+
+    backup_dir=/
+
+    timeframe=midnight
+
+    keep=50
+}
+
+define_backup homeMonthly {
+
+    remote=no
+
+    subvol=home
+
+    backup_dir=/
+
+    timeframe=monthly
+
+    keep=50
+}

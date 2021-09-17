@@ -1,0 +1,7 @@
+#
+# this config shows we cannot define a random invalid setting
+#
+
+some_setting=whatever
+
+yabsm_snapshot_dir=/

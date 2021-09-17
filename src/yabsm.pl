@@ -42,6 +42,7 @@ my @TAKE_SNAPSHOT;
 my $UPDATE_CRONTAB;
 my $DO_BACKUP;
 my $BACKUP_BOOTSTRAP;
+my $PRINT_CRONSTRINGS;
 my @FIND;
 my @CHECK_CONFIG;
 my $HELP;
@@ -52,6 +53,7 @@ GetOptions( 'take-snap|s=s{2}'      => \@TAKE_SNAPSHOT
 	  , 'check-config|c=s{0,1}' => \@CHECK_CONFIG
 	  , 'do-backup|b=s'         => \$DO_BACKUP
 	  , 'bootstrap-backup|k=s'  => \$BACKUP_BOOTSTRAP
+	  , 'crons|C'               => \$PRINT_CRONSTRINGS
 	  , 'help|h'                => \$HELP
 	  );
 
@@ -62,11 +64,11 @@ if ($HELP) {
 
 if (@CHECK_CONFIG) {
 
-    my ($config_path) = @CHECK_CONFIG;
-
-    $config_path = $config_path || '/etc/yabsmrc';
+    my $config_path = pop @CHECK_CONFIG || '/etc/yabsmrc';
 
     Yabsm::Config::read_config($config_path);
+
+    say 'all good';
 
     exit 0;
 }
@@ -87,17 +89,18 @@ if (@TAKE_SNAPSHOT) {
 
     die "[!] Permission Error: must be root to take a new snapshot\n" if $<;
 
-    # --take-snapshot option takes two string args. We can be sure
+    # --take-snap option takes two string args. We can be sure
     # that both args are defined as Getopt::Long will kill the program
     # if they are not.
+
     my ($subvol, $timeframe) = @TAKE_SNAPSHOT;
 
     if (not Yabsm::Base::is_subvol($CONFIG_REF, $subvol)) {
-	die "[!] Error: '$subvol' is not a yabsm subvolume\n";
+	die "[!] Error: no such defined subvol '$subvol'\n"
     }
 
-    if (not Yabsm::Base::is_timeframe($timeframe)) {
-	die "[!] Error: '$timeframe' is not a valid timeframe\n";
+    if ($CONFIG_REF->{subvols}{$subvol}{"${timeframe}_want"} eq 'no') {
+	die "[!] Error: subvol '$subvol' is not taking '$timeframe' snapshots\n";
     }
 
     Yabsm::Base::take_new_snapshot($CONFIG_REF, $subvol, $timeframe);
@@ -154,6 +157,15 @@ if (@FIND) {
     exit 0;
 }
 
+if ($PRINT_CRONSTRINGS) {
+
+    my @cron_strings = Yabsm::Base::generate_cron_strings($CONFIG_REF);
+
+    say for @cron_strings;
+
+    exit 0;
+}
+
 if ($BACKUP_BOOTSTRAP) {
 
     die "[!] Permission Error: must be root to perform backup\n" if $<;
@@ -161,8 +173,8 @@ if ($BACKUP_BOOTSTRAP) {
     # option takes backup arg
     my $backup = $BACKUP_BOOTSTRAP;
 
-    if (not is_backup($CONFIG_REF, $backup)) {
-	die "[!] Error: no such defined backup '$backup'" 
+    if (not Yabsm::Base::is_backup($CONFIG_REF, $backup)) {
+	die "[!] Error: no such defined backup '$backup'\n";
     }
     
     Yabsm::Base::do_backup_bootstrap($CONFIG_REF, $backup);
@@ -176,11 +188,11 @@ if ($DO_BACKUP) {
 
     my $backup = $DO_BACKUP;
 
-    if (not is_backup($CONFIG_REF, $backup)) {
-	die "[!] Error: no such defined backup '$backup'" 
+    if (not Yabsm::Base::is_backup($CONFIG_REF, $backup)) {
+	die "[!] Error: no such defined backup '$backup'\n";
     }
 
-    Yabsm::Base::do_incremental_backup($CONFIG_REF, $backup);
+    Yabsm::Base::do_backup($CONFIG_REF, $backup);
 
     exit 0;
 }

@@ -25,6 +25,10 @@ use 5.010;
 
 use List::Util 'any';
 
+use FindBin '$Bin';
+use lib "$Bin/..";
+use Yabsm::Base;
+
 sub read_config {
 
     # Read config reads a yabsm configuration file and returns a config hash
@@ -52,6 +56,7 @@ sub read_config {
 		die "[!] Parse Error (line $.): invalid subvol name '$subvol' does not start with alphabetic character\n";
 	    }
 	    else {
+		# create the key
 		$config{subvols}{$subvol} = undef;
 	    }
 
@@ -79,7 +84,7 @@ sub read_config {
 		}
 
 		# perl hash keys cant start with numbers.
-		$key = '_5minute' if $key eq '5minute';
+		$key =~ s/5minute/_5minute/;
 		
 		$config{subvols}{$subvol}{$key} = $val;
 	    } 
@@ -92,6 +97,7 @@ sub read_config {
 		die "[!] Parse Error (line $.): invalid backup name '$backup' does not start with alphabetic character\n";
 	    }
 	    else {
+		# create the key
 		$config{backups}{$backup} = undef;
 	    }
 
@@ -140,22 +146,25 @@ sub read_config {
     close $fh;
 
     # Static error checking
-    my @errors = _check_config(\%config);
+    my @errors = check_config(\%config);
 
     # We found errors. Print their messages and die.
     if (@errors) {
-	# say STDERR $_ for @errors;
-	die join "\n", @errors;
+	my $errors = join "\n", @errors;
+	die "$errors\n";
     }
     
     # No errors. All good.
     return wantarray ? %config : \%config;
 }
 
-sub _check_config {
+sub check_config {
 
-    # comprehensively check the $config_ref hash. All errors that are found
-    # are pushed to the @errors array.
+    # Comprehensively check the config hash produced by
+    # read_config(). All errors that are found are pushed onto the
+    # @errors array, and the @errors array is returned. The caller
+    # will know if the config is valid if they are returned an empty
+    # array.
 
     my ($config_ref) = @_;
 
@@ -163,10 +172,10 @@ sub _check_config {
     my @errors; 
 
     # check all defined subvols
-    foreach my $subvol (keys %{$config_ref->{subvols}}) {
+    foreach my $subvol (Yabsm::Base::all_subvols($config_ref)) {
 
 	# we will confirm that all of these settings have been defined.
-	my @required_settings = qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
+	my @required_settings = qw(mountpoint _5minute_want _5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
 
 	# go through all of the settings for $subvol
 	while (my ($key, $val) = each %{$config_ref->{subvols}{$subvol}}) {
@@ -179,7 +188,7 @@ sub _check_config {
 	    }
 
 	    # *_want setting
-	    elsif ($key =~ /^(5minute|hourly|midnight|monthly)_want$/) {
+	    elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_want$/) {
 		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not ($val eq 'yes' || $val eq 'no')) {
 		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' does not equal yes or no";
@@ -187,7 +196,7 @@ sub _check_config {
 	    }
 
 	    # *_keep setting
-	    elsif ($key =~ /^(5minute|hourly|midnight|monthly)_keep$/) {
+	    elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_keep$/) {
 		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not $val =~ /^\d+$/) {
 		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0";
@@ -207,62 +216,92 @@ sub _check_config {
 	} 
     } # end of outer loop
 
-    # # check backups
-    # foreach my $backup (keys %{$config_ref->{backups}}) {
+    # check backups
+    foreach my $backup (Yabsm::Base::all_backups($config_ref)) {
 
-    # 	my @required_settings = qw(subvol path keep);
+	my @required_settings = qw(subvol remote keep backup_dir timeframe);
 	
-    # 	# go through all of the settings for $backup
-    # 	while (my ($key, $val) = each %{$config_ref->{backups}{$backup}}) {
+	# go through all of the settings for $backup
+	while (my ($key, $val) = each %{$config_ref->{backups}{$backup}}) {
 
-    # 	    if ($key eq 'subvol') {
-    # 		if (not any { $val eq $_ } keys %{$config_ref->{subvols}}) {
-    # 		    push @errors, "[!] Config Error: backup '$backup': no defined subvol '$val'";
-    # 		}
-    # 		@required_settings = grep { $_ ne $key } @required_settings;
-    # 	    }
+	    if ($key eq 'subvol') {
+		if (not Yabsm::Base::is_subvol($config_ref, $val)) {
+		    push @errors, "[!] Config Error: backup '$backup': no defined subvol '$val'";
+		}
+		@required_settings = grep { $_ ne $key } @required_settings;
+	    }
 
-    # 	    elsif ($key eq 'path') {
-    # 		# TODO figure out how to validate backup path
-    # 		@required_settings = grep { $_ ne $key } @required_settings;
-    # 	    }
+	    elsif ($key eq 'backup_dir') {
+		# TODO figure out how to validate backup path
+		@required_settings = grep { $_ ne $key } @required_settings;
+	    }
 
-    # 	    elsif ($key eq 'keep') {
-    # 		if (not ($val =~ /^\d+$/ && $val > 0)) {
-    # 		    push @errors, "[!] Config Error: backup '$backup': '$key' is not a positive integer";
-    # 		}
-    # 		@required_settings = grep { $_ ne $key } @required_settings;
-    # 	    }
+	    elsif ($key eq 'keep') {
+		if (not ($val =~ /^\d+$/ && $val > 0)) {
+		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not a positive integer";
+		}
+		@required_settings = grep { $_ ne $key } @required_settings;
+	    }
 
-    # 	    else {
-    # 		push @errors, "[!] Config Error: backup '$backup': '$key' is not a valid backup setting";
-    # 	    }
-    # 	} #end of inner loop
+	    elsif ($key eq 'timeframe') {
+		if (not any { $val eq $_ } qw(hourly midnight monthly)) {
+		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)";
+		}
+		@required_settings = grep { $_ ne $key } @required_settings;
+	    }
 
-    # 	# missing one or more required settings
-    # 	if (@required_settings) {
-    # 	    for (@required_settings) {
-    # 		push @errors, "[!] Config Error: backup '$backup': missing required setting '$_'";
-    # 	    }
-    # 	} 
-    # } # end of outer loop
+	    elsif ($key eq 'remote') {
+		
+		@required_settings = grep { $_ ne $key } @required_settings;
+
+		if ($val eq 'yes') {
+		    if (not exists $config_ref->{backups}{$backup}{host}) {
+			push @errors, "[!] Config Error: backup '$backup': remote backups require 'host' setting";
+		    }
+		}
+		elsif ($val eq 'no') {
+		    if (exists $config_ref->{backups}{$backup}{host}) {
+			push @errors, "[!] Config Error: backup '$backup': 'host' is not a valid setting for a non-remote backup";
+		    }
+		}
+		else {
+		    push @errors, "[!] Config Error: backup '$backup': value for '$key' does not equal yes or no";
+		}
+	    }
+
+	    else {
+		# we deal with the 'host' key in the 'remote' key check
+		if (not ($key eq 'host')) { 
+		    push @errors, "[!] Config Error: backup '$backup': '$key' is not a valid backup setting";
+		}
+	    }
+	} #end of inner loop
+
+	# missing one or more required settings
+	if (@required_settings) {
+	    for (@required_settings) {
+		push @errors, "[!] Config Error: backup '$backup': missing required setting '$_'";
+	    }
+	} 
+    } # end of outer loop
 
     # check misc settings
-    my @required_misc_settings = qw(snapshot_dir);
+    my @required_misc_settings = qw(yabsm_snapshot_dir);
+
     while (my ($key, $val) = each %{$config_ref->{misc}}) {
 	
-	if ($key eq 'snapshot_dir') {
-	    if (not -d $val) {
-		push @errors, "[!] Config Error: '$key': no such directory '$val'";
-	    }
-	    @required_misc_settings =
-	      grep { $_ ne $key } @required_misc_settings;
+	if ($key eq 'yabsm_snapshot_dir') {
+	    @required_misc_settings = grep { $_ ne $key } @required_misc_settings;
+	}
+
+	else {
+	    push @errors, "[!] Config Error: '$key' is not a valid setting";
 	}
     }
     
     if (@required_misc_settings) {
 	for (@required_misc_settings) {
-	    push @errors, "[!] Config Error: missing required setting '$_'";
+	    push @errors, "[!] Config Error: missing required misc setting '$_'";
 	}
     } 
 

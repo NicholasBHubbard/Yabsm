@@ -22,12 +22,12 @@ use lib "$Bin/../lib";
 # Module to test
 use Yabsm::Config;
 
-print "Testing that all the valid configs ...\n";
+print "Testing that all the valid configs parse successfully ...\n";
 for my $config (glob './configs/valid/*') {
     lives_ok { Yabsm::Config::read_config($config) } $config;
 }
 
-print "\nTesting that all the invalid configs ...\n";
+print "\nTesting that all the invalid configs kill the program ...\n";
 for my $config (glob './configs/invalid/*') {
-    dies_ok { Yabsm::Config::read_config($config) }
+    dies_ok { Yabsm::Config::read_config($config) } $config;
 }

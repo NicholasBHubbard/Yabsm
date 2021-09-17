@@ -12,29 +12,30 @@ use strict;
 use warnings;
 use 5.010;
 
-use File::Copy 'move';
 use Time::Piece;
-use List::Util 'any';
 use Net::OpenSSH;
+use List::Util 'any';
+use File::Copy 'move';
+use File::Path 'make_path';
 
 sub initialize_directories { # No test. Is not pure.
 
     # This subroutine is called everytime the yabsm script is run
-    # (unless using --help or --check-config flag). This subroutine
+    # (unless using --help or --check-config flags). This subroutine
     # allows us to be assured that all needed directories have been
     # created.
 
     my ($config_ref) = @_;
 
-    my $yabsm_root_dir = $config_ref->{misc}{snapshot_dir} . '/yabsm';
+    my $yabsm_root_dir = $config_ref->{misc}{yabsm_snapshot_dir};
 
     if (not -d $yabsm_root_dir) {
-	mkdir $yabsm_root_dir;
+	make_path($yabsm_root_dir);
     }
 
     # .tmp dir holds tmp snaps for backups
     if (not -d $yabsm_root_dir . '/.tmp') {
-	mkdir $yabsm_root_dir . '/.tmp';
+	make_path($yabsm_root_dir . '/.tmp');
     }
 
     foreach my $subvol (all_subvols($config_ref)) {
@@ -42,12 +43,12 @@ sub initialize_directories { # No test. Is not pure.
 	my $subvol_dir = "$yabsm_root_dir/$subvol";
 
 	if (not -d $subvol_dir) {
-	    mkdir $subvol_dir;
+	    make_path($subvol_dir);
 	}
 
 	# .cache can hold a snapshot to be the parent of an incremental backup
 	if (not -d "$subvol_dir/.cache") {
-	    mkdir "$subvol_dir/.cache";
+	    make_path("$subvol_dir/.cache");
 	}
 
 	my $_5minute_want = $config_ref->{subvols}{$subvol}{_5minute_want};
@@ -57,19 +58,19 @@ sub initialize_directories { # No test. Is not pure.
 
 	
 	if ($_5minute_want eq 'yes' && not -d "$subvol_dir/5minute") {
-	    mkdir "$subvol_dir/5minute";
+	    make_path("$subvol_dir/5minute");
 	}
 
 	if ($hourly_want eq 'yes' && not -d "$subvol_dir/hourly") {
-	    mkdir "$subvol_dir/hourly";
+	    make_path("$subvol_dir/hourly");
 	}
 
 	if ($midnight_want eq 'yes' && not -d "$subvol_dir/midnight") {
-	    mkdir "$subvol_dir/midnight";
+	    make_path("$subvol_dir/midnight");
 	}
 
 	if ($monthly_want eq 'yes' && not -d "$subvol_dir/monthly") {
-	    mkdir "$subvol_dir/monthly";
+	    make_path("$subvol_dir/monthly");
 	}
     }
     
@@ -169,10 +170,11 @@ sub ask_user_for_query { # No test. Is not pure.
                  #           CONFIG GATHERING       #
                  ####################################
 
-sub all_snapshots_of { # No test. Is not pure. TODO DOCUMENT
+sub all_snapshots_of { # No test. Is not pure.
 
-    # Read filesystem to gather all the snapshots for a given
-    # subvolume and return them sorted from newest to oldest. 
+    # Read filesystem to gather the snapshots for a given
+    # subvolume. Can optionally pass timeframe arguments to only get
+    # snapshots of certain timeframes.
 
     my ($config_ref, $subvol, @timeframes) = @_;
 
@@ -204,7 +206,7 @@ sub local_snapshot_dir { # Has test. Is pure.
 
     my ($config_ref, $subvol, $timeframe) = @_;
 
-    my $snap_dir = $config_ref->{misc}{snapshot_dir} . '/yabsm';
+    my $snap_dir = $config_ref->{misc}{yabsm_snapshot_dir};
 
     $snap_dir .= "/$subvol" if defined $subvol;
 
@@ -216,6 +218,16 @@ sub local_snapshot_dir { # Has test. Is pure.
                  ####################################
                  #            SNAPSTRINGS           #
                  ####################################
+
+sub is_snapstring { # Has test. Is pure.
+
+    # Return 1 iff $snapstring is a valid snapstring. Note that this
+    # sub works on absolute paths as well as plain snapstrings.
+
+    my ($snapstring) = @_;
+
+    return $snapstring =~ /day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/;
+}
 
 sub current_time_snapstring { # No test. Is not pure.
     
@@ -231,7 +243,7 @@ sub current_time_snapstring { # No test. Is not pure.
     return "day=${yr}_${mon}_${day},time=${hr}:$min";
 }
 
-sub immediate_to_snapstring { # TODO no test.
+sub immediate_to_snapstring { # No test. Is pure. 
 
     # Resolve an immediate to a snapstring. An immediate is either a
     # literal time, relative time, newest time, or oldest time.
@@ -368,8 +380,8 @@ sub time_piece_obj_to_snapstring { # Has test. Is pure.
 sub sort_snapshots { # Has test. Is pure.
 
     # return a sorted version of the inputted array ref of
-    # snapshots. Sorted from newest to oldest. Works with either full
-    # paths or just snapstrings.
+    # snapshots. Sorted from newest to oldest. Works with full
+    # paths and plain snapstrings.
 
     my ($snaps_ref) = @_;
 
@@ -402,7 +414,7 @@ sub cmp_snaps { # Has test. Is pure.
 }
 
                  ####################################
-                 #        TODO NAME THIS SECTION #
+                 #             QUERIES              #
                  ####################################
 
 sub n_units_ago_snapstring { # Has test. Is not pure.
@@ -432,12 +444,11 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
 
 sub snap_closest_to { # Has test. Is pure.
 
-    # return the snapshot from $all_snaps_ref that is closest to
+    # Return the snapshot from $all_snaps_ref that is closest to
     # $target_snap. $all_snaps_ref is sorted from newest to oldest.
 
     my ($all_snaps_ref, $target_snap) = @_;
 
-    # this is returned
     my $snap;
 
     for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
@@ -597,8 +608,9 @@ sub snaps_between { # Has test. Is pure.
 		    last;
 		}
 
-		# else
-		push @snaps_between, $this_snap;
+		else {
+		    push @snaps_between, $this_snap;
+		}
 	    }
 	    
 	    last;
@@ -608,9 +620,12 @@ sub snaps_between { # Has test. Is pure.
     return wantarray ? @snaps_between : \@snaps_between;
 }
 
-sub newest_snap { # Has test. Is pure. # TODO WORKS WITH CONFIG. DOCUMENT!
+sub newest_snap { # Has test. Is not pure.
 
-    # this works because the snapshots are always sorted newest to oldest
+    # $ref can be either a hash ref to the users config or an array
+    # ref of snapshots. We can return the first element in the snapshot
+    # array because it will always be sorted from newest to oldest.
+    # Only the scenario of $ref being a snapshot array ref is tested.
 
     my ($ref, $subvol) = @_;
 
@@ -620,18 +635,23 @@ sub newest_snap { # Has test. Is pure. # TODO WORKS WITH CONFIG. DOCUMENT!
 	$newest_snap = $ref->[0]
     }
 
-    else {
+    elsif (ref($ref) eq 'HASH') {
 	my $all_snaps_ref = all_snapshots_of($ref, $subvol);
 	$newest_snap = $all_snaps_ref->[0];
     }
 
+    else { die }
+
     return $newest_snap;
 }
 
-sub oldest_snap { # Has test. Is pure.
+sub oldest_snap { # Has test. Is not pure.
 
-    # this works because the snapshots are always sorted newest to oldest
-
+    # $ref can be either a hash ref to the users config or an array
+    # ref of snapshots. We can return the last element in the snapshot
+    # array because it will always be sorted from newest to oldest.
+    # Only the scenario of $ref being a snapshot array ref is tested.
+    
     my ($ref, $subvol) = @_;
 
     my $oldest_snap;
@@ -640,18 +660,20 @@ sub oldest_snap { # Has test. Is pure.
 	$oldest_snap = $ref->[-1];
     }
 
-    else {
+    elsif (ref($ref) eq 'HASH') {
 	my $all_snaps_ref = all_snapshots_of($ref, $subvol);
-	$oldest_snap = $ref->[-1];
+	$oldest_snap = $all_snaps_ref->[-1];
     }
+
+    else { die }
 
     return $oldest_snap;
 }
 
-sub answer_query { # TODO no test
+sub answer_query { # No test. Is not pure.
 
-    # This function answers $query to find the appropiate snapshot(s)
-    # of $subvol. 
+    # Answers $query to find the appropiate snapshot(s) of $subvol. We
+    # expect that $query has already been validated.
 
     my ($config_ref, $subvol, $query) = @_;
 
@@ -778,6 +800,7 @@ sub is_relative_time { # Has test. Is pure.
 sub is_newer_query { # Has test. Is pure.
 
     # Return 1 iff $query is a syntactically valid 'newer' query.
+    # A newer query can have either the keyword 'newer' or 'after'.
 
     my ($query) = @_;
 
@@ -785,7 +808,7 @@ sub is_newer_query { # Has test. Is pure.
 
     return 0 if any { not defined } ($keyword, $imm);
 
-    my $keyword_correct = $keyword =~ /^newer$/;
+    my $keyword_correct = $keyword =~ /^(newer|after)$/;
 
     my $imm_correct = is_immediate($imm);
 
@@ -795,6 +818,7 @@ sub is_newer_query { # Has test. Is pure.
 sub is_older_query { # Has test. Is pure.
 
     # Return 1 iff $query is a syntactically valid 'older' query.
+    # A older query can have either the keyword 'older' or 'before'.
 
     my ($query) = @_;
 
@@ -802,7 +826,7 @@ sub is_older_query { # Has test. Is pure.
 
     return 0 if any { not defined } ($keyword, $imm);
 
-    my $keyword_correct = $keyword =~ /^older$/;
+    my $keyword_correct = $keyword =~ /^(older|before)$/;
 
     my $imm_correct = is_immediate($imm);
 
@@ -847,7 +871,7 @@ sub is_between_query { # TODO no test
 }
 
                  ####################################
-                 #         CONFIG QUESTIONS         #
+                 #        CONFIG DATA GATHERING     #
                  ####################################
 
 sub all_subvols { # Has test. Is pure.
@@ -861,7 +885,7 @@ sub all_subvols { # Has test. Is pure.
     return wantarray ? @subvols : \@subvols;
 }
 
-sub all_backups { # TODO no test.
+sub all_backups { # Has test. Is pure.
 
     # Return an array of the names of every user defined backup
 
@@ -872,13 +896,22 @@ sub all_backups { # TODO no test.
     return wantarray ? @backups : \@backups;
 }
 
-sub all_timeframes { # TODO no test
+sub all_backups_of_subvol { # Has test. Is pure.
 
-    # an array of all valid timeframes
+    # Return an array of all the backups that are backing up $subvol.
 
-    my @tframes = qw(5minute hourly midnight monthly);
+    my ($config_ref, $subvol) = @_;
 
-    return wantarray ? @tframes : \@tframes;
+    my @backups = ();
+
+    foreach my $backup (all_backups($config_ref)) {
+
+	my $backup_subvol = $config_ref->{backups}{$backup}{subvol};
+
+	push @backups, $backup if $subvol eq $backup_subvol;
+    }
+
+    return wantarray ? @backups : \@backups;
 }
 
 sub is_subvol { # Has test. Is pure.
@@ -890,20 +923,11 @@ sub is_subvol { # Has test. Is pure.
     return any { $_ eq $subvol } all_subvols($config_ref);
 }
 
-sub is_backup { # TODO no test
+sub is_backup { # Has test. Is pure.
 
     my ($config_ref, $backup) = @_;
-    
+
     return any { $_ eq $backup } all_backups($config_ref);
-}
-
-sub is_timeframe { # Has test. Is pure.
-
-    # Return 1 iff $tframe is a valid timeframe
-
-    my ($tframe) = @_;
-
-    return any { $_ eq $tframe } all_timeframes();
 }
 
                  ####################################
@@ -985,6 +1009,23 @@ sub generate_cron_strings { # No test. Is pure.
         push @cron_strings, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron);
     }
 
+    foreach my $backup (all_backups($config_ref)) {
+
+	my $timeframe = $config_ref->{backups}{$backup}{timeframe};
+
+	if ($timeframe eq 'hourly') {
+	    push @cron_strings, "0 */1 * * * root yabsm --do-backup $backup";
+	}
+
+	elsif ($timeframe eq 'midnight') {
+	    push @cron_strings, "59 23 * * * root yabsm --do-backup $backup";
+	}
+
+	elsif ($timeframe eq 'monthly') {
+	    push @cron_strings, "0 0 1 * * root yabsm --do-backup $backup";
+	}
+    }
+
     return wantarray ? @cron_strings : \@cron_strings;
 }
 
@@ -992,7 +1033,7 @@ sub generate_cron_strings { # No test. Is pure.
                  #              BACKUPS             #
                  ####################################
 
-sub do_incremental_backup { # TODO DOCUMENT
+sub do_backup { # TODO: document
 
     my ($config_ref, $backup) = @_;
     
@@ -1007,7 +1048,7 @@ sub do_incremental_backup { # TODO DOCUMENT
     }
 }
 
-sub do_backup_bootstrap {# TODO DOCUMENT
+sub do_backup_bootstrap { # TODO: document
 
     my ($config_ref, $backup) = @_;
 
@@ -1022,7 +1063,7 @@ sub do_backup_bootstrap {# TODO DOCUMENT
     }
 }
 
-sub bootstrap_backup_ssh { # TODO DOCUMENT
+sub bootstrap_backup_ssh { # TODO: document
 
     my ($config_ref, $backup) = @_;
 
@@ -1043,10 +1084,13 @@ sub bootstrap_backup_ssh { # TODO DOCUMENT
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    my $ssh = Net::OpenSSH->new($config_ref->{backups}{$backup}{host}
-			       , batch_mode => 1
-			       );
+    my $remote_host = $config_ref->{backups}{$backup}{host};
 
+    # initialize an ssh connection object
+    my $ssh = Net::OpenSSH->new($remote_host, batch_mode => 1);
+    $ssh->error and
+      die "Couldn't establish SSH connection: " . $ssh->error;
+ 
     # send an incremental backup over ssh
     $ssh->system({stdin_file => ['-|', "btrfs send $cache_snap"]}
 		, "sudo -n btrfs receive $remote_backup_dir"
@@ -1054,7 +1098,7 @@ sub bootstrap_backup_ssh { # TODO DOCUMENT
 
 }
 
-sub do_backup_ssh { # No test. Is not pure. # TODO document
+sub do_backup_ssh { # TODO: document
 
     # Perform a single incremental backup over ssh. Assume that
     # bootstrapping has already happened.
@@ -1064,12 +1108,15 @@ sub do_backup_ssh { # No test. Is not pure. # TODO document
     # the subvol that is being backed up
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
-    my $ssh_host = $config_ref->{backups}{$backup}{host};
-
     my $remote_backup_dir =
       $config_ref->{backups}{$backup}{backup_dir};
 
-    my $ssh = Net::OpenSSH->new($ssh_host, batch_mode => 1);
+    my $remote_host = $config_ref->{backups}{$backup}{host};
+
+    # initialize an ssh connection object
+    my $ssh = Net::OpenSSH->new($remote_host, batch_mode => 1);
+    $ssh->error and
+      die "Couldn't establish SSH connection: " . $ssh->error;
 
     my $cached_snap =
       (glob local_snapshot_dir($config_ref, $subvol, '.cache') . '/*')[0];
@@ -1107,12 +1154,11 @@ sub delete_old_backups_ssh { # TODO DOCUMENT
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
-    my ($ssh_host, $backup_path) =
-      split /:/, $config_ref->{backups}{$backup}{path}, 2;
+    my $ssh_host = $config_ref->{backups}{$backup}{path};
 
-    $backup_path .= "/yabsm/$subvol";
+    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
 
-    my @existing_backups = sort_snapshots($ssh->capture("ls $backup_path"));
+    my @existing_backups = sort_snapshots([$ssh->capture("ls $remote_backup_dir")]);
 
     my $num_backups = scalar @existing_backups;
 
@@ -1124,7 +1170,7 @@ sub delete_old_backups_ssh { # TODO DOCUMENT
 
 	# pop takes from the end of the array. This is the oldest backup
 	# because they are sorted newest to oldest.
-	my $oldest_backup = $backup_path . pop @existing_backups;
+	my $oldest_backup = $remote_backup_dir . pop @existing_backups;
 
 	$ssh->system("sudo -n btrfs subvol delete $oldest_backup");
 
@@ -1141,7 +1187,7 @@ sub delete_old_backups_ssh { # TODO DOCUMENT
 	while ($num_backups > $num_to_keep) {
 
 	    # note that pop mutates existing_snaps
-	    my $oldest_backup = $backup_path . pop @existing_backups;
+	    my $oldest_backup = $remote_backup_dir . pop @existing_backups;
             
 	    $ssh->system("sudo -n btrfs subvolume delete $oldest_backup");
 

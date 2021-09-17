@@ -47,17 +47,17 @@ define_subvol home {
     monthly_keep=0
 }
 
-define_backup homeBackup {
+define_backup homeBackupDebianServer {
 
     remote=yes
 
-    host=myHost
+    host=debianServer
 
     subvol=home
 
-    backup_dir=/some/remote/dir
+    backup_dir=/home/easystore/yabsm/nick@arch:home
 
-    timeframe=hourly
+    timeframe=midnight
 
-    keep=100
+    keep=60
 }

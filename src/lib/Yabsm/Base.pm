@@ -1091,6 +1091,11 @@ sub bootstrap_backup_ssh { # TODO: document
     $ssh->error and
       die "Couldn't establish SSH connection: " . $ssh->error;
  
+    # initialize remote dir
+    $ssh->system( "if [ ! -d \"$remote_backup_dir\" ];"
+		. "then mkdir -p $remote_backup_dir; fi"
+		);
+
     # send an incremental backup over ssh
     $ssh->system({stdin_file => ['-|', "btrfs send $cache_snap"]}
 		, "sudo -n btrfs receive $remote_backup_dir"

@@ -197,10 +197,10 @@ if ($DO_BACKUP) {
     my $backup = $DO_BACKUP;
 
     if (Yabsm::Base::is_remote_backup($CONFIG_REF, $backup)) {
-	do_backup_ssh($CONFIG_REF, $backup);
+	Yabsm::Base::do_backup_ssh($CONFIG_REF, $backup);
     }
     elsif (Yabsm::Base::is_local_backup($CONFIG_REF, $backup)) {
-	do_backup_local($CONFIG_REF, $backup);
+	Yabsm::Base::do_backup_local($CONFIG_REF, $backup);
     }
 
     else { die "[!] Error: no such defined backup '$backup'\n" }

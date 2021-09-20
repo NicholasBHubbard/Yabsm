@@ -1241,13 +1241,8 @@ sub delete_old_backups_ssh { # TODO DOCUMENT
     # function should be called after do_backup_ssh;
 
     my $config_ref = shift // confess;
+    my $ssh        = shift // confess;
     my $backup     = shift // confess;
-
-    my $remote_host = $config_ref->{backups}{$backup}{host}; 
-
-    my $ssh = new_ssh_connection($remote_host);
-
-    my $subvol = $config_ref->{backups}{$backup}{subvol};
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
 

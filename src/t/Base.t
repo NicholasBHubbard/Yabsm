@@ -214,14 +214,14 @@ sub test_cmp_snaps {
     ok( $sum == -1, 'cmp_snaps()' );
 }
 
-test_sort_snapshots();
-sub test_sort_snapshots {
+test_sort_snaps();
+sub test_sort_snaps {
 
     # TEST 1
 
     my @rand_snaps1 = gen_n_random_snap_paths(15);
 
-    my @sorted_snaps1 = Yabsm::Base::sort_snapshots(\@rand_snaps1);
+    my @sorted_snaps1 = Yabsm::Base::sort_snaps(\@rand_snaps1);
 
     my $correct = 1;
     for my $i (0 .. $#sorted_snaps1 - 1) {
@@ -235,7 +235,7 @@ sub test_sort_snapshots {
 	if ($cmp == 1) { $correct = 0 }
     }
     
-    ok( $correct, 'sort_snapshots()' );
+    ok( $correct, 'sort_snaps()' );
 }
 
 test_n_units_ago_snapstring();
@@ -372,29 +372,13 @@ sub test_relative_time_to_snapstring {
     ok ( $correct, 'relative_time_to_snapstring()' );
 }
 
-test_immediate_to_snapstring();
-sub test_immediate_to_snapstring {
-
-    my $ss1 = 'day=2026_08_24,time=00:00';
-    my $ss2 = 'day=2025_08_24,time=00:00';
-    my $ss3 = 'day=2024_08_24,time=00:00';
-
-    # sorted from newest to oldest
-    my $all_snaps_ref = [$ss1, $ss2, $ss3];
-
-    my $o1 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, 'b-4-m');
-    my $o2 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, 'oldest');
-    my $o3 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, 'newest');
-    my $o4 = Yabsm::Base::immediate_to_snapstring($all_snaps_ref, '12-24');
-}
-
 test_snap_closer();
 sub test_snap_closer {
 
     my $target = 'day=2020_08_24,time=10:30';
-    my $snap1 = 'day=2020_08_24,time=10:35';
-    my $snap2 = 'day=2020_08_24,time=10:24';
-    my $snap3 = 'day=2020_08_24,time=10:25';
+    my $snap1  = 'day=2020_08_24,time=10:35';
+    my $snap2  = 'day=2020_08_24,time=10:24';
+    my $snap3  = 'day=2020_08_24,time=10:25';
 
     # TEST 1
 
@@ -863,6 +847,23 @@ sub test_is_older_query {
     ok ( $trues && $falses, 'is_older_query()' );
 }
 
+test_is_all_query();
+sub test_is_all_query {
+
+    my $t = Yabsm::Base::is_all_query('all');
+
+    my $f1 = Yabsm::Base::is_all_query('');
+    my $f2 = Yabsm::Base::is_all_query(' ');
+    my $f3 = Yabsm::Base::is_all_query(' all');
+    my $f4 = Yabsm::Base::is_all_query('all ');
+    my $f5 = Yabsm::Base::is_all_query(' all ');
+    my $f6 = Yabsm::Base::is_all_query('whatever');
+
+    my $falses = not ($f1 || $f2 || $f3 || $f4 || $f5 || $f6);
+
+    ok ( $t && $falses, 'is_all_query()' );
+} 
+
 test_is_between_query();
 sub test_is_between_query {
     
@@ -964,6 +965,50 @@ sub test_is_backup {
     $f1 = 0 if Yabsm::Base::is_backup(\%config, 'this is not a backup');
 
     ok ( $t1 && $f1, 'is_backup()' );
+}
+
+test_is_local_backup();
+sub test_is_local_backup {
+
+    my %config = gen_random_config();
+
+    my @all_backups = Yabsm::Base::all_backups(\%config);
+
+    my $correct = 1;
+    for my $backup (@all_backups) {
+	if ($config{backups}{$backup}{remote} eq 'no') {
+	    $correct = 0 unless Yabsm::Base::is_local_backup(\%config, $backup);
+	}
+	else {
+	    $correct = 0 if Yabsm::Base::is_local_backup(\%config, $backup); 
+	}
+    }
+
+    $correct = 0 if Yabsm::Base::is_local_backup(\%config, 'not a backup'); 
+
+    ok ( $correct, 'is_local_backup()' );
+}
+
+test_is_remote_backup();
+sub test_is_remote_backup {
+
+    my %config = gen_random_config();
+
+    my @all_backups = Yabsm::Base::all_backups(\%config);
+
+    my $correct = 1;
+    for my $backup (@all_backups) {
+	if ($config{backups}{$backup}{remote} eq 'yes') {
+	    $correct = 0 unless Yabsm::Base::is_remote_backup(\%config, $backup);
+	}
+	else {
+	    $correct = 0 if Yabsm::Base::is_remote_backup(\%config, $backup); 
+	}
+    }
+
+    $correct = 0 if Yabsm::Base::is_remote_backup(\%config, 'not a backup'); 
+
+    ok ( $correct, 'is_remote_backup()' );
 }
 
 test_is_snapstring();

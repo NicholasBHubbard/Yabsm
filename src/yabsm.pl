@@ -41,20 +41,22 @@ use Data::Dumper;
 my @TAKE_SNAPSHOT;
 my $UPDATE_CRONTAB;
 my $DO_BACKUP;
+my $CONFIRM;
 my $BACKUP_BOOTSTRAP;
 my $PRINT_CRONSTRINGS;
 my @FIND;
 my @CHECK_CONFIG;
 my $HELP;
 
-GetOptions( 'take-snap|s=s{2}'      => \@TAKE_SNAPSHOT
-	  , 'find|f=s{0,2}'         => \@FIND
-	  , 'update-crontab|u'      => \$UPDATE_CRONTAB
-	  , 'check-config|c=s{0,1}' => \@CHECK_CONFIG
-	  , 'do-backup|b=s'         => \$DO_BACKUP
-	  , 'bootstrap-backup|k=s'  => \$BACKUP_BOOTSTRAP
-	  , 'crons|C'               => \$PRINT_CRONSTRINGS
-	  , 'help|h'                => \$HELP
+GetOptions( 'take-snap|s=s{2}'        => \@TAKE_SNAPSHOT
+	  , 'find|f=s{0,2}'           => \@FIND
+	  , 'update-crontab|u'        => \$UPDATE_CRONTAB
+	  , 'check-config|c=s{0,1}'   => \@CHECK_CONFIG
+	  , 'do-backup|b=s'           => \$DO_BACKUP
+	  , 'yes-i-want-to-do-this|Y' => \$CONFIRM
+	  , 'bootstrap-backup|k=s'    => \$BACKUP_BOOTSTRAP
+	  , 'crons|C'                 => \$PRINT_CRONSTRINGS
+	  , 'help|h'                  => \$HELP
 	  );
 
 if ($HELP) {
@@ -114,12 +116,13 @@ if (@FIND) {
     # these variables may or may not be defined.
     my ($arg1, $arg2) = @FIND;
 
-    # the following logic exists to set the $subvol and $query variables
-    my ($subvol, $query);
+    # the following logic exists to set the $subject and $query variables.
+    my ($subject, $query);
 
     if ($arg1) {
-	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg1)) {
-	    $subvol = $arg1;
+	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg1) ||
+	    Yabsm::Base::is_backup($CONFIG_REF, $arg1)) {
+	    $subject = $arg1;
 	}
 	elsif (Yabsm::Base::is_valid_query($arg1)) {
 	    $query = $arg1;
@@ -130,8 +133,9 @@ if (@FIND) {
     }
     
     if ($arg2) {
-	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg2)) {
-	    $subvol = $arg2;
+	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg2) || 
+            Yabsm::Base::is_backup($CONFIG_REF, $arg2)) {
+	    $subject = $arg2;
 	}
 	elsif (Yabsm::Base::is_valid_query($arg2)) {
 	    $query = $arg2;
@@ -141,8 +145,8 @@ if (@FIND) {
 	}
     }
 
-    if (not defined $subvol) {
-	$subvol = Yabsm::Base::ask_user_for_subvolume($CONFIG_REF);
+    if (not defined $subject) {
+	$subject = Yabsm::Base::ask_user_for_subvol_or_backup($CONFIG_REF);
     }
 
     if (not defined $query) {
@@ -150,7 +154,7 @@ if (@FIND) {
     }
 
     # $subvol and $query are properly set at this point
-    my @snaps = Yabsm::Base::answer_query($CONFIG_REF, $subvol, $query);
+    my @snaps = Yabsm::Base::answer_query($CONFIG_REF, $subject, $query);
 
     say for @snaps;
 
@@ -173,11 +177,15 @@ if ($BACKUP_BOOTSTRAP) {
     # option takes backup arg
     my $backup = $BACKUP_BOOTSTRAP;
 
-    if (not Yabsm::Base::is_backup($CONFIG_REF, $backup)) {
-	die "[!] Error: no such defined backup '$backup'\n";
+    if (is_remote_backup($CONFIG_REF, $backup)) {
+	do_backup_bootstrap_ssh($CONFIG_REF, $backup);
     }
-    
-    Yabsm::Base::do_backup_bootstrap($CONFIG_REF, $backup);
+
+    elsif (is_local_backup($CONFIG_REF, $backup)) {
+	do_backup_bootstrap_local($CONFIG_REF, $backup);
+    }
+
+    else { die "[!] Error: no such defined backup '$backup'\n" }
 
     exit 0;
 }
@@ -188,11 +196,14 @@ if ($DO_BACKUP) {
 
     my $backup = $DO_BACKUP;
 
-    if (not Yabsm::Base::is_backup($CONFIG_REF, $backup)) {
-	die "[!] Error: no such defined backup '$backup'\n";
+    if (Yabsm::Base::is_remote_backup($CONFIG_REF, $backup)) {
+	do_backup_ssh($CONFIG_REF, $backup);
+    }
+    elsif (Yabsm::Base::is_local_backup($CONFIG_REF, $backup)) {
+	do_backup_local($CONFIG_REF, $backup);
     }
 
-    Yabsm::Base::do_backup($CONFIG_REF, $backup);
+    else { die "[!] Error: no such defined backup '$backup'\n" }
 
     exit 0;
 }

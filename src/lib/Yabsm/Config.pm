@@ -237,7 +237,7 @@ sub check_config {
 	    }
 
 	    elsif ($key eq 'keep') {
-		if (not ($val =~ /^\d+$/ && $val > 0)) {
+		if (not ($val =~ /^\d+$/ && $val >= 1)) {
 		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not a positive integer";
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;
@@ -249,7 +249,7 @@ sub check_config {
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;
 	    }
-
+	    
 	    elsif ($key eq 'remote') {
 		
 		@required_settings = grep { $_ ne $key } @required_settings;

@@ -178,11 +178,11 @@ if ($BACKUP_BOOTSTRAP) {
     my $backup = $BACKUP_BOOTSTRAP;
 
     if (is_remote_backup($CONFIG_REF, $backup)) {
-	do_backup_bootstrap_ssh($CONFIG_REF, $backup);
+	Yabsm::Base::do_backup_bootstrap_ssh($CONFIG_REF, $backup);
     }
 
     elsif (is_local_backup($CONFIG_REF, $backup)) {
-	do_backup_bootstrap_local($CONFIG_REF, $backup);
+	Yabsm::Base::do_backup_bootstrap_local($CONFIG_REF, $backup);
     }
 
     else { die "[!] Error: no such defined backup '$backup'\n" }

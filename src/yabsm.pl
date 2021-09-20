@@ -177,11 +177,11 @@ if ($BACKUP_BOOTSTRAP) {
     # option takes backup arg
     my $backup = $BACKUP_BOOTSTRAP;
 
-    if (is_remote_backup($CONFIG_REF, $backup)) {
+    if (Yabsm::Base::is_remote_backup($CONFIG_REF, $backup)) {
 	Yabsm::Base::do_backup_bootstrap_ssh($CONFIG_REF, $backup);
     }
 
-    elsif (is_local_backup($CONFIG_REF, $backup)) {
+    elsif (Yabsm::Base::is_local_backup($CONFIG_REF, $backup)) {
 	Yabsm::Base::do_backup_bootstrap_local($CONFIG_REF, $backup);
     }
 

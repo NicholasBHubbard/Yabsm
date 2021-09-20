@@ -25,9 +25,9 @@ use 5.010;
 
 use Time::Piece;
 use Net::OpenSSH;
-use List::Util 'any';
-use File::Copy 'move';
-use File::Path 'make_path';
+use List::Util qw(any);
+use File::Copy qw(move);
+use File::Path qw(make_path);
 use Carp;
 
 sub all_snapshots_of { # No test. Is not pure.
@@ -37,8 +37,8 @@ sub all_snapshots_of { # No test. Is not pure.
     # snapshots of certain timeframes. Passing timeframe arguments is only
     # relevant when gathering the snapshots of a subvol.
 
-    my $config_ref = shift // croak;
-    my $subject    = shift // croak;
+    my $config_ref = shift // confess;
+    my $subject    = shift // confess;
     my @timeframes = @_;
 
     my @all_snaps; # return this
@@ -85,7 +85,7 @@ sub all_snapshots_of { # No test. Is not pure.
 	@all_snaps = map { chomp; $_ = "$remote_host:$_" } $ssh->capture("ls -d $backup_dir/*");
     }
     
-    else { croak }
+    else { confess }
     
     # return the snapshots sorted
     my $snaps_sorted_ref = sort_snaps(\@all_snaps);
@@ -100,7 +100,7 @@ sub initialize_directories { # No test. Is not pure.
     # allows us to be assured that all needed directories have been
     # created.
 
-    my $config_ref = shift // croak;
+    my $config_ref = shift // confess;
 
     my $yabsm_root_dir = $config_ref->{misc}{yabsm_snapshot_dir};
 
@@ -160,7 +160,7 @@ sub local_snap_dir { # Has test. Is pure.
     # and $timeframe arguments are optional. Note that this function
     # does not check that $subvol and $timeframe are valid.
 
-    my $config_ref = shift // croak;
+    my $config_ref = shift // confess;
     my $subvol     = shift; # optional
     my $timeframe  = shift; # optional
 
@@ -181,8 +181,8 @@ sub bootstrap_snap_dir { # Has test. Is pure.
     # Return the path the the directory holding the bootstrap snapshot
     # for $backup. The bootstrap snapshot is vital for incremental backups.
 
-    my $config_ref = shift // croak;
-    my $backup     = shift // croak;
+    my $config_ref = shift // confess;
+    my $backup     = shift // confess;
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
@@ -196,7 +196,7 @@ sub is_snapstring { # Has test. Is pure.
     # Return 1 iff $snapstring is a valid snapstring. Note that this
     # sub works on absolute paths as well as plain snapstrings.
 
-    my ($snapstring) = @_;
+    my $snapstring = shift // confess;
 
     return $snapstring =~ /day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/;
 }
@@ -220,8 +220,8 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
     # Subtract $n minutes, hours, or days from the current
     # time. Returns a snapstring.
 
-    my $n    = shift // croak;
-    my $unit = shift // croak;
+    my $n    = shift // confess;
+    my $unit = shift // confess;
 
     # Can only add/subtract by seconds with Time::Piece objects.
 
@@ -230,7 +230,7 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
     if    ($unit =~ /^(m|mins|minutes)$/) { $seconds_per_unit = 60    }
     elsif ($unit =~ /^(h|hrs|hours)$/   ) { $seconds_per_unit = 3600  }
     elsif ($unit =~ /^(d|days)$/        ) { $seconds_per_unit = 86400 }
-    else  { croak "\"$unit\" is not a valid time unit" }
+    else  { confess "\"$unit\" is not a valid time unit" }
 
     my $current_time = current_time_snapstring();
 
@@ -246,8 +246,8 @@ sub immediate_to_snapstring { # No test. Is pure.
     # Resolve an immediate to a snapstring. An immediate is either a
     # literal time, relative time, newest time, or oldest time.
 
-    my $all_snaps_ref = shift // croak;
-    my $imm           = shift // croak;
+    my $all_snaps_ref = shift // confess;
+    my $imm           = shift // confess;
 
     if (is_literal_time($imm)) {
 	return literal_time_to_snapstring($imm);
@@ -263,14 +263,14 @@ sub immediate_to_snapstring { # No test. Is pure.
     }
 
     # should never happen because input has already been cleansed. 
-    croak "[!] Internal Error: '$imm' is not an immediate";
+    confess "[!] Internal Error: '$imm' is not an immediate";
 }
 
 sub literal_time_to_snapstring { # Has test. Is pure.
 
     # resolve a literal time to a snapstring
 
-    my $lit_time = shift // croak;
+    my $lit_time = shift // confess;
 
     # literal time forms
     my $yr_mon_day_hr_min = '^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';
@@ -302,7 +302,7 @@ sub literal_time_to_snapstring { # Has test. Is pure.
 	return nums_to_snapstring($t->year, $1, $2, $3, $4);
     }
 
-    croak "[!] Internal Error: '$lit_time' is not a valid literal time";
+    confess "[!] Internal Error: '$lit_time' is not a valid literal time";
 }
 
 sub relative_time_to_snapstring { # Has test. Is not pure.
@@ -310,7 +310,7 @@ sub relative_time_to_snapstring { # Has test. Is not pure.
     # resolve a relative time to a snapstring. Relative times have the
     # form 'back-amount-unit'.
 
-    my $rel_time = shift // croak;
+    my $rel_time = shift // confess;
 
     my (undef, $amount, $unit) = split '-', $rel_time, 3;
 
@@ -325,7 +325,7 @@ sub snapstring_to_nums { # Has test. Is pure.
     # order the year, month, day, hour, and minute. This works with
     # both a full path and just a snapshot name string.
 
-    my $snap = shift // croak;
+    my $snap = shift // confess;
 
     my @nums = $snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;
 
@@ -350,7 +350,7 @@ sub snapstring_to_time_piece_obj { # Has test. Is pure.
     # useful because we can do time arithmetic like adding hours or
     # minutes on the object.
 
-    my $snap = shift // croak;
+    my $snap = shift // confess;
 
     my ($yr, $mon, $day, $hr, $min) = snapstring_to_nums($snap);
 
@@ -361,7 +361,7 @@ sub time_piece_obj_to_snapstring { # Has test. Is pure.
 
     # Turn a Time::Piece object into a snapshot name string.
 
-    my $time_piece_obj = shift // croak;
+    my $time_piece_obj = shift // confess;
 
     my $yr  = $time_piece_obj->year;
     my $mon = $time_piece_obj->mon;
@@ -378,7 +378,7 @@ sub sort_snaps { # Has test. Is pure.
     # snapshots. Sorted from newest to oldest. Works with full
     # paths and plain snapstrings.
 
-    my $snaps_ref = shift // croak;
+    my $snaps_ref = shift // confess;
 
     my @sorted_snaps = sort { cmp_snaps($a, $b) } @$snaps_ref;
 
@@ -392,8 +392,8 @@ sub cmp_snaps { # Has test. Is pure.
     # Return 0 if $snap1 and $snap2 are the same. 
     # Works with both full paths and plain snapstrings.
 
-    my $snap1 = shift // croak;
-    my $snap2 = shift // croak;
+    my $snap1 = shift // confess;
+    my $snap2 = shift // confess;
 
     my @snap1_nums = snapstring_to_nums($snap1);
     my @snap2_nums = snapstring_to_nums($snap2);
@@ -415,7 +415,7 @@ sub ask_user_for_subvol_or_backup { # No test. Is not pure.
     # backups. Used for the --find option when the user doesn't
     # explicitly pass their subvol/backup on the command line.
 
-    my $config_ref = shift // croak;
+    my $config_ref = shift // confess;
 
     my $int = 1;
     my %int_subvol_hash = map { $int++ => $_ } all_subvols($config_ref);
@@ -498,8 +498,8 @@ sub snap_closest_to { # Has test. Is pure.
     # Return the snapshot from $all_snaps_ref that is closest to
     # $target_snap. $all_snaps_ref is sorted from newest to oldest.
 
-    my $all_snaps_ref = shift // croak;
-    my $target_snap   = shift // croak;
+    my $all_snaps_ref = shift // confess;
+    my $target_snap   = shift // confess;
 
     my $snap;
 
@@ -538,9 +538,9 @@ sub snap_closer { # Has test. Is pure.
     # Return either $snap1 or $snap2, depending on which is closer to
     # $target_snap. If they are equidistant return $snap1.
 
-    my $target_snap = shift // croak;
-    my $snap1       = shift // croak;
-    my $snap2       = shift // croak;
+    my $target_snap = shift // confess;
+    my $snap1       = shift // confess;
+    my $snap2       = shift // confess;
 
     my $target_epoch = snapstring_to_time_piece_obj($target_snap)->epoch;
     my $snap1_epoch  = snapstring_to_time_piece_obj($snap1)->epoch;
@@ -558,8 +558,8 @@ sub snaps_newer { # Has test. Is pure.
     # Return all the snapshots that are newer than $target_snap.
     # Remember that $all_snaps_ref is sorted newest to oldest.
 
-    my $all_snaps_ref = shift // croak;
-    my $target_snap   = shift // croak;
+    my $all_snaps_ref = shift // confess;
+    my $target_snap   = shift // confess;
 
     my @snaps_newer = ();
 
@@ -584,8 +584,8 @@ sub snaps_older { # Has test. Is pure.
     # Return all the snapshots that are older than $target_snap.
     # Remember that $all_snaps_ref is sorted newest to oldest.
 
-    my $all_snaps_ref = shift // croak;
-    my $target_snap   = shift // croak;
+    my $all_snaps_ref = shift // confess;
+    my $target_snap   = shift // confess;
 
     my @snaps_older = ();
     
@@ -613,9 +613,9 @@ sub snaps_between { # Has test. Is pure.
     # and $target_snap2. Remember that $all_snaps_ref is sorted
     # newest to oldest.
 
-    my $all_snaps_ref = shift // croak;
-    my $target_snap1  = shift // croak;
-    my $target_snap2  = shift // croak;
+    my $all_snaps_ref = shift // confess;
+    my $target_snap1  = shift // confess;
+    my $target_snap2  = shift // confess;
 
     # figure out which target snap is newer/older.
 
@@ -685,7 +685,7 @@ sub newest_snap { # Has test. Is not pure.
     # array because it will always be sorted from newest to oldest.
     # Only the scenario of $ref being a snapshot array ref is tested.
 
-    my $ref    = shift // croak;
+    my $ref    = shift // confess;
     my $subvol = shift; # only needed if passing $config_ref
 
     my $newest_snap;
@@ -699,7 +699,7 @@ sub newest_snap { # Has test. Is not pure.
 	$newest_snap = $all_snaps_ref->[0];
     }
 
-    else { croak }
+    else { confess }
 
     return $newest_snap;
 }
@@ -711,7 +711,7 @@ sub oldest_snap { # Has test. Is not pure.
     # array because it will always be sorted from newest to oldest.
     # Only the scenario of $ref being a snapshot array ref is tested.
     
-    my $ref    = shift // croak;
+    my $ref    = shift // confess;
     my $subvol = shift; # only needed if passing $config_ref
 
     my $oldest_snap;
@@ -725,7 +725,7 @@ sub oldest_snap { # Has test. Is not pure.
 	$oldest_snap = $all_snaps_ref->[-1];
     }
 
-    else { croak }
+    else { confess }
 
     return $oldest_snap;
 }
@@ -736,9 +736,9 @@ sub answer_query { # No test. Is not pure.
     # $subject. We $subject can either be a subvol or a backup. We
     # expect that $query has already been validated.
 
-    my $config_ref = shift // croak;
-    my $subject    = shift // croak;
-    my $query      = shift // croak;
+    my $config_ref = shift // confess;
+    my $subject    = shift // confess;
+    my $query      = shift // confess;
 
     my $all_snaps_ref = all_snapshots_of($config_ref, $subject);
 
@@ -789,7 +789,7 @@ sub answer_query { # No test. Is not pure.
     }
 
     else {
-	croak "[!] Internal Error: '$query' is not a valid query";
+	confess "[!] Internal Error: '$query' is not a valid query";
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;
@@ -797,7 +797,7 @@ sub answer_query { # No test. Is not pure.
 
 sub is_valid_query { # Has test. Is pure.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     if (is_immediate($query))     { return 1 }
     if (is_all_query($query))     { return 1 }
@@ -812,7 +812,7 @@ sub is_immediate { # Has test. Is pure.
 
     # An immediate is either a literal time or a relative time.
 
-    my $imm = shift // croak;
+    my $imm = shift // confess;
     
     return is_newest_time($imm)
         || is_oldest_time($imm)
@@ -824,7 +824,7 @@ sub is_literal_time { # Has test. Is pure.
 
     # Literal times can come in one of 5 different forms. 
 
-    my $lit_time = shift // croak;
+    my $lit_time = shift // confess;
 
     # yr-mon-day-hr-min
     my $re1 = '^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';
@@ -848,7 +848,7 @@ sub is_relative_time { # Has test. Is pure.
     # The amount field must be a whole number.
     # The unit field must be a time unit like minutes, hours, or days.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     my ($back, $amount, $unit) = split '-', $query, 3;
 
@@ -868,7 +868,7 @@ sub is_newer_query { # Has test. Is pure.
     # Return 1 iff $query is a syntactically valid 'newer' query.
     # A newer query can have either the keyword 'newer' or 'after'.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
@@ -886,7 +886,7 @@ sub is_older_query { # Has test. Is pure.
     # Return 1 iff $query is a syntactically valid 'older' query.
     # A older query can have either the keyword 'older' or 'before'.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
@@ -903,7 +903,7 @@ sub is_all_query { # Has test. Is pure.
 
     # return 1 iff $query equals 'all'.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     return $query eq 'all';
 }
@@ -912,7 +912,7 @@ sub is_newest_time { # Has test. Is pure.
     
     # Return 1 iff $query equals 'newest'.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     return $query eq 'newest';
 }
@@ -921,7 +921,7 @@ sub is_oldest_time { # Has test. Is pure.
     
     # Return 1 iff $query equals 'oldest'.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     return $query eq 'oldest';
 }
@@ -930,7 +930,7 @@ sub is_between_query { # Has test. Is pure.
 
     # Return 1 iff $query is a syntactically valid 'after' query.
 
-    my $query = shift // croak;
+    my $query = shift // confess;
 
     my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
 
@@ -949,7 +949,7 @@ sub all_subvols { # Has test. Is pure.
 
     # Return an array of the names of every user defined subvolume.
 
-    my $config_ref = shift // croak;
+    my $config_ref = shift // confess;
 
     my @subvols = sort keys %{$config_ref->{subvols}};
 
@@ -960,7 +960,7 @@ sub all_backups { # Has test. Is pure.
 
     # Return an array of the names of every user defined backup
 
-    my $config_ref = shift // croak;
+    my $config_ref = shift // confess;
 
     my @backups = sort keys %{$config_ref->{backups}};
 
@@ -971,8 +971,8 @@ sub all_backups_of_subvol { # Has test. Is pure.
 
     # Return an array of all the backups that are backing up $subvol.
 
-    my $config_ref = shift // croak;
-    my $subvol     = shift // croak;
+    my $config_ref = shift // confess;
+    my $subvol     = shift // confess;
 
     my @backups = ();
 
@@ -990,8 +990,8 @@ sub is_subvol { # Has test. Is pure.
 
     # Return 1 iff $subvol is the name of a defined yabsm subvolume.
     
-    my $config_ref = shift // croak;
-    my $subvol     = shift // croak;
+    my $config_ref = shift // confess;
+    my $subvol     = shift // confess;
     
     return any { $_ eq $subvol } all_subvols($config_ref);
 }
@@ -1000,8 +1000,8 @@ sub is_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined yabsm backup.
 
-    my $config_ref = shift // croak;
-    my $backup     = shift // croak;
+    my $config_ref = shift // confess;
+    my $backup     = shift // confess;
 
     return any { $_ eq $backup } all_backups($config_ref);
 }
@@ -1010,8 +1010,8 @@ sub is_local_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined yabsm local backup.
 
-    my $config_ref = shift // croak;
-    my $backup     = shift // croak;
+    my $config_ref = shift // confess;
+    my $backup     = shift // confess;
 
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'no';
@@ -1023,8 +1023,8 @@ sub is_remote_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined yabsm remote backup.
 
-    my $config_ref = shift // croak;
-    my $backup     = shift // croak;
+    my $config_ref = shift // confess;
+    my $backup     = shift // confess;
 
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'yes';
@@ -1036,7 +1036,7 @@ sub update_etc_crontab { # No test. Is not pure.
     
     # Write cronjobs to '/etc/crontab'
 
-    my $config_ref = shift // croak;
+    my $config_ref = shift // confess;
 
     open (my $etc_crontab_fh, '<', '/etc/crontab')
       or die "[!] Error: failed to open file '/etc/crontab'\n";
@@ -1077,7 +1077,7 @@ sub generate_cron_strings { # No test. Is pure.
     # Use the users config to generate all the cron strings for taking
     # snapshots and performing backups.
     
-    my $config_ref = shift // croak;
+    my $config_ref = shift // confess;
 
     my @cron_strings;
 
@@ -1131,7 +1131,7 @@ sub new_ssh_connection { # No test. Is not pure.
 
     # Create and return an ssh connection object with Net::OpenSSH.
 
-    my $remote_host = shift // croak;
+    my $remote_host = shift // confess;
 
     my $ssh = Net::OpenSSH->new( $remote_host,
 			       , batch_mode => 1 # Don't ask for password
@@ -1155,8 +1155,8 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure. TODO: document
     # Please see the
     # btrfs wiki section on incremental backups for more information.
 
-    my $config_ref = shift // croak;
-    my $backup     = shift // croak;
+    my $config_ref = shift // confess;
+    my $backup     = shift // confess;
 
     my $remote_host = $config_ref->{backups}{$backup}{host};
 
@@ -1190,11 +1190,8 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure. TODO: document
 
 sub do_backup_ssh { # No test. Is not pure. TODO: document
 
-    # Perform a single incremental backup over ssh. Assume that
-    # bootstrapping has already happened.
-    
-    my $config_ref = shift // croak;
-    my $backup     = shift // croak;
+    my $config_ref = shift // confess;
+    my $backup     = shift // confess;
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
@@ -1203,10 +1200,9 @@ sub do_backup_ssh { # No test. Is not pure. TODO: document
     my $bootstrap_snap =
       [glob (bootstrap_snap_dir($config_ref, $backup) . '/*')]->[0];
 
-    my $has_already_bootstrapped = is_snapstring($bootstrap_snap);
-
-    if (not $has_already_bootstrapped) {
-	do_backup_bootstrap_ssh($config_ref, );
+    # we have not already bootstrapped
+    if (not defined $bootstrap_snap) {
+	do_backup_bootstrap_ssh($config_ref, $backup);
     }
     
     # we have already bootstrapped.
@@ -1244,9 +1240,12 @@ sub delete_old_backups_ssh { # TODO DOCUMENT
     # $keep setting defined in the users config. This
     # function should be called after do_backup_ssh;
 
-    my $config_ref = shift // croak;
-    my $ssh        = shift // croak;
-    my $backup     = shift // croak;
+    my $config_ref = shift // confess;
+    my $backup     = shift // confess;
+
+    my $remote_host = $config_ref->{backups}{$backup}{host}; 
+
+    my $ssh = new_ssh_connection($remote_host);
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
@@ -1297,9 +1296,9 @@ sub take_new_snapshot { # No test. Is not pure.
 
     # take a single $timeframe read-only snapshot of $subvol.
 
-    my $config_ref = shift // croak;
-    my $subvol     = shift // croak;
-    my $timeframe  = shift // croak;
+    my $config_ref = shift // confess;
+    my $subvol     = shift // confess;
+    my $timeframe  = shift // confess;
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
@@ -1321,9 +1320,9 @@ sub delete_old_snapshots { # No test. Is not pure.
     # setting defined in the users config. This function should be
     # called after take_new_snapshot().
 
-    my $config_ref = shift // croak;
-    my $subvol     = shift // croak;
-    my $timeframe  = shift // croak;
+    my $config_ref = shift // confess;
+    my $subvol     = shift // confess;
+    my $timeframe  = shift // confess;
 
     # these snaps are sorted from newest to oldest
     my $existing_snaps_ref = all_snapshots_of($config_ref, $subvol, $timeframe);

@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 
-#  Author: Nicholas Hubbard
-#  Email:  nhub73@keemail.me
-#  WWW:    https://github.com/NicholasBHubbard/yabsm
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
 #
-#  Testing for Config.pm.
+#  Testing for the Config.pm library.
 
 use strict;
 use warnings;

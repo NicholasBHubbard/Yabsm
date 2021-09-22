@@ -1,21 +1,22 @@
-#  Author: Nicholas Hubbard
-#  Email:  nhub73@keemail.me
-#  WWW:    https://github.com/NicholasBHubbard/yabsm
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
 #
-#  Core library of Yabsm. The $config_ref variable that is passed
+#  The core library of Yabsm.
 #
-#  See Base.t for the testing of this library.
-
-#  The $config_ref variable that is passed around this library is
-#  created by the read_config() subroutine from the Yabsm::Config
-#  library.
+#  See t/Base.t for this libraries tests.
 #
-#  All the subroutines are annoted to communicate if the subrouting
+#  The $config_ref variable that is passed around many of the
+#  subroutines is created by the read_config() subroutine from the
+#  Yabsm::Config library.
+#
+#  All the subroutines are annoted to communicate if the subroutine
 #  has a unit test in Base.t, and if the function is pure. If the
 #  function is pure it means it has no effects on any external state
 #  whether that be a global variable or the filesystem. A pure
 #  subroutine also always produces the same output if given the same
-#  input.
+#  input. Just because a subroutine does not have a unit test does
+#  not mean it has not been informally tested.
 
 package Yabsm::Base;
 
@@ -25,20 +26,372 @@ use 5.010;
 
 use Time::Piece;
 use Net::OpenSSH;
+use Carp;
 use List::Util qw(any);
 use File::Copy qw(move);
-use File::Path qw(make_path);
-use Carp;
+use File::Path qw(make_path); # make_path() behaves like 'mkdir -p'
 
-sub all_snapshots_of { # No test. Is not pure.
+sub missing_arg {
 
-    # Read filesystem to gather the snapshots for a given subvolume or
-    # backup. Can optionally pass timeframe arguments to only get
-    # snapshots of certain timeframes. Passing timeframe arguments is only
-    # relevant when gathering the snapshots of a subvol.
+    # This sub helps to reduce line noise.
 
-    my $config_ref = shift // confess;
-    my $subject    = shift // confess;
+    return '[!] Internal Error: missing required arg';
+}
+
+sub take_new_snapshot { # No test. Is not pure.
+
+    # take a single $timeframe snapshot of $subvol. Used for yabsm's
+    # '--take-snap' option.
+
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
+    my $timeframe  = shift // confess missing_arg();
+
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+
+    my $snap_dir = local_snap_dir($config_ref, $subvol, $timeframe);
+
+    my $snap_name = current_time_snapstring();
+
+    system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name"); 
+
+    return;
+}
+
+sub delete_old_snapshots { # No test. Is not pure.
+    
+    # delete old snapshot(s) based off $subvol's $timeframe_keep
+    # setting defined in the users config. This function should be
+    # called directly after take_new_snapshot().
+
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
+    my $timeframe  = shift // confess missing_arg();
+
+    # these snaps are sorted from newest to oldest
+    my $existing_snaps_ref = all_snapshots($config_ref, $subvol, $timeframe);
+
+    my $num_snaps = scalar @$existing_snaps_ref;
+
+    my $num_to_keep = $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
+
+    # There is 1 more snapshot than should be kept because we just
+    # took a snapshot.
+    if ($num_snaps == $num_to_keep + 1) { 
+
+	# pop takes from the end of the array. This is the oldest snap
+	# because they are sorted newest to oldest.
+	my $oldest_snap = pop @$existing_snaps_ref;
+
+	system("btrfs subvol delete $oldest_snap");
+
+	return;
+    }
+
+    # We haven't reached the snapshot quota yet so we don't delete anything.
+    elsif ($num_snaps <= $num_to_keep) { return } 
+
+    # User changed their settings to keep less snapshots than they
+    # were keeping prior. 
+    else { 
+	
+	while ($num_snaps > $num_to_keep) {
+
+	    # pop mutates $existing_snaps_ref, and thus is not idempotent.
+            my $oldest_snap = pop @$existing_snaps_ref;
+            
+	    system("btrfs subvol delete $oldest_snap");
+
+	    $num_snaps--;
+	} 
+
+	return;
+    }
+}
+
+sub do_backup_local { # No test. Is not pure.
+
+    # Perform a single incremental btrfs backup of $backup, or in the
+    # case that the bootstrap process has not yet happened we call
+    # do_backup_bootstrap_local() and return. See btrfs documentation
+    # on incremental backups for more information.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    my $bootstrap_snap =
+      [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
+
+    # we have not already bootstrapped
+    if (not defined $bootstrap_snap) {
+	do_backup_bootstrap_local($config_ref, $backup);
+    }
+
+    else { # do incremental backup
+	
+	my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+	my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+
+	my $tmp_snap =
+	  local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+	
+	system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+
+	system("btrfs send -p $bootstrap_snap $tmp_snap | btrfs receive $backup_dir");
+	system("btrfs subvol delete $tmp_snap");
+
+	delete_old_backups_local($config_ref, $backup);
+    }
+
+    return;
+}
+
+
+sub do_backup_ssh { # No test. Is not pure.
+
+    # Perform a single incremental btrfs backup of $backup over ssh,
+    # or in the case that the bootstrap process has not yet happened
+    # we call do_backup_bootstrap_ssh() and return. See btrfs
+    # documentation on incremental backups for more information.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    my $bootstrap_snap =
+      [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
+
+    # we have not already bootstrapped
+    if (not defined $bootstrap_snap) {
+	do_backup_bootstrap_ssh($config_ref, $backup);
+    }
+
+    else { # do incremental backup
+	
+	my $subvol = $config_ref->{backups}{$backup}{subvol};
+	
+	my $remote_host = $config_ref->{backups}{$backup}{host};
+
+	my $ssh = new_ssh_connection($remote_host);
+
+	my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+	
+	my $tmp_snap =
+	  local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+	
+	system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+	
+	# send an incremental backup over ssh
+	$ssh->system(
+	    {stdin_file => ['-|', "btrfs send -p $bootstrap_snap $tmp_snap"]}
+		           , "sudo -n btrfs receive $remote_backup_dir"
+		           );
+	
+	system("btrfs subvol delete $tmp_snap");
+	
+	delete_old_backups_ssh($config_ref, $ssh, $backup);
+    }
+
+    return;
+}
+
+sub do_backup_bootstrap_local { # No test. Is not pure.
+
+    # Perform bootstrap phase of a btrfs incremental backup. To
+    # bootstrap a backup we create a new snapshot and place it in the
+    # subvol being snapped's backup bootstrap dir (for example
+    # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
+    # then btrfs send/receive the bootstrap snap.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+
+    # delete old bootstrap snap
+    system("btrfs subvol delete $_") for glob "$bootstrap_snap_dir/*";
+
+    my $bootstrap_snap = "$bootstrap_snap_dir/" . current_time_snapstring();
+
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+    
+    system("btrfs subvol snapshot -r $mountpoint $$bootstrap_snap");
+
+    system("btrfs subvol send $bootstrap_snap | btrfs receive $backup_dir");
+
+    # neccesary because the user may be redoing the bootstrap phase
+    # and therefore may end up with an extra backup.
+    delete_old_backups_local($config_ref, $backup);
+}
+
+sub do_backup_bootstrap_ssh { # No test. Is not pure.
+
+    # Perform bootstrap phase of a btrfs incremental backup. To
+    # bootstrap a backup we create a new snapshot and place it in the
+    # subvol being snapped's backup bootstrap dir (for example
+    # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
+    # then btrfs send/receive the bootstrap snap over ssh.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $remote_host = $config_ref->{backups}{$backup}{host};
+
+    my $ssh = new_ssh_connection($remote_host);
+
+    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+
+    my $bootstrap_snap = "$bootstrap_snap_dir/" . current_time_snapstring();
+
+    # delete old bootstrap snap
+    system("btrfs subvol delete $_") for glob "$bootstrap_snap_dir/*";
+
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    
+    system("btrfs subvol snapshot -r $mountpoint $bootstrap_snap");
+
+    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    # create $remote_backup_dir if it does not exist.
+    $ssh->system( "if [ ! -d \"$remote_backup_dir\" ];"
+		. "then mkdir -p $remote_backup_dir; fi"
+		);
+
+    # send the bootstrap backup to remote host
+    $ssh->system({stdin_file => ['-|', "btrfs send $bootstrap_snap"]}
+		, "sudo -n btrfs receive $remote_backup_dir"
+	        );
+
+    # neccesary because the user may be redoing the bootstrap phase
+    # and will therefore end up with an extra backup.
+    delete_old_backups_ssh($config_ref, $ssh, $backup);
+}
+
+sub delete_old_backups_local { # No test. Is not pure.
+
+    # Delete old backup snapshot(s) based off $backup's
+    # $keep setting defined in the users config. This
+    # function should be called directly after do_backup_local().
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    my @existing_backups = all_snapshots($config_ref, $backup);
+
+    my $num_backups = scalar @existing_backups;
+
+    my $num_to_keep = $config_ref->{backups}{$backup}{keep};
+
+    # There is 1 more backup than should be kept because we just
+    # performed a backup.
+    if ($num_backups == $num_to_keep + 1) {
+
+	# pop takes from the end of the array. This is the oldest backup
+	# because they are sorted newest to oldest.
+	my $oldest_backup = pop @existing_backups;
+
+	system("btrfs subvol delete $oldest_backup");
+
+	return;
+    }
+
+    # We haven't reached the backup quota yet so we don't delete anything.
+    elsif ($num_backups <= $num_to_keep) { return } 
+
+    # User changed their settings to keep less backups than they
+    # were keeping prior. 
+    else { 
+	
+	while ($num_backups > $num_to_keep) {
+	    
+	    # note that pop mutates existing_snaps
+	    my $oldest_backup = pop @existing_backups;
+            
+	    system("btrfs subvol delete $oldest_backup");
+
+	    $num_backups--;
+	}
+
+	return;
+    }
+}
+
+sub delete_old_backups_ssh { # No test. Is not pure.
+
+    # Delete old backup snapshot(s) at the remote host connected to by
+    # $ssh. We know how many backups to keep based off $backup's $keep
+    # setting defined in the users config. This function should be
+    # called directly after do_backup_ssh().
+
+    my $config_ref = shift // confess missing_arg();
+    my $ssh        = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
+
+    my @existing_backups = all_snapshots($config_ref, $backup);
+
+    my $num_backups = scalar @existing_backups;
+
+    my $num_to_keep = $config_ref->{backups}{$backup}{keep};
+
+    # There is 1 more backup than should be kept because we just
+    # performed a backup.
+    if ($num_backups == $num_to_keep + 1) {
+
+	# pop takes from the end of the array. This is the oldest backup
+	# because they are sorted newest to oldest.
+	my $oldest_backup = pop @existing_backups;
+
+	$ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+
+	return;
+    }
+
+    # We haven't reached the backup quota yet so we don't delete anything.
+    elsif ($num_backups <= $num_to_keep) { return } 
+
+    # User changed their settings to keep less backups than they
+    # were keeping prior. 
+    else { 
+	
+	while ($num_backups > $num_to_keep) {
+
+	    # note that pop mutates existing_snaps
+	    my $oldest_backup = pop @existing_backups;
+            
+	    $ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+
+	    $num_backups--;
+	} 
+
+	return;
+    }
+}
+
+
+sub all_snapshots { # No test. Is not pure.
+
+    # Gather all snapshots (full paths) of $subject and return them
+    # sorted from newest to oldest.  $subject can be any user defined
+    # subvol or backup. If $subject is a subvol it may make sense to
+    # only want snapshots from certain timeframes which can be passed
+    # as the >=3'rd arguments.
+
+    my $config_ref = shift // confess missing_arg();
+    my $subject    = shift // confess missing_arg();
     my @timeframes = @_;
 
     my @all_snaps; # return this
@@ -87,7 +440,7 @@ sub all_snapshots_of { # No test. Is not pure.
     
     else { confess }
     
-    # return the snapshots sorted
+    # return the snapshots sorted newest to oldest
     my $snaps_sorted_ref = sort_snaps(\@all_snaps);
 
     return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
@@ -98,9 +451,11 @@ sub initialize_directories { # No test. Is not pure.
     # This subroutine is called everytime the yabsm script is run
     # (unless using --help or --check-config flags). This subroutine
     # allows us to be assured that all needed directories have been
-    # created.
+    # created. The only directories that will not be initialized are
+    # remote backup directories because it is too expensive to establish
+    # an ssh connection everytime the script is run.
 
-    my $config_ref = shift // confess;
+    my $config_ref = shift // confess missing_arg();
 
     my $yabsm_root_dir = $config_ref->{misc}{yabsm_snapshot_dir};
 
@@ -108,13 +463,14 @@ sub initialize_directories { # No test. Is not pure.
 	make_path($yabsm_root_dir);
     }
 
-    # .tmp dir holds tmp snaps for backups
+    # .tmp dir temporarily holds backup snapshots before they are btrfs sent
     if (not -d $yabsm_root_dir . '/.tmp') {
 	make_path($yabsm_root_dir . '/.tmp');
     }
 
     foreach my $subvol (all_subvols($config_ref)) {
 
+	# equivalent: my $subvol_dir = local_snap_dir($config_ref, $subvol);
 	my $subvol_dir = "$yabsm_root_dir/$subvol";
 
 	if (not -d $subvol_dir) {
@@ -125,7 +481,6 @@ sub initialize_directories { # No test. Is not pure.
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
-
 	
 	if ($_5minute_want eq 'yes' && not -d "$subvol_dir/5minute") {
 	    make_path("$subvol_dir/5minute");
@@ -143,11 +498,24 @@ sub initialize_directories { # No test. Is not pure.
 	    make_path("$subvol_dir/monthly");
 	}
 
-	# backup bootstrap snapshot dirs
+	# all the backups that are backing up $subvol
 	foreach my $backup (all_backups_of_subvol($config_ref, $subvol)) {
+
+	    # every backup has a dir to hold its bootstrap snapshot
 	    if (not -d "$subvol_dir/.backups/$backup/bootstrap-snap") {
 		make_path("$subvol_dir/.backups/$backup/bootstrap-snap");
 	    }
+
+	    if (is_local_backup($config_ref, $backup)) {
+		my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+		if (not -d $backup_dir) {
+		    make_path($backup_dir);
+		}
+	    }
+
+	    # if (is_remote_backup($config_ref, $backup)) {
+	    #   ... too expensive to open an ssh connection arbitrarily
+	    # }
 	}
     }
     
@@ -157,10 +525,10 @@ sub initialize_directories { # No test. Is not pure.
 sub local_snap_dir { # Has test. Is pure.
 
     # Return the local directory path for yabsm snapshots. The $subvol
-    # and $timeframe arguments are optional. Note that this function
-    # does not check that $subvol and $timeframe are valid.
+    # and $timeframe arguments are optional. Note that we do not check
+    # check that $subvol and $timeframe are a valid subvol/timeframe.
 
-    my $config_ref = shift // confess;
+    my $config_ref = shift // confess missing_arg();
     my $subvol     = shift; # optional
     my $timeframe  = shift; # optional
 
@@ -178,11 +546,11 @@ sub local_snap_dir { # Has test. Is pure.
 
 sub bootstrap_snap_dir { # Has test. Is pure.
 
-    # Return the path the the directory holding the bootstrap snapshot
-    # for $backup. The bootstrap snapshot is vital for incremental backups.
+    # Return the path of the directory holding the bootstrap snapshot for
+    # $backup. The bootstrap snapshot is used for incremental backups.
 
-    my $config_ref = shift // confess;
-    my $backup     = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
@@ -196,15 +564,14 @@ sub is_snapstring { # Has test. Is pure.
     # Return 1 iff $snapstring is a valid snapstring. Note that this
     # sub works on absolute paths as well as plain snapstrings.
 
-    my $snapstring = shift // confess;
+    my $snapstring = shift // confess missing_arg();
 
     return $snapstring =~ /day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/;
 }
 
 sub current_time_snapstring { # No test. Is not pure.
     
-    # This function is used be used to create a snapstring name
-    # of the current time.
+    # Return a snapstring name of the current time.
     
     my ($min, $hr, $day, $mon, $yr) =
       map { sprintf '%02d', $_ } (localtime)[1..5]; 
@@ -217,20 +584,20 @@ sub current_time_snapstring { # No test. Is not pure.
 
 sub n_units_ago_snapstring { # Has test. Is not pure.
 
-    # Subtract $n minutes, hours, or days from the current
-    # time. Returns a snapstring.
+    # Return a snapstring of the time $n $unit's ago. The unit can be
+    # minutes, hours or days.
+   
+    my $n    = shift // confess missing_arg();
+    my $unit = shift // confess missing_arg();
 
-    my $n    = shift // confess;
-    my $unit = shift // confess;
-
-    # Can only add/subtract by seconds with Time::Piece objects.
+    # Can add/subtract by seconds with Time::Piece objects.
 
     my $seconds_per_unit;
 
-    if    ($unit =~ /^(m|mins|minutes)$/) { $seconds_per_unit = 60    }
-    elsif ($unit =~ /^(h|hrs|hours)$/   ) { $seconds_per_unit = 3600  }
-    elsif ($unit =~ /^(d|days)$/        ) { $seconds_per_unit = 86400 }
-    else  { confess "\"$unit\" is not a valid time unit" }
+    if    ($unit =~ /^(minutes|mins|m)$/) { $seconds_per_unit = 60    }
+    elsif ($unit =~ /^(hours|hrs|h)$/   ) { $seconds_per_unit = 3600  }
+    elsif ($unit =~ /^(days|d)$/        ) { $seconds_per_unit = 86400 }
+    else  { confess "[!] Internal Error: '$unit' is not a valid time unit" }
 
     my $current_time = current_time_snapstring();
 
@@ -241,36 +608,83 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
     return time_piece_obj_to_snapstring($time_piece_obj);
 }
 
+sub is_immediate { # Has test. Is pure.
+
+    # An immediate is either a literal time or a relative time.
+
+    my $imm = shift // confess missing_arg();
+    
+    return is_literal_time($imm) || is_relative_time($imm);
+}
+
+sub is_literal_time { # Has test. Is pure.
+
+    # Literal times can come in one of 5 different forms. 
+
+    my $lit_time = shift // confess missing_arg();
+
+    # yr-mon-day-hr-min
+    my $re1 = '^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';
+    # yr-mon-day
+    my $re2 = '^\d{4}-\d{1,2}-\d{1,2}$';
+    # mon-day
+    my $re3 = '^\d{1,2}-\d{1,2}$';
+    # mon-day-hr
+    my $re4 = '^\d{1,2}-\d{1,2}-\d{1,2}$';
+    # mon-day-hr-min
+    my $re5 = '^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';
+
+    return any { $lit_time =~ /$_/ } ($re1, $re2, $re3, $re4, $re5);
+}
+
+sub is_relative_time { # Has test. Is pure.
+
+    # Relative times take the form of 'back-amount-unit'.
+    # 'back' can be abbreviated to 'b'.
+    # The amount field must be a whole number.
+    # The unit field must be a time unit like 'minutes', 'hours', or 'days'.
+
+    my $rel_time = shift // confess missing_arg();
+
+    my ($back, $amount, $unit) = split '-', $rel_time, 3;
+
+    return 0 if any { not defined } ($back, $amount, $unit);
+
+    my $back_correct = $back =~ /^b(ack)?$/;
+
+    my $amount_correct = $amount =~ /^\d+$/;
+    
+    my $unit_correct = any { $_ eq $unit } qw(minutes mins m hours hrs h days d);
+    
+    return $back_correct && $amount_correct && $unit_correct;
+}
+
+
 sub immediate_to_snapstring { # No test. Is pure. 
 
     # Resolve an immediate to a snapstring. An immediate is either a
-    # literal time, relative time, newest time, or oldest time.
+    # literal time or a relative time.
 
-    my $all_snaps_ref = shift // confess;
-    my $imm           = shift // confess;
+    my $imm = shift // confess missing_arg();
 
     if (is_literal_time($imm)) {
 	return literal_time_to_snapstring($imm);
     }
+
     if (is_relative_time($imm)) {
 	return relative_time_to_snapstring($imm);
     }
-    if (is_newest_time($imm)) {
-	return newest_snap($all_snaps_ref);
-    }
-    if (is_oldest_time($imm)) {
-	return oldest_snap($all_snaps_ref);
-    }
 
-    # should never happen because input has already been cleansed. 
+    # input should have already been cleansed. 
     confess "[!] Internal Error: '$imm' is not an immediate";
 }
 
 sub literal_time_to_snapstring { # Has test. Is pure.
 
-    # resolve a literal time to a snapstring
+    # resolve a literal time to a snapstring. Literal times come in one
+    # of 5 different forms denoted by the below named regexs.
 
-    my $lit_time = shift // confess;
+    my $lit_time = shift // confess missing_arg();
 
     # literal time forms
     my $yr_mon_day_hr_min = '^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';
@@ -310,7 +724,7 @@ sub relative_time_to_snapstring { # Has test. Is not pure.
     # resolve a relative time to a snapstring. Relative times have the
     # form 'back-amount-unit'.
 
-    my $rel_time = shift // confess;
+    my $rel_time = shift // confess missing_arg();
 
     my (undef, $amount, $unit) = split '-', $rel_time, 3;
 
@@ -325,7 +739,7 @@ sub snapstring_to_nums { # Has test. Is pure.
     # order the year, month, day, hour, and minute. This works with
     # both a full path and just a snapshot name string.
 
-    my $snap = shift // confess;
+    my $snap = shift // confess missing_arg();
 
     my @nums = $snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;
 
@@ -350,7 +764,7 @@ sub snapstring_to_time_piece_obj { # Has test. Is pure.
     # useful because we can do time arithmetic like adding hours or
     # minutes on the object.
 
-    my $snap = shift // confess;
+    my $snap = shift // confess missing_arg();
 
     my ($yr, $mon, $day, $hr, $min) = snapstring_to_nums($snap);
 
@@ -361,7 +775,7 @@ sub time_piece_obj_to_snapstring { # Has test. Is pure.
 
     # Turn a Time::Piece object into a snapshot name string.
 
-    my $time_piece_obj = shift // confess;
+    my $time_piece_obj = shift // confess missing_arg();
 
     my $yr  = $time_piece_obj->year;
     my $mon = $time_piece_obj->mon;
@@ -378,7 +792,7 @@ sub sort_snaps { # Has test. Is pure.
     # snapshots. Sorted from newest to oldest. Works with full
     # paths and plain snapstrings.
 
-    my $snaps_ref = shift // confess;
+    my $snaps_ref = shift // confess missing_arg();
 
     my @sorted_snaps = sort { cmp_snaps($a, $b) } @$snaps_ref;
 
@@ -392,8 +806,8 @@ sub cmp_snaps { # Has test. Is pure.
     # Return 0 if $snap1 and $snap2 are the same. 
     # Works with both full paths and plain snapstrings.
 
-    my $snap1 = shift // confess;
-    my $snap2 = shift // confess;
+    my $snap1 = shift // confess missing_arg();
+    my $snap2 = shift // confess missing_arg();
 
     my @snap1_nums = snapstring_to_nums($snap1);
     my @snap2_nums = snapstring_to_nums($snap2);
@@ -409,97 +823,13 @@ sub cmp_snaps { # Has test. Is pure.
     return 0;
 }
 
-sub ask_user_for_subvol_or_backup { # No test. Is not pure.
-
-    # Prompt user to select one of their defined subvols or
-    # backups. Used for the --find option when the user doesn't
-    # explicitly pass their subvol/backup on the command line.
-
-    my $config_ref = shift // confess;
-
-    my $int = 1;
-    my %int_subvol_hash = map { $int++ => $_ } all_subvols($config_ref);
-    my %int_backup_hash = map { $int++ => $_ } all_backups($config_ref);
-
-    my $selection; # return this
-    
-    while (not defined $selection) {
-
-	# prompt user
-	my $int = 1;
-	my $iter;
-	for ($iter = 1; $iter <= keys %int_subvol_hash; $iter++) {
-	    my $subvol = $int_subvol_hash{ $int };
-	    if ($iter == 1)       { print "Subvols:\n"              }
-	    if ($iter % 3 == 0)   { print "$int -> $subvol\n"       }
-	    else                  { print "$int -> $subvol" . ' 'x4 }
-	    $int++;
-	}
-	for ($iter = 1; $iter <= keys %int_backup_hash; $iter++) {
-	    my $backup = $int_backup_hash{ $int };
-	    if ($iter == 1)       { print "\nBackups:\n"              }
-	    if ($iter % 3 == 0)   { print "$int -> $backup\n"       }
-	    else                  { print "$int -> $backup" . ' 'x4 }
-	    $int++;
-	}
-	if ($iter % 3 == 0) { print '>>> '   }
-	else                { print "\n>>> " }
-
-	# process input
-	my $input = <STDIN>;
-	my $cleansed = $input =~ s/\s+//gr; # no whitespace
-	
-	exit 0 if $cleansed =~ /^q(uit)?$/;
-	
-	if (exists $int_subvol_hash{ $cleansed }) { # success
-	    $selection = $int_subvol_hash{ $cleansed };
-	}
-	elsif (exists $int_backup_hash{ $cleansed }) { # success
-	    $selection = $int_backup_hash{ $cleansed };
-	}
-	else {
-	    print "No option '$input'! Try again!\n\n";
-	}
-    }
-
-    return $selection;
-}
-
-sub ask_user_for_query { # No test. Is not pure.
-
-    # Prompt user for query. Used for the --find option when the user
-    # doesn't explicitly pass their query on the command line.
-
-    my $query;
-
-    while (not defined $query) {
-
-	print "enter query:\n>>> ";
-	
-	my $input = <STDIN>;
-	$input =~ s/^\s+|\s+$//g; # remove whitespace from both ends
-	
-	exit 0 if $input =~ /^q(uit)?$/;
-	
-	if (is_valid_query($input)) { # success
-	    $query = $input;
-	}  
-	
-	else {
-	    print "'$input' is not a valid query! Try again!\n\n";
-	}
-    }
-
-    return $query;
-}
-
 sub snap_closest_to { # Has test. Is pure.
 
     # Return the snapshot from $all_snaps_ref that is closest to
     # $target_snap. $all_snaps_ref is sorted from newest to oldest.
 
-    my $all_snaps_ref = shift // confess;
-    my $target_snap   = shift // confess;
+    my $all_snaps_ref = shift // confess missing_arg();
+    my $target_snap   = shift // confess missing_arg();
 
     my $snap;
 
@@ -509,13 +839,15 @@ sub snap_closest_to { # Has test. Is pure.
 
 	my $cmp = cmp_snaps($this_snap, $target_snap);
 	
+	# if $this_snap is the same as $target_snap
 	if ($cmp == 0) {
 	    $snap = $this_snap;
 	    last;
 	}
 
+	# if $this_snap is older than $target_snap
 	if ($cmp == 1) {
-	    if ($i == 0) {
+	    if ($i == 0) { # No previous snap. This is as close as were getting.
 		$snap = $this_snap;
 	    }
 	    else {
@@ -538,9 +870,9 @@ sub snap_closer { # Has test. Is pure.
     # Return either $snap1 or $snap2, depending on which is closer to
     # $target_snap. If they are equidistant return $snap1.
 
-    my $target_snap = shift // confess;
-    my $snap1       = shift // confess;
-    my $snap2       = shift // confess;
+    my $target_snap = shift // confess missing_arg();
+    my $snap1       = shift // confess missing_arg();
+    my $snap2       = shift // confess missing_arg();
 
     my $target_epoch = snapstring_to_time_piece_obj($target_snap)->epoch;
     my $snap1_epoch  = snapstring_to_time_piece_obj($snap1)->epoch;
@@ -553,15 +885,14 @@ sub snap_closer { # Has test. Is pure.
     else            { return $snap2 }
 }
 
-sub snaps_newer { # Has test. Is pure.
+sub snaps_newer_than { # Has test. Is pure.
 
     # Return all the snapshots that are newer than $target_snap.
-    # Remember that $all_snaps_ref is sorted newest to oldest.
 
-    my $all_snaps_ref = shift // confess;
-    my $target_snap   = shift // confess;
+    my $all_snaps_ref = shift // confess missing_arg();
+    my $target_snap   = shift // confess missing_arg();
 
-    my @snaps_newer = ();
+    my @newer = ();
 
     for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
 
@@ -569,25 +900,24 @@ sub snaps_newer { # Has test. Is pure.
 
 	my $cmp = cmp_snaps($this_snap, $target_snap);  
 
-	# if this snap is newer than the target
+	# if $this_snap is newer than $target_snap
 	if ($cmp == -1) {
-	    push @snaps_newer, $this_snap;
+	    push @newer, $this_snap;
 	}
 	else { last }
     }
 
-    return wantarray ? @snaps_newer : \@snaps_newer;
+    return wantarray ? @newer : \@newer;
 }
 
-sub snaps_older { # Has test. Is pure.
+sub snaps_older_than { # Has test. Is pure.
 
     # Return all the snapshots that are older than $target_snap.
-    # Remember that $all_snaps_ref is sorted newest to oldest.
 
-    my $all_snaps_ref = shift // confess;
-    my $target_snap   = shift // confess;
+    my $all_snaps_ref = shift // confess missing_arg();
+    my $target_snap   = shift // confess missing_arg();
 
-    my @snaps_older = ();
+    my @older = ();
     
     my $last_idx = $#{ $all_snaps_ref };
 
@@ -597,14 +927,14 @@ sub snaps_older { # Has test. Is pure.
 
 	my $cmp = cmp_snaps($this_snap, $target_snap);  
 
-	# if this snap is older than the target
+	# if $this_snap is older than $target_snap
 	if ($cmp == 1) {
-	    @snaps_older = @{ $all_snaps_ref }[$i .. $last_idx];
+	    @older = @$all_snaps_ref[$i .. $last_idx];
 	    last;
 	}
     }
 
-    return wantarray ? @snaps_older : \@snaps_older;
+    return wantarray ? @older : \@older;
 }
 
 sub snaps_between { # Has test. Is pure.
@@ -613,9 +943,9 @@ sub snaps_between { # Has test. Is pure.
     # and $target_snap2. Remember that $all_snaps_ref is sorted
     # newest to oldest.
 
-    my $all_snaps_ref = shift // confess;
-    my $target_snap1  = shift // confess;
-    my $target_snap2  = shift // confess;
+    my $all_snaps_ref = shift // confess missing_arg();
+    my $target_snap1  = shift // confess missing_arg();
+    my $target_snap2  = shift // confess missing_arg();
 
     # figure out which target snap is newer/older.
 
@@ -644,7 +974,7 @@ sub snaps_between { # Has test. Is pure.
 
 	my $cmp = cmp_snaps($this_snap, $newer);
 
-	# if this snap is older or equal to the newer target
+	# if $this_snap is older or equal to the $newer
 	if ($cmp == 1 || $cmp == 0) {
 
 	    # between (inclusive)
@@ -656,13 +986,14 @@ sub snaps_between { # Has test. Is pure.
 
 		my $cmp = cmp_snaps($this_snap, $older);
 
-		# if this snap is older than or equal to the older target
+		# if $this_snap is older than or equal to $older
 		if ($cmp == 1 || $cmp == 0) {
 
 		    # between (inclusive)
 		    push @snaps_between, $this_snap if $cmp == 0;
 
-		    # Were done. The outer loop will also be broken.
+		    # Were done. Break the inner loop. The outer loop
+		    # will be broken as well.
 		    last;
 		}
 
@@ -680,257 +1011,304 @@ sub snaps_between { # Has test. Is pure.
 
 sub newest_snap { # Has test. Is not pure.
 
-    # $ref can be either a hash ref to the users config or an array
-    # ref of snapshots. We can return the first element in the snapshot
-    # array because it will always be sorted from newest to oldest.
-    # Only the scenario of $ref being a snapshot array ref is tested.
+    # $ref can be either an array ref to an array of sorted snapshots,
+    # or a reference to the users config. If $ref is a ref to the
+    # config this is because the caller wants to get the newest
+    # snapshot of some subvol/backup, and thus will require an extra
+    # argument denoting the desired subvol/backup.
 
-    my $ref    = shift // confess;
-    my $subvol = shift; # only needed if passing $config_ref
+    my $ref    = shift // confess missing_arg();
+    my $subvol = shift; # only needed if $ref is $config_ref
 
-    my $newest_snap;
+    my $ref_type = ref($ref);
 
-    if (ref($ref) eq 'ARRAY') {
-	$newest_snap = $ref->[0]
+    if ($ref_type eq 'ARRAY') {
+	return $ref->[0]
     }
 
-    elsif (ref($ref) eq 'HASH') {
-	my $all_snaps_ref = all_snapshots_of($ref, $subvol);
-	$newest_snap = $all_snaps_ref->[0];
+    if ($ref_type eq 'HASH') {
+	my $all_snaps_ref = all_snapshots($ref, $subvol);
+	return $all_snaps_ref->[0];
     }
 
-    else { confess }
-
-    return $newest_snap;
+    confess "[!] Internal Error: '$ref' has ref type '$ref_type'";
 }
 
 sub oldest_snap { # Has test. Is not pure.
 
-    # $ref can be either a hash ref to the users config or an array
-    # ref of snapshots. We can return the last element in the snapshot
-    # array because it will always be sorted from newest to oldest.
-    # Only the scenario of $ref being a snapshot array ref is tested.
+    # $ref can be either an array ref to an array of sorted snapshots,
+    # or a reference to the users config. If $ref is a ref to the
+    # config this is because the caller wants to get the oldest
+    # snapshot of some subvol/backup, and thus will require an extra
+    # argument denoting the desired subvol/backup.
     
-    my $ref    = shift // confess;
-    my $subvol = shift; # only needed if passing $config_ref
+    my $ref = shift // confess missing_arg();
 
-    my $oldest_snap;
+    my $ref_type = ref($ref);
 
-    if (ref($ref) eq 'ARRAY') {
-	$oldest_snap = $ref->[-1];
+    if ($ref_type eq 'ARRAY') {
+	return $ref->[-1];
     }
 
-    elsif (ref($ref) eq 'HASH') {
-	my $all_snaps_ref = all_snapshots_of($ref, $subvol);
-	$oldest_snap = $all_snaps_ref->[-1];
+    if ($ref_type eq 'HASH') {
+	my $subject = shift // confess missing_arg();
+	my $all_snaps_ref = all_snapshots($ref, $subject);
+	return $all_snaps_ref->[-1];
     }
-
-    else { confess }
-
-    return $oldest_snap;
+    
+    confess "[!] Internal Error: '$ref' has ref type '$ref_type'";
 }
 
 sub answer_query { # No test. Is not pure.
 
     # Answers $query to find the appropiate snapshot(s) of
-    # $subject. We $subject can either be a subvol or a backup. We
-    # expect that $query has already been validated.
+    # $subject. We expect that $query has already been
+    # validated. $subject can either be a defined subvol or a backup.
 
-    my $config_ref = shift // confess;
-    my $subject    = shift // confess;
-    my $query      = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $subject    = shift // confess missing_arg();
+    my $query      = shift // confess missing_arg();
 
-    my $all_snaps_ref = all_snapshots_of($config_ref, $subject);
+    my $all_snaps_ref = all_snapshots($config_ref, $subject);
 
     my @snaps_to_return;
 
-    if (is_immediate($query)) {
-
-	my $target = immediate_to_snapstring($all_snaps_ref, $query); 
-
-	my $snap = snap_closest_to($all_snaps_ref, $target);
-
-	# return just one snap
-	push @snaps_to_return, $snap;
-    }
-
-    elsif (is_all_query($query)) {
+    if ($query eq 'all') {
+	
 	# return all the snaps
+
 	@snaps_to_return = @$all_snaps_ref;
     }
 
-    elsif (is_newer_query($query)) {
+    elsif ($query eq 'newest') {
 
-	my (undef, $immediate) = split /\s/, $query, 2;
+	# return just the newest snap
 
-	my $target = immediate_to_snapstring($all_snaps_ref, $immediate);
+	my $snap = newest_snap($all_snaps_ref);
 
-	@snaps_to_return = snaps_newer($all_snaps_ref, $target);
+	@snaps_to_return = ($snap);
     }
 
-    elsif (is_older_query($query)) {
+    elsif ($query eq 'oldest') {
 
-	my (undef, $immediate) = split /\s/, $query, 2;
+	# return just the oldest snap
 
-	my $target = immediate_to_snapstring($all_snaps_ref, $immediate);
+	my $snap = oldest_snap($all_snaps_ref);
 
-	@snaps_to_return = snaps_older($all_snaps_ref, $target);
+	@snaps_to_return = ($snap);
+    }
+
+    elsif (is_immediate($query)) {
+
+	# return the one snap closest to the time denoted by the immediate.
+
+	my $target = immediate_to_snapstring($query); 
+
+	my $snap = snap_closest_to($all_snaps_ref, $target);
+
+	@snaps_to_return = ($snap);
+    }
+
+    elsif (is_newer_than_query($query)) {
+
+	my (undef, $imm) = split /\s/, $query, 2;
+
+	my $target = immediate_to_snapstring($imm);
+
+	@snaps_to_return = snaps_newer_than($all_snaps_ref, $target);
+    }
+
+    elsif (is_older_than_query($query)) {
+
+	my (undef, $imm) = split /\s/, $query, 2;
+
+	my $target = immediate_to_snapstring($imm);
+
+	@snaps_to_return = snaps_older_than($all_snaps_ref, $target);
     }
 
     elsif (is_between_query($query)) {
 
 	my (undef, $imm1, $imm2) = split /\s/, $query, 3;
 
-	my $target1 = immediate_to_snapstring($all_snaps_ref, $imm1);
+	my $target1 = immediate_to_snapstring($imm1);
 
-	my $target2 = immediate_to_snapstring($all_snaps_ref, $imm2);
+	my $target2 = immediate_to_snapstring($imm2);
 
 	@snaps_to_return = snaps_between($all_snaps_ref, $target1, $target2);
     }
 
-    else {
+    else { # input should have already been cleansed
 	confess "[!] Internal Error: '$query' is not a valid query";
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;
 }
 
+sub ask_user_for_subvol_or_backup { # No test. Is not pure.
+
+    # Prompt user to select one of their defined subvols or
+    # backups. Used for 'yabsm --find' when the user doesn't
+    # explicitly pass their subvol/backup on the command line.
+
+    my $config_ref = shift // confess missing_arg();
+
+    my $int = 1;
+    my %int_subvol_hash = map { $int++ => $_ } all_subvols($config_ref);
+    my %int_backup_hash = map { $int++ => $_ } all_backups($config_ref);
+
+    my $selection; # return this
+
+    # number of options to print before adding a newline.
+    use constant ROW_LEN => 3;
+    
+    while (not defined $selection) {
+
+	# Prompt user. I know that this is confusing code.
+	my $int = 1;
+	my $iter;
+	for ($iter = 1; $iter <= keys %int_subvol_hash; $iter++) {
+	    my $subvol = $int_subvol_hash{ $int };
+
+	    if ($iter == 1)           { print "Subvols:\n"              }
+	    if ($iter % ROW_LEN == 0) { print "$int -> $subvol\n"       }
+	    else                      { print "$int -> $subvol" . ' 'x4 }
+
+	    $int++;
+	}
+	for ($iter = 1; $iter <= keys %int_backup_hash; $iter++) {
+	    my $backup = $int_backup_hash{ $int };
+
+	    if ($iter == 1)           { print "\nBackups:\n"            }
+	    if ($iter % ROW_LEN == 0) { print "$int -> $backup\n"       }
+	    else                      { print "$int -> $backup" . ' 'x4 }
+
+	    $int++;
+	}
+	if ($iter % ROW_LEN == 0) { print '>>> '   }
+	else                      { print "\n>>> " }
+
+	# process input
+	my $input = <STDIN>;
+
+	# We don't just overwrite $input so we can print the original
+	# input string back to the user in case it is erroneous.
+	my $clean_input = $input =~ s/\s+//gr; # no whitespace
+	
+	exit 0 if $clean_input =~ /^q(uit)?$/;
+	
+	if (exists $int_subvol_hash{ $clean_input }) { # success
+	    $selection = $int_subvol_hash{ $clean_input };
+	}
+	elsif (exists $int_backup_hash{ $clean_input }) { # success
+	    $selection = $int_backup_hash{ $clean_input };
+	}
+	else {
+	    print "No option '$input'! Try again!\n\n";
+	}
+    }
+
+    return $selection;
+}
+
+sub ask_user_for_query { # No test. Is not pure.
+
+    # Prompt user for query. Used for 'yabsm --find' when the user
+    # doesn't explicitly pass their query on the command line.
+
+    my $query;
+
+    while (not defined $query) {
+
+	print "enter query:\n>>> ";
+	
+	my $input = <STDIN>;
+
+	# We don't just overwrite $input so we can print the original
+	# input string back to the user in case it is erroneous.
+	my $clean_input = $input =~ s/\s+//gr; # no whitespace
+	
+	exit 0 if $clean_input =~ /^q(uit)?$/;
+	
+	if (is_valid_query($clean_input)) { # success
+	    $query = $clean_input;
+	}  
+	
+	else {
+	    print "'$input' is not a valid query! Try again!\n\n";
+	}
+    }
+
+    return $query;
+}
+
 sub is_valid_query { # Has test. Is pure.
 
-    my $query = shift // confess;
+    # True iff $query is a valid query. Used to validate 
+    # user input query for 'yabsm --find'.
 
-    if (is_immediate($query))     { return 1 }
-    if (is_all_query($query))     { return 1 }
-    if (is_newer_query($query))   { return 1 }
-    if (is_older_query($query))   { return 1 }
-    if (is_between_query($query)) { return 1 }
+    my $query = shift // confess missing_arg();
+
+    if ($query eq 'all')             { return 1 }
+    if ($query eq 'newest')          { return 1 }
+    if ($query eq 'oldest')          { return 1 }
+    if (is_immediate($query))        { return 1 }
+    if (is_newer_than_query($query)) { return 1 }
+    if (is_older_than_query($query)) { return 1 }
+    if (is_between_query($query))    { return 1 }
 
     return 0;
 }
 
-sub is_immediate { # Has test. Is pure.
+sub is_newer_than_query { # Has test. Is pure.
 
-    # An immediate is either a literal time or a relative time.
+    # Return 1 iff $query is a syntactically valid newer_than query.
+    # A newer_than query returns all snapshots newer than some
+    # immediate.  A newer_than query can be denoted by one of the
+    # keywords 'newer', 'after', or 'aft'. A newer_than query takes
+    # exactly one immediate as an argument.
 
-    my $imm = shift // confess;
-    
-    return is_newest_time($imm)
-        || is_oldest_time($imm)
-        || is_literal_time($imm)
-        || is_relative_time($imm);
-}
-
-sub is_literal_time { # Has test. Is pure.
-
-    # Literal times can come in one of 5 different forms. 
-
-    my $lit_time = shift // confess;
-
-    # yr-mon-day-hr-min
-    my $re1 = '^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';
-    # yr-mon-day
-    my $re2 = '^\d{4}-\d{1,2}-\d{1,2}$';
-    # mon-day
-    my $re3 = '^\d{1,2}-\d{1,2}$';
-    # mon-day-hr
-    my $re4 = '^\d{1,2}-\d{1,2}-\d{1,2}$';
-    # mon-day-hr-min
-    my $re5 = '^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';
-
-    return any { $lit_time =~ /$_/ } ($re1, $re2, $re3, $re4, $re5);
-}
-
-sub is_relative_time { # Has test. Is pure.
-
-    # Return 1 iff $query is a syntactically valid relative time.
-    # Relative queries take the form of 'back-amount-unit'.
-    # 'back' can be abbreviated to b.
-    # The amount field must be a whole number.
-    # The unit field must be a time unit like minutes, hours, or days.
-
-    my $query = shift // confess;
-
-    my ($back, $amount, $unit) = split '-', $query, 3;
-
-    return 0 if any { not defined } ($back, $amount, $unit);
-
-    my $back_correct = $back =~ /^b(ack)?$/;
-
-    my $amount_correct = $amount =~ /^\d+$/;
-    
-    my $unit_correct = any { $_ eq $unit } qw/minutes mins m hours hrs h days d/;
-    
-    return $back_correct && $amount_correct && $unit_correct;
-}
-
-sub is_newer_query { # Has test. Is pure.
-
-    # Return 1 iff $query is a syntactically valid 'newer' query.
-    # A newer query can have either the keyword 'newer' or 'after'.
-
-    my $query = shift // confess;
+    my $query = shift // confess missing_arg();
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
     return 0 if any { not defined } ($keyword, $imm);
 
-    my $keyword_correct = $keyword =~ /^(newer|after)$/;
+    my $keyword_correct = $keyword =~ /^(newer|after|aft)$/;
 
     my $imm_correct = is_immediate($imm);
 
     return $keyword_correct && $imm_correct;
 }
 
-sub is_older_query { # Has test. Is pure.
+sub is_older_than_query { # Has test. Is pure.
 
-    # Return 1 iff $query is a syntactically valid 'older' query.
-    # A older query can have either the keyword 'older' or 'before'.
+    # Return 1 iff $query is a syntactically valid older_than query.
+    # An older_than query returns all snapshots older than some
+    # immediate. A older_than query can be denoted by one of the
+    # keywords 'older', 'before', or 'bef'. An older_than query takes
+    # exactly one immediate as an argument.
 
-    my $query = shift // confess;
+    my $query = shift // confess missing_arg();
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
     return 0 if any { not defined } ($keyword, $imm);
 
-    my $keyword_correct = $keyword =~ /^(older|before)$/;
+    my $keyword_correct = $keyword =~ /^(older|before|bef)$/;
 
     my $imm_correct = is_immediate($imm);
 
     return $keyword_correct && $imm_correct;
-}
-
-sub is_all_query { # Has test. Is pure.
-
-    # return 1 iff $query equals 'all'.
-
-    my $query = shift // confess;
-
-    return $query eq 'all';
-}
-
-sub is_newest_time { # Has test. Is pure.
-    
-    # Return 1 iff $query equals 'newest'.
-
-    my $query = shift // confess;
-
-    return $query eq 'newest';
-}
-
-sub is_oldest_time { # Has test. Is pure.
-    
-    # Return 1 iff $query equals 'oldest'.
-
-    my $query = shift // confess;
-
-    return $query eq 'oldest';
 }
 
 sub is_between_query { # Has test. Is pure.
 
-    # Return 1 iff $query is a syntactically valid 'after' query.
+    # Return 1 iff $query is a syntactically valid 'between' query.
+    # A between query takes two immediate arguments and returns all
+    # snapshots between the two immediate times. 
 
-    my $query = shift // confess;
+    my $query = shift // confess missing_arg();
 
     my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
 
@@ -947,9 +1325,9 @@ sub is_between_query { # Has test. Is pure.
 
 sub all_subvols { # Has test. Is pure.
 
-    # Return an array of the names of every user defined subvolume.
+    # Return an array of the names of every user defined subvol.
 
-    my $config_ref = shift // confess;
+    my $config_ref = shift // confess missing_arg();
 
     my @subvols = sort keys %{$config_ref->{subvols}};
 
@@ -958,9 +1336,9 @@ sub all_subvols { # Has test. Is pure.
 
 sub all_backups { # Has test. Is pure.
 
-    # Return an array of the names of every user defined backup
+    # Return an array of the names of every user defined backup.
 
-    my $config_ref = shift // confess;
+    my $config_ref = shift // confess missing_arg();
 
     my @backups = sort keys %{$config_ref->{backups}};
 
@@ -971,8 +1349,8 @@ sub all_backups_of_subvol { # Has test. Is pure.
 
     # Return an array of all the backups that are backing up $subvol.
 
-    my $config_ref = shift // confess;
-    my $subvol     = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
 
     my @backups = ();
 
@@ -990,8 +1368,8 @@ sub is_subvol { # Has test. Is pure.
 
     # Return 1 iff $subvol is the name of a defined yabsm subvolume.
     
-    my $config_ref = shift // confess;
-    my $subvol     = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
     
     return any { $_ eq $subvol } all_subvols($config_ref);
 }
@@ -1000,8 +1378,8 @@ sub is_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined yabsm backup.
 
-    my $config_ref = shift // confess;
-    my $backup     = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
 
     return any { $_ eq $backup } all_backups($config_ref);
 }
@@ -1010,8 +1388,8 @@ sub is_local_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined yabsm local backup.
 
-    my $config_ref = shift // confess;
-    my $backup     = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
 
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'no';
@@ -1023,8 +1401,8 @@ sub is_remote_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined yabsm remote backup.
 
-    my $config_ref = shift // confess;
-    my $backup     = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
 
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'yes';
@@ -1036,7 +1414,7 @@ sub update_etc_crontab { # No test. Is not pure.
     
     # Write cronjobs to '/etc/crontab'
 
-    my $config_ref = shift // confess;
+    my $config_ref = shift // confess missing_arg();
 
     open (my $etc_crontab_fh, '<', '/etc/crontab')
       or die "[!] Error: failed to open file '/etc/crontab'\n";
@@ -1048,16 +1426,12 @@ sub update_etc_crontab { # No test. Is not pure.
     # the existing yabsm cronjobs.
     while (<$etc_crontab_fh>) {
 
-	s/\s+$//;        # strip trailing whitespace
+	s/\s+$//; # strip trailing whitespace
 
-	next if /yabsm/; # don't copy the old yabsm cronjobs
+	next if /root yabsm -/; # don't copy the old yabsm cronjobs
 
 	say $tmp_fh $_;
     }
-
-    # If there is text on the last line of the file then we must append a
-    # newline or else that text will prepend our first cronjob.
-    # print $tmp_fh "\n"; 
 
     # Now append the cronjob strings to $tmp file.
     my @cron_strings = generate_cron_strings($config_ref);
@@ -1077,9 +1451,9 @@ sub generate_cron_strings { # No test. Is pure.
     # Use the users config to generate all the cron strings for taking
     # snapshots and performing backups.
     
-    my $config_ref = shift // confess;
+    my $config_ref = shift // confess missing_arg();
 
-    my @cron_strings;
+    my @cron_strings = (); # return this
 
     foreach my $subvol (all_subvols($config_ref)) {
 
@@ -1129,235 +1503,38 @@ sub generate_cron_strings { # No test. Is pure.
 
 sub new_ssh_connection { # No test. Is not pure.
 
-    # Create and return an ssh connection object with Net::OpenSSH.
+    # Create and return an ssh connection object from Net::OpenSSH.
 
-    my $remote_host = shift // confess;
+    my $remote_host = shift // confess missing_arg();
 
     my $ssh = Net::OpenSSH->new( $remote_host,
-			       , batch_mode => 1 # Don't ask for password
-			       , timeout => 15   # timeout after 15 seconds
+			       , batch_mode => 1 # Don't try asking for password
+			       , timeout => 30 # timeout after 30 seconds
 			       , kill_ssh_on_timeout => 1
 			       );
 
     # kill the program if we cannot establish a connection to $remote_host
     $ssh->error and 
       die "[!] Error: Couldn't establish SSH connection: " . $ssh->error . "\n";
-
+    
     return $ssh;
 }
 
-sub do_backup_bootstrap_ssh { # No test. Is not pure. TODO: document
+sub test_remote_backup { # No test. Is not pure. # TODO: document
 
-    # Perform bootstrap phase of incremental backup over ssh. To
-    # bootstrap a backup we create a new snapshot and place it in the
-    # subvol being snapped's backup bootstrap dir
-    # (for example /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/)
-    # Please see the
-    # btrfs wiki section on incremental backups for more information.
-
-    my $config_ref = shift // confess;
-    my $backup     = shift // confess;
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
 
     my $remote_host = $config_ref->{backups}{$backup}{host};
 
+    # program will die if we cannot connect to $remote_host without password
     my $ssh = new_ssh_connection($remote_host);
 
-    my $subvol = $config_ref->{backups}{$backup}{subvol};
-
-    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
-
-    # delete old bootstrap snap
-    system("btrfs subvol delete $_") for glob "$bootstrap_snap_dir/*";
-
-    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-    
-    my $bootstrap_snap = "$bootstrap_snap_dir/" . current_time_snapstring();
-    
-    system("btrfs subvol snapshot -r $mountpoint $bootstrap_snap");
-
-    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-
-    # create $remote_backup_dir if it does not exist
-    $ssh->system( "if [ ! -d \"$remote_backup_dir\" ];"
-		. "then mkdir -p $remote_backup_dir; fi"
-		);
-
-    # send the bootstrap backup to remote host
-    $ssh->system({stdin_file => ['-|', "btrfs send $bootstrap_snap"]}
-		, "sudo -n btrfs receive $remote_backup_dir"
-	        );
-}
-
-sub do_backup_ssh { # No test. Is not pure. TODO: document
-
-    my $config_ref = shift // confess;
-    my $backup     = shift // confess;
-
-    my $subvol = $config_ref->{backups}{$backup}{subvol};
-
-    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-
-    my $bootstrap_snap =
-      [glob (bootstrap_snap_dir($config_ref, $backup) . '/*')]->[0];
-
-    # we have not already bootstrapped
-    if (not defined $bootstrap_snap) {
-	do_backup_bootstrap_ssh($config_ref, $backup);
-    }
-    
-    # we have already bootstrapped.
-    else {
-	
-	my $remote_host = $config_ref->{backups}{$backup}{host};
-
-	# initialize an ssh connection object
-	my $ssh = new_ssh_connection($remote_host);
-
-	my $tmp_snap =
-	  local_snap_dir($config_ref) . '/.tmp/' . current_time_snapstring();
-
-	my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-	
-	system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-	
-	# send an incremental backup over ssh
-	$ssh->system(
-	    {stdin_file => ['-|', "btrfs send -p $bootstrap_snap $tmp_snap"]}
-		           , "sudo -n btrfs receive $remote_backup_dir"
-		           );
-	
-	system("btrfs subvol delete $tmp_snap");
-	
-	delete_old_backups_ssh($config_ref, $ssh, $backup);
-    }
+    # program will die if we cannot use btrfs command with sudo without password
+    $ssh->system('sudo -n btrfs --help > /dev/null')
+      or die 'Could not sudo run btrfs without password: ' . $ssh->error . "\n";
 
     return;
-}
-
-sub delete_old_backups_ssh { # TODO DOCUMENT
-
-    # Delete old backup snapshot(s) based off $backup's
-    # $keep setting defined in the users config. This
-    # function should be called after do_backup_ssh;
-
-    my $config_ref = shift // confess;
-    my $ssh        = shift // confess;
-    my $backup     = shift // confess;
-
-    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
-
-    my @existing_backups =
-      sort_snaps([$ssh->capture("ls -d $remote_backup_dir/*")]);
-
-    my $num_backups = scalar @existing_backups;
-
-    my $num_to_keep = $config_ref->{backups}{$backup}{keep};
-
-    # The most common case is there is 1 more backup than should be
-    # kept because we just performed a backup.
-    if ($num_backups == $num_to_keep + 1) {
-
-	# pop takes from the end of the array. This is the oldest backup
-	# because they are sorted newest to oldest.
-	my $oldest_backup = pop @existing_backups;
-
-	$ssh->system("sudo -n btrfs subvol delete $oldest_backup");
-
-	return;
-    }
-
-    # We haven't reached the backup quota yet so we don't delete anything.
-    elsif ($num_backups <= $num_to_keep) { return } 
-
-    # User changed their settings to keep less backups than they
-    # were keeping prior. 
-    else { 
-	
-	while ($num_backups > $num_to_keep) {
-
-	    # note that pop mutates existing_snaps
-	    my $oldest_backup = pop @existing_backups;
-            
-	    $ssh->system("sudo -n btrfs subvolume delete $oldest_backup");
-
-	    $num_backups--;
-	} 
-
-	return;
-    }
-}
-
-sub take_new_snapshot { # No test. Is not pure.
-
-    # take a single $timeframe read-only snapshot of $subvol.
-
-    my $config_ref = shift // confess;
-    my $subvol     = shift // confess;
-    my $timeframe  = shift // confess;
-
-    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-
-    my $snap_dir = local_snap_dir($config_ref, $subvol, $timeframe);
-
-    my $snapshot_name = current_time_snapstring();
-
-    system( 'btrfs subvol snapshot -r '
-	  . $mountpoint
-	  . " $snap_dir/$snapshot_name"
-	  ); 
-
-    return 1;
-}
-
-sub delete_old_snapshots { # No test. Is not pure.
-    
-    # Delete old snapshot(s) based off $subvol's $timeframe_keep
-    # setting defined in the users config. This function should be
-    # called after take_new_snapshot().
-
-    my $config_ref = shift // confess;
-    my $subvol     = shift // confess;
-    my $timeframe  = shift // confess;
-
-    # these snaps are sorted from newest to oldest
-    my $existing_snaps_ref = all_snapshots_of($config_ref, $subvol, $timeframe);
-
-    my $num_snaps = scalar @$existing_snaps_ref;
-
-    my $num_to_keep = $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
-
-    # The most common case is there is 1 more snapshot than should be
-    # kept because we just took a snapshot.
-    if ($num_snaps == $num_to_keep + 1) { 
-
-	# pop takes from the end of the array. This is the oldest snap
-	# because they are sorted newest to oldest.
-	my $oldest_snap = pop @$existing_snaps_ref;
-
-	system("btrfs subvolume delete $oldest_snap");
-
-	return;
-    }
-
-    # We haven't reached the snapshot quota yet so we don't delete anything.
-    elsif ($num_snaps <= $num_to_keep) { return } 
-
-    # User changed their settings to keep less snapshots than they
-    # were keeping prior. 
-    else { 
-	
-	while ($num_snaps > $num_to_keep) {
-
-	    # note that pop mutates existing_snaps
-            my $oldest_snap = pop @$existing_snaps_ref;
-            
-	    system("btrfs subvolume delete $oldest_snap");
-
-	    $num_snaps--;
-	} 
-
-	return;
-    }
 }
 
 1;

@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 
-#  Author: Nicholas Hubbard
-#  Email:  nhub73@keemail.me
-#  WWW:    https://github.com/NicholasBHubbard/yabsm
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
 #
-#  Testing for Yabsm.pm.
+#  Testing for the Yabsm.pm library.
 
 use strict;
 use warnings;
@@ -462,8 +462,8 @@ sub test_snap_closest_to {
     ok ( $correct1 && $correct2 && $correct3 && $correct4, 'snap_closest_to()' );
 }
 
-test_snaps_newer();
-sub test_snaps_newer {
+test_snaps_newer_than();
+sub test_snaps_newer_than {
 
     my $t1 = 'day=2026_08_24,time=00:00';
     my $t2 = 'day=2025_08_24,time=00:00';
@@ -478,7 +478,7 @@ sub test_snaps_newer {
 
     # TEST 1
 
-    my @snaps_newer1 = Yabsm::Base::snaps_newer(\@all_snaps, $t5);
+    my @snaps_newer1 = Yabsm::Base::snaps_newer_than(\@all_snaps, $t5);
 
     # note that $t5 is excluded
     my @solution1 = ($t1, $t2, $t3, $t4);
@@ -489,7 +489,7 @@ sub test_snaps_newer {
 
     my $target2 = 'day=3000_08_24,time=00:00';
 
-    my @snaps_newer2 = Yabsm::Base::snaps_newer(\@all_snaps, $target2);
+    my @snaps_newer2 = Yabsm::Base::snaps_newer_than(\@all_snaps, $target2);
 
     my @solution2 = ();
 
@@ -500,17 +500,17 @@ sub test_snaps_newer {
 
     my @all_snaps_empty = ();
 
-    my @snaps_newer3 = Yabsm::Base::snaps_newer(\@all_snaps_empty, $t4);
+    my @snaps_newer3 = Yabsm::Base::snaps_newer_than(\@all_snaps_empty, $t4);
 
     my @solution3 = ();
 
     my $test3 = @snaps_newer3 ~~ @solution3;
 
-    ok ( $test1 && $test2 && $test3, 'snaps_newer()' );
+    ok ( $test1 && $test2 && $test3, 'snaps_newer_than()' );
 }
 
-test_snaps_older();
-sub test_snaps_older {
+test_snaps_older_than();
+sub test_snaps_older_than {
 
     my $t1 = 'day=2026_08_24,time=00:00';
     my $t2 = 'day=2025_08_24,time=00:00';
@@ -525,7 +525,7 @@ sub test_snaps_older {
 
     # TEST 1
 
-    my @snaps_older1 = Yabsm::Base::snaps_older(\@all_snaps, $t5);
+    my @snaps_older1 = Yabsm::Base::snaps_older_than(\@all_snaps, $t5);
 
     # note that $t5 is excluded
     my @solution1 = ($t6, $t7);
@@ -536,7 +536,7 @@ sub test_snaps_older {
 
     my $target2 = 'day=1999_08_24,time=00:00'; 
 
-    my @snaps_older2 = Yabsm::Base::snaps_older(\@all_snaps, $target2);
+    my @snaps_older2 = Yabsm::Base::snaps_older_than(\@all_snaps, $target2);
 
     my @solution2 = ();
 
@@ -546,13 +546,13 @@ sub test_snaps_older {
 
     my @all_snaps_empty = ();
 
-    my @snaps_older3 = Yabsm::Base::snaps_older(\@all_snaps_empty, $t4);
+    my @snaps_older3 = Yabsm::Base::snaps_older_than(\@all_snaps_empty, $t4);
 
     my @solution3 = ();
 
     my $test3 = @snaps_older3 ~~ @solution3;
 
-    ok ( $test1 && $test2 && $test3, 'snaps_older()' );
+    ok ( $test1 && $test2 && $test3, 'snaps_older_than()' );
 }
 
 test_snaps_between();
@@ -605,6 +605,8 @@ sub test_snaps_between {
 test_newest_snap();
 sub test_newest_snap {
 
+    # only tests the case that $ref is an array ref
+
     my $t1 = 'day=2026_08_24,time=00:00';
     my $t2 = 'day=2025_08_24,time=00:00';
     my $t3 = 'day=2024_08_24,time=00:00';
@@ -621,6 +623,8 @@ sub test_newest_snap {
 
 test_oldest_snap();
 sub test_oldest_snap {
+
+    # only tests the case that $ref is an array ref
 
     my $t1 = 'day=2026_08_24,time=00:00';
     my $t2 = 'day=2025_08_24,time=00:00';
@@ -738,42 +742,6 @@ sub test_is_relative_time {
     ok ( $trues && $falses, 'is_relative_time()' );
 }
 
-test_is_newest_time();
-sub test_is_newest_time {
-    
-    # this is the only valid newest query
-    my $true = Yabsm::Base::is_newest_time('newest');
-
-    # these should all be false
-    my $f0 = Yabsm::Base::is_newest_time('');
-    my $f1 = Yabsm::Base::is_newest_time('new');
-    my $f2 = Yabsm::Base::is_newest_time('n');
-    my $f3 = Yabsm::Base::is_newest_time(' newest');
-    my $f4 = Yabsm::Base::is_newest_time('newest ');
-
-    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4);
-
-    ok ( $true && $falses, 'is_newest_time' );
-}
-
-test_is_oldest_time();
-sub test_is_oldest_time {
-    
-    # this is the only valid oldest time
-    my $true = Yabsm::Base::is_oldest_time('oldest');
-
-    # these should all be false
-    my $f0 = Yabsm::Base::is_oldest_time('');
-    my $f1 = Yabsm::Base::is_oldest_time('old');
-    my $f2 = Yabsm::Base::is_oldest_time('o');
-    my $f3 = Yabsm::Base::is_oldest_time(' oldest');
-    my $f4 = Yabsm::Base::is_oldest_time('oldest ');
-
-    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4);
-
-    ok ( $true && $falses, 'is_oldest_time' );
-}
-
 test_is_immediate();
 sub test_is_immediate {
 
@@ -782,8 +750,6 @@ sub test_is_immediate {
     my $t1 = Yabsm::Base::is_immediate('b-45-m');
     my $t2 = Yabsm::Base::is_immediate('12-30');
     my $t3 = Yabsm::Base::is_immediate('back-12-days');
-    my $t4 = Yabsm::Base::is_immediate('newest');
-    my $t5 = Yabsm::Base::is_immediate('oldest');
 
     # these should all be false
     my $f0 = Yabsm::Base::is_immediate('before b-5-d'); 
@@ -791,78 +757,63 @@ sub test_is_immediate {
     my $f2 = Yabsm::Base::is_immediate(' b-5-d '); 
     my $f3 = Yabsm::Base::is_immediate('back-4-WRONG'); 
 
-    my $trues = $t0 && $t1 && $t2 && $t3 && $t4 && $t5;
+    my $trues = $t0 && $t1 && $t2 && $t3;
     my $falses = not ($f0 || $f1 || $f2 || $f3);
 
     ok ( $trues && $falses, 'is_immediate()' );
 }
 
-test_is_newer_query();
-sub test_is_newer_query {
+test_is_newer_than_query();
+sub test_is_newer_than_query {
 
     # these should all be true
-    my $t0 = Yabsm::Base::is_newer_query('newer b-45-m');
-    my $t1 = Yabsm::Base::is_newer_query('newer 12-30');
-    my $t2 = Yabsm::Base::is_newer_query('after b-45-m');
-    my $t3 = Yabsm::Base::is_newer_query('after 12-30');
+    my $t0 = Yabsm::Base::is_newer_than_query('newer b-45-m');
+    my $t1 = Yabsm::Base::is_newer_than_query('newer 12-30');
+    my $t2 = Yabsm::Base::is_newer_than_query('after b-45-m');
+    my $t3 = Yabsm::Base::is_newer_than_query('after 12-30');
+    my $t4 = Yabsm::Base::is_newer_than_query('aft 12-30');
     
     # these should all be false
-    my $f0 = Yabsm::Base::is_newer_query('newer b-5-d 12-30'); 
-    my $f1 = Yabsm::Base::is_newer_query('newer b-WRONG-d'); 
-    my $f2 = Yabsm::Base::is_newer_query('new b-5-d'); 
-    my $f3 = Yabsm::Base::is_newer_query(''); 
-    my $f4 = Yabsm::Base::is_newer_query(' newer b-6-h'); 
-    my $f5 = Yabsm::Base::is_newer_query('newer b-6-h '); 
-    my $f6 = Yabsm::Base::is_newer_query(' after b-6-h'); 
-    my $f7 = Yabsm::Base::is_newer_query('after b-6-h '); 
+    my $f0 = Yabsm::Base::is_newer_than_query('newer b-5-d 12-30'); 
+    my $f1 = Yabsm::Base::is_newer_than_query('newer b-WRONG-d'); 
+    my $f2 = Yabsm::Base::is_newer_than_query('new b-5-d'); 
+    my $f3 = Yabsm::Base::is_newer_than_query(''); 
+    my $f4 = Yabsm::Base::is_newer_than_query(' newer b-6-h'); 
+    my $f5 = Yabsm::Base::is_newer_than_query('newer b-6-h '); 
+    my $f6 = Yabsm::Base::is_newer_than_query(' after b-6-h'); 
+    my $f7 = Yabsm::Base::is_newer_than_query('after b-6-h '); 
 
-    my $trues = $t0 && $t1 && $t2 && $t3;
+    my $trues = $t0 && $t1 && $t2 && $t3 && $t4;
     my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
 
-    ok ( $trues && $falses, 'is_newer_query()' );
+    ok ( $trues && $falses, 'is_newer_than_query()' );
 }
 
-test_is_older_query();
-sub test_is_older_query {
+test_is_older_than_query();
+sub test_is_older_than_query {
 
     # these should all be true
-    my $t0 = Yabsm::Base::is_older_query('older b-45-m');
-    my $t1 = Yabsm::Base::is_older_query('older 12-30');
-    my $t2 = Yabsm::Base::is_older_query('before b-45-m');
-    my $t3 = Yabsm::Base::is_older_query('before 12-30');
+    my $t0 = Yabsm::Base::is_older_than_query('older b-45-m');
+    my $t1 = Yabsm::Base::is_older_than_query('older 12-30');
+    my $t2 = Yabsm::Base::is_older_than_query('before b-45-m');
+    my $t3 = Yabsm::Base::is_older_than_query('before 12-30');
+    my $t4 = Yabsm::Base::is_older_than_query('bef 12-30');
     
     # these should all be false
-    my $f0 = Yabsm::Base::is_older_query('older b-5-d 12-30'); 
-    my $f1 = Yabsm::Base::is_older_query('older b-WRONG-d'); 
-    my $f2 = Yabsm::Base::is_older_query('old b-5-d'); 
-    my $f3 = Yabsm::Base::is_older_query(''); 
-    my $f4 = Yabsm::Base::is_older_query(' older b-6-h'); 
-    my $f5 = Yabsm::Base::is_older_query('older b-6-h '); 
-    my $f6 = Yabsm::Base::is_older_query(' before b-6-h'); 
-    my $f7 = Yabsm::Base::is_older_query('before b-6-h '); 
+    my $f0 = Yabsm::Base::is_older_than_query('older b-5-d 12-30'); 
+    my $f1 = Yabsm::Base::is_older_than_query('older b-WRONG-d'); 
+    my $f2 = Yabsm::Base::is_older_than_query('old b-5-d'); 
+    my $f3 = Yabsm::Base::is_older_than_query(''); 
+    my $f4 = Yabsm::Base::is_older_than_query(' older b-6-h'); 
+    my $f5 = Yabsm::Base::is_older_than_query('older b-6-h '); 
+    my $f6 = Yabsm::Base::is_older_than_query(' before b-6-h'); 
+    my $f7 = Yabsm::Base::is_older_than_query('before b-6-h '); 
 
-    my $trues = $t0 && $t1 && $t2 && $t3;
+    my $trues = $t0 && $t1 && $t2 && $t3 && $t4;
     my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
 
-    ok ( $trues && $falses, 'is_older_query()' );
+    ok ( $trues && $falses, 'is_older_than_query()' );
 }
-
-test_is_all_query();
-sub test_is_all_query {
-
-    my $t = Yabsm::Base::is_all_query('all');
-
-    my $f1 = Yabsm::Base::is_all_query('');
-    my $f2 = Yabsm::Base::is_all_query(' ');
-    my $f3 = Yabsm::Base::is_all_query(' all');
-    my $f4 = Yabsm::Base::is_all_query('all ');
-    my $f5 = Yabsm::Base::is_all_query(' all ');
-    my $f6 = Yabsm::Base::is_all_query('whatever');
-
-    my $falses = not ($f1 || $f2 || $f3 || $f4 || $f5 || $f6);
-
-    ok ( $t && $falses, 'is_all_query()' );
-} 
 
 test_is_between_query();
 sub test_is_between_query {

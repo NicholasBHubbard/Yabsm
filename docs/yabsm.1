@@ -5,29 +5,33 @@ yabsm \- btrfs snapshot manager
 .SH "SYNOPSIS"
 .B yabsm
 [\fB\-f\fR \fI?subvol ?query\fR]
+[\fB\-b\fR \fIbackup\fR]
+[\fB\-k\fR \fIbackup\fR]
 [\fB\-s\fR \fIsubvol category\fR]
+
+      [\fB\-c\fR \fI?config\fR]
 [\fB\-u\fR]
-[\fB\-c\fR \fI?config\fR]
+[\fB\-C\fR]
 [\fB\-h\fR]
 
 .SH "OPTIONS"
 .TP
-.BR \-f ", " \-\-find\ \fI?subvol\ ?query\fR
+.BR \-\-find ", " \-f\ \fI?subvol\ ?query\fR
 Find a snapshot of '?subvol' that matches '?query'. Both the subvol
 and query arguments are optional, and can be passed in different
-order. If these arguments are omitted you will be prompted for
-them. If you are only using yabsm to snapshot only one subvolume it is not
+order. If these arguments are omitted the user will be prompted for
+them. If you are only using yabsm to snapshot one subvolume it is not
 neccesary to pass it as an argument.
 .TP
-.BR \-s ", " \-\-take\-snap\ \fIsubvol\ category\fR
+.BR \-\-take\-snap ", " \-s \fIsubvol\ timeframe\fR
 Take a new snapshot of 'subvol' and insert it into the directory
-for 'category'. Must be root to use this option.
+for 'timeframe'. This is a root only option.
 .TP
-.BR \-u ", " \-\-update-crontab
+.BR \-\-update\-crontab ", " \-u
 Read /etc/yabsmrc and write the proper cronjobs to /etc/crontab for
-taking snapshots. Must be root to use this option.
+taking snapshots. This is a root only option.
 .TP
-.BR \-c ", " \-\-check\-config\ \fI?config\fR
+.BR \-\-check\-config ", " \-c\ \fI?config\fR
 Check that ?config is a valid yabsm configuration file. If the ?config
 argument is omitted then /etc/yabsmrc is checked. If errors are found
 they be printed to STDERR and the program will exit with a non-zero
@@ -37,8 +41,8 @@ status.
 Display help information
 
 .SH "QUERIES"
-Queries are used as arguments to the \fB--find\fR option to find one
-or more snapshots.
+Queries are one of arguments to the \fB--find\fR option to find one or
+more snapshots.
 
 .SS "EXAMPLES"
 
@@ -63,7 +67,7 @@ or more snapshots.
 .SS "IMMEDIATES"
 
 An \fIimmediate\fR is a time representation that can take one of
-two forms.
+4 forms.
 
 The first form is a literal time such as '2020-12-25-7-0'. Literal
 times are formatted as \fByyyy-mm-dd-hh-mm\fR.

@@ -20,14 +20,14 @@ use FindBin '$Bin';
 use lib "$Bin/../lib";
 
 # Module to test
-use Yabsm::Config;
+use Yabsmrc;
 
 print "Testing that all the valid configs parse successfully ...\n";
 for my $config (glob './configs/valid/*') {
-    lives_ok { Yabsm::Config::read_config($config) } $config;
+    lives_ok { Yabsmrc::read_config($config) } $config;
 }
 
 print "\nTesting that all the invalid configs kill the program ...\n";
 for my $config (glob './configs/invalid/*') {
-    dies_ok { Yabsm::Config::read_config($config) } $config;
+    dies_ok { Yabsmrc::read_config($config) } $config;
 }

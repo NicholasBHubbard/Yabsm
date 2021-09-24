@@ -18,7 +18,7 @@
 #  input. Just because a subroutine does not have a unit test does
 #  not mean it has not been informally tested.
 
-package Yabsm::Base;
+package Base;
 
 use strict;
 use warnings;
@@ -30,13 +30,6 @@ use Carp;
 use List::Util qw(any);
 use File::Copy qw(move);
 use File::Path qw(make_path); # make_path() behaves like 'mkdir -p'
-
-sub missing_arg {
-
-    # This sub helps to reduce line noise.
-
-    return '[!] Internal Error: missing required arg';
-}
 
 sub take_new_snapshot { # No test. Is not pure.
 
@@ -73,7 +66,7 @@ sub delete_old_snapshots { # No test. Is not pure.
 
     my $num_snaps = scalar @$existing_snaps_ref;
 
-    my $num_to_keep = $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
+    my $num_to_keep = timeframe_keep($config_ref, $subvol, $timeframe);
 
     # There is 1 more snapshot than should be kept because we just
     # took a snapshot.
@@ -109,6 +102,29 @@ sub delete_old_snapshots { # No test. Is not pure.
     }
 }
 
+sub do_backup { # No test. Is not pure.
+
+    # Determine if $backup is local or remote and dispatch the
+    # corresponding do_backup_* subroutine.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    if (is_local_backup($config_ref, $backup)) {
+	do_backup_local($config_ref, $backup);
+    }
+
+    elsif (is_remote_backup($config_ref, $backup)) {
+	do_backup_ssh($config_ref, $backup);
+    }
+
+    else {
+	confess "[!] Internal Error: no such defined backup '$backup'";
+    }
+
+    return;
+}
+
 sub do_backup_local { # No test. Is not pure.
 
     # Perform a single incremental btrfs backup of $backup, or in the
@@ -127,24 +143,25 @@ sub do_backup_local { # No test. Is not pure.
     # we have not already bootstrapped
     if (not defined $bootstrap_snap) {
 	do_backup_bootstrap_local($config_ref, $backup);
+	return;
     }
 
-    else { # do incremental backup
+    # do incremental backup
 	
-	my $subvol = $config_ref->{backups}{$backup}{subvol};
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
 
-	my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    
+    my $tmp_snap =
+      local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+    
+    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    
+    system("btrfs send -p $bootstrap_snap $tmp_snap | btrfs receive $backup_dir");
 
-	my $tmp_snap =
-	  local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
-	
-	system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    system("btrfs subvol delete $tmp_snap");
 
-	system("btrfs send -p $bootstrap_snap $tmp_snap | btrfs receive $backup_dir");
-	system("btrfs subvol delete $tmp_snap");
-
-	delete_old_backups_local($config_ref, $backup);
-    }
+    delete_old_backups_local($config_ref, $backup);
 
     return;
 }
@@ -168,32 +185,53 @@ sub do_backup_ssh { # No test. Is not pure.
     # we have not already bootstrapped
     if (not defined $bootstrap_snap) {
 	do_backup_bootstrap_ssh($config_ref, $backup);
+	return;
     }
 
-    else { # do incremental backup
+    # do incremental backup
 	
-	my $subvol = $config_ref->{backups}{$backup}{subvol};
-	
-	my $remote_host = $config_ref->{backups}{$backup}{host};
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+    
+    my $remote_host = $config_ref->{backups}{$backup}{host};
 
-	my $ssh = new_ssh_connection($remote_host);
+    my $ssh = new_ssh_connection($remote_host);
 
-	my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    
+    my $tmp_snap =
+      local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
 	
-	my $tmp_snap =
-	  local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
 	
-	system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    # send an incremental backup over ssh
+    $ssh->system({stdin_file => ['-|', "btrfs send -p $bootstrap_snap $tmp_snap"]}
+		                , "sudo -n btrfs receive $remote_backup_dir");
 	
-	# send an incremental backup over ssh
-	$ssh->system(
-	    {stdin_file => ['-|', "btrfs send -p $bootstrap_snap $tmp_snap"]}
-		           , "sudo -n btrfs receive $remote_backup_dir"
-		           );
+    system("btrfs subvol delete $tmp_snap");
 	
-	system("btrfs subvol delete $tmp_snap");
-	
-	delete_old_backups_ssh($config_ref, $ssh, $backup);
+    delete_old_backups_ssh($config_ref, $ssh, $backup);
+
+    return;
+}
+
+sub do_backup_bootstrap { # No test. Is not pure.
+
+    # Determine if $backup is local or remote and dispatch the
+    # corresponding do_backup_bootstrap* subroutine.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    if (is_local_backup($config_ref, $backup)) {
+	do_backup_bootstrap_local($config_ref, $backup);
+    }
+
+    elsif (is_remote_backup($config_ref, $backup)) {
+	do_backup_bootstrap_ssh($config_ref, $backup);
+    }
+
+    else {
+	confess "[!] Internal Error: no such defined backup '$backup'";
     }
 
     return;
@@ -1323,6 +1361,72 @@ sub is_between_query { # Has test. Is pure.
     return $keyword_correct && $imm1_correct && $imm2_correct;
 }
 
+sub all_subvol_timeframes { # Has test. Is pure.
+
+    # Return an array of all valid subvol timeframe categories.
+
+    my @timeframes = qw(5minute hourly midnight monthly);
+
+    return wantarray ? @timeframes : \@timeframes;
+}
+
+sub all_backup_timeframes { # Has test. Is pure.
+
+    # Return an array of all valid backup timeframes.
+
+    my @timeframes = qw(hourly midnight monthly);
+
+    return wantarray ? @timeframes : \@timeframes;
+}
+
+sub is_subvol_timeframe { # Has test. Is pure.
+
+    # true iff $timeframe is a valid subvol timeframe category.
+
+    my $timeframe = shift // confess missing_arg();
+
+    return any { $_ eq $timeframe } all_subvol_timeframes();
+}
+
+sub is_backup_timeframe { # Has test. Is pure.
+
+    # true iff $backup is a valid backup timeframe.
+
+    my $timeframe = shift // confess missing_arg();
+
+    return any { $_ eq $timeframe } all_backup_timeframes();
+}
+
+sub timeframe_want { # Has test. Is pure.
+
+    # True iff $subvol wants $timeframe snapshots.
+
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
+    my $timeframe  = shift // confess missing_arg();
+
+    # perl variable names cannot start with a number. Therefore we
+    # internally store 5minute settings as _5minute settings.
+    $timeframe = '_5minute' if $timeframe eq '5minute';
+
+    return $config_ref->{subvols}{$subvol}{"${timeframe}_want"} eq 'yes';
+}
+
+sub timeframe_keep { # Has test. Is pure.
+
+    # Return number of $timeframe snapshots to be kept for $subvol.
+
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
+    my $timeframe  = shift // confess missing_arg();
+
+    # perl variable names cannot start with a number. Therefore we
+    # internally store 5minute settings as _5minute settings.
+    $timeframe = '_5minute' if $timeframe eq '5minute';
+
+    return $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
+}
+
 sub all_subvols { # Has test. Is pure.
 
     # Return an array of the names of every user defined subvol.
@@ -1355,13 +1459,29 @@ sub all_backups_of_subvol { # Has test. Is pure.
     my @backups = ();
 
     foreach my $backup (all_backups($config_ref)) {
+	
+	my $this_subvol = $config_ref->{backups}{$backup}{subvol};
 
-	my $backup_subvol = $config_ref->{backups}{$backup}{subvol};
-
-	push @backups, $backup if $subvol eq $backup_subvol;
+	if ($this_subvol eq $subvol) {
+	    push @backups, $backup 
+	}
     }
 
     return wantarray ? @backups : \@backups;
+}
+
+sub is_subject { # Has test. Is pure.
+
+    # True iff $subject is a valid subject. A subject is either
+    # a subvol or backup.
+
+    my $config_ref = shift // confess missing_arg();
+    my $subject    = shift // confess missing_arg();
+
+    my $is_subvol = is_subvol($config_ref, $subject);
+    my $is_backup = is_backup($config_ref, $subject);
+
+    return $is_subvol || $is_backup;
 }
 
 sub is_subvol { # Has test. Is pure.
@@ -1412,7 +1532,7 @@ sub is_remote_backup { # Has test. Is pure.
 
 sub update_etc_crontab { # No test. Is not pure.
     
-    # Write cronjobs to '/etc/crontab'
+    # Write cronjobs to '/etc/crontab'.
 
     my $config_ref = shift // confess missing_arg();
 
@@ -1453,7 +1573,7 @@ sub generate_cron_strings { # No test. Is pure.
     
     my $config_ref = shift // confess missing_arg();
 
-    my @cron_strings = (); # return this
+    my @crons = (); # return this
 
     foreach my $subvol (all_subvols($config_ref)) {
 
@@ -1463,22 +1583,22 @@ sub generate_cron_strings { # No test. Is pure.
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
         
         my $_5minute_cron = ( '*/5 * * * * root' # every 5 minutes
-			    . " yabsm --take-snap $subvol 5minute"
+			    . " yabsm take-snap $subvol 5minute"
 			    ) if $_5minute_want eq 'yes';
         
         my $hourly_cron   = ( '0 */1 * * * root' # beginning of every hour
-			    . " yabsm --take-snap $subvol hourly"
+			    . " yabsm take-snap $subvol hourly"
 			    ) if $hourly_want eq 'yes';
         
         my $midnight_cron = ( '59 23 * * * root' # 11:59 every night
-                            . " yabsm --take-snap $subvol midnight"
+                            . " yabsm take-snap $subvol midnight"
 			    ) if $midnight_want eq 'yes';
         
         my $monthly_cron  = ( '0 0 1 * * root' # First day of every month
-			    . " yabsm --take-snap $subvol monthly"
+			    . " yabsm take-snap $subvol monthly"
 			    ) if $monthly_want eq 'yes';
 
-        push @cron_strings, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron);
+        push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron);
     }
 
     foreach my $backup (all_backups($config_ref)) {
@@ -1486,24 +1606,29 @@ sub generate_cron_strings { # No test. Is pure.
 	my $timeframe = $config_ref->{backups}{$backup}{timeframe};
 
 	if ($timeframe eq 'hourly') {
-	    push @cron_strings, "0 */1 * * * root yabsm --do-backup $backup";
+	    push @crons, "0 */1 * * * root yabsm incremental-backup $backup";
 	}
 
 	elsif ($timeframe eq 'midnight') {
-	    push @cron_strings, "59 23 * * * root yabsm --do-backup $backup";
+	    push @crons, "59 23 * * * root yabsm incremental-backup $backup";
 	}
 
 	elsif ($timeframe eq 'monthly') {
-	    push @cron_strings, "0 0 1 * * root yabsm --do-backup $backup";
+	    push @crons, "0 0 1 * * root yabsm incremental-backup $backup";
+	}
+
+	else {
+	    confess "[!] Internal Error: backup '$backup' has invalid timeframe '$timeframe'";
 	}
     }
 
-    return wantarray ? @cron_strings : \@cron_strings;
+    return wantarray ? @crons : \@crons;
 }
 
 sub new_ssh_connection { # No test. Is not pure.
 
-    # Create and return an ssh connection object from Net::OpenSSH.
+    # Create and return a Net::OpenSSH connection object Kill the
+    # program if we cannot establish a connection to $remote host.
 
     my $remote_host = shift // confess missing_arg();
 
@@ -1513,28 +1638,36 @@ sub new_ssh_connection { # No test. Is not pure.
 			       , kill_ssh_on_timeout => 1
 			       );
 
-    # kill the program if we cannot establish a connection to $remote_host
-    $ssh->error and 
-      die "[!] Error: Couldn't establish SSH connection: " . $ssh->error . "\n";
+    $ssh->error and
+      die '[!] Error: Could not establish SSH connection: ' . $ssh->error . "\n";
     
     return $ssh;
 }
 
-sub test_remote_backup { # No test. Is not pure. # TODO: document
+sub test_remote_backup_config { # No test. Is not pure.
+
+    # Test that we can connect to $backup's remote host, and run a btrfs
+    # command with sudo without needing to enter any passwords.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
     my $remote_host = $config_ref->{backups}{$backup}{host};
 
-    # program will die if we cannot connect to $remote_host without password
+    # program will die if we cannot connect to $remote_host without a password
     my $ssh = new_ssh_connection($remote_host);
 
-    # program will die if we cannot use btrfs command with sudo without password
     $ssh->system('sudo -n btrfs --help > /dev/null')
-      or die 'Could not sudo run btrfs without password: ' . $ssh->error . "\n";
+      or die "Could run btrfs as sudo without password on host '$remote_host': " . $ssh->error . "\n";
 
     return;
+}
+
+sub missing_arg {
+
+    # This sub helps to reduce line noise.
+
+    return '[!] Internal Error: missing required arg';
 }
 
 1;

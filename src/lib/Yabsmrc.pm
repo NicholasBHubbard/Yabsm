@@ -6,9 +6,9 @@
 #  used to create the configuration hash that is used constantly in the
 #  rest of the yabsm program (usually a reference called $config_ref).
 #
-#  See t/Config.t for this libraries tests.
+#  See t/Config.t for testing of read_config().
 #
-#  If the users config has errors read_config() will print useful
+#  If the configuration has errors read_config() will print useful
 #  error messages to STDERR and kill the program.
 #
 #  read_config() returns a 3D hash. Here is a Data::Dumper dump of the
@@ -55,15 +55,15 @@
 #            'yabsm_snapshot_dir' => '/.snapshots/yabsm'
 #          };
 
-package Yabsm::Config;
+package Yabsmrc;
 
 use strict;
 use warnings;
 use 5.010;
 
 use FindBin '$Bin';
-use lib "$Bin/..";
-use Yabsm::Base;
+use lib '.';
+use Base;
 
 use List::Util 'any';
 use Carp;
@@ -205,16 +205,16 @@ sub check_config {
     # @errors array. The @errors array is returned. The caller will
     # know if the config is valid if they are returned an empty array.
 
-    my $config_ref = shift // confess Yabsm::Base::missing_arg();
+    my $config_ref = shift // confess Base::missing_arg();
 
     # return this
     my @errors; 
 
     # check all defined subvols
-    foreach my $subvol (Yabsm::Base::all_subvols($config_ref)) {
+    foreach my $subvol (Base::all_subvols($config_ref)) {
 
 	# we will confirm that all of these settings have been defined.
-	my @required_settings = qw(mountpoint _5minute_want _5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
+	my @required_settings = required_subvol_settings();
 
 	# go through all of the settings for $subvol
 	while (my ($key, $val) = each %{$config_ref->{subvols}{$subvol}}) {
@@ -256,15 +256,15 @@ sub check_config {
     } # end of outer loop
 
     # check backups
-    foreach my $backup (Yabsm::Base::all_backups($config_ref)) {
+    foreach my $backup (Base::all_backups($config_ref)) {
 
-	my @required_settings = qw(subvol remote keep backup_dir timeframe);
+	my @required_settings = required_backup_settings();
 	
 	# go through all of the settings for $backup
 	while (my ($key, $val) = each %{$config_ref->{backups}{$backup}}) {
 
 	    if ($key eq 'subvol') {
-		if (not Yabsm::Base::is_subvol($config_ref, $val)) {
+		if (not Base::is_subvol($config_ref, $val)) {
 		    push @errors, "[!] Config Error: backup '$backup': no defined subvol '$val'";
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;
@@ -283,7 +283,7 @@ sub check_config {
 	    }
 
 	    elsif ($key eq 'timeframe') {
-		if (not any { $val eq $_ } qw(hourly midnight monthly)) {
+		if (not Base::is_backup_timeframe($val)) {
 		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)";
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;
@@ -325,7 +325,7 @@ sub check_config {
     } # end of outer loop
 
     # check misc settings
-    my @required_misc_settings = qw(yabsm_snapshot_dir);
+    my @required_misc_settings = required_misc_settings();
 
     while (my ($key, $val) = each %{$config_ref->{misc}}) {
 	
@@ -345,6 +345,41 @@ sub check_config {
     } 
 
     return wantarray ? @errors : \@errors;
+}
+
+sub required_subvol_settings {
+
+    # return an array of all required subvol settings.
+
+    my @settings = qw(mountpoint 
+		      _5minute_want 
+		      _5minute_keep 
+		      hourly_want 
+		      hourly_keep 
+		      midnight_want 
+		      midnight_keep 
+		      monthly_want 
+		      monthly_keep);
+
+    return wantarray ? @settings : \@settings;
+}
+
+sub required_backup_settings {
+
+    # return an array of all required backup settings. Note that 'host'
+    # is not included.
+
+    my @settings = qw(subvol remote keep backup_dir timeframe);
+
+    return wantarray ? @settings : \@settings;
+}
+
+sub required_misc_settings {
+
+    # return an array of all required misc settings. At this point
+    # 'yabsm_snapshot_dir' is the only one.
+
+    return wantarray ? ('yabsm_snapshot_dir') : ['yabsm_snapshot_dir'];
 }
 
 1;

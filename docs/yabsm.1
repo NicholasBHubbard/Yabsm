@@ -4,116 +4,180 @@ yabsm \- btrfs snapshot manager
 
 .SH "SYNOPSIS"
 .B yabsm
-[\fB\-f\fR \fI?subvol ?query\fR]
-[\fB\-b\fR \fIbackup\fR]
-[\fB\-k\fR \fIbackup\fR]
-[\fB\-s\fR \fIsubvol category\fR]
+[\fB\-f\fR \fI?SUBVOL ?QUERY\fR]
+[\fB\-b\fR \fIBACKUP\fR]
+[\fB\-k\fR \fIBACKUP\fR]
+[\fB\-s\fR \fISUBVOL CATEGORY\fR]
 
-      [\fB\-c\fR \fI?config\fR]
+      [\fB\-c\fR \fI?CONFIG\fR]
 [\fB\-u\fR]
 [\fB\-C\fR]
 [\fB\-h\fR]
+[\fB\-\-test\-remote\-backup \fIBACKUP\fR]
 
 .SH "OPTIONS"
+Use exactly one of the following options:
 .TP
-.BR \-\-find ", " \-f\ \fI?subvol\ ?query\fR
-Find a snapshot of '?subvol' that matches '?query'. Both the subvol
-and query arguments are optional, and can be passed in different
-order. If these arguments are omitted the user will be prompted for
-them. If you are only using yabsm to snapshot one subvolume it is not
-neccesary to pass it as an argument.
+.BR \-\-find ", " \-f\ \fI?SUBJECT\ ?QUERY\fR
+Find a snapshot of ?SUBJECT that matches ?QUERY. Both the subvol and
+query arguments are optional, and can be passed in different order. If
+these arguments are omitted the user (you) will be prompted for
+them. ?SUBJECT can be any subvol or backup defined in /etc/yabsmrc.
 .TP
-.BR \-\-take\-snap ", " \-s \fIsubvol\ timeframe\fR
-Take a new snapshot of 'subvol' and insert it into the directory
-for 'timeframe'. This is a root only option.
+.BR \-\-check\-config ", " \-c\ \fI?CONFIG\fR
+Check that ?CONFIG is a valid yabsm configuration file. If errors are
+found they be printed to STDERR and the program will exit with a
+non-zero status. If the config is valid print 'all good' to stdout. If
+the ?CONFIG argument is omitted then /etc/yabsmrc is checked.
 .TP
 .BR \-\-update\-crontab ", " \-u
 Read /etc/yabsmrc and write the proper cronjobs to /etc/crontab for
 taking snapshots. This is a root only option.
 .TP
-.BR \-\-check\-config ", " \-c\ \fI?config\fR
-Check that ?config is a valid yabsm configuration file. If the ?config
-argument is omitted then /etc/yabsmrc is checked. If errors are found
-they be printed to STDERR and the program will exit with a non-zero
-status.
+.BR \-\-print\-crons ", " \-C
+Print the cronjob strings that would be written to /etc/crontab if the
+\-\-update\-crontab option were used. This is useful if the user wants
+to write yabsm cronjobs to a file other than /etc/crontab.
 .TP
-.BR \-h ", " \-\-help
-Display help information
+.BR \-\-take\-snap ", " \-s\ \fISUBVOL\ TIMEFRAME\fR
+Take a new snapshot of SUBVOL and insert it into the directory
+for TIMEFRAME. It is not recommended to use this option manually,
+and should probably only be used in cronjobs. This is a root only
+option.
+.TP
+.BR \-\-do\-backup ", " \-b\ \fIBACKUP\fR
+Perform an incremental backup for BACKUP. BACKUP must be a defined
+backup in the users /etc/yabsmrc. If the bootstrap phase of the
+incremental backup has not yet happened then the bootstrap phase is
+performed and the program exits. It is not recommended to use this
+option manually, and should probably only be used in cronjobs. Please
+see the btrfs documentation on incremental backups for more
+information. This is a root only option.
+.TP
+.BR \-\-bootstrap\-backup ", " \-k\ \fIBACKUP\fR
+Perform the bootstrap phase of a btrfs incremental backup for
+BACKUP. BACKUP must be a defined backup in /etc/yabsmrc. It may be
+helpful to run this command every so often make incremental backups
+faster. Please see the btrfs documentation on incremental backups for more
+information. This is a root only option.
+.TP
+.BR \-\-test\-remote\-backup\ \fIBACKUP\fR
+Test that the remote backup BACKUP is configured correctly. Correct
+configuration means that we can connect to BACKUP's remote host, and
+use the btrfs command with sudo without needing to enter any
+passwords.
+.TP
+.BR \-\-help ", " \-h
+Display basic help information.
 
-.SH "QUERIES"
-Queries are one of arguments to the \fB--find\fR option to find one or
-more snapshots.
+.SH "CONFIGURATION"
 
-.SS "EXAMPLES"
+Yabsm is configured through the /etc/yabsmrc file. On installation the
+user is given a default template configuration. 
 
-\(bu back-10-hours
+.SH "FIND"
+The \fB\-\-find\fR option is used to find one or more snapshots of a
+subject by applying a query to all of the subjects snapshots. A subject
+can be any subvol or backup defined in /etc/yabsmrc. If multiple snapshots
+are found they are printed to stdout sorted from newest to oldest.
 
-\(bu b-10-h
+.SS "EXAMPLES:"
 
-\(bu 2021-12-25-12-30
+Assume that the user has a subvol called \fIhome\fR and a backup
+called \fIhomeBackup\fR.
 
-\(bu before b-10-mins
+\(bu yabsm -f home all
 
-\(bu before 2021-12-25-12-30
+\(bu yabsm -f homeBackup newest
 
-\(bu after b-10-days
+\(bu yabsm -f home oldest
 
-\(bu after b-57-d
+\(bu yabsm -f homeBackup back-10-hours
 
-\(bu between b-10-d 2021-12-25-12-30
+\(bu yabsm -f homeBackup 12-25
 
-\(bu between 2021-12-25-12-30 b-10-days
+\(bu yabsm -f b-10-h home
 
-.SS "IMMEDIATES"
+\(bu yabsm -f homeBackup back-10-days
 
-An \fIimmediate\fR is a time representation that can take one of
-4 forms.
+\(bu yabsm -f home 'before b-10-mins'
 
-The first form is a literal time such as '2020-12-25-7-0'. Literal
-times are formatted as \fByyyy-mm-dd-hh-mm\fR.
+\(bu yabsm -f home 'after b-10-mins'
 
-The second form is a relative time such as 'back-2-hours'.
-Relative times are relative to the time when the
-program is invoked. The above relative time can be read as 'the time 2
-hours ago'. Relative times are made up of three fields formatted as
-\fBback-amount-unit\fR.  The three fields must be delimited by a dash
-(\fB\-\fR).
+\(bu yabsm -f homeBackup 'after 2021-12-25-23-59'
 
-All relative times start with \fBback\-\fR. The \fIback\fR field can
-be abbreviated to \fIb\fR.
+\(bu yabsm -f home 'between b-10-d 12-25'
 
-The \fIamount\fR field can be any whole number.
+\(bu yabsm -f home 'between 12-25 b-10-d'
 
-The \fIunit\fR field can be either \fIminutes\fR, \fIhours\fR, or
-\fIdays\fR. The \fIminutes\fR unit can be abbreviated as \fImins\fR or
-\fIm\fR. The \fIhours\fR unit can be abbreviated as \fIhrs\fR or
-\fIh\fR. The \fIdays\fR unit can be abbreviated as \fId\fR.
+.SS "QUERY STRUCTURE:"
 
-A query that is made up of just an \fIimmediate\fR matches the single
-snapshot closest to the denoted time.
+There are three different kinds of queries. A \fBconstant\fR query, an
+\fBimmediate\fR query and a \fBkeyword\fR query.
 
-.SS "BEFORE"
+\fBConstant Queries\fR
 
-A before query takes one immediate as an argument and
-matches all snapshots taken before the time denoted by the
-immediate.
+    \(bu all    - return all the snapshots of subject.
+    
+    \(bu newest - return the newest snapshot of subject.
+    
+    \(bu oldest - return the oldest snapshot of subject.
 
-Can be abbreviated as \fBbef\fR
+\fBImmediate Queries\fR
 
-.SS "AFTER"
+    An immediate query gives the one snapshot of the subject that is closest
+    to the time denoted by the immediate.
 
-An after query takes one immediate as an argument and 
-matches all the snapshots taken after the time denoted
-by the immediate.
+    An immediate can be either a \fIrelative\fR time or a \fIliteral\fR time.
 
-Can be abbreviated to \fBaft\fR.
+    A \fIrelative\fR time is a time relative to the current system
+    time when the yabsm program is invoked. Relative times have the form
+    \fBback-amount-unit\fR. \fIback\fR can always be abbreviated to
+    \fIb\fR. \fIamount\fR must be an integer greater than or equal to
+    zero. \fIunit\fR is a time unit that can be either \fIminutes\fR,
+    \fIhours\fR, or \fIdays\fR. Time units can be abbreviated
+    intuitively to \fImins\fR, \fIm\fR, \fIhrs\fR, \fIh\fR, \fId\fR.
 
-.SS "BETWEEN"
+    A \fIliteral\fR time comes in one of 5 forms:
 
-Takes two immediates and matches all snapshots taken between
-(inclusive) the two times.
+        \(bu yr-mon-day-hr-min
 
-Can be abbreviated to \fBbet\fR.
+        \(bu yr-mon-day
+
+        \(bu mon-day
+
+        \(bu mon-day-hr
+
+        \(bu mon-day-hr-min
+
+    The first form \fIyr-mon-day-hr-min\fR is the base form. All other
+    forms are a shorthand of this form. The shorthand rules are simple. If the
+    \fIyr\fR field is omitted then we assume the current year. If
+    either the \fIhr\fR or \fImin\fR fields are omitted then they are
+    inferred to be zero. So if the year is 2020 the \fIimmediate\fR
+    time \fB12-25\fR is the same as \fB2020-12-25-0-0\fR.
+
+\fBKeyword Queries\fR
+
+    A \fIkeyword\fR query is a query that takes \fIimmediate\fRs as arguments.
+    There are three different kinds of \fIkeyword\fR queries. The terms delimited
+    by \fB|\fR are equivalent.
+
+        \(bu after   | aft | newer
+
+        \(bu before  | bef | older
+
+        \(bu between | bet
+
+    An \fBafter\fR query takes one immediate argument and matches all the
+    snapshots taken after the time denoted by the immediate. 
+    
+    A \fBbefore\fR query takes one immediate argument and matches all the
+    snapshots taken before the time denoted by the immediate.
+
+    A \fBbetween\fR query takes two immediate arguments and matches all
+    snapshots taken between (inclusive) the times denoted by the immediates. It
+    does not matter what order you pass the two immediates.
 
 .SH "CONFIGURATION"
 TODO

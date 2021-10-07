@@ -19,6 +19,8 @@ sub die_usage {
 
 sub main {
 
+    die "Permission denied\n" if $<;
+
     my $subvol    = shift // die_usage();
     my $timeframe = shift // die_usage();
 

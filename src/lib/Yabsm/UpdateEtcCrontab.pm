@@ -19,6 +19,8 @@ sub die_usage {
 
 sub main {
 
+    die "Permission denied\n" if $<;
+
     if (@_) { die_usage() }
 
     my $config_ref = Yabsmrc::read_config();

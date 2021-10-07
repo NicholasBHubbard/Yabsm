@@ -22,6 +22,8 @@ sub die_usage {
 
 sub main {
 
+    die "Permission denied\n" if $<;
+
     my $backup = shift // die_usage();
 
     if (@_) { die_usage() }

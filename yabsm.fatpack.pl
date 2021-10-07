@@ -1554,7 +1554,7 @@ $fatpacked{"Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'BASE';
   
   	s/\s+$//; # strip trailing whitespace
   
-  	next if /root yabsm -/; # don't copy the old yabsm cronjobs
+  	next if /yabsm/; # don't copy the old yabsm cronjobs
   
   	say $tmp_fh $_;
       }
@@ -7886,6 +7886,8 @@ $fatpacked{"Yabsm/BackupBootstrap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
   
   sub main {
   
+      die "Permission denied\n" if $<;
+  
       my $backup = shift // die_usage();
   
       if (@_) { die_usage() }
@@ -8022,6 +8024,8 @@ $fatpacked{"Yabsm/IncrementalBackup.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."
   }
   
   sub main {
+  
+      die "Permission denied\n" if $<;
   
       my $backup = shift // die_usage();
   
@@ -8182,6 +8186,8 @@ $fatpacked{"Yabsm/TakeSnap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   sub main {
   
+      die "Permission denied\n" if $<;
+  
       my $subvol    = shift // die_usage();
       my $timeframe = shift // die_usage();
   
@@ -8234,6 +8240,8 @@ $fatpacked{"Yabsm/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "'.__FIL
   
   sub main {
   
+      die "Permission denied\n" if $<;
+  
       my $backup = shift // die_usage();
   
       if (@_) { die_usage() }
@@ -8283,6 +8291,8 @@ $fatpacked{"Yabsm/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   }
   
   sub main {
+  
+      die "Permission denied\n" if $<;
   
       if (@_) { die_usage() }
   
@@ -10202,7 +10212,7 @@ my %run_command = ( 'take-snap'          => \&Yabsm::TakeSnap::main
 	          , 'find'               => \&Yabsm::Find::main
 		  , 'print-subvols'      => \&Yabsm::PrintSubvols::main
 		  , 'print-backups'      => \&Yabsm::PrintBackups::main
-	          , 'check-config'       => \&Yabsm::CheckConfig::main
+	          , 'check-config'       => \&Yabsm::CheckYabsmrc::main
 	          , 'update-crontab'     => \&Yabsm::UpdateEtcCrontab::main
 	          , 'print-crons'        => \&Yabsm::PrintCrons::main
 	          , 'test-remote-backup' => \&Yabsm::TestRemoteBackupConfig::main

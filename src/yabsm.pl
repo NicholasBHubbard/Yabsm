@@ -102,6 +102,8 @@ my %run_command = ( 'take-snap'          => \&Yabsm::TakeSnap::main
 
 sub unabbreviate {
 
+    # provide the user with convenient command abbreviations
+
     my $cmd = shift // die;
 
     if    ($cmd eq 'snap')            { return 'take-snap'          }

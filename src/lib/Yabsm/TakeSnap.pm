@@ -19,7 +19,7 @@ sub die_usage {
 
 sub main {
 
-    die "Permission denied\n" if $<;
+    die "yabsm: error: permission denied\n" if $<;
 
     my $subvol    = shift // die_usage();
     my $timeframe = shift // die_usage();
@@ -29,15 +29,15 @@ sub main {
     my $config_ref = Yabsmrc::read_config();
 
     if (not Base::is_subvol($config_ref, $subvol)) {
-	die "[!] Error: no such defined subvol '$subvol'\n";
+	die "yabsm: error: no such defined subvol '$subvol'\n";
     }
 
     if (not Base::is_subvol_timeframe($timeframe)) {
-	die "[!] Error: '$timeframe' is not a subvol timeframe\n";
+	die "yabsm: error: '$timeframe' is not a subvol timeframe\n";
     }
 
     if (not Base::timeframe_want($config_ref, $subvol, $timeframe)) {
-	die "[!] Error: subvol '$subvol' is not taking '$timeframe' snapshots\n";
+	die "yabsm: error: subvol '$subvol' is not taking '$timeframe' snapshots\n";
     }
 
     Base::initialize_directories($config_ref);

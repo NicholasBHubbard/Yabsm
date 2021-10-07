@@ -30,11 +30,11 @@ sub main {
     my $config_ref = Yabsmrc::read_config();
 
     if (not Base::is_subject($config_ref, $subject)) {
-	die "[!] Error: '$subject' is not a defined subvol or backup\n";
+	die "yabsm: error: '$subject' is not a defined subvol or backup\n";
     }
 
     if (not Base::is_valid_query($query)) {
-	die "[!] Error: '$query' is not a valid query\n"
+	die "yabsm: error: '$query' is not a valid query\n"
     }
 
     my @snapshots = Base::answer_query($config_ref, $subject, $query);

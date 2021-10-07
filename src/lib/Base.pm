@@ -1181,103 +1181,6 @@ sub answer_query { # No test. Is not pure.
     return wantarray ? @snaps_to_return : \@snaps_to_return;
 }
 
-sub ask_user_for_subvol_or_backup { # No test. Is not pure.
-
-    # Prompt user to select one of their defined subvols or
-    # backups. Used for 'yabsm --find' when the user doesn't
-    # explicitly pass their subvol/backup on the command line.
-
-    my $config_ref = shift // confess missing_arg();
-
-    my $int = 1;
-    my %int_subvol_hash = map { $int++ => $_ } all_subvols($config_ref);
-    my %int_backup_hash = map { $int++ => $_ } all_backups($config_ref);
-
-    my $selection; # return this
-
-    # number of options to print before adding a newline.
-    use constant ROW_LEN => 3;
-    
-    while (not defined $selection) {
-
-	# Prompt user. I know that this is confusing code.
-	my $int = 1;
-	my $iter;
-	for ($iter = 1; $iter <= keys %int_subvol_hash; $iter++) {
-	    my $subvol = $int_subvol_hash{ $int };
-
-	    if ($iter == 1)           { print "Subvols:\n"              }
-	    if ($iter % ROW_LEN == 0) { print "$int -> $subvol\n"       }
-	    else                      { print "$int -> $subvol" . ' 'x4 }
-
-	    $int++;
-	}
-	for ($iter = 1; $iter <= keys %int_backup_hash; $iter++) {
-	    my $backup = $int_backup_hash{ $int };
-
-	    if ($iter == 1)           { print "\nBackups:\n"            }
-	    if ($iter % ROW_LEN == 0) { print "$int -> $backup\n"       }
-	    else                      { print "$int -> $backup" . ' 'x4 }
-
-	    $int++;
-	}
-	if ($iter % ROW_LEN == 0) { print '>>> '   }
-	else                      { print "\n>>> " }
-
-	# process input
-	my $input = <STDIN>;
-
-	# We don't just overwrite $input so we can print the original
-	# input string back to the user in case it is erroneous.
-	my $clean_input = $input =~ s/\s+//gr; # no whitespace
-	
-	exit 0 if $clean_input =~ /^q(uit)?$/;
-	
-	if (exists $int_subvol_hash{ $clean_input }) { # success
-	    $selection = $int_subvol_hash{ $clean_input };
-	}
-	elsif (exists $int_backup_hash{ $clean_input }) { # success
-	    $selection = $int_backup_hash{ $clean_input };
-	}
-	else {
-	    print "No option '$input'! Try again!\n\n";
-	}
-    }
-
-    return $selection;
-}
-
-sub ask_user_for_query { # No test. Is not pure.
-
-    # Prompt user for query. Used for 'yabsm --find' when the user
-    # doesn't explicitly pass their query on the command line.
-
-    my $query;
-
-    while (not defined $query) {
-
-	print "enter query:\n>>> ";
-	
-	my $input = <STDIN>;
-
-	# We don't just overwrite $input so we can print the original
-	# input string back to the user in case it is erroneous.
-	my $clean_input = $input =~ s/\s+//gr; # no whitespace
-	
-	exit 0 if $clean_input =~ /^q(uit)?$/;
-	
-	if (is_valid_query($clean_input)) { # success
-	    $query = $clean_input;
-	}  
-	
-	else {
-	    print "'$input' is not a valid query! Try again!\n\n";
-	}
-    }
-
-    return $query;
-}
-
 sub is_valid_query { # Has test. Is pure.
 
     # True iff $query is a valid query. Used to validate 
@@ -1535,10 +1438,10 @@ sub update_etc_crontab { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
 
     open (my $etc_crontab_fh, '<', '/etc/crontab')
-      or die "[!] Error: failed to open file '/etc/crontab'\n";
+      or die "[!] Internal Error: failed to open file '/etc/crontab'\n";
 
     open (my $tmp_fh, '>', '/tmp/yabsm-update-tmp')
-      or die "[!] Error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
+      or die "[!] Internal Error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
 
     # Copy all lines from /etc/crontab into the tmp file, excluding
     # the existing yabsm cronjobs.
@@ -1637,7 +1540,7 @@ sub new_ssh_connection { # No test. Is not pure.
 			       );
 
     $ssh->error and
-      die '[!] Error: Could not establish SSH connection: ' . $ssh->error . "\n";
+      die 'yabsm: error: could not establish SSH connection: ' . $ssh->error . "\n";
     
     return $ssh;
 }

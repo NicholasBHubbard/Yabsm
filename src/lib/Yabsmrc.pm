@@ -75,7 +75,7 @@ sub read_config {
 
     my $file = shift // '/etc/yabsmrc';
 
-    open(my $fh, '<', $file) or die "[!] Error: failed to open file '$file'\n";
+    open(my $fh, '<', $file) or die "yabsm: error: failed to open file '$file'\n";
 
     # %config will be returned.
     my %config; 
@@ -92,7 +92,7 @@ sub read_config {
 	    my $subvol = $1;
 
 	    if (not $subvol =~ /^[a-zA-Z]/) {
-		die "[!] Parse Error (line $.): invalid subvol name '$subvol' does not start with alphabetic character\n";
+		die "yabsm: parse error: ($file line $.): invalid subvol name '$subvol' does not start with alphabetic character\n";
 	    }
 	    else {
 		# create the key
@@ -105,7 +105,7 @@ sub read_config {
 		$_ = <$fh>;
 
 		if (not defined $_) {
-		    die "[!] Parse Error: reached end of file\n";
+		    die "yabsm: parse error: ($file): reached end of file\n";
 		}
 
 		next if /^\s*$/; # skip blank lines
@@ -119,7 +119,7 @@ sub read_config {
 		my ($key, $val) = split /=/, $_, 2;
 
 		if (not defined $key || not defined $val) {
-		    die "[!] Parse Error (line $.): cannot parse '$_'\n";
+		    die "yabsm: parse error: ($file line $.): cannot parse '$_'\n";
 		}
 
 		# perl hash keys cant start with numbers.
@@ -133,7 +133,7 @@ sub read_config {
 	    my $backup = $1;
 
 	    if (not $backup =~ /^[a-zA-Z]/) {
-		die "[!] Parse Error (line $.): invalid backup name '$backup' does not start with alphabetic character\n";
+		die "yabsm: parse error: ($file line $.): invalid backup name '$backup' does not start with alphabetic character\n";
 	    }
 	    else {
 		# create the key
@@ -146,7 +146,7 @@ sub read_config {
 		$_ = <$fh>;
 
 		if (not defined $_) {
-		    die "[!] Parse Error: reached end of file\n";
+		    die "yabsm: parse error: ($file): reached end of file\n";
 		}
 
 		next if /^\s*$/; # skip blank lines
@@ -160,7 +160,7 @@ sub read_config {
 		my ($key, $val) = split /=/, $_, 2;
 
 		if (not defined $key || not defined $val) {
-		    die "[!] Parse Error (line $.): cannot parse '$_'\n";
+		    die "yabsm: parse error: ($file line $.): cannot parse '$_'\n";
 		}
 
 		$config{backups}{$backup}{$key} = $val;
@@ -175,7 +175,7 @@ sub read_config {
 	    my ($key, $val) = split /=/, $_, 2;
 
 	    if (not defined $key || not defined $val) {
-		die "[!] Parse Error (line $.): cannot parse '$_'\n";
+		die "yabsm: parse error: (line $.): cannot parse '$_'\n";
 	    }
 
 	    $config{misc}{$key} = $val;
@@ -222,7 +222,7 @@ sub check_config {
 	    if ($key eq 'mountpoint') {
 		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not -d $val) {
-		    push @errors, "[!] Config Error: subvol '$subvol': no such directory '$val'"
+		    push @errors, "yabsm: config error: subvol '$subvol': no such directory '$val'"
 		}
 	    }
 
@@ -230,7 +230,7 @@ sub check_config {
 	    elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_want$/) {
 		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not ($val eq 'yes' || $val eq 'no')) {
-		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' does not equal yes or no";
+		    push @errors, "yabsm: config error: subvol '$subvol': value for '$key' does not equal yes or no";
 		}
 	    }
 
@@ -238,19 +238,19 @@ sub check_config {
 	    elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_keep$/) {
 		@required_settings = grep { $_ ne $key } @required_settings;
 		if (not $val =~ /^\d+$/) {
-		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0";
+		    push @errors, "yabsm: config error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0";
 		}
 	    }
 
 	    else {
-		push @errors, "[!] Config Error: subvol '$subvol': '$key' is not a valid subvol setting";
+		push @errors, "yabsm: config error: subvol '$subvol': '$key' is not a valid subvol setting";
 	    }
 	} # end of while each loop
 	
 	# are we missing required settings?
 	if (@required_settings) {
 	    for (@required_settings) {
-		push @errors, "[!] Config Error: subvol '$subvol': missing required setting '$_'";
+		push @errors, "yabsm: config error: subvol '$subvol': missing required setting '$_'";
 	    }
 	} 
     } # end of outer loop
@@ -265,7 +265,7 @@ sub check_config {
 
 	    if ($key eq 'subvol') {
 		if (not Base::is_subvol($config_ref, $val)) {
-		    push @errors, "[!] Config Error: backup '$backup': no defined subvol '$val'";
+		    push @errors, "yabsm: config error: backup '$backup': no defined subvol '$val'";
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;
 	    }
@@ -277,14 +277,14 @@ sub check_config {
 
 	    elsif ($key eq 'keep') {
 		if (not ($val =~ /^\d+$/ && $val >= 1)) {
-		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not a positive integer";
+		    push @errors, "yabsm: config error: backup '$backup': value for '$key' is not a positive integer";
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;
 	    }
 
 	    elsif ($key eq 'timeframe') {
 		if (not Base::is_backup_timeframe($val)) {
-		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)";
+		    push @errors, "yabsm: config error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)";
 		}
 		@required_settings = grep { $_ ne $key } @required_settings;
 	    }
@@ -295,23 +295,23 @@ sub check_config {
 
 		if ($val eq 'yes') {
 		    if (not exists $config_ref->{backups}{$backup}{host}) {
-			push @errors, "[!] Config Error: backup '$backup': remote backups require 'host' setting";
+			push @errors, "yabsm: config error: backup '$backup': remote backups require 'host' setting";
 		    }
 		}
 		elsif ($val eq 'no') {
 		    if (exists $config_ref->{backups}{$backup}{host}) {
-			push @errors, "[!] Config Error: backup '$backup': 'host' is not a valid setting for a non-remote backup";
+			push @errors, "yabsm: config error: backup '$backup': 'host' is not a valid setting for a non-remote backup";
 		    }
 		}
 		else {
-		    push @errors, "[!] Config Error: backup '$backup': value for '$key' does not equal yes or no";
+		    push @errors, "yabsm: config error: backup '$backup': value for '$key' does not equal yes or no";
 		}
 	    }
 
 	    else {
 		# we deal with the 'host' key in the 'remote' key check
 		if (not ($key eq 'host')) { 
-		    push @errors, "[!] Config Error: backup '$backup': '$key' is not a valid backup setting";
+		    push @errors, "yabsm: config error: backup '$backup': '$key' is not a valid backup setting";
 		}
 	    }
 	} #end of inner loop
@@ -319,7 +319,7 @@ sub check_config {
 	# missing one or more required settings
 	if (@required_settings) {
 	    for (@required_settings) {
-		push @errors, "[!] Config Error: backup '$backup': missing required setting '$_'";
+		push @errors, "yabsm: config error: backup '$backup': missing required setting '$_'";
 	    }
 	} 
     } # end of outer loop
@@ -334,13 +334,13 @@ sub check_config {
 	}
 
 	else {
-	    push @errors, "[!] Config Error: '$key' is not a valid setting";
+	    push @errors, "yabsm: config error: '$key' is not a valid setting";
 	}
     }
     
     if (@required_misc_settings) {
 	for (@required_misc_settings) {
-	    push @errors, "[!] Config Error: missing required misc setting '$_'";
+	    push @errors, "yabsm: config error: missing required misc setting '$_'";
 	}
     } 
 

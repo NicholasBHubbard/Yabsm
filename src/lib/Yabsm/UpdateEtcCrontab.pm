@@ -19,7 +19,7 @@ sub die_usage {
 
 sub main {
 
-    die "Permission denied\n" if $<;
+    die "yabsm: error: permission denied\n" if $<;
 
     if (@_) { die_usage() }
 

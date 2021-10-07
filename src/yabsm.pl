@@ -94,7 +94,7 @@ my %run_command = ( 'take-snap'          => \&Yabsm::TakeSnap::main
 	          , 'find'               => \&Yabsm::Find::main
 		  , 'print-subvols'      => \&Yabsm::PrintSubvols::main
 		  , 'print-backups'      => \&Yabsm::PrintBackups::main
-	          , 'check-config'       => \&Yabsm::CheckConfig::main
+	          , 'check-config'       => \&Yabsm::CheckYabsmrc::main
 	          , 'update-crontab'     => \&Yabsm::UpdateEtcCrontab::main
 	          , 'print-crons'        => \&Yabsm::PrintCrons::main
 	          , 'test-remote-backup' => \&Yabsm::TestRemoteBackupConfig::main

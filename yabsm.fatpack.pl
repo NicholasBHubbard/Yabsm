@@ -1189,103 +1189,6 @@ $fatpacked{"Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'BASE';
       return wantarray ? @snaps_to_return : \@snaps_to_return;
   }
   
-  sub ask_user_for_subvol_or_backup { # No test. Is not pure.
-  
-      # Prompt user to select one of their defined subvols or
-      # backups. Used for 'yabsm --find' when the user doesn't
-      # explicitly pass their subvol/backup on the command line.
-  
-      my $config_ref = shift // confess missing_arg();
-  
-      my $int = 1;
-      my %int_subvol_hash = map { $int++ => $_ } all_subvols($config_ref);
-      my %int_backup_hash = map { $int++ => $_ } all_backups($config_ref);
-  
-      my $selection; # return this
-  
-      # number of options to print before adding a newline.
-      use constant ROW_LEN => 3;
-      
-      while (not defined $selection) {
-  
-  	# Prompt user. I know that this is confusing code.
-  	my $int = 1;
-  	my $iter;
-  	for ($iter = 1; $iter <= keys %int_subvol_hash; $iter++) {
-  	    my $subvol = $int_subvol_hash{ $int };
-  
-  	    if ($iter == 1)           { print "Subvols:\n"              }
-  	    if ($iter % ROW_LEN == 0) { print "$int -> $subvol\n"       }
-  	    else                      { print "$int -> $subvol" . ' 'x4 }
-  
-  	    $int++;
-  	}
-  	for ($iter = 1; $iter <= keys %int_backup_hash; $iter++) {
-  	    my $backup = $int_backup_hash{ $int };
-  
-  	    if ($iter == 1)           { print "\nBackups:\n"            }
-  	    if ($iter % ROW_LEN == 0) { print "$int -> $backup\n"       }
-  	    else                      { print "$int -> $backup" . ' 'x4 }
-  
-  	    $int++;
-  	}
-  	if ($iter % ROW_LEN == 0) { print '>>> '   }
-  	else                      { print "\n>>> " }
-  
-  	# process input
-  	my $input = <STDIN>;
-  
-  	# We don't just overwrite $input so we can print the original
-  	# input string back to the user in case it is erroneous.
-  	my $clean_input = $input =~ s/\s+//gr; # no whitespace
-  	
-  	exit 0 if $clean_input =~ /^q(uit)?$/;
-  	
-  	if (exists $int_subvol_hash{ $clean_input }) { # success
-  	    $selection = $int_subvol_hash{ $clean_input };
-  	}
-  	elsif (exists $int_backup_hash{ $clean_input }) { # success
-  	    $selection = $int_backup_hash{ $clean_input };
-  	}
-  	else {
-  	    print "No option '$input'! Try again!\n\n";
-  	}
-      }
-  
-      return $selection;
-  }
-  
-  sub ask_user_for_query { # No test. Is not pure.
-  
-      # Prompt user for query. Used for 'yabsm --find' when the user
-      # doesn't explicitly pass their query on the command line.
-  
-      my $query;
-  
-      while (not defined $query) {
-  
-  	print "enter query:\n>>> ";
-  	
-  	my $input = <STDIN>;
-  
-  	# We don't just overwrite $input so we can print the original
-  	# input string back to the user in case it is erroneous.
-  	my $clean_input = $input =~ s/\s+//gr; # no whitespace
-  	
-  	exit 0 if $clean_input =~ /^q(uit)?$/;
-  	
-  	if (is_valid_query($clean_input)) { # success
-  	    $query = $clean_input;
-  	}  
-  	
-  	else {
-  	    print "'$input' is not a valid query! Try again!\n\n";
-  	}
-      }
-  
-      return $query;
-  }
-  
   sub is_valid_query { # Has test. Is pure.
   
       # True iff $query is a valid query. Used to validate 
@@ -1543,10 +1446,10 @@ $fatpacked{"Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'BASE';
       my $config_ref = shift // confess missing_arg();
   
       open (my $etc_crontab_fh, '<', '/etc/crontab')
-        or die "[!] Error: failed to open file '/etc/crontab'\n";
+        or die "[!] Internal Error: failed to open file '/etc/crontab'\n";
   
       open (my $tmp_fh, '>', '/tmp/yabsm-update-tmp')
-        or die "[!] Error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
+        or die "[!] Internal Error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
   
       # Copy all lines from /etc/crontab into the tmp file, excluding
       # the existing yabsm cronjobs.
@@ -1645,7 +1548,7 @@ $fatpacked{"Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'BASE';
   			       );
   
       $ssh->error and
-        die '[!] Error: Could not establish SSH connection: ' . $ssh->error . "\n";
+        die 'yabsm: error: could not establish SSH connection: ' . $ssh->error . "\n";
       
       return $ssh;
   }
@@ -7886,7 +7789,7 @@ $fatpacked{"Yabsm/BackupBootstrap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
   
   sub main {
   
-      die "Permission denied\n" if $<;
+      die "yabsm: error: permission denied\n" if $<;
   
       my $backup = shift // die_usage();
   
@@ -7895,7 +7798,7 @@ $fatpacked{"Yabsm/BackupBootstrap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
       my $config_ref = Yabsmrc::read_config();
   
       if (not Base::is_backup($config_ref, $backup)) {
-  	die "[!] Error: no such defined backup '$backup'\n";
+  	die "yabsm: error: no such defined backup '$backup'\n";
       }
   
       Base::initialize_directories($config_ref);
@@ -7983,11 +7886,11 @@ $fatpacked{"Yabsm/Find.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $config_ref = Yabsmrc::read_config();
   
       if (not Base::is_subject($config_ref, $subject)) {
-  	die "[!] Error: '$subject' is not a defined subvol or backup\n";
+  	die "yabsm: error: '$subject' is not a defined subvol or backup\n";
       }
   
       if (not Base::is_valid_query($query)) {
-  	die "[!] Error: '$query' is not a valid query\n"
+  	die "yabsm: error: '$query' is not a valid query\n"
       }
   
       my @snapshots = Base::answer_query($config_ref, $subject, $query);
@@ -8025,7 +7928,7 @@ $fatpacked{"Yabsm/IncrementalBackup.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."
   
   sub main {
   
-      die "Permission denied\n" if $<;
+      die "yabsm: error: permission denied\n" if $<;
   
       my $backup = shift // die_usage();
   
@@ -8034,7 +7937,7 @@ $fatpacked{"Yabsm/IncrementalBackup.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."
       my $config_ref = Yabsmrc::read_config();
   
       if (not Base::is_backup($config_ref, $backup)) {
-  	die "[!] Error: no such defined backup '$backup'\n";
+  	die "yabsm: error: no such defined backup '$backup'\n";
       }
   
       Base::initialize_directories($config_ref);
@@ -8186,7 +8089,7 @@ $fatpacked{"Yabsm/TakeSnap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
   sub main {
   
-      die "Permission denied\n" if $<;
+      die "yabsm: error: permission denied\n" if $<;
   
       my $subvol    = shift // die_usage();
       my $timeframe = shift // die_usage();
@@ -8196,15 +8099,15 @@ $fatpacked{"Yabsm/TakeSnap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       my $config_ref = Yabsmrc::read_config();
   
       if (not Base::is_subvol($config_ref, $subvol)) {
-  	die "[!] Error: no such defined subvol '$subvol'\n";
+  	die "yabsm: error: no such defined subvol '$subvol'\n";
       }
   
       if (not Base::is_subvol_timeframe($timeframe)) {
-  	die "[!] Error: '$timeframe' is not a subvol timeframe\n";
+  	die "yabsm: error: '$timeframe' is not a subvol timeframe\n";
       }
   
       if (not Base::timeframe_want($config_ref, $subvol, $timeframe)) {
-  	die "[!] Error: subvol '$subvol' is not taking '$timeframe' snapshots\n";
+  	die "yabsm: error: subvol '$subvol' is not taking '$timeframe' snapshots\n";
       }
   
       Base::initialize_directories($config_ref);
@@ -8240,7 +8143,7 @@ $fatpacked{"Yabsm/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "'.__FIL
   
   sub main {
   
-      die "Permission denied\n" if $<;
+      die "yabsm: error: permission denied\n" if $<;
   
       my $backup = shift // die_usage();
   
@@ -8249,11 +8152,11 @@ $fatpacked{"Yabsm/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "'.__FIL
       my $config_ref = Yabsmrc::read_config();
   
       if (not Base::is_backup($config_ref, $backup)) {
-  	die "[!] Error: no such defined backup '$backup'\n";
+  	die "yabsm: error: no such defined backup '$backup'\n";
       }
   
       if (Base::is_local_backup($config_ref, $backup)) {
-  	die "[!] Error: backup '$backup' is a local backup\n";
+  	die "yabsm: error: backup '$backup' is a local backup\n";
       }
   
       # we know that $backup is a remote backup
@@ -8292,7 +8195,7 @@ $fatpacked{"Yabsm/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\
   
   sub main {
   
-      die "Permission denied\n" if $<;
+      die "yabsm: error: permission denied\n" if $<;
   
       if (@_) { die_usage() }
   
@@ -8384,7 +8287,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   
       my $file = shift // '/etc/yabsmrc';
   
-      open(my $fh, '<', $file) or die "[!] Error: failed to open file '$file'\n";
+      open(my $fh, '<', $file) or die "yabsm: error: failed to open file '$file'\n";
   
       # %config will be returned.
       my %config; 
@@ -8401,7 +8304,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	    my $subvol = $1;
   
   	    if (not $subvol =~ /^[a-zA-Z]/) {
-  		die "[!] Parse Error (line $.): invalid subvol name '$subvol' does not start with alphabetic character\n";
+  		die "yabsm: parse error: ($file line $.): invalid subvol name '$subvol' does not start with alphabetic character\n";
   	    }
   	    else {
   		# create the key
@@ -8414,7 +8317,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   		$_ = <$fh>;
   
   		if (not defined $_) {
-  		    die "[!] Parse Error: reached end of file\n";
+  		    die "yabsm: parse error: ($file): reached end of file\n";
   		}
   
   		next if /^\s*$/; # skip blank lines
@@ -8428,7 +8331,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   		my ($key, $val) = split /=/, $_, 2;
   
   		if (not defined $key || not defined $val) {
-  		    die "[!] Parse Error (line $.): cannot parse '$_'\n";
+  		    die "yabsm: parse error: ($file line $.): cannot parse '$_'\n";
   		}
   
   		# perl hash keys cant start with numbers.
@@ -8442,7 +8345,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	    my $backup = $1;
   
   	    if (not $backup =~ /^[a-zA-Z]/) {
-  		die "[!] Parse Error (line $.): invalid backup name '$backup' does not start with alphabetic character\n";
+  		die "yabsm: parse error: ($file line $.): invalid backup name '$backup' does not start with alphabetic character\n";
   	    }
   	    else {
   		# create the key
@@ -8455,7 +8358,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   		$_ = <$fh>;
   
   		if (not defined $_) {
-  		    die "[!] Parse Error: reached end of file\n";
+  		    die "yabsm: parse error: ($file): reached end of file\n";
   		}
   
   		next if /^\s*$/; # skip blank lines
@@ -8469,7 +8372,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   		my ($key, $val) = split /=/, $_, 2;
   
   		if (not defined $key || not defined $val) {
-  		    die "[!] Parse Error (line $.): cannot parse '$_'\n";
+  		    die "yabsm: parse error: ($file line $.): cannot parse '$_'\n";
   		}
   
   		$config{backups}{$backup}{$key} = $val;
@@ -8484,7 +8387,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	    my ($key, $val) = split /=/, $_, 2;
   
   	    if (not defined $key || not defined $val) {
-  		die "[!] Parse Error (line $.): cannot parse '$_'\n";
+  		die "yabsm: parse error: (line $.): cannot parse '$_'\n";
   	    }
   
   	    $config{misc}{$key} = $val;
@@ -8531,7 +8434,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	    if ($key eq 'mountpoint') {
   		@required_settings = grep { $_ ne $key } @required_settings;
   		if (not -d $val) {
-  		    push @errors, "[!] Config Error: subvol '$subvol': no such directory '$val'"
+  		    push @errors, "yabsm: config error: subvol '$subvol': no such directory '$val'"
   		}
   	    }
   
@@ -8539,7 +8442,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	    elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_want$/) {
   		@required_settings = grep { $_ ne $key } @required_settings;
   		if (not ($val eq 'yes' || $val eq 'no')) {
-  		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' does not equal yes or no";
+  		    push @errors, "yabsm: config error: subvol '$subvol': value for '$key' does not equal yes or no";
   		}
   	    }
   
@@ -8547,19 +8450,19 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	    elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_keep$/) {
   		@required_settings = grep { $_ ne $key } @required_settings;
   		if (not $val =~ /^\d+$/) {
-  		    push @errors, "[!] Config Error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0";
+  		    push @errors, "yabsm: config error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0";
   		}
   	    }
   
   	    else {
-  		push @errors, "[!] Config Error: subvol '$subvol': '$key' is not a valid subvol setting";
+  		push @errors, "yabsm: config error: subvol '$subvol': '$key' is not a valid subvol setting";
   	    }
   	} # end of while each loop
   	
   	# are we missing required settings?
   	if (@required_settings) {
   	    for (@required_settings) {
-  		push @errors, "[!] Config Error: subvol '$subvol': missing required setting '$_'";
+  		push @errors, "yabsm: config error: subvol '$subvol': missing required setting '$_'";
   	    }
   	} 
       } # end of outer loop
@@ -8574,7 +8477,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   
   	    if ($key eq 'subvol') {
   		if (not Base::is_subvol($config_ref, $val)) {
-  		    push @errors, "[!] Config Error: backup '$backup': no defined subvol '$val'";
+  		    push @errors, "yabsm: config error: backup '$backup': no defined subvol '$val'";
   		}
   		@required_settings = grep { $_ ne $key } @required_settings;
   	    }
@@ -8586,14 +8489,14 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   
   	    elsif ($key eq 'keep') {
   		if (not ($val =~ /^\d+$/ && $val >= 1)) {
-  		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not a positive integer";
+  		    push @errors, "yabsm: config error: backup '$backup': value for '$key' is not a positive integer";
   		}
   		@required_settings = grep { $_ ne $key } @required_settings;
   	    }
   
   	    elsif ($key eq 'timeframe') {
   		if (not Base::is_backup_timeframe($val)) {
-  		    push @errors, "[!] Config Error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)";
+  		    push @errors, "yabsm: config error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)";
   		}
   		@required_settings = grep { $_ ne $key } @required_settings;
   	    }
@@ -8604,23 +8507,23 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   
   		if ($val eq 'yes') {
   		    if (not exists $config_ref->{backups}{$backup}{host}) {
-  			push @errors, "[!] Config Error: backup '$backup': remote backups require 'host' setting";
+  			push @errors, "yabsm: config error: backup '$backup': remote backups require 'host' setting";
   		    }
   		}
   		elsif ($val eq 'no') {
   		    if (exists $config_ref->{backups}{$backup}{host}) {
-  			push @errors, "[!] Config Error: backup '$backup': 'host' is not a valid setting for a non-remote backup";
+  			push @errors, "yabsm: config error: backup '$backup': 'host' is not a valid setting for a non-remote backup";
   		    }
   		}
   		else {
-  		    push @errors, "[!] Config Error: backup '$backup': value for '$key' does not equal yes or no";
+  		    push @errors, "yabsm: config error: backup '$backup': value for '$key' does not equal yes or no";
   		}
   	    }
   
   	    else {
   		# we deal with the 'host' key in the 'remote' key check
   		if (not ($key eq 'host')) { 
-  		    push @errors, "[!] Config Error: backup '$backup': '$key' is not a valid backup setting";
+  		    push @errors, "yabsm: config error: backup '$backup': '$key' is not a valid backup setting";
   		}
   	    }
   	} #end of inner loop
@@ -8628,7 +8531,7 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	# missing one or more required settings
   	if (@required_settings) {
   	    for (@required_settings) {
-  		push @errors, "[!] Config Error: backup '$backup': missing required setting '$_'";
+  		push @errors, "yabsm: config error: backup '$backup': missing required setting '$_'";
   	    }
   	} 
       } # end of outer loop
@@ -8643,13 +8546,13 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   	}
   
   	else {
-  	    push @errors, "[!] Config Error: '$key' is not a valid setting";
+  	    push @errors, "yabsm: config error: '$key' is not a valid setting";
   	}
       }
       
       if (@required_misc_settings) {
   	for (@required_misc_settings) {
-  	    push @errors, "[!] Config Error: missing required misc setting '$_'";
+  	    push @errors, "yabsm: config error: missing required misc setting '$_'";
   	}
       } 
   
@@ -10250,7 +10153,7 @@ if ($cmd eq '--version') { say $VERSION and exit 0 }
 my $full_cmd = unabbreviate($cmd);
 
 if (not exists $run_command{ $full_cmd} ) {
-    die "yabsm: '$cmd' is not a yabsm command. See 'yabsm --help'.\n"
+    die "yabsm: error: '$cmd' is not a yabsm command";
 }
 
 $run_command{ $full_cmd }->(@ARGV);

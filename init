@@ -16,14 +16,11 @@ die "Permission denied\n" if $<;
 
 die "[!] Perl version must be at least 5.10\n" if $] < 5.010000;
 
-use Cwd 'getcwd';
+use FindBin '$Bin';
 use File::Copy 'copy';
 
-# $CWD is probably something like '/home/user/yabsm'
-my $CWD = getcwd();
-
-copy "$CWD/export/yabsmrc", '/etc/yabsmrc';
-copy "$CWD/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
+copy "$Bin/export/yabsmrc", '/etc/yabsmrc';
+copy "$Bin/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
 
 chmod 0644, '/etc/yabsmrc';
 chmod 0755, '/usr/local/bin/yabsm';

@@ -16,22 +16,16 @@ die "Permission denied\n" if $<;
 
 die "[!] Perl version must be at least 5.10\n" if $] < 5.010000;
 
-use Cwd 'abs_path';
+use Cwd 'getcwd';
 use File::Copy 'copy';
 
-sub yabsm_dir {
-    my $abs_path = abs_path($0);
-    $abs_path =~ s/\/[^\/]+$//;
-    return $abs_path;
-}
+# $CWD is probably something like '/home/user/yabsm'
+my $CWD = getcwd();
 
-# Should be '/home/user/yabsm'
-my $YABSM_DIR = yabsm_dir();
-
-copy "$YABSM_DIR/export/yabsmrc", '/etc/yabsmrc';
-copy "$YABSM_DIR/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
+copy "$CWD/export/yabsmrc", '/etc/yabsmrc';
+copy "$CWD/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
 
 chmod 0644, '/etc/yabsmrc';
 chmod 0755, '/usr/local/bin/yabsm';
 
-say "success!";
+say 'all good';

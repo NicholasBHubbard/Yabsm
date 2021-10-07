@@ -5,13 +5,54 @@
 BEGIN {
 my %fatpacked;
 
-$fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_BASE';
-  package Yabsm::Base;use strict;use warnings;use 5.010;use Time::Piece;use Net::OpenSSH;use List::Util qw(any);use File::Copy qw(move);use File::Path qw(make_path);use Carp;sub all_snapshots_of {my$config_ref=shift // confess;my$subject=shift // confess;my@timeframes=@_;my@all_snaps;if (is_subvol($config_ref,$subject)){my$subvol=$subject;if (not @timeframes){@timeframes=qw(5minute hourly midnight monthly)}for my$tf (@timeframes){my$snap_dir=local_snap_dir($config_ref,$subvol,$tf);if (-d $snap_dir){push@all_snaps,glob "$snap_dir/*"}}}elsif (is_local_backup($config_ref,$subject)){my$backup=$subject;my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};@all_snaps=glob "$backup_dir/*"}elsif (is_remote_backup($config_ref,$subject)){my$backup=$subject;my$remote_host=$config_ref->{backups}{$backup}{host};my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};my$ssh=new_ssh_connection($remote_host);@all_snaps=map {chomp;$_="$remote_host:$_"}$ssh->capture("ls -d $backup_dir/*")}else {confess}my$snaps_sorted_ref=sort_snaps(\@all_snaps);return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref}sub initialize_directories {my$config_ref=shift // confess;my$yabsm_root_dir=$config_ref->{misc}{yabsm_snapshot_dir};if (not -d $yabsm_root_dir){make_path($yabsm_root_dir)}if (not -d $yabsm_root_dir .'/.tmp'){make_path($yabsm_root_dir .'/.tmp')}for my$subvol (all_subvols($config_ref)){my$subvol_dir="$yabsm_root_dir/$subvol";if (not -d $subvol_dir){make_path($subvol_dir)}my$_5minute_want=$config_ref->{subvols}{$subvol}{_5minute_want};my$hourly_want=$config_ref->{subvols}{$subvol}{hourly_want};my$midnight_want=$config_ref->{subvols}{$subvol}{midnight_want};my$monthly_want=$config_ref->{subvols}{$subvol}{monthly_want};if ($_5minute_want eq 'yes' && not -d "$subvol_dir/5minute"){make_path("$subvol_dir/5minute")}if ($hourly_want eq 'yes' && not -d "$subvol_dir/hourly"){make_path("$subvol_dir/hourly")}if ($midnight_want eq 'yes' && not -d "$subvol_dir/midnight"){make_path("$subvol_dir/midnight")}if ($monthly_want eq 'yes' && not -d "$subvol_dir/monthly"){make_path("$subvol_dir/monthly")}for my$backup (all_backups_of_subvol($config_ref,$subvol)){if (not -d "$subvol_dir/.backups/$backup/bootstrap-snap"){make_path("$subvol_dir/.backups/$backup/bootstrap-snap")}}}return}sub local_snap_dir {my$config_ref=shift // confess;my$subvol=shift;my$timeframe=shift;my$yabsm_dir=$config_ref->{misc}{yabsm_snapshot_dir};if (defined$subvol){$yabsm_dir .= "/$subvol";if (defined$timeframe){$yabsm_dir .= "/$timeframe"}}return$yabsm_dir}sub bootstrap_snap_dir {my$config_ref=shift // confess;my$backup=shift // confess;my$subvol=$config_ref->{backups}{$backup}{subvol};my$yabsm_dir=$config_ref->{misc}{yabsm_snapshot_dir};return "$yabsm_dir/$subvol/.backups/$backup/bootstrap-snap"}sub is_snapstring {my$snapstring=shift // confess;return$snapstring =~ /day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/}sub current_time_snapstring {my ($min,$hr,$day,$mon,$yr)=map {sprintf '%02d',$_}(localtime)[1..5];$mon++;$yr += 1900;return "day=${yr}_${mon}_${day},time=${hr}:$min"}sub n_units_ago_snapstring {my$n=shift // confess;my$unit=shift // confess;my$seconds_per_unit;if ($unit =~ /^(m|mins|minutes)$/){$seconds_per_unit=60}elsif ($unit =~ /^(h|hrs|hours)$/){$seconds_per_unit=3600}elsif ($unit =~ /^(d|days)$/){$seconds_per_unit=86400}else {confess "\"$unit\" is not a valid time unit"}my$current_time=current_time_snapstring();my$time_piece_obj=snapstring_to_time_piece_obj($current_time);$time_piece_obj -= ($n * $seconds_per_unit);return time_piece_obj_to_snapstring($time_piece_obj)}sub immediate_to_snapstring {my$all_snaps_ref=shift // confess;my$imm=shift // confess;if (is_literal_time($imm)){return literal_time_to_snapstring($imm)}if (is_relative_time($imm)){return relative_time_to_snapstring($imm)}if (is_newest_time($imm)){return newest_snap($all_snaps_ref)}if (is_oldest_time($imm)){return oldest_snap($all_snaps_ref)}confess "[!] Internal Error: '$imm' is not an immediate"}sub literal_time_to_snapstring {my$lit_time=shift // confess;my$yr_mon_day_hr_min='^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';my$yr_mon_day='^(\d{4})-(\d{1,2})-(\d{1,2})$';my$mon_day='^(\d{1,2})-(\d{1,2})$';my$mon_day_hr='^(\d{1,2})-(\d{1,2})-(\d{1,2})$';my$mon_day_hr_min='^(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';if ($lit_time =~ /$yr_mon_day_hr_min/){return nums_to_snapstring($1,$2,$3,$4,$5)}if ($lit_time =~ /$yr_mon_day/){return nums_to_snapstring($1,$2,$3,0,0)}if ($lit_time =~ /$mon_day/){my$t=localtime;return nums_to_snapstring($t->year,$1,$2,0,0)}if ($lit_time =~ /$mon_day_hr/){my$t=localtime;return nums_to_snapstring($t->year,$1,$2,$3,0)}if ($lit_time =~ /$mon_day_hr_min/){my$t=localtime;return nums_to_snapstring($t->year,$1,$2,$3,$4)}confess "[!] Internal Error: '$lit_time' is not a valid literal time"}sub relative_time_to_snapstring {my$rel_time=shift // confess;my (undef,$amount,$unit)=split '-',$rel_time,3;my$n_units_ago_snapstring=n_units_ago_snapstring($amount,$unit);return$n_units_ago_snapstring}sub snapstring_to_nums {my$snap=shift // confess;my@nums=$snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;return wantarray ? @nums : \@nums}sub nums_to_snapstring {my ($yr,$mon,$day,$hr,$min)=map {sprintf '%02d',$_}@_;return "day=${yr}_${mon}_${day},time=${hr}:$min"}sub snapstring_to_time_piece_obj {my$snap=shift // confess;my ($yr,$mon,$day,$hr,$min)=snapstring_to_nums($snap);return Time::Piece->strptime("$yr/$mon/$day/$hr/$min",'%Y/%m/%d/%H/%M')}sub time_piece_obj_to_snapstring {my$time_piece_obj=shift // confess;my$yr=$time_piece_obj->year;my$mon=$time_piece_obj->mon;my$day=$time_piece_obj->mday;my$hr=$time_piece_obj->hour;my$min=$time_piece_obj->min;return nums_to_snapstring($yr,$mon,$day,$hr,$min)}sub sort_snaps {my$snaps_ref=shift // confess;my@sorted_snaps=sort {cmp_snaps($a,$b)}@$snaps_ref;return wantarray ? @sorted_snaps : \@sorted_snaps}sub cmp_snaps {my$snap1=shift // confess;my$snap2=shift // confess;my@snap1_nums=snapstring_to_nums($snap1);my@snap2_nums=snapstring_to_nums($snap2);for (my$i=0;$i <= $#snap1_nums;$i++){return -1 if$snap1_nums[$i]> $snap2_nums[$i];return 1 if$snap1_nums[$i]< $snap2_nums[$i]}return 0}sub ask_user_for_subvol_or_backup {my$config_ref=shift // confess;my$int=1;my%int_subvol_hash=map {$int++=>$_}all_subvols($config_ref);my%int_backup_hash=map {$int++=>$_}all_backups($config_ref);my$selection;while (not defined$selection){my$int=1;my$iter;for ($iter=1;$iter <= keys%int_subvol_hash;$iter++){my$subvol=$int_subvol_hash{$int };if ($iter==1){print "Subvols:\n"}if ($iter % 3==0){print "$int -> $subvol\n"}else {print "$int -> $subvol" .' 'x4}$int++}for ($iter=1;$iter <= keys%int_backup_hash;$iter++){my$backup=$int_backup_hash{$int };if ($iter==1){print "\nBackups:\n"}if ($iter % 3==0){print "$int -> $backup\n"}else {print "$int -> $backup" .' 'x4}$int++}if ($iter % 3==0){print '>>> '}else {print "\n>>> "}my$input=<STDIN>;my$cleansed=$input =~ s/\s+//gr;exit 0 if$cleansed =~ /^q(uit)?$/;if (exists$int_subvol_hash{$cleansed }){$selection=$int_subvol_hash{$cleansed }}elsif (exists$int_backup_hash{$cleansed }){$selection=$int_backup_hash{$cleansed }}else {print "No option '$input'! Try again!\n\n"}}return$selection}sub ask_user_for_query {my$query;while (not defined$query){print "enter query:\n>>> ";my$input=<STDIN>;$input =~ s/^\s+|\s+$//g;exit 0 if$input =~ /^q(uit)?$/;if (is_valid_query($input)){$query=$input}else {print "'$input' is not a valid query! Try again!\n\n"}}return$query}sub snap_closest_to {my$all_snaps_ref=shift // confess;my$target_snap=shift // confess;my$snap;for (my$i=0;$i <= $#{$all_snaps_ref};$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$target_snap);if ($cmp==0){$snap=$this_snap;last}if ($cmp==1){if ($i==0){$snap=$this_snap}else {my$prev_snap=$all_snaps_ref->[$i-1];$snap=snap_closer($target_snap,$prev_snap,$this_snap)}last}}if (not defined$snap){$snap=oldest_snap($all_snaps_ref)}return$snap}sub snap_closer {my$target_snap=shift // confess;my$snap1=shift // confess;my$snap2=shift // confess;my$target_epoch=snapstring_to_time_piece_obj($target_snap)->epoch;my$snap1_epoch=snapstring_to_time_piece_obj($snap1)->epoch;my$snap2_epoch=snapstring_to_time_piece_obj($snap2)->epoch;my$v1=abs($target_epoch - $snap1_epoch);my$v2=abs($target_epoch - $snap2_epoch);if ($v1 <= $v2){return$snap1}else {return$snap2}}sub snaps_newer {my$all_snaps_ref=shift // confess;my$target_snap=shift // confess;my@snaps_newer=();for (my$i=0;$i <= $#{$all_snaps_ref};$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$target_snap);if ($cmp==-1){push@snaps_newer,$this_snap}else {last}}return wantarray ? @snaps_newer : \@snaps_newer}sub snaps_older {my$all_snaps_ref=shift // confess;my$target_snap=shift // confess;my@snaps_older=();my$last_idx=$#{$all_snaps_ref};for (my$i=0;$i <= $last_idx;$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$target_snap);if ($cmp==1){@snaps_older=@{$all_snaps_ref}[$i .. $last_idx];last}}return wantarray ? @snaps_older : \@snaps_older}sub snaps_between {my$all_snaps_ref=shift // confess;my$target_snap1=shift // confess;my$target_snap2=shift // confess;my$older;my$newer;if (-1==cmp_snaps($target_snap1,$target_snap2)){$newer=$target_snap1;$older=$target_snap2}else {$newer=$target_snap2;$older=$target_snap1}my@snaps_between=();my$last_idx=$#{$all_snaps_ref};for (my$i=0;$i <= $last_idx;$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$newer);if ($cmp==1 || $cmp==0){push@snaps_between,$this_snap if$cmp==0;for (my$j=$i+1;$j <= $last_idx;$j++){my$this_snap=$all_snaps_ref->[$j];my$cmp=cmp_snaps($this_snap,$older);if ($cmp==1 || $cmp==0){push@snaps_between,$this_snap if$cmp==0;last}else {push@snaps_between,$this_snap}}last}}return wantarray ? @snaps_between : \@snaps_between}sub newest_snap {my$ref=shift // confess;my$subvol=shift;my$newest_snap;if (ref($ref)eq 'ARRAY'){$newest_snap=$ref->[0]}elsif (ref($ref)eq 'HASH'){my$all_snaps_ref=all_snapshots_of($ref,$subvol);$newest_snap=$all_snaps_ref->[0]}else {confess}return$newest_snap}sub oldest_snap {my$ref=shift // confess;my$subvol=shift;my$oldest_snap;if (ref($ref)eq 'ARRAY'){$oldest_snap=$ref->[-1]}elsif (ref($ref)eq 'HASH'){my$all_snaps_ref=all_snapshots_of($ref,$subvol);$oldest_snap=$all_snaps_ref->[-1]}else {confess}return$oldest_snap}sub answer_query {my$config_ref=shift // confess;my$subject=shift // confess;my$query=shift // confess;my$all_snaps_ref=all_snapshots_of($config_ref,$subject);my@snaps_to_return;if (is_immediate($query)){my$target=immediate_to_snapstring($all_snaps_ref,$query);my$snap=snap_closest_to($all_snaps_ref,$target);push@snaps_to_return,$snap}elsif (is_all_query($query)){@snaps_to_return=@$all_snaps_ref}elsif (is_newer_query($query)){my (undef,$immediate)=split /\s/,$query,2;my$target=immediate_to_snapstring($all_snaps_ref,$immediate);@snaps_to_return=snaps_newer($all_snaps_ref,$target)}elsif (is_older_query($query)){my (undef,$immediate)=split /\s/,$query,2;my$target=immediate_to_snapstring($all_snaps_ref,$immediate);@snaps_to_return=snaps_older($all_snaps_ref,$target)}elsif (is_between_query($query)){my (undef,$imm1,$imm2)=split /\s/,$query,3;my$target1=immediate_to_snapstring($all_snaps_ref,$imm1);my$target2=immediate_to_snapstring($all_snaps_ref,$imm2);@snaps_to_return=snaps_between($all_snaps_ref,$target1,$target2)}else {confess "[!] Internal Error: '$query' is not a valid query"}return wantarray ? @snaps_to_return : \@snaps_to_return}sub is_valid_query {my$query=shift // confess;if (is_immediate($query)){return 1}if (is_all_query($query)){return 1}if (is_newer_query($query)){return 1}if (is_older_query($query)){return 1}if (is_between_query($query)){return 1}return 0}sub is_immediate {my$imm=shift // confess;return is_newest_time($imm)|| is_oldest_time($imm)|| is_literal_time($imm)|| is_relative_time($imm)}sub is_literal_time {my$lit_time=shift // confess;my$re1='^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';my$re2='^\d{4}-\d{1,2}-\d{1,2}$';my$re3='^\d{1,2}-\d{1,2}$';my$re4='^\d{1,2}-\d{1,2}-\d{1,2}$';my$re5='^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';return any {$lit_time =~ /$_/}($re1,$re2,$re3,$re4,$re5)}sub is_relative_time {my$query=shift // confess;my ($back,$amount,$unit)=split '-',$query,3;return 0 if any {not defined}($back,$amount,$unit);my$back_correct=$back =~ /^b(ack)?$/;my$amount_correct=$amount =~ /^\d+$/;my$unit_correct=any {$_ eq $unit}qw/minutes mins m hours hrs h days d/;return$back_correct && $amount_correct && $unit_correct}sub is_newer_query {my$query=shift // confess;my ($keyword,$imm)=split /\s/,$query,2;return 0 if any {not defined}($keyword,$imm);my$keyword_correct=$keyword =~ /^(newer|after)$/;my$imm_correct=is_immediate($imm);return$keyword_correct && $imm_correct}sub is_older_query {my$query=shift // confess;my ($keyword,$imm)=split /\s/,$query,2;return 0 if any {not defined}($keyword,$imm);my$keyword_correct=$keyword =~ /^(older|before)$/;my$imm_correct=is_immediate($imm);return$keyword_correct && $imm_correct}sub is_all_query {my$query=shift // confess;return$query eq 'all'}sub is_newest_time {my$query=shift // confess;return$query eq 'newest'}sub is_oldest_time {my$query=shift // confess;return$query eq 'oldest'}sub is_between_query {my$query=shift // confess;my ($keyword,$imm1,$imm2)=split /\s/,$query,3;return 0 if any {not defined}($keyword,$imm1,$imm2);my$keyword_correct=$keyword =~ /^bet(ween)?$/;my$imm1_correct=is_immediate($imm1);my$imm2_correct=is_immediate($imm2);return$keyword_correct && $imm1_correct && $imm2_correct}sub all_subvols {my$config_ref=shift // confess;my@subvols=sort keys %{$config_ref->{subvols}};return wantarray ? @subvols : \@subvols}sub all_backups {my$config_ref=shift // confess;my@backups=sort keys %{$config_ref->{backups}};return wantarray ? @backups : \@backups}sub all_backups_of_subvol {my$config_ref=shift // confess;my$subvol=shift // confess;my@backups=();for my$backup (all_backups($config_ref)){my$backup_subvol=$config_ref->{backups}{$backup}{subvol};push@backups,$backup if$subvol eq $backup_subvol}return wantarray ? @backups : \@backups}sub is_subvol {my$config_ref=shift // confess;my$subvol=shift // confess;return any {$_ eq $subvol}all_subvols($config_ref)}sub is_backup {my$config_ref=shift // confess;my$backup=shift // confess;return any {$_ eq $backup}all_backups($config_ref)}sub is_local_backup {my$config_ref=shift // confess;my$backup=shift // confess;if (is_backup($config_ref,$backup)){return$config_ref->{backups}{$backup}{remote}eq 'no'}else {return 0}}sub is_remote_backup {my$config_ref=shift // confess;my$backup=shift // confess;if (is_backup($config_ref,$backup)){return$config_ref->{backups}{$backup}{remote}eq 'yes'}else {return 0}}sub update_etc_crontab {my$config_ref=shift // confess;open (my$etc_crontab_fh,'<','/etc/crontab')or die "[!] Error: failed to open file '/etc/crontab'\n";open (my$tmp_fh,'>','/tmp/yabsm-update-tmp')or die "[!] Error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";while (<$etc_crontab_fh>){s/\s+$//;next if /yabsm/;say$tmp_fh $_}my@cron_strings=generate_cron_strings($config_ref);say$tmp_fh $_ for@cron_strings;close$etc_crontab_fh;close$tmp_fh;move '/tmp/yabsm-update-tmp','/etc/crontab';return}sub generate_cron_strings {my$config_ref=shift // confess;my@cron_strings;for my$subvol (all_subvols($config_ref)){my$_5minute_want=$config_ref->{subvols}{$subvol}{_5minute_want};my$hourly_want=$config_ref->{subvols}{$subvol}{hourly_want};my$midnight_want=$config_ref->{subvols}{$subvol}{midnight_want};my$monthly_want=$config_ref->{subvols}{$subvol}{monthly_want};my$_5minute_cron=('*/5 * * * * root' ." yabsm --take-snap $subvol 5minute")if$_5minute_want eq 'yes';my$hourly_cron=('0 */1 * * * root' ." yabsm --take-snap $subvol hourly")if$hourly_want eq 'yes';my$midnight_cron=('59 23 * * * root' ." yabsm --take-snap $subvol midnight")if$midnight_want eq 'yes';my$monthly_cron=('0 0 1 * * root' ." yabsm --take-snap $subvol monthly")if$monthly_want eq 'yes';push@cron_strings,grep {defined}($_5minute_cron,$hourly_cron,$midnight_cron,$monthly_cron)}for my$backup (all_backups($config_ref)){my$timeframe=$config_ref->{backups}{$backup}{timeframe};if ($timeframe eq 'hourly'){push@cron_strings,"0 */1 * * * root yabsm --do-backup $backup"}elsif ($timeframe eq 'midnight'){push@cron_strings,"59 23 * * * root yabsm --do-backup $backup"}elsif ($timeframe eq 'monthly'){push@cron_strings,"0 0 1 * * root yabsm --do-backup $backup"}}return wantarray ? @cron_strings : \@cron_strings}sub new_ssh_connection {my$remote_host=shift // confess;my$ssh=Net::OpenSSH->new($remote_host,,batch_mode=>1 ,timeout=>15 ,kill_ssh_on_timeout=>1);$ssh->error and die "[!] Error: Couldn't establish SSH connection: " .$ssh->error ."\n";return$ssh}sub do_backup_bootstrap_ssh {my$config_ref=shift // confess;my$backup=shift // confess;my$remote_host=$config_ref->{backups}{$backup}{host};my$ssh=new_ssh_connection($remote_host);my$subvol=$config_ref->{backups}{$backup}{subvol};my$bootstrap_snap_dir=bootstrap_snap_dir($config_ref,$backup);system("btrfs subvol delete $_")for glob "$bootstrap_snap_dir/*";my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};my$bootstrap_snap="$bootstrap_snap_dir/" .current_time_snapstring();system("btrfs subvol snapshot -r $mountpoint $bootstrap_snap");my$remote_backup_dir=$config_ref->{backups}{$backup}{backup_dir};$ssh->system("if [ ! -d \"$remote_backup_dir\" ];" ."then mkdir -p $remote_backup_dir; fi");$ssh->system({stdin_file=>['-|',"btrfs send $bootstrap_snap"]},"sudo -n btrfs receive $remote_backup_dir")}sub do_backup_ssh {my$config_ref=shift // confess;my$backup=shift // confess;my$subvol=$config_ref->{backups}{$backup}{subvol};my$remote_backup_dir=$config_ref->{backups}{$backup}{backup_dir};my$bootstrap_snap=[glob (bootstrap_snap_dir($config_ref,$backup).'/*')]->[0];if (not defined$bootstrap_snap){do_backup_bootstrap_ssh($config_ref,$backup)}else {my$remote_host=$config_ref->{backups}{$backup}{host};my$ssh=new_ssh_connection($remote_host);my$tmp_snap=local_snap_dir($config_ref).'/.tmp/' .current_time_snapstring();my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};system("btrfs subvol snapshot -r $mountpoint $tmp_snap");$ssh->system({stdin_file=>['-|',"btrfs send -p $bootstrap_snap $tmp_snap"]},"sudo -n btrfs receive $remote_backup_dir");system("btrfs subvol delete $tmp_snap");delete_old_backups_ssh($config_ref,$ssh,$backup)}return}sub delete_old_backups_ssh {my$config_ref=shift // confess;my$ssh=shift // confess;my$backup=shift // confess;my$remote_backup_dir=$config_ref->{backups}{$backup}{backup_dir};my@existing_backups=sort_snaps([$ssh->capture("ls -d $remote_backup_dir/*")]);my$num_backups=scalar@existing_backups;my$num_to_keep=$config_ref->{backups}{$backup}{keep};if ($num_backups==$num_to_keep + 1){my$oldest_backup=pop@existing_backups;$ssh->system("sudo -n btrfs subvol delete $oldest_backup");return}elsif ($num_backups <= $num_to_keep){return}else {while ($num_backups > $num_to_keep){my$oldest_backup=pop@existing_backups;$ssh->system("sudo -n btrfs subvolume delete $oldest_backup");$num_backups--}return}}sub take_new_snapshot {my$config_ref=shift // confess;my$subvol=shift // confess;my$timeframe=shift // confess;my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};my$snap_dir=local_snap_dir($config_ref,$subvol,$timeframe);my$snapshot_name=current_time_snapstring();system('btrfs subvol snapshot -r ' .$mountpoint ." $snap_dir/$snapshot_name");return 1}sub delete_old_snapshots {my$config_ref=shift // confess;my$subvol=shift // confess;my$timeframe=shift // confess;my$existing_snaps_ref=all_snapshots_of($config_ref,$subvol,$timeframe);my$num_snaps=scalar @$existing_snaps_ref;my$num_to_keep=$config_ref->{subvols}{$subvol}{"${timeframe}_keep"};if ($num_snaps==$num_to_keep + 1){my$oldest_snap=pop @$existing_snaps_ref;system("btrfs subvolume delete $oldest_snap");return}elsif ($num_snaps <= $num_to_keep){return}else {while ($num_snaps > $num_to_keep){my$oldest_snap=pop @$existing_snaps_ref;system("btrfs subvolume delete $oldest_snap");$num_snaps--}return}}1;
-YABSM_BASE
+$fatpacked{"Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'BASE';
+  package Base;use strict;use warnings;use 5.010;use Time::Piece;use Net::OpenSSH;use Carp;use List::Util qw(any);use File::Copy qw(move);use File::Path qw(make_path);sub take_new_snapshot {my$config_ref=shift // confess missing_arg();my$subvol=shift // confess missing_arg();my$timeframe=shift // confess missing_arg();my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};my$snap_dir=local_snap_dir($config_ref,$subvol,$timeframe);my$snap_name=current_time_snapstring();system("btrfs subvol snapshot -r $mountpoint
+      $snap_dir/$snap_name");return}sub delete_old_snapshots {my$config_ref=shift // confess missing_arg();my$subvol=shift // confess missing_arg();my$timeframe=shift // confess missing_arg();my$existing_snaps_ref=all_snapshots($config_ref,$subvol,$timeframe);my$num_snaps=scalar @$existing_snaps_ref;my$num_to_keep=timeframe_keep($config_ref,$subvol,$timeframe);if ($num_snaps==$num_to_keep + 1){my$oldest_snap=pop @$existing_snaps_ref;system("btrfs subvol delete $oldest_snap");return}elsif ($num_snaps <= $num_to_keep){return}else {while ($num_snaps > $num_to_keep){my$oldest_snap=pop @$existing_snaps_ref;system("btrfs subvol delete $oldest_snap");$num_snaps--}return}}sub do_backup {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();if (is_local_backup($config_ref,$backup)){do_backup_local($config_ref,$backup)}elsif (is_remote_backup($config_ref,$backup)){do_backup_ssh($config_ref,$backup)}else {confess "[!] Internal Error: no such defined backup '$backup'"}return}sub do_backup_local {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};my$bootstrap_snap=[glob bootstrap_snap_dir($config_ref,$backup).'/*']->[0];if (not defined$bootstrap_snap){do_backup_bootstrap_local($config_ref,$backup);return}my$subvol=$config_ref->{backups}{$backup}{subvol};my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};my$tmp_snap=local_snap_dir($config_ref,'.tmp/').current_time_snapstring();system("btrfs subvol snapshot -r $mountpoint $tmp_snap");system("btrfs send -p $bootstrap_snap $tmp_snap | btrfs receive $backup_dir");system("btrfs subvol delete $tmp_snap");delete_old_backups_local($config_ref,$backup);return}sub do_backup_ssh {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$remote_backup_dir=$config_ref->{backups}{$backup}{backup_dir};my$bootstrap_snap=[glob bootstrap_snap_dir($config_ref,$backup).'/*']->[0];if (not defined$bootstrap_snap){do_backup_bootstrap_ssh($config_ref,$backup);return}my$subvol=$config_ref->{backups}{$backup}{subvol};my$remote_host=$config_ref->{backups}{$backup}{host};my$ssh=new_ssh_connection($remote_host);my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};my$tmp_snap=local_snap_dir($config_ref,'.tmp/').current_time_snapstring();system("btrfs subvol snapshot -r $mountpoint $tmp_snap");$ssh->system({stdin_file=>['-|',"btrfs send -p $bootstrap_snap $tmp_snap"]},"sudo -n btrfs receive $remote_backup_dir");system("btrfs subvol delete $tmp_snap");delete_old_backups_ssh($config_ref,$ssh,$backup);return}sub do_backup_bootstrap {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();if (is_local_backup($config_ref,$backup)){do_backup_bootstrap_local($config_ref,$backup)}elsif (is_remote_backup($config_ref,$backup)){do_backup_bootstrap_ssh($config_ref,$backup)}else {confess "[!] Internal Error: no such defined backup '$backup'"}return}sub do_backup_bootstrap_local {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$bootstrap_snap_dir=bootstrap_snap_dir($config_ref,$backup);system("btrfs subvol delete $_")for glob "$bootstrap_snap_dir/*";my$bootstrap_snap="$bootstrap_snap_dir/" .current_time_snapstring();my$subvol=$config_ref->{backups}{$backup}{subvol};my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};system("btrfs subvol snapshot -r $mountpoint $$bootstrap_snap");system("btrfs subvol send $bootstrap_snap | btrfs receive $backup_dir");delete_old_backups_local($config_ref,$backup)}sub do_backup_bootstrap_ssh {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$remote_host=$config_ref->{backups}{$backup}{host};my$ssh=new_ssh_connection($remote_host);my$bootstrap_snap_dir=bootstrap_snap_dir($config_ref,$backup);my$bootstrap_snap="$bootstrap_snap_dir/" .current_time_snapstring();system("btrfs subvol delete $_")for glob "$bootstrap_snap_dir/*";my$subvol=$config_ref->{backups}{$backup}{subvol};my$mountpoint=$config_ref->{subvols}{$subvol}{mountpoint};system("btrfs subvol snapshot -r $mountpoint $bootstrap_snap");my$remote_backup_dir=$config_ref->{backups}{$backup}{backup_dir};$ssh->system("if [ ! -d \"$remote_backup_dir\" ];" ."then mkdir -p $remote_backup_dir; fi");$ssh->system({stdin_file=>['-|',"btrfs send $bootstrap_snap"]},"sudo -n btrfs receive $remote_backup_dir");delete_old_backups_ssh($config_ref,$ssh,$backup)}sub delete_old_backups_local {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};my@existing_backups=all_snapshots($config_ref,$backup);my$num_backups=scalar@existing_backups;my$num_to_keep=$config_ref->{backups}{$backup}{keep};if ($num_backups==$num_to_keep + 1){my$oldest_backup=pop@existing_backups;system("btrfs subvol delete $oldest_backup");return}elsif ($num_backups <= $num_to_keep){return}else {while ($num_backups > $num_to_keep){my$oldest_backup=pop@existing_backups;system("btrfs subvol delete $oldest_backup");$num_backups--}return}}sub delete_old_backups_ssh {my$config_ref=shift // confess missing_arg();my$ssh=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$remote_backup_dir=$config_ref->{backups}{$backup}{backup_dir};my@existing_backups=all_snapshots($config_ref,$backup);my$num_backups=scalar@existing_backups;my$num_to_keep=$config_ref->{backups}{$backup}{keep};if ($num_backups==$num_to_keep + 1){my$oldest_backup=pop@existing_backups;$ssh->system("sudo -n btrfs subvol delete $oldest_backup");return}elsif ($num_backups <= $num_to_keep){return}else {while ($num_backups > $num_to_keep){my$oldest_backup=pop@existing_backups;$ssh->system("sudo -n btrfs subvol delete $oldest_backup");$num_backups--}return}}sub all_snapshots {my$config_ref=shift // confess missing_arg();my$subject=shift // confess missing_arg();my@timeframes=@_;my@all_snaps;if (is_subvol($config_ref,$subject)){my$subvol=$subject;if (not @timeframes){@timeframes=qw(5minute hourly midnight monthly)}for my$tf (@timeframes){my$snap_dir=local_snap_dir($config_ref,$subvol,$tf);if (-d $snap_dir){push@all_snaps,glob "$snap_dir/*"}}}elsif (is_local_backup($config_ref,$subject)){my$backup=$subject;my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};@all_snaps=glob "$backup_dir/*"}elsif (is_remote_backup($config_ref,$subject)){my$backup=$subject;my$remote_host=$config_ref->{backups}{$backup}{host};my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};my$ssh=new_ssh_connection($remote_host);@all_snaps=map {chomp;$_="$remote_host:$_"}$ssh->capture("ls -d $backup_dir/*")}else {confess}my$snaps_sorted_ref=sort_snaps(\@all_snaps);return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref}sub initialize_directories {my$config_ref=shift // confess missing_arg();my$yabsm_root_dir=$config_ref->{misc}{yabsm_snapshot_dir};if (not -d $yabsm_root_dir){make_path($yabsm_root_dir)}if (not -d $yabsm_root_dir .'/.tmp'){make_path($yabsm_root_dir .'/.tmp')}for my$subvol (all_subvols($config_ref)){my$subvol_dir="$yabsm_root_dir/$subvol";if (not -d $subvol_dir){make_path($subvol_dir)}my$_5minute_want=$config_ref->{subvols}{$subvol}{_5minute_want};my$hourly_want=$config_ref->{subvols}{$subvol}{hourly_want};my$midnight_want=$config_ref->{subvols}{$subvol}{midnight_want};my$monthly_want=$config_ref->{subvols}{$subvol}{monthly_want};if ($_5minute_want eq 'yes' && not -d "$subvol_dir/5minute"){make_path("$subvol_dir/5minute")}if ($hourly_want eq 'yes' && not -d "$subvol_dir/hourly"){make_path("$subvol_dir/hourly")}if ($midnight_want eq 'yes' && not -d "$subvol_dir/midnight"){make_path("$subvol_dir/midnight")}if ($monthly_want eq 'yes' && not -d "$subvol_dir/monthly"){make_path("$subvol_dir/monthly")}for my$backup (all_backups_of_subvol($config_ref,$subvol)){if (not -d "$subvol_dir/.backups/$backup/bootstrap-snap"){make_path("$subvol_dir/.backups/$backup/bootstrap-snap")}if (is_local_backup($config_ref,$backup)){my$backup_dir=$config_ref->{backups}{$backup}{backup_dir};if (not -d $backup_dir){make_path($backup_dir)}}}}return}sub local_snap_dir {my$config_ref=shift // confess missing_arg();my$subvol=shift;my$timeframe=shift;my$yabsm_dir=$config_ref->{misc}{yabsm_snapshot_dir};if (defined$subvol){$yabsm_dir .= "/$subvol";if (defined$timeframe){$yabsm_dir .= "/$timeframe"}}return$yabsm_dir}sub bootstrap_snap_dir {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$subvol=$config_ref->{backups}{$backup}{subvol};my$yabsm_dir=$config_ref->{misc}{yabsm_snapshot_dir};return "$yabsm_dir/$subvol/.backups/$backup/bootstrap-snap"}sub is_snapstring {my$snapstring=shift // confess missing_arg();return$snapstring =~ /day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/}sub current_time_snapstring {my ($min,$hr,$day,$mon,$yr)=map {sprintf '%02d',$_}(localtime)[1..5];$mon++;$yr += 1900;return "day=${yr}_${mon}_${day},time=${hr}:$min"}sub n_units_ago_snapstring {my$n=shift // confess missing_arg();my$unit=shift // confess missing_arg();my$seconds_per_unit;if ($unit =~ /^(minutes|mins|m)$/){$seconds_per_unit=60}elsif ($unit =~ /^(hours|hrs|h)$/){$seconds_per_unit=3600}elsif ($unit =~ /^(days|d)$/){$seconds_per_unit=86400}else {confess "[!] Internal Error: '$unit' is not a valid time unit"}my$current_time=current_time_snapstring();my$time_piece_obj=snapstring_to_time_piece_obj($current_time);$time_piece_obj -= ($n * $seconds_per_unit);return time_piece_obj_to_snapstring($time_piece_obj)}sub is_immediate {my$imm=shift // confess missing_arg();return is_literal_time($imm)|| is_relative_time($imm)}sub is_literal_time {my$lit_time=shift // confess missing_arg();my$re1='^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';my$re2='^\d{4}-\d{1,2}-\d{1,2}$';my$re3='^\d{1,2}-\d{1,2}$';my$re4='^\d{1,2}-\d{1,2}-\d{1,2}$';my$re5='^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$';return any {$lit_time =~ /$_/}($re1,$re2,$re3,$re4,$re5)}sub is_relative_time {my$rel_time=shift // confess missing_arg();my ($back,$amount,$unit)=split '-',$rel_time,3;return 0 if any {not defined}($back,$amount,$unit);my$back_correct=$back =~ /^b(ack)?$/;my$amount_correct=$amount =~ /^\d+$/;my$unit_correct=any {$_ eq $unit}qw(minutes mins m hours hrs h days d);return$back_correct && $amount_correct && $unit_correct}sub immediate_to_snapstring {my$imm=shift // confess missing_arg();if (is_literal_time($imm)){return literal_time_to_snapstring($imm)}if (is_relative_time($imm)){return relative_time_to_snapstring($imm)}confess "[!] Internal Error: '$imm' is not an immediate"}sub literal_time_to_snapstring {my$lit_time=shift // confess missing_arg();my$yr_mon_day_hr_min='^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';my$yr_mon_day='^(\d{4})-(\d{1,2})-(\d{1,2})$';my$mon_day='^(\d{1,2})-(\d{1,2})$';my$mon_day_hr='^(\d{1,2})-(\d{1,2})-(\d{1,2})$';my$mon_day_hr_min='^(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$';if ($lit_time =~ /$yr_mon_day_hr_min/){return nums_to_snapstring($1,$2,$3,$4,$5)}if ($lit_time =~ /$yr_mon_day/){return nums_to_snapstring($1,$2,$3,0,0)}if ($lit_time =~ /$mon_day/){my$t=localtime;return nums_to_snapstring($t->year,$1,$2,0,0)}if ($lit_time =~ /$mon_day_hr/){my$t=localtime;return nums_to_snapstring($t->year,$1,$2,$3,0)}if ($lit_time =~ /$mon_day_hr_min/){my$t=localtime;return nums_to_snapstring($t->year,$1,$2,$3,$4)}confess "[!] Internal Error: '$lit_time' is not a valid literal time"}sub relative_time_to_snapstring {my$rel_time=shift // confess missing_arg();my (undef,$amount,$unit)=split '-',$rel_time,3;my$n_units_ago_snapstring=n_units_ago_snapstring($amount,$unit);return$n_units_ago_snapstring}sub snapstring_to_nums {my$snap=shift // confess missing_arg();my@nums=$snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;return wantarray ? @nums : \@nums}sub nums_to_snapstring {my ($yr,$mon,$day,$hr,$min)=map {sprintf '%02d',$_}@_;return "day=${yr}_${mon}_${day},time=${hr}:$min"}sub snapstring_to_time_piece_obj {my$snap=shift // confess missing_arg();my ($yr,$mon,$day,$hr,$min)=snapstring_to_nums($snap);return Time::Piece->strptime("$yr/$mon/$day/$hr/$min",'%Y/%m/%d/%H/%M')}sub time_piece_obj_to_snapstring {my$time_piece_obj=shift // confess missing_arg();my$yr=$time_piece_obj->year;my$mon=$time_piece_obj->mon;my$day=$time_piece_obj->mday;my$hr=$time_piece_obj->hour;my$min=$time_piece_obj->min;return nums_to_snapstring($yr,$mon,$day,$hr,$min)}sub sort_snaps {my$snaps_ref=shift // confess missing_arg();my@sorted_snaps=sort {cmp_snaps($a,$b)}@$snaps_ref;return wantarray ? @sorted_snaps : \@sorted_snaps}sub cmp_snaps {my$snap1=shift // confess missing_arg();my$snap2=shift // confess missing_arg();my@snap1_nums=snapstring_to_nums($snap1);my@snap2_nums=snapstring_to_nums($snap2);for (my$i=0;$i <= $#snap1_nums;$i++){return -1 if$snap1_nums[$i]> $snap2_nums[$i];return 1 if$snap1_nums[$i]< $snap2_nums[$i]}return 0}sub snap_closest_to {my$all_snaps_ref=shift // confess missing_arg();my$target_snap=shift // confess missing_arg();my$snap;for (my$i=0;$i <= $#{$all_snaps_ref};$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$target_snap);if ($cmp==0){$snap=$this_snap;last}if ($cmp==1){if ($i==0){$snap=$this_snap}else {my$prev_snap=$all_snaps_ref->[$i-1];$snap=snap_closer($target_snap,$prev_snap,$this_snap)}last}}if (not defined$snap){$snap=oldest_snap($all_snaps_ref)}return$snap}sub snap_closer {my$target_snap=shift // confess missing_arg();my$snap1=shift // confess missing_arg();my$snap2=shift // confess missing_arg();my$target_epoch=snapstring_to_time_piece_obj($target_snap)->epoch;my$snap1_epoch=snapstring_to_time_piece_obj($snap1)->epoch;my$snap2_epoch=snapstring_to_time_piece_obj($snap2)->epoch;my$v1=abs($target_epoch - $snap1_epoch);my$v2=abs($target_epoch - $snap2_epoch);if ($v1 <= $v2){return$snap1}else {return$snap2}}sub snaps_newer_than {my$all_snaps_ref=shift // confess missing_arg();my$target_snap=shift // confess missing_arg();my@newer=();for (my$i=0;$i <= $#{$all_snaps_ref};$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$target_snap);if ($cmp==-1){push@newer,$this_snap}else {last}}return wantarray ? @newer : \@newer}sub snaps_older_than {my$all_snaps_ref=shift // confess missing_arg();my$target_snap=shift // confess missing_arg();my@older=();my$last_idx=$#{$all_snaps_ref};for (my$i=0;$i <= $last_idx;$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$target_snap);if ($cmp==1){@older=@$all_snaps_ref[$i .. $last_idx];last}}return wantarray ? @older : \@older}sub snaps_between {my$all_snaps_ref=shift // confess missing_arg();my$target_snap1=shift // confess missing_arg();my$target_snap2=shift // confess missing_arg();my$older;my$newer;if (-1==cmp_snaps($target_snap1,$target_snap2)){$newer=$target_snap1;$older=$target_snap2}else {$newer=$target_snap2;$older=$target_snap1}my@snaps_between=();my$last_idx=$#{$all_snaps_ref};for (my$i=0;$i <= $last_idx;$i++){my$this_snap=$all_snaps_ref->[$i];my$cmp=cmp_snaps($this_snap,$newer);if ($cmp==1 || $cmp==0){push@snaps_between,$this_snap if$cmp==0;for (my$j=$i+1;$j <= $last_idx;$j++){my$this_snap=$all_snaps_ref->[$j];my$cmp=cmp_snaps($this_snap,$older);if ($cmp==1 || $cmp==0){push@snaps_between,$this_snap if$cmp==0;last}else {push@snaps_between,$this_snap}}last}}return wantarray ? @snaps_between : \@snaps_between}sub newest_snap {my$ref=shift // confess missing_arg();my$subvol=shift;my$ref_type=ref($ref);if ($ref_type eq 'ARRAY'){return$ref->[0]}if ($ref_type eq 'HASH'){my$all_snaps_ref=all_snapshots($ref,$subvol);return$all_snaps_ref->[0]}confess "[!] Internal Error: '$ref' has ref type '$ref_type'"}sub oldest_snap {my$ref=shift // confess missing_arg();my$ref_type=ref($ref);if ($ref_type eq 'ARRAY'){return$ref->[-1]}if ($ref_type eq 'HASH'){my$subject=shift // confess missing_arg();my$all_snaps_ref=all_snapshots($ref,$subject);return$all_snaps_ref->[-1]}confess "[!] Internal Error: '$ref' has ref type '$ref_type'"}sub answer_query {my$config_ref=shift // confess missing_arg();my$subject=shift // confess missing_arg();my$query=shift // confess missing_arg();my$all_snaps_ref=all_snapshots($config_ref,$subject);my@snaps_to_return;if ($query eq 'all'){@snaps_to_return=@$all_snaps_ref}elsif ($query eq 'newest'){my$snap=newest_snap($all_snaps_ref);@snaps_to_return=($snap)}elsif ($query eq 'oldest'){my$snap=oldest_snap($all_snaps_ref);@snaps_to_return=($snap)}elsif (is_immediate($query)){my$target=immediate_to_snapstring($query);my$snap=snap_closest_to($all_snaps_ref,$target);@snaps_to_return=($snap)}elsif (is_newer_than_query($query)){my (undef,$imm)=split /\s/,$query,2;my$target=immediate_to_snapstring($imm);@snaps_to_return=snaps_newer_than($all_snaps_ref,$target)}elsif (is_older_than_query($query)){my (undef,$imm)=split /\s/,$query,2;my$target=immediate_to_snapstring($imm);@snaps_to_return=snaps_older_than($all_snaps_ref,$target)}elsif (is_between_query($query)){my (undef,$imm1,$imm2)=split /\s/,$query,3;my$target1=immediate_to_snapstring($imm1);my$target2=immediate_to_snapstring($imm2);@snaps_to_return=snaps_between($all_snaps_ref,$target1,$target2)}else {confess "[!] Internal Error: '$query' is not a valid query"}return wantarray ? @snaps_to_return : \@snaps_to_return}sub ask_user_for_subvol_or_backup {my$config_ref=shift // confess missing_arg();my$int=1;my%int_subvol_hash=map {$int++=>$_}all_subvols($config_ref);my%int_backup_hash=map {$int++=>$_}all_backups($config_ref);my$selection;use constant ROW_LEN=>3;while (not defined$selection){my$int=1;my$iter;for ($iter=1;$iter <= keys%int_subvol_hash;$iter++){my$subvol=$int_subvol_hash{$int };if ($iter==1){print "Subvols:\n"}if ($iter % ROW_LEN==0){print "$int -> $subvol\n"}else {print "$int -> $subvol" .' 'x4}$int++}for ($iter=1;$iter <= keys%int_backup_hash;$iter++){my$backup=$int_backup_hash{$int };if ($iter==1){print "\nBackups:\n"}if ($iter % ROW_LEN==0){print "$int -> $backup\n"}else {print "$int -> $backup" .' 'x4}$int++}if ($iter % ROW_LEN==0){print '>>> '}else {print "\n>>> "}my$input=<STDIN>;my$clean_input=$input =~ s/\s+//gr;exit 0 if$clean_input =~ /^q(uit)?$/;if (exists$int_subvol_hash{$clean_input }){$selection=$int_subvol_hash{$clean_input }}elsif (exists$int_backup_hash{$clean_input }){$selection=$int_backup_hash{$clean_input }}else {print "No option '$input'! Try again!\n\n"}}return$selection}sub ask_user_for_query {my$query;while (not defined$query){print "enter query:\n>>> ";my$input=<STDIN>;my$clean_input=$input =~ s/\s+//gr;exit 0 if$clean_input =~ /^q(uit)?$/;if (is_valid_query($clean_input)){$query=$clean_input}else {print "'$input' is not a valid query! Try again!\n\n"}}return$query}sub is_valid_query {my$query=shift // confess missing_arg();if ($query eq 'all'){return 1}if ($query eq 'newest'){return 1}if ($query eq 'oldest'){return 1}if (is_immediate($query)){return 1}if (is_newer_than_query($query)){return 1}if (is_older_than_query($query)){return 1}if (is_between_query($query)){return 1}return 0}sub is_newer_than_query {my$query=shift // confess missing_arg();my ($keyword,$imm)=split /\s/,$query,2;return 0 if any {not defined}($keyword,$imm);my$keyword_correct=$keyword =~ /^(newer|after|aft)$/;my$imm_correct=is_immediate($imm);return$keyword_correct && $imm_correct}sub is_older_than_query {my$query=shift // confess missing_arg();my ($keyword,$imm)=split /\s/,$query,2;return 0 if any {not defined}($keyword,$imm);my$keyword_correct=$keyword =~ /^(older|before|bef)$/;my$imm_correct=is_immediate($imm);return$keyword_correct && $imm_correct}sub is_between_query {my$query=shift // confess missing_arg();my ($keyword,$imm1,$imm2)=split /\s/,$query,3;return 0 if any {not defined}($keyword,$imm1,$imm2);my$keyword_correct=$keyword =~ /^bet(ween)?$/;my$imm1_correct=is_immediate($imm1);my$imm2_correct=is_immediate($imm2);return$keyword_correct && $imm1_correct && $imm2_correct}sub all_subvol_timeframes {my@timeframes=qw(5minute hourly midnight monthly);return wantarray ? @timeframes : \@timeframes}sub all_backup_timeframes {my@timeframes=qw(hourly midnight monthly);return wantarray ? @timeframes : \@timeframes}sub is_subvol_timeframe {my$timeframe=shift // confess missing_arg();return any {$_ eq $timeframe}all_subvol_timeframes()}sub is_backup_timeframe {my$timeframe=shift // confess missing_arg();return any {$_ eq $timeframe}all_backup_timeframes()}sub timeframe_want {my$config_ref=shift // confess missing_arg();my$subvol=shift // confess missing_arg();my$timeframe=shift // confess missing_arg();$timeframe='_5minute' if$timeframe eq '5minute';return$config_ref->{subvols}{$subvol}{"${timeframe}_want"}eq 'yes'}sub timeframe_keep {my$config_ref=shift // confess missing_arg();my$subvol=shift // confess missing_arg();my$timeframe=shift // confess missing_arg();$timeframe='_5minute' if$timeframe eq '5minute';return$config_ref->{subvols}{$subvol}{"${timeframe}_keep"}}sub all_subvols {my$config_ref=shift // confess missing_arg();my@subvols=sort keys %{$config_ref->{subvols}};return wantarray ? @subvols : \@subvols}sub all_backups {my$config_ref=shift // confess missing_arg();my@backups=sort keys %{$config_ref->{backups}};return wantarray ? @backups : \@backups}sub all_backups_of_subvol {my$config_ref=shift // confess missing_arg();my$subvol=shift // confess missing_arg();my@backups=();for my$backup (all_backups($config_ref)){my$this_subvol=$config_ref->{backups}{$backup}{subvol};if ($this_subvol eq $subvol){push@backups,$backup}}return wantarray ? @backups : \@backups}sub is_subject {my$config_ref=shift // confess missing_arg();my$subject=shift // confess missing_arg();my$is_subvol=is_subvol($config_ref,$subject);my$is_backup=is_backup($config_ref,$subject);return$is_subvol || $is_backup}sub is_subvol {my$config_ref=shift // confess missing_arg();my$subvol=shift // confess missing_arg();return any {$_ eq $subvol}all_subvols($config_ref)}sub is_backup {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();return any {$_ eq $backup}all_backups($config_ref)}sub is_local_backup {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();if (is_backup($config_ref,$backup)){return$config_ref->{backups}{$backup}{remote}eq 'no'}else {return 0}}sub is_remote_backup {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();if (is_backup($config_ref,$backup)){return$config_ref->{backups}{$backup}{remote}eq 'yes'}else {return 0}}sub update_etc_crontab {my$config_ref=shift // confess missing_arg();open (my$etc_crontab_fh,'<','/etc/crontab')or die "[!] Error: failed to open file '/etc/crontab'\n";open (my$tmp_fh,'>','/tmp/yabsm-update-tmp')or die "[!] Error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";while (<$etc_crontab_fh>){s/\s+$//;next if /root yabsm -/;say$tmp_fh $_}my@cron_strings=generate_cron_strings($config_ref);say$tmp_fh $_ for@cron_strings;close$etc_crontab_fh;close$tmp_fh;move '/tmp/yabsm-update-tmp','/etc/crontab';return}sub generate_cron_strings {my$config_ref=shift // confess missing_arg();my@crons=();for my$subvol (all_subvols($config_ref)){my$_5minute_want=$config_ref->{subvols}{$subvol}{_5minute_want};my$hourly_want=$config_ref->{subvols}{$subvol}{hourly_want};my$midnight_want=$config_ref->{subvols}{$subvol}{midnight_want};my$monthly_want=$config_ref->{subvols}{$subvol}{monthly_want};my$_5minute_cron=('*/5 * * * * root' ." yabsm take-snap $subvol 5minute")if$_5minute_want eq 'yes';my$hourly_cron=('0 */1 * * * root' ." yabsm take-snap $subvol hourly")if$hourly_want eq 'yes';my$midnight_cron=('59 23 * * * root' ." yabsm take-snap $subvol midnight")if$midnight_want eq 'yes';my$monthly_cron=('0 0 1 * * root' ." yabsm take-snap $subvol monthly")if$monthly_want eq 'yes';push@crons,grep {defined}($_5minute_cron,$hourly_cron,$midnight_cron,$monthly_cron)}for my$backup (all_backups($config_ref)){my$timeframe=$config_ref->{backups}{$backup}{timeframe};if ($timeframe eq 'hourly'){push@crons,"0 */1 * * * root yabsm incremental-backup $backup"}elsif ($timeframe eq 'midnight'){push@crons,"59 23 * * * root yabsm incremental-backup $backup"}elsif ($timeframe eq 'monthly'){push@crons,"0 0 1 * * root yabsm incremental-backup $backup"}else {confess "[!] Internal Error: backup '$backup' has invalid timeframe '$timeframe'"}}return wantarray ? @crons : \@crons}sub new_ssh_connection {my$remote_host=shift // confess missing_arg();my$ssh=Net::OpenSSH->new($remote_host,,batch_mode=>1 ,timeout=>30 ,kill_ssh_on_timeout=>1);$ssh->error and die '[!] Error: Could not establish SSH connection: ' .$ssh->error ."\n";return$ssh}sub test_remote_backup_config {my$config_ref=shift // confess missing_arg();my$backup=shift // confess missing_arg();my$remote_host=$config_ref->{backups}{$backup}{host};my$ssh=new_ssh_connection($remote_host);$ssh->system('sudo -n btrfs --help > /dev/null')or die "Could run btrfs as sudo without password on host '$remote_host': " .$ssh->error ."\n";return}sub missing_arg {return '[!] Internal Error: missing required arg'}1;
+BASE
 
-$fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_CONFIG';
-  package Yabsm::Config;use strict;use warnings;use 5.010;use List::Util 'any';use FindBin '$Bin';use lib "$Bin/..";use Yabsm::Base;sub read_config {my$file=shift // '/etc/yabsmrc';open(my$fh,'<',$file)or die "[!] Error: failed to open file '$file'\n";my%config;while (<$fh>){next if /^\s*$/;next if /^\s*#/;s/#.*//;s/\s+$//;if (/^define_subvol\s+(\S+)\s+{$/){my$subvol=$1;if (not $subvol =~ /^[a-zA-Z]/){die "[!] Parse Error (line $.): invalid subvol name '$subvol' does not start with alphabetic character\n"}else {$config{subvols}{$subvol}=undef}while (1){$_=<$fh>;if (not defined $_){die "[!] Parse Error: reached end of file\n"}next if /^\s*$/;next if /^\s*#/;s/#.*//;s/\s+//g;last if /^}$/;my ($key,$val)=split /=/,$_,2;if (not defined$key || not defined$val){die "[!] Parse Error (line $.): cannot parse '$_'\n"}$key =~ s/5minute/_5minute/;$config{subvols}{$subvol}{$key}=$val}}elsif (/^define_backup\s+(\S+)\s+{$/){my$backup=$1;if (not $backup =~ /^[a-zA-Z]/){die "[!] Parse Error (line $.): invalid backup name '$backup' does not start with alphabetic character\n"}else {$config{backups}{$backup}=undef}while (1){$_=<$fh>;if (not defined $_){die "[!] Parse Error: reached end of file\n"}next if /^\s*$/;next if /^\s*#/;s/#.*//;s/\s+//g;last if /^}$/;my ($key,$val)=split /=/,$_,2;if (not defined$key || not defined$val){die "[!] Parse Error (line $.): cannot parse '$_'\n"}$config{backups}{$backup}{$key}=$val}}else {s/#.*//g;s/\s+//g;my ($key,$val)=split /=/,$_,2;if (not defined$key || not defined$val){die "[!] Parse Error (line $.): cannot parse '$_'\n"}$config{misc}{$key}=$val}}close$fh;my@errors=check_config(\%config);if (@errors){my$errors=join "\n",@errors;die "$errors\n"}return wantarray ? %config : \%config}sub check_config {my ($config_ref)=@_;my@errors;for my$subvol (Yabsm::Base::all_subvols($config_ref)){my@required_settings=qw(mountpoint _5minute_want _5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);while (my ($key,$val)=each %{$config_ref->{subvols}{$subvol}}){if ($key eq 'mountpoint'){@required_settings=grep {$_ ne $key}@required_settings;if (not -d $val){push@errors,"[!] Config Error: subvol '$subvol': no such directory '$val'"}}elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_want$/){@required_settings=grep {$_ ne $key}@required_settings;if (not ($val eq 'yes' || $val eq 'no')){push@errors,"[!] Config Error: subvol '$subvol': value for '$key' does not equal yes or no"}}elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_keep$/){@required_settings=grep {$_ ne $key}@required_settings;if (not $val =~ /^\d+$/){push@errors,"[!] Config Error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0"}}else {push@errors,"[!] Config Error: subvol '$subvol': '$key' is not a valid subvol setting"}}if (@required_settings){for (@required_settings){push@errors,"[!] Config Error: subvol '$subvol': missing required setting '$_'"}}}for my$backup (Yabsm::Base::all_backups($config_ref)){my@required_settings=qw(subvol remote keep backup_dir timeframe);while (my ($key,$val)=each %{$config_ref->{backups}{$backup}}){if ($key eq 'subvol'){if (not Yabsm::Base::is_subvol($config_ref,$val)){push@errors,"[!] Config Error: backup '$backup': no defined subvol '$val'"}@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'backup_dir'){@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'keep'){if (not ($val =~ /^\d+$/ && $val >= 1)){push@errors,"[!] Config Error: backup '$backup': value for '$key' is not a positive integer"}@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'timeframe'){if (not any {$val eq $_}qw(hourly midnight monthly)){push@errors,"[!] Config Error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)"}@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'remote'){@required_settings=grep {$_ ne $key}@required_settings;if ($val eq 'yes'){if (not exists$config_ref->{backups}{$backup}{host}){push@errors,"[!] Config Error: backup '$backup': remote backups require 'host' setting"}}elsif ($val eq 'no'){if (exists$config_ref->{backups}{$backup}{host}){push@errors,"[!] Config Error: backup '$backup': 'host' is not a valid setting for a non-remote backup"}}else {push@errors,"[!] Config Error: backup '$backup': value for '$key' does not equal yes or no"}}else {if (not ($key eq 'host')){push@errors,"[!] Config Error: backup '$backup': '$key' is not a valid backup setting"}}}if (@required_settings){for (@required_settings){push@errors,"[!] Config Error: backup '$backup': missing required setting '$_'"}}}my@required_misc_settings=qw(yabsm_snapshot_dir);while (my ($key,$val)=each %{$config_ref->{misc}}){if ($key eq 'yabsm_snapshot_dir'){@required_misc_settings=grep {$_ ne $key}@required_misc_settings}else {push@errors,"[!] Config Error: '$key' is not a valid setting"}}if (@required_misc_settings){for (@required_misc_settings){push@errors,"[!] Config Error: missing required misc setting '$_'"}}return wantarray ? @errors : \@errors}1;
-YABSM_CONFIG
+$fatpacked{"Yabsm/BackupBootstrap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_BACKUPBOOTSTRAP';
+  package Yabsm::BackupBootstrap;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm bootstrap-backup <BACKUP>';exit 1}sub main {my$backup=shift // die_usage();if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();if (not Base::is_backup($config_ref,$backup)){die "[!] Error: no such defined backup '$backup'\n"}Base::initialize_directories($config_ref);Base::do_backup_bootstrap($config_ref,$backup);return}1;
+YABSM_BACKUPBOOTSTRAP
+
+$fatpacked{"Yabsm/CheckConfig.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_CHECKCONFIG';
+  package Yabsm::CheckYabsmrc;use strict;use warnings;use 5.010;use lib '..';use Yabsmrc;sub die_usage {say 'Usage: yabsm check-config <?FILE>';exit 1}sub main {my$config_path=shift // '/etc/yabsmrc';if (@_){die_usage()}Yabsmrc::read_config($config_path);say 'all good';return}1;
+YABSM_CHECKCONFIG
+
+$fatpacked{"Yabsm/Find.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_FIND';
+  package Yabsm::Find;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm find <SUBVOL> <QUERY>';exit 1}sub main {my$subject=shift // die_usage();my$query=shift // die_usage();if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();if (not Base::is_subject($config_ref,$subject)){die "[!] Error: '$subject' is not a defined subvol or backup\n"}if (not Base::is_valid_query($query)){die "[!] Error: '$query' is not a valid query\n"}my@snapshots=Base::answer_query($config_ref,$subject,$query);say for@snapshots;return}1;
+YABSM_FIND
+
+$fatpacked{"Yabsm/IncrementalBackup.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_INCREMENTALBACKUP';
+  package Yabsm::IncrementalBackup;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm incremental-bootstrap <BACKUP>';exit 1}sub main {my$backup=shift // die_usage();if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();if (not Base::is_backup($config_ref,$backup)){die "[!] Error: no such defined backup '$backup'\n"}Base::initialize_directories($config_ref);Base::do_backup($config_ref,$backup);return}1;
+YABSM_INCREMENTALBACKUP
+
+$fatpacked{"Yabsm/PrintBackups.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_PRINTBACKUPS';
+  package Yabsm::PrintBackups;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm print-backups';exit 1}sub main {if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();my@all_backups=Base::all_backups($config_ref);say for@all_backups;return}1;
+YABSM_PRINTBACKUPS
+
+$fatpacked{"Yabsm/PrintCrons.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_PRINTCRONS';
+  package Yabsm::PrintCrons;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;use Carp;sub die_usage {say 'Usage: yabsm print-crons';exit 1}sub main {if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();my@crons=Base::generate_cron_strings($config_ref);say for@crons;return}1;
+YABSM_PRINTCRONS
+
+$fatpacked{"Yabsm/PrintSubvols.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_PRINTSUBVOLS';
+  package Yabsm::PrintSubvols;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm print-subvols';exit 1}sub main {if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();my@all_subvols=Base::all_subvols($config_ref);say for@all_subvols;return}1;
+YABSM_PRINTSUBVOLS
+
+$fatpacked{"Yabsm/TakeSnap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_TAKESNAP';
+  package Yabsm::TakeSnap;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm take-snap <SUBVOL> <QUERY>';exit 1}sub main {my$subvol=shift // die_usage();my$timeframe=shift // die_usage();if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();if (not Base::is_subvol($config_ref,$subvol)){die "[!] Error: no such defined subvol '$subvol'\n"}if (not Base::is_subvol_timeframe($timeframe)){die "[!] Error: '$timeframe' is not a subvol timeframe\n"}if (not Base::timeframe_want($config_ref,$subvol,$timeframe)){die "[!] Error: subvol '$subvol' is not taking '$timeframe' snapshots\n"}Base::initialize_directories($config_ref);Base::take_new_snapshot($config_ref,$subvol,$timeframe);Base::delete_old_snapshots($config_ref,$subvol,$timeframe);return}1;
+YABSM_TAKESNAP
+
+$fatpacked{"Yabsm/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_TESTREMOTEBACKUPCONFIG';
+  package Yabsm::TestRemoteBackupYabsmrc;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm test-remote-backup <BACKUP>';exit 1}sub main {my$backup=shift // die_usage();if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();if (not Base::is_backup($config_ref,$backup)){die "[!] Error: no such defined backup '$backup'\n"}if (Base::is_local_backup($config_ref,$backup)){die "[!] Error: backup '$backup' is a local backup\n"}Base::test_remote_backup_config($config_ref,$backup);say 'all good';return}1;
+YABSM_TESTREMOTEBACKUPCONFIG
+
+$fatpacked{"Yabsm/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_UPDATEETCCRONTAB';
+  package Yabsm::UpdateEtcCrontab;use strict;use warnings;use 5.010;use lib '..';use Base;use Yabsmrc;sub die_usage {say 'Usage: yabsm update-crontab';exit 1}sub main {if (@_){die_usage()}my$config_ref=Yabsmrc::read_config();Base::update_etc_crontab($config_ref);return}1;
+YABSM_UPDATEETCCRONTAB
+
+$fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC';
+  package Yabsmrc;use strict;use warnings;use 5.010;use FindBin '$Bin';use lib '.';use Base;use List::Util 'any';use Carp;sub read_config {my$file=shift // '/etc/yabsmrc';open(my$fh,'<',$file)or die "[!] Error: failed to open file '$file'\n";my%config;while (<$fh>){next if /^\s*$/;next if /^\s*#/;s/#.*//;s/\s+$//;if (/^define_subvol\s+(\S+)\s+{$/){my$subvol=$1;if (not $subvol =~ /^[a-zA-Z]/){die "[!] Parse Error (line $.): invalid subvol name '$subvol' does not start with alphabetic character\n"}else {$config{subvols}{$subvol}=undef}while (1){$_=<$fh>;if (not defined $_){die "[!] Parse Error: reached end of file\n"}next if /^\s*$/;next if /^\s*#/;s/#.*//;s/\s+//g;last if /^}$/;my ($key,$val)=split /=/,$_,2;if (not defined$key || not defined$val){die "[!] Parse Error (line $.): cannot parse '$_'\n"}$key =~ s/5minute/_5minute/;$config{subvols}{$subvol}{$key}=$val}}elsif (/^define_backup\s+(\S+)\s+{$/){my$backup=$1;if (not $backup =~ /^[a-zA-Z]/){die "[!] Parse Error (line $.): invalid backup name '$backup' does not start with alphabetic character\n"}else {$config{backups}{$backup}=undef}while (1){$_=<$fh>;if (not defined $_){die "[!] Parse Error: reached end of file\n"}next if /^\s*$/;next if /^\s*#/;s/#.*//;s/\s+//g;last if /^}$/;my ($key,$val)=split /=/,$_,2;if (not defined$key || not defined$val){die "[!] Parse Error (line $.): cannot parse '$_'\n"}$config{backups}{$backup}{$key}=$val}}else {s/#.*//g;s/\s+//g;my ($key,$val)=split /=/,$_,2;if (not defined$key || not defined$val){die "[!] Parse Error (line $.): cannot parse '$_'\n"}$config{misc}{$key}=$val}}close$fh;my@errors=check_config(\%config);if (@errors){my$errors=join "\n",@errors;die "$errors\n"}return wantarray ? %config : \%config}sub check_config {my$config_ref=shift // confess Base::missing_arg();my@errors;for my$subvol (Base::all_subvols($config_ref)){my@required_settings=required_subvol_settings();while (my ($key,$val)=each %{$config_ref->{subvols}{$subvol}}){if ($key eq 'mountpoint'){@required_settings=grep {$_ ne $key}@required_settings;if (not -d $val){push@errors,"[!] Config Error: subvol '$subvol': no such directory '$val'"}}elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_want$/){@required_settings=grep {$_ ne $key}@required_settings;if (not ($val eq 'yes' || $val eq 'no')){push@errors,"[!] Config Error: subvol '$subvol': value for '$key' does not equal yes or no"}}elsif ($key =~ /^(_5minute|hourly|midnight|monthly)_keep$/){@required_settings=grep {$_ ne $key}@required_settings;if (not $val =~ /^\d+$/){push@errors,"[!] Config Error: subvol '$subvol': value for '$key' is not an integer greater or equal to 0"}}else {push@errors,"[!] Config Error: subvol '$subvol': '$key' is not a valid subvol setting"}}if (@required_settings){for (@required_settings){push@errors,"[!] Config Error: subvol '$subvol': missing required setting '$_'"}}}for my$backup (Base::all_backups($config_ref)){my@required_settings=required_backup_settings();while (my ($key,$val)=each %{$config_ref->{backups}{$backup}}){if ($key eq 'subvol'){if (not Base::is_subvol($config_ref,$val)){push@errors,"[!] Config Error: backup '$backup': no defined subvol '$val'"}@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'backup_dir'){@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'keep'){if (not ($val =~ /^\d+$/ && $val >= 1)){push@errors,"[!] Config Error: backup '$backup': value for '$key' is not a positive integer"}@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'timeframe'){if (not Base::is_backup_timeframe($val)){push@errors,"[!] Config Error: backup '$backup': value for '$key' is not one of (hourly, midnight, monthly)"}@required_settings=grep {$_ ne $key}@required_settings}elsif ($key eq 'remote'){@required_settings=grep {$_ ne $key}@required_settings;if ($val eq 'yes'){if (not exists$config_ref->{backups}{$backup}{host}){push@errors,"[!] Config Error: backup '$backup': remote backups require 'host' setting"}}elsif ($val eq 'no'){if (exists$config_ref->{backups}{$backup}{host}){push@errors,"[!] Config Error: backup '$backup': 'host' is not a valid setting for a non-remote backup"}}else {push@errors,"[!] Config Error: backup '$backup': value for '$key' does not equal yes or no"}}else {if (not ($key eq 'host')){push@errors,"[!] Config Error: backup '$backup': '$key' is not a valid backup setting"}}}if (@required_settings){for (@required_settings){push@errors,"[!] Config Error: backup '$backup': missing required setting '$_'"}}}my@required_misc_settings=required_misc_settings();while (my ($key,$val)=each %{$config_ref->{misc}}){if ($key eq 'yabsm_snapshot_dir'){@required_misc_settings=grep {$_ ne $key}@required_misc_settings}else {push@errors,"[!] Config Error: '$key' is not a valid setting"}}if (@required_misc_settings){for (@required_misc_settings){push@errors,"[!] Config Error: missing required misc setting '$_'"}}return wantarray ? @errors : \@errors}sub required_subvol_settings {my@settings=qw(mountpoint _5minute_want _5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);return wantarray ? @settings : \@settings}sub required_backup_settings {my@settings=qw(subvol remote keep backup_dir timeframe);return wantarray ? @settings : \@settings}sub required_misc_settings {return wantarray ? ('yabsm_snapshot_dir'): ['yabsm_snapshot_dir']}1;
+YABSMRC
 
 s/^  //mg for values %fatpacked;
 
@@ -50,214 +91,139 @@ unshift @INC, bless \%fatpacked, $class;
   } # END OF FATPACK CODE
 
 
-#  Author: Nicholas Hubbard
-#  Email:  nhub73@keemail.me
-#  WWW:    https://github.com/NicholasBHubbard/yabsm
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
+#
+#  yabsm is a btrfs snapshot manager.
 
 use strict;
 use warnings;
 use 5.010;
 
+my $VERSION = 2.1;
+
 sub usage {
     print <<END_USAGE;
-Usage: yabsm [OPTION] [arg...]
+Usage: yabsm [--help] [--version]
+             <command> [<args>]
 
-  --find, -f <?SUBVOL> <?QUERY>           find a snapshot of SUBVOL using QUERY
+  Use exactly one of the following commands:
 
-  --update-crontab, -u                    update cronjobs in /etc/crontab, based
-                                          off settings specified in /etc/yabsmrc
+  find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
+                                          QUERY. SUBJECT must be a backup or
+                                          subvol defined in /etc/yabsmrc.
 
-  --check-config, -c                      check /etc/yabsmrc for errors. If
-                                          errors are present print their info
-                                          to stdout. Exit with code 0 in either
-                                          case.
+  check-config, check <?FILE>             Check that FILE is a valid yabsm 
+                                          config file for errors. If FILE is
+                                          not specified then check /etc/yabsmrc.
+                                          If errors are present print their 
+                                          messages to stderr and exist with non
+                                          zero status, else print 'all good' to
+                                          stdout.
 
-  --help, -h                              print help (this message) and exit
+  update-crontab, update                  Update cronjobs in /etc/crontab, based
+                                          off the user settings specified in 
+                                          /etc/yabsmrc. This is a root only 
+                                          option.
 
-  Please see 'man yabsm' for detailed information about yabsm.
+  print-crons, crons                      Display the cronjob strings that would
+                                          be written to /etc/crontab if the
+                                          update-crontab command were used.
+
+  take-snap, snap <SUBVOL> <TIMEFRAME>    Take a new snapshot of SUBVOL for the
+                                          TIMEFRAME category. It is not
+                                          recommended to use this option
+                                          manually. This is a root only option.
+
+  incremental-backup, backup <BACKUP>     Perform an incremental backup of
+                                          BACKUP. It is not recommended to use
+                                          this option manually. This is a root
+                                          only option.
+
+  print-subvols, subvols                  Print all the subvols defined in
+                                          /etc/yabsmrc to stdout.
+
+  print-backups, backups                  Print all the backups defined in
+                                          /etc/yabsmrc to stdout.
+
+  bootstrap-backup, bootstrap <BACKUP>    Perform the boostrap phase of the
+                                          btrfs incremental backup process for
+                                          BACKUP. This is a root only option.
+
+  test-remote-backup, test <BACKUP>       Test that BACKUP has been properly
+                                          configured. For BACKUP to be properly
+                                          configured yabsm should be able to
+                                          connect to the remote host and use the
+                                          btrfs command with sudo without having
+                                          to enter any passwords. This is a root
+                                          only option.
+
+  Please see 'man yabsm' for more detailed information about yabsm.
 END_USAGE
 }
 
 use FindBin '$Bin';
 use lib "$Bin/lib";
 
-use Yabsm::Base;
-use Yabsm::Config;
+# Every sub-command has their own module with a main() function
+use Yabsm::TakeSnap;
+use Yabsm::IncrementalBackup;
+use Yabsm::BackupBootstrap;
+use Yabsm::Find;
+use Yabsm::PrintSubvols;
+use Yabsm::PrintBackups;
+use Yabsm::CheckConfig;
+use Yabsm::UpdateEtcCrontab;
+use Yabsm::PrintCrons;
+use Yabsm::TestRemoteBackupConfig;
 
-use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
+# command dispatch table
+my %run_command = ( 'take-snap'          => \&Yabsm::TakeSnap::main
+	          , 'incremental-backup' => \&Yabsm::IncrementalBackup::main
+	          , 'bootstrap-backup'   => \&Yabsm::BackupBootstrap::main
+	          , 'find'               => \&Yabsm::Find::main
+		  , 'print-subvols'      => \&Yabsm::PrintSubvols::main
+		  , 'print-backups'      => \&Yabsm::PrintBackups::main
+	          , 'check-config'       => \&Yabsm::CheckConfig::main
+	          , 'update-crontab'     => \&Yabsm::UpdateEtcCrontab::main
+	          , 'print-crons'        => \&Yabsm::PrintCrons::main
+	          , 'test-remote-backup' => \&Yabsm::TestRemoteBackupConfig::main
+	          );
 
-use Data::Dumper;
+sub unabbreviate {
 
-my @TAKE_SNAPSHOT;
-my $UPDATE_CRONTAB;
-my $DO_BACKUP;
-my $CONFIRM;
-my $BACKUP_BOOTSTRAP;
-my $PRINT_CRONSTRINGS;
-my @FIND;
-my @CHECK_CONFIG;
-my $HELP;
+    my $cmd = shift // die;
 
-GetOptions( 'take-snap|s=s{2}'        => \@TAKE_SNAPSHOT
-	  , 'find|f=s{0,2}'           => \@FIND
-	  , 'update-crontab|u'        => \$UPDATE_CRONTAB
-	  , 'check-config|c=s{0,1}'   => \@CHECK_CONFIG
-	  , 'do-backup|b=s'           => \$DO_BACKUP
-	  , 'yes-i-want-to-do-this|Y' => \$CONFIRM
-	  , 'bootstrap-backup|k=s'    => \$BACKUP_BOOTSTRAP
-	  , 'crons|C'                 => \$PRINT_CRONSTRINGS
-	  , 'help|h'                  => \$HELP
-	  );
-
-if ($HELP) {
-    usage();
-    exit 0;
+    if    ($cmd eq 'snap')            { return 'take-snap'          }
+    elsif ($cmd eq 'backup')          { return 'incremental-backup' }
+    elsif ($cmd eq 'bootstrap')       { return 'bootstrap-backup'   }
+    elsif ($cmd eq 'f')               { return 'find'               }
+    elsif ($cmd eq 'subvols')         { return 'print-subvols'      }
+    elsif ($cmd eq 'backups')         { return 'print-backups'      }
+    elsif ($cmd eq 'check')           { return 'check-config'       }
+    elsif ($cmd eq 'update')          { return 'update-crontab'     }
+    elsif ($cmd eq 'crons')           { return 'print-crons'        }
+    elsif ($cmd eq 'test')            { return 'test-remote-backup' }
+    else                              { return $cmd                 }
 }
 
-if (@CHECK_CONFIG) {
+                 ####################################
+                 #               MAIN               #
+                 ####################################
 
-    my $config_path = pop @CHECK_CONFIG || '/etc/yabsmrc';
+my $cmd = shift @ARGV || (usage() and exit 1);
 
-    Yabsm::Config::read_config($config_path);
+if ($cmd eq '--help' || $cmd eq '-h') { usage() and exit 0 }
 
-    say 'all good';
+if ($cmd eq '--version') { say $VERSION and exit 0 }
 
-    exit 0;
+my $full_cmd = unabbreviate($cmd);
+
+if (not exists $run_command{ $full_cmd} ) {
+    die "yabsm: '$cmd' is not a yabsm command. See 'yabsm --help'.\n"
 }
 
-my $CONFIG_REF = Yabsm::Config::read_config('/etc/yabsmrc');
-Yabsm::Base::initialize_directories($CONFIG_REF);
+$run_command{ $full_cmd }->(@ARGV);
 
-if ($UPDATE_CRONTAB) {
-
-    die "[!] Permission Error: must be root to update /etc/crontab\n" if $<;
-
-    Yabsm::Base::update_etc_crontab($CONFIG_REF);
-
-    exit 0;
-}
-
-if (@TAKE_SNAPSHOT) {
-
-    die "[!] Permission Error: must be root to take a new snapshot\n" if $<;
-
-    # --take-snap option takes two string args. We can be sure
-    # that both args are defined as Getopt::Long will kill the program
-    # if they are not.
-
-    my ($subvol, $timeframe) = @TAKE_SNAPSHOT;
-
-    if (not Yabsm::Base::is_subvol($CONFIG_REF, $subvol)) {
-	die "[!] Error: no such defined subvol '$subvol'\n"
-    }
-
-    if ($CONFIG_REF->{subvols}{$subvol}{"${timeframe}_want"} eq 'no') {
-	die "[!] Error: subvol '$subvol' is not taking '$timeframe' snapshots\n";
-    }
-
-    Yabsm::Base::take_new_snapshot($CONFIG_REF, $subvol, $timeframe);
-    Yabsm::Base::delete_old_snapshots($CONFIG_REF, $subvol, $timeframe);
-
-    exit 0;
-}
-
-if (@FIND) {
-
-    # these variables may or may not be defined.
-    my ($arg1, $arg2) = @FIND;
-
-    # the following logic exists to set the $subject and $query variables.
-    my ($subject, $query);
-
-    if ($arg1) {
-	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg1) ||
-	    Yabsm::Base::is_backup($CONFIG_REF, $arg1)) {
-	    $subject = $arg1;
-	}
-	elsif (Yabsm::Base::is_valid_query($arg1)) {
-	    $query = $arg1;
-	}
-	else {
-	    die "[!] Error: '$arg1' is neither a subvolume or query\n";
-	}
-    }
-    
-    if ($arg2) {
-	if (Yabsm::Base::is_subvol($CONFIG_REF, $arg2) || 
-            Yabsm::Base::is_backup($CONFIG_REF, $arg2)) {
-	    $subject = $arg2;
-	}
-	elsif (Yabsm::Base::is_valid_query($arg2)) {
-	    $query = $arg2;
-	}
-	else {
-	    die "[!] Error: '$arg2' is neither a subvolume or query\n";
-	}
-    }
-
-    if (not defined $subject) {
-	$subject = Yabsm::Base::ask_user_for_subvol_or_backup($CONFIG_REF);
-    }
-
-    if (not defined $query) {
-	$query = Yabsm::Base::ask_user_for_query();
-    }
-
-    # $subvol and $query are properly set at this point
-    my @snaps = Yabsm::Base::answer_query($CONFIG_REF, $subject, $query);
-
-    say for @snaps;
-
-    exit 0;
-}
-
-if ($PRINT_CRONSTRINGS) {
-
-    my @cron_strings = Yabsm::Base::generate_cron_strings($CONFIG_REF);
-
-    say for @cron_strings;
-
-    exit 0;
-}
-
-if ($BACKUP_BOOTSTRAP) {
-
-    die "[!] Permission Error: must be root to perform backup\n" if $<;
-
-    # option takes backup arg
-    my $backup = $BACKUP_BOOTSTRAP;
-
-    if (Yabsm::Base::is_remote_backup($CONFIG_REF, $backup)) {
-	Yabsm::Base::do_backup_bootstrap_ssh($CONFIG_REF, $backup);
-    }
-
-    elsif (Yabsm::Base::is_local_backup($CONFIG_REF, $backup)) {
-	Yabsm::Base::do_backup_bootstrap_local($CONFIG_REF, $backup);
-    }
-
-    else { die "[!] Error: no such defined backup '$backup'\n" }
-
-    exit 0;
-}
-
-if ($DO_BACKUP) {
-
-    die "[!] Permission Error: must be root to perform backup\n" if $<;
-
-    my $backup = $DO_BACKUP;
-
-    if (Yabsm::Base::is_remote_backup($CONFIG_REF, $backup)) {
-	Yabsm::Base::do_backup_ssh($CONFIG_REF, $backup);
-    }
-    elsif (Yabsm::Base::is_local_backup($CONFIG_REF, $backup)) {
-	Yabsm::Base::do_backup_local($CONFIG_REF, $backup);
-    }
-
-    else { die "[!] Error: no such defined backup '$backup'\n" }
-
-    exit 0;
-}
-
-# no options were passed
-usage();
-exit 1;
+exit 0; # all good

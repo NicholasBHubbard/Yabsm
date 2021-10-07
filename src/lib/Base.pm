@@ -1546,7 +1546,7 @@ sub update_etc_crontab { # No test. Is not pure.
 
 	s/\s+$//; # strip trailing whitespace
 
-	next if /root yabsm -/; # don't copy the old yabsm cronjobs
+	next if /yabsm/; # don't copy the old yabsm cronjobs
 
 	say $tmp_fh $_;
     }

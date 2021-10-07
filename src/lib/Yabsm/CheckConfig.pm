@@ -2,6 +2,11 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  Check if a config file is a valid yabsmrc file. If no config file
+#  argument is passed then check /etc/yabsmrc. If the config is
+#  erroneous print all errors to stderr and exit with nonzero status.
+#  Else print 'all good' to stdout.
+
 package Yabsm::CheckYabsmrc;
 
 use strict;

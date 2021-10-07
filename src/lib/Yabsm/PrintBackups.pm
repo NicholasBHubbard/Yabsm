@@ -2,6 +2,8 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  Print the names of all backup's defined in /etc/yabsmrc.
+
 package Yabsm::PrintBackups;
 
 use strict;

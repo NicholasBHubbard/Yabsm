@@ -2,6 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  Find one or more snapshots of a subvol or backup by applying a query.
+#  See the yabsm manual for a detailed explanation on queries.
+
 package Yabsm::Find;
 
 use strict;

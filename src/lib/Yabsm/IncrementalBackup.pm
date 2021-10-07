@@ -2,6 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  Perform a single incremental backup. If the bootstrap phase has not 
+#  been completed then perform the bootstrap instead.
+
 package Yabsm::IncrementalBackup;
 
 use strict;

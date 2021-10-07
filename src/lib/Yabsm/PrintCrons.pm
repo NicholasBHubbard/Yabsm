@@ -2,6 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  Print all the cronjob strings to stdout that would be written to
+#  /etc/crontab if the update-crontab command was used.
+
 package Yabsm::PrintCrons;
 
 use strict;

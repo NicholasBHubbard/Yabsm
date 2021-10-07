@@ -2,6 +2,8 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  Print the names of all subvols's defined in /etc/yabsmrc.
+
 package Yabsm::PrintSubvols;
 
 use strict;

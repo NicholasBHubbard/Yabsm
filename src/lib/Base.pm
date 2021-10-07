@@ -424,7 +424,7 @@ sub delete_old_backups_ssh { # No test. Is not pure.
 sub all_snapshots { # No test. Is not pure.
 
     # Gather all snapshots (full paths) of $subject and return them
-    # sorted from newest to oldest.  $subject can be any user defined
+    # sorted from newest to oldest. $subject can be any user defined
     # subvol or backup. If $subject is a subvol it may make sense to
     # only want snapshots from certain timeframes which can be passed
     # as the >=3'rd arguments.
@@ -487,12 +487,11 @@ sub all_snapshots { # No test. Is not pure.
 
 sub initialize_directories { # No test. Is not pure.
 
-    # This subroutine is called everytime the yabsm script is run
-    # (unless using --help or --check-config flags). This subroutine
-    # allows us to be assured that all needed directories have been
-    # created. The only directories that will not be initialized are
-    # remote backup directories because it is too expensive to establish
-    # an ssh connection everytime the script is run.
+    # This subroutine is called for yabsm commands that work on the
+    # local filesystem. Before executing the command we call this
+    # subroutine so we can assume that all the directories we need
+    # already exist. Remote directories are not initialized because it
+    # is too expensive to arbitrarily establish an ssh connection.
 
     my $config_ref = shift // confess missing_arg();
 
@@ -509,7 +508,7 @@ sub initialize_directories { # No test. Is not pure.
 
     foreach my $subvol (all_subvols($config_ref)) {
 
-	# equivalent: my $subvol_dir = local_snap_dir($config_ref, $subvol);
+	# my $subvol_dir = local_snap_dir($config_ref, $subvol);
 	my $subvol_dir = "$yabsm_root_dir/$subvol";
 
 	if (not -d $subvol_dir) {
@@ -600,8 +599,8 @@ sub bootstrap_snap_dir { # Has test. Is pure.
 
 sub is_snapstring { # Has test. Is pure.
 
-    # Return 1 iff $snapstring is a valid snapstring. Note that this
-    # sub works on absolute paths as well as plain snapstrings.
+    # Return 1 iff $snapstring is a valid snapstring. Works on
+    # absolute paths as well as plain snapstrings.
 
     my $snapstring = shift // confess missing_arg();
 
@@ -610,7 +609,7 @@ sub is_snapstring { # Has test. Is pure.
 
 sub current_time_snapstring { # No test. Is not pure.
     
-    # Return a snapstring name of the current time.
+    # Return a snapstring of the current time.
     
     my ($min, $hr, $day, $mon, $yr) =
       map { sprintf '%02d', $_ } (localtime)[1..5]; 
@@ -623,8 +622,8 @@ sub current_time_snapstring { # No test. Is not pure.
 
 sub n_units_ago_snapstring { # Has test. Is not pure.
 
-    # Return a snapstring of the time $n $unit's ago. The unit can be
-    # minutes, hours or days.
+    # Return a snapstring of the time $n $unit's ago from the current
+    # time. The unit can be minutes, hours or days.
    
     my $n    = shift // confess missing_arg();
     my $unit = shift // confess missing_arg();
@@ -701,8 +700,7 @@ sub is_relative_time { # Has test. Is pure.
 
 sub immediate_to_snapstring { # No test. Is pure. 
 
-    # Resolve an immediate to a snapstring. An immediate is either a
-    # literal time or a relative time.
+    # Resolve an immediate to a snapstring.
 
     my $imm = shift // confess missing_arg();
 
@@ -720,8 +718,7 @@ sub immediate_to_snapstring { # No test. Is pure.
 
 sub literal_time_to_snapstring { # Has test. Is pure.
 
-    # resolve a literal time to a snapstring. Literal times come in one
-    # of 5 different forms denoted by the below named regexs.
+    # Resolve a literal time to a snapstring.
 
     my $lit_time = shift // confess missing_arg();
 
@@ -755,13 +752,13 @@ sub literal_time_to_snapstring { # Has test. Is pure.
 	return nums_to_snapstring($t->year, $1, $2, $3, $4);
     }
 
+    # input should have already been cleansed. 
     confess "[!] Internal Error: '$lit_time' is not a valid literal time";
 }
 
 sub relative_time_to_snapstring { # Has test. Is not pure.
 
-    # resolve a relative time to a snapstring. Relative times have the
-    # form 'back-amount-unit'.
+    # Resolve a relative time to a snapstring.
 
     my $rel_time = shift // confess missing_arg();
 
@@ -788,9 +785,7 @@ sub snapstring_to_nums { # Has test. Is pure.
 sub nums_to_snapstring { # Has test. Is pure.
 
     # Take 5 integer arguments representing in order the year, month,
-    # day, hour, and minute and then return a snapshot name string
-    # that aligns with the format used in current_time_snapstring() which
-    # is the function used to create snapshot names in the first place.
+    # day, hour, and minute and return the corresponding snapstring.
 
     my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
 
@@ -800,8 +795,7 @@ sub nums_to_snapstring { # Has test. Is pure.
 sub snapstring_to_time_piece_obj { # Has test. Is pure.
 
     # Turn a snapshot name string into a Time::Peice object. This is
-    # useful because we can do time arithmetic like adding hours or
-    # minutes on the object.
+    # useful because we can do time arithmetic on these objects.
 
     my $snap = shift // confess missing_arg();
 
@@ -827,9 +821,9 @@ sub time_piece_obj_to_snapstring { # Has test. Is pure.
 
 sub sort_snaps { # Has test. Is pure.
 
-    # Return a sorted version of the inputted array ref of
-    # snapshots. Sorted from newest to oldest. Works with full
-    # paths and plain snapstrings.
+    # Return a sorted version of the inputted snapshot array ref.
+    # The snapshots will be returned newest to oldest. Works with
+    # plain snapstrings and full paths.
 
     my $snaps_ref = shift // confess missing_arg();
 
@@ -843,7 +837,7 @@ sub cmp_snaps { # Has test. Is pure.
     # Return -1 if $snap1 is newer than $snap2.
     # Return 1 if $snap1 is older than $snap2
     # Return 0 if $snap1 and $snap2 are the same. 
-    # Works with both full paths and plain snapstrings.
+    # Works with both plain snapstrings and full paths.
 
     my $snap1 = shift // confess missing_arg();
     my $snap2 = shift // confess missing_arg();
@@ -865,7 +859,8 @@ sub cmp_snaps { # Has test. Is pure.
 sub snap_closest_to { # Has test. Is pure.
 
     # Return the snapshot from $all_snaps_ref that is closest to
-    # $target_snap. $all_snaps_ref is sorted from newest to oldest.
+    # $target_snap. $all_snaps_ref should be sorted from newest to
+    # oldest.
 
     my $all_snaps_ref = shift // confess missing_arg();
     my $target_snap   = shift // confess missing_arg();
@@ -926,7 +921,9 @@ sub snap_closer { # Has test. Is pure.
 
 sub snaps_newer_than { # Has test. Is pure.
 
-    # Return all the snapshots that are newer than $target_snap.
+    # Return all the snapshots from $all_snaps_ref that are newer than
+    # $target_snap. We assume that $all_snaps_ref is sorted from
+    # newest to oldest.
 
     my $all_snaps_ref = shift // confess missing_arg();
     my $target_snap   = shift // confess missing_arg();
@@ -1628,14 +1625,14 @@ sub generate_cron_strings { # No test. Is pure.
 
 sub new_ssh_connection { # No test. Is not pure.
 
-    # Create and return a Net::OpenSSH connection object Kill the
+    # Create and return a Net::OpenSSH connection object. Kill the
     # program if we cannot establish a connection to $remote host.
 
     my $remote_host = shift // confess missing_arg();
 
     my $ssh = Net::OpenSSH->new( $remote_host,
 			       , batch_mode => 1 # Don't try asking for password
-			       , timeout => 30 # timeout after 30 seconds
+			       , timeout => 30   # timeout after 30 seconds
 			       , kill_ssh_on_timeout => 1
 			       );
 

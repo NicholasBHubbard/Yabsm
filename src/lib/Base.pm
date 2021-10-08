@@ -46,8 +46,7 @@ sub take_new_snapshot { # No test. Is not pure.
 
     my $snap_name = current_time_snapstring();
 
-    system("btrfs subvol snapshot -r $mountpoint
-    $snap_dir/$snap_name");
+    system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
 
     return;
 }

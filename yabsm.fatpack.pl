@@ -54,8 +54,7 @@ $fatpacked{"Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'BASE';
   
       my $snap_name = current_time_snapstring();
   
-      system("btrfs subvol snapshot -r $mountpoint
-      $snap_dir/$snap_name");
+      system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
   
       return;
   }
@@ -8579,7 +8578,8 @@ $fatpacked{"Yabsmrc.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSMRC
   sub required_backup_settings {
   
       # return an array of all required backup settings. Note that 'host'
-      # is not included.
+      # is not included, because 'host' only is a required setting for
+      # a backup that is remote.
   
       my @settings = qw(subvol remote keep backup_dir timeframe);
   

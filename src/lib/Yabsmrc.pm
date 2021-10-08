@@ -367,7 +367,8 @@ sub required_subvol_settings {
 sub required_backup_settings {
 
     # return an array of all required backup settings. Note that 'host'
-    # is not included.
+    # is not included, because 'host' only is a required setting for
+    # a backup that is remote.
 
     my @settings = qw(subvol remote keep backup_dir timeframe);
 

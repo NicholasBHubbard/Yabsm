@@ -330,6 +330,9 @@ sub check_config {
     while (my ($key, $val) = each %{$config_ref->{misc}}) {
 	
 	if ($key eq 'yabsm_snapshot_dir') {
+            if (! -d $val) {
+                push @errors, "yabsm: config error: can not find directory '$val'"
+            }
 	    @required_misc_settings = grep { $_ ne $key } @required_misc_settings;
 	}
 

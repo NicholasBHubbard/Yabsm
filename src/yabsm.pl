@@ -132,7 +132,7 @@ if ($cmd eq '--version') { say $VERSION and exit 0 }
 my $full_cmd = unabbreviate($cmd);
 
 if (not exists $run_command{ $full_cmd} ) {
-    die "yabsm: error: '$cmd' is not a yabsm command";
+    die "yabsm: error: '$cmd' is not a yabsm command\n";
 }
 
 $run_command{ $full_cmd }->(@ARGV);

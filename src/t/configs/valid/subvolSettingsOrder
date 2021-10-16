@@ -1,0 +1,17 @@
+#
+# this config shows that we can subvol settings in any order
+#
+
+subvol home {
+    monthly_want=no
+    5minute_want=no
+    hourly_keep=0
+    5minute_keep=0
+    midnight_want=no
+    hourly_want=no
+    mountpoint=/home
+    midnight_keep=0
+    monthly_keep=0
+}
+
+yabsm_dir=/ #always required

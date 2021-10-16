@@ -1,8 +1,7 @@
 #
-# this config shows that comments work and that only required 
-# settings are neccesary.
+# this config shows that comments are skipped
 #
 
 # beginning of line comment
-    # befinning of line comment with leading whitespace
-yabsm_snapshot_dir=/#end of line comment
+    # beginning of line comment with leading whitespace
+yabsm_dir=/#end of line comment

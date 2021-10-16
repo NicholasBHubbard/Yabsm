@@ -1,10 +1,10 @@
 #
-# this config shows that we can define one basic backup
+# this config shows that we must keep at least one backup
 #
 
-yabsm_snapshot_dir=/#always required
+yabsm_dir=/#always required
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
@@ -21,7 +21,7 @@ define_subvol home {
     monthly_keep=0
 }
 
-define_backup homeBackup {
+backup homeBackup {
 
     remote=no
     
@@ -31,5 +31,5 @@ define_backup homeBackup {
 
     timeframe=hourly
 
-    keep=0
+    keep=0 # must keep at least 1
 }

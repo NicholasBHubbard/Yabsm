@@ -2,9 +2,9 @@
 # This config shows that we cannot define a backup for an undefined subvol
 #
 
-yabsm_snapshot_dir=/
+yabsm_dir=/
 
-define_backup homeDebianServer {
+backup homeDebianServer {
 
     remote=no
 

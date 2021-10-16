@@ -1,25 +1,27 @@
 #
-# This config shows that we must define a 'host' setting on a remote backup
+# This config shows that you must define a host setting for a remote backup
 #
 
-yabsm_dir=/#always required
+#
+# this config shows that we can define one basic backup
+#
 
-define_backup homeBackup {
+backup homeBackup {
 
     remote=yes
-    
-    ### host=whatever
 
+    ###host=foo
+    
     subvol=home
-    
+
     backup_dir=/
-    
+
     timeframe=hourly
-    
+
     keep=100
 }
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
@@ -35,3 +37,5 @@ define_subvol home {
     monthly_want=no
     monthly_keep=0
 }
+
+yabsm_dir=/#always required

@@ -2,9 +2,9 @@
 # this config shows that we can define many subvols
 #
 
-yabsm_snapshot_dir=/#always required
+yabsm_dir=/#always required
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
@@ -21,7 +21,7 @@ define_subvol home {
     monthly_keep=0
 }
 
-define_subvol root {
+subvol root {
 
     mountpoint=/root
 
@@ -38,7 +38,7 @@ define_subvol root {
     monthly_keep=0
 }
 
-define_subvol mnt {
+subvol mnt {
 
     mountpoint=/mnt
 
@@ -55,7 +55,7 @@ define_subvol mnt {
     monthly_keep=10000
 }
 
-define_subvol tmp {
+subvol tmp {
 
     mountpoint=/tmp
 

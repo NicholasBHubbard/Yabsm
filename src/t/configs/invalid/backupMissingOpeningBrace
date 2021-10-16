@@ -1,10 +1,11 @@
 #
-# this config shows that we do not parse invalid define_backup headers
+# this config shows that we cannot parse a backup missing
+# an opening curly brace
 #
 
-yabsm_snapshot_dir=/#always required
+yabsm_dir=/#always required
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
@@ -21,7 +22,7 @@ define_subvol home {
     monthly_keep=0
 }
 
-define_backup homeBackup # missing opening curly brace
+backup homeBackup # missing opening curly brace
 
     remote=no
     

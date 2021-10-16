@@ -2,7 +2,7 @@
 # This config shows that we cannot omit a required backup setting
 #
 
-yabsm_snapshot_dir=/
+yabsm_dir=/
 
 define_backup homeBackup {
 

@@ -2,13 +2,13 @@
 # this config shows that we cannot omit a required subvol setting
 #
 
-yabsm_snapshot_dir=/#always required
+yabsm_dir=/#always required
 
 define_subvol home {
 
-    ### mountpoint=/home
+    mountpoint=/home
 
-    5minute_want=no
+    ### 5minute_want=no
     5minute_keep=0
 
     hourly_want=no

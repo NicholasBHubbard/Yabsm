@@ -3,10 +3,10 @@
 #
 
 # has trailing whitespace
-yabsm_snapshot_dir=/       
+yabsm_dir=/       
     
 # all these settings have trailing whitespace
-define_subvol home {         
+subvol home {         
 
     mountpoint=/home      
 
@@ -24,7 +24,7 @@ define_subvol home {
 }         
 
 # all these settings have trailing whitespace followed by a comment
-define_subvol tmp {   # comment
+subvol tmp {   # comment
 
     mountpoint=/tmp      #comment
 
@@ -42,7 +42,7 @@ define_subvol tmp {   # comment
 }  #comment       
 
 # all these settings have trailing whitespace
-define_backup homeBackup {           
+backup homeBackup {           
 
     remote=no	      
     
@@ -56,7 +56,7 @@ define_backup homeBackup {
 }      
 
 # all these settings have trailing whitespace followed by a comment
-define_backup homeBackup {     #comment           
+backup homeBackup {     #comment           
 
     remote=no	      #comment
     

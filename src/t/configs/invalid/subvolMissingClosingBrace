@@ -1,10 +1,11 @@
 #
-# This config shows we cannot define an invalid define_subvol header
+# This config shows that we cannot omit a closing curly brace
+# in a define subvol block
 #
 
-yabsm_snapshot_dir=/#always required
+yabsm_dir=/
 
-define_subvolhome{# no spaces
+subvol home {
 
     mountpoint=/home
 
@@ -19,4 +20,3 @@ define_subvolhome{# no spaces
 
     monthly_want=no
     monthly_keep=0
-}

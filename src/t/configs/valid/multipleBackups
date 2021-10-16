@@ -2,9 +2,9 @@
 # This config shows we can have multiple backups of the same subvol
 #
 
-yabsm_snapshot_dir=/
+yabsm_dir=/
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
@@ -22,7 +22,7 @@ define_subvol home {
 
 }
 
-define_backup homeBackup1 {
+backup homeBackup1 {
 
     remote=yes
     
@@ -37,7 +37,7 @@ define_backup homeBackup1 {
     keep=100
 }
 
-define_backup homeBackup2 {
+backup homeBackup2 {
 
     remote=no
     

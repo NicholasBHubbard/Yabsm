@@ -2,9 +2,9 @@
 # This config shows that all valid backup timeframe settings are allowed
 #
 
-yabsm_snapshot_dir=/
+yabsm_dir=/
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
@@ -21,7 +21,7 @@ define_subvol home {
     monthly_keep=0
 }
 
-define_backup homeHourly {
+backup homeHourly {
 
     remote=no
 
@@ -34,7 +34,7 @@ define_backup homeHourly {
     keep=50
 }
 
-define_backup homeMidnight {
+backup homeMidnight {
 
     remote=no
 
@@ -47,7 +47,7 @@ define_backup homeMidnight {
     keep=50
 }
 
-define_backup homeMonthly {
+backup homeMonthly {
 
     remote=no
 

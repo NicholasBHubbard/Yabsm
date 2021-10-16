@@ -3,7 +3,7 @@
 # misc settings anywhere.
 #
 
-define_backup homeBackup {
+backup homeBackup {
 
     remote=no
     
@@ -16,7 +16,7 @@ define_backup homeBackup {
     keep=100
 }
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
@@ -34,4 +34,4 @@ define_subvol home {
 }
 
 
-yabsm_snapshot_dir=/#always required
+yabsm_dir=/#always required

@@ -1,8 +1,10 @@
 #
-# This config shows that we must define they yabsm_snapshot_dir setting
+# this config shows that we cannot omit the yabsm_dir setting
 #
 
-define_subvol home {
+###yabsm_dir=/
+
+subvol home {
 
     mountpoint=/home
 

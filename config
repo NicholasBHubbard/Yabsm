@@ -1,7 +1,0 @@
-Host debianServer
-    HostName 192.168.1.167
-    User nick
-
-Host namecheap
-    HostName 199.192.19.4
-    User root

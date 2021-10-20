@@ -14,10 +14,10 @@ my $VERSION = 2.1;
 
 sub usage {
     print <<END_USAGE;
-Usage: yabsm [--help] [--version]
+usage: yabsm [--help] [--version]
              <command> [<args>]
 
-  Use exactly one of the following commands:
+  Use one of the following commands:
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or
@@ -72,33 +72,33 @@ Usage: yabsm [--help] [--version]
 END_USAGE
 }
 
-use FindBin '$Bin';
-use lib "$Bin/lib";
+use lib::relative 'lib';
 
-# Every sub-command has their own module with a main() function
-use Yabsm::TakeSnap;
-use Yabsm::IncrementalBackup;
-use Yabsm::BackupBootstrap;
-use Yabsm::Find;
-use Yabsm::PrintSubvols;
-use Yabsm::PrintBackups;
-use Yabsm::CheckConfig;
-use Yabsm::UpdateEtcCrontab;
-use Yabsm::PrintCrons;
-use Yabsm::TestRemoteBackupConfig;
+# Every command has their own module with a main() function
+use App::Commands::TakeSnap;
+use App::Commands::IncrementalBackup;
+use App::Commands::BackupBootstrap;
+use App::Commands::Find;
+use App::Commands::PrintSubvols;
+use App::Commands::PrintBackups;
+use App::Commands::CheckConfig;
+use App::Commands::UpdateEtcCrontab;
+use App::Commands::PrintCrons;
+use App::Commands::TestRemoteBackupConfig;
 
 # command dispatch table
-my %run_command = ( 'take-snap'          => \&Yabsm::TakeSnap::main
-	          , 'incremental-backup' => \&Yabsm::IncrementalBackup::main
-	          , 'bootstrap-backup'   => \&Yabsm::BackupBootstrap::main
-	          , 'find'               => \&Yabsm::Find::main
-		  , 'print-subvols'      => \&Yabsm::PrintSubvols::main
-		  , 'print-backups'      => \&Yabsm::PrintBackups::main
-	          , 'check-config'       => \&Yabsm::CheckYabsmrc::main
-	          , 'update-crontab'     => \&Yabsm::UpdateEtcCrontab::main
-	          , 'print-crons'        => \&Yabsm::PrintCrons::main
-	          , 'test-remote-backup' => \&Yabsm::TestRemoteBackupConfig::main
-	          );
+my %run_command =
+  ( 'take-snap'          => \&App::Commands::TakeSnap::main
+  , 'incremental-backup' => \&App::Commands::IncrementalBackup::main
+  , 'bootstrap-backup'   => \&App::Commands::BackupBootstrap::main
+  , 'find'               => \&App::Commands::Find::main
+  , 'print-subvols'      => \&App::Commands::PrintSubvols::main
+  , 'print-backups'      => \&App::Commands::PrintBackups::main
+  , 'check-config'       => \&App::Commands::CheckYabsmrc::main
+  , 'update-crontab'     => \&App::Commands::UpdateEtcCrontab::main
+  , 'print-crons'        => \&App::Commands::PrintCrons::main
+  , 'test-remote-backup' => \&App::Commands::TestRemoteBackupConfig::main
+  );
 
 sub unabbreviate {
 
@@ -106,17 +106,17 @@ sub unabbreviate {
 
     my $cmd = shift // die;
 
-    if    ($cmd eq 'snap')            { return 'take-snap'          }
-    elsif ($cmd eq 'backup')          { return 'incremental-backup' }
-    elsif ($cmd eq 'bootstrap')       { return 'bootstrap-backup'   }
-    elsif ($cmd eq 'f')               { return 'find'               }
-    elsif ($cmd eq 'subvols')         { return 'print-subvols'      }
-    elsif ($cmd eq 'backups')         { return 'print-backups'      }
-    elsif ($cmd eq 'check')           { return 'check-config'       }
-    elsif ($cmd eq 'update')          { return 'update-crontab'     }
-    elsif ($cmd eq 'crons')           { return 'print-crons'        }
-    elsif ($cmd eq 'test')            { return 'test-remote-backup' }
-    else                              { return $cmd                 }
+    if    ($cmd eq 'snap')      { return 'take-snap'          }
+    elsif ($cmd eq 'backup')    { return 'incremental-backup' }
+    elsif ($cmd eq 'bootstrap') { return 'bootstrap-backup'   }
+    elsif ($cmd eq 'f')         { return 'find'               }
+    elsif ($cmd eq 'subvols')   { return 'print-subvols'      }
+    elsif ($cmd eq 'backups')   { return 'print-backups'      }
+    elsif ($cmd eq 'check')     { return 'check-config'       }
+    elsif ($cmd eq 'update')    { return 'update-crontab'     }
+    elsif ($cmd eq 'crons')     { return 'print-crons'        }
+    elsif ($cmd eq 'test')      { return 'test-remote-backup' }
+    else                        { return $cmd                 }
 }
 
                  ####################################

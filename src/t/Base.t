@@ -34,7 +34,7 @@ sub gen_random_config {
     my %config; 
 
     # misc settings
-    $config{misc}{yabsm_snapshot_dir} = '/.snapshots/yabsm';
+    $config{misc}{yabsm_dir} = '/.snapshots/yabsm';
 
     # subvols
     my @possible_subvols = shuffle ('root', 'home', 'etc', 'var', 'tmp', 'mnt');
@@ -1018,7 +1018,7 @@ sub test_local_snap_dir {
 
     my %config = gen_random_config();
 
-    my $snapshot_root_dir = $config{misc}{yabsm_snapshot_dir};
+    my $snapshot_root_dir = $config{misc}{yabsm_dir};
 
     my $subvol = [Base::all_subvols(\%config)]->[0];
 
@@ -1162,7 +1162,7 @@ sub test_bootstrap_snap_dir {
     
     my %config = gen_random_config();
 
-    my $yabsm_dir = $config{misc}{yabsm_snapshot_dir};
+    my $yabsm_dir = $config{misc}{yabsm_dir};
 
     my $backup = [Base::all_backups(\%config)]->[0];
 
@@ -1172,5 +1172,5 @@ sub test_bootstrap_snap_dir {
 
     my $expected = "$yabsm_dir/$subvol/.backups/$backup/bootstrap-snap";
 
-    ok ( $got eq $expected, 'bootstrap_snap_dir()' );
+    is ( $got, $expected, 'bootstrap_snap_dir()' );
 }

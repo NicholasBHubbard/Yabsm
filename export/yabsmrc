@@ -4,14 +4,14 @@
               # WELCOME TO THE YABSM CONFIGURATION FILE #
               #-----------------------------------------#
 
-yabsm_snapshot_dir=/.snapshots/yabsm
+yabsm_snapshot_dir=/.snapshots/yabsm;
 
 ### Every subvolume requires 11 fields
 
 ### subvolumes can be named whatever you want. These names only 
 ### exist in the world of yabsm.
 
-define_subvol root {
+subvol root {
 
     mountpoint=/
 
@@ -30,11 +30,11 @@ define_subvol root {
 
 ### You can define as many subvols as you want
 
-define_subvol home {
+subvol home {
 
     mountpoint=/home
 
-    5minute_want=yes
+    5minute_want=yes 
     5minute_keep=24
 
     hourly_want=yes
@@ -47,9 +47,9 @@ define_subvol home {
     monthly_keep=0
 }
 
-define_backup homeBackup {
+backup homeBackup {
 
-    remote=yes
+    remote=no
 
     host=myHost
 

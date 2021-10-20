@@ -2,6 +2,10 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  This module exists to provide the read_config() subroutine that
+#  is used to create the $config_ref variable that is passed around
+#  the rest of yabsm constantly.
+
 package App::Config;
 
 use strict;
@@ -213,7 +217,7 @@ sub missing_required_settings {
             @required = grep { $_ ne 'host' } @required;
         }
 
-        my @missing  = array_minus( @required, @defined );
+        my @missing = array_minus( @required, @defined );
         push @err_msgs, "config error: backup '$backup' missing required setting '$_'" for @missing;
     }
 

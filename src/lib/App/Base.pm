@@ -2,21 +2,22 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  The core library of Yabsm.
+#  The core module of Yabsm.
 #
-#  See t/Base.t for this libraries tests.
+#  See t/Base.t for this modules tests.
 #
-#  The $config_ref variable that is passed around many of the
+#  The $config_ref variable that is passed around many of this modules
 #  subroutines is created by the read_config() subroutine from the
 #  App::Config module.
 #
 #  All the subroutines are annoted to communicate if the subroutine
 #  has a unit test in Base.t, and if the function is pure. If the
 #  function is pure it means it has no effects on any external state
-#  whether that be a global variable or the filesystem. A pure
-#  subroutine also always produces the same output if given the same
-#  input. Just because a subroutine does not have a unit test does
-#  not mean it has not been informally tested.
+#  whether that be a global variable or the filesystem, and always
+#  produces the same output given the same input.
+#
+#  Just because a function doesn't have a unit test does not mean it
+#  has not been informally tested.
 
 package App::Base;
 
@@ -34,7 +35,7 @@ use File::Path qw(make_path); # make_path() behaves like 'mkdir -p'
 sub take_new_snapshot { # No test. Is not pure.
 
     # take a single $timeframe snapshot of $subvol. Used for yabsm's
-    # '--take-snap' option.
+    # 'take-snap' command.
 
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
@@ -514,7 +515,7 @@ sub initialize_directories { # No test. Is not pure.
 	    make_path($subvol_dir);
 	}
 
-	my $_5minute_want = $config_ref->{subvols}{$subvol}{_5minute_want};
+	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
@@ -1305,11 +1306,7 @@ sub timeframe_want { # Has test. Is pure.
     my $subvol     = shift // confess missing_arg();
     my $timeframe  = shift // confess missing_arg();
 
-    # perl variable names cannot start with a number. Therefore we
-    # internally store 5minute settings as _5minute settings.
-    $timeframe = '_5minute' if $timeframe eq '5minute';
-
-    return $config_ref->{subvols}{$subvol}{"${timeframe}_want"} eq 'yes';
+    return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
 }
 
 sub timeframe_keep { # Has test. Is pure.
@@ -1319,10 +1316,6 @@ sub timeframe_keep { # Has test. Is pure.
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
     my $timeframe  = shift // confess missing_arg();
-
-    # perl variable names cannot start with a number. Therefore we
-    # internally store 5minute settings as _5minute settings.
-    $timeframe = '_5minute' if $timeframe eq '5minute';
 
     return $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
 }
@@ -1372,8 +1365,8 @@ sub all_backups_of_subvol { # Has test. Is pure.
 
 sub is_subject { # Has test. Is pure.
 
-    # True iff $subject is a valid subject. A subject is either
-    # a subvol or backup.
+    # True iff $subject is an existing user defined subject. A subject
+    # is either a subvol or backup.
 
     my $config_ref = shift // confess missing_arg();
     my $subject    = shift // confess missing_arg();
@@ -1386,7 +1379,7 @@ sub is_subject { # Has test. Is pure.
 
 sub is_subvol { # Has test. Is pure.
 
-    # Return 1 iff $subvol is the name of a defined yabsm subvolume.
+    # Return 1 iff $subvol is the name of a user defined subvol.
     
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
@@ -1396,7 +1389,7 @@ sub is_subvol { # Has test. Is pure.
 
 sub is_backup { # Has test. Is pure.
 
-    # Return 1 iff $backup is the name of a defined yabsm backup.
+    # Return 1 iff $backup is the name of a user defined backup.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
@@ -1404,22 +1397,11 @@ sub is_backup { # Has test. Is pure.
     return any { $_ eq $backup } all_backups($config_ref);
 }
 
-sub is_local_backup { # Has test. Is pure.
-
-    # Return 1 iff $backup is the name of a defined yabsm local backup.
-
-    my $config_ref = shift // confess missing_arg();
-    my $backup     = shift // confess missing_arg();
-
-    if (is_backup($config_ref, $backup)) {
-	return $config_ref->{backups}{$backup}{remote} eq 'no';
-    }
-    else { return 0 }
-}
-
 sub is_remote_backup { # Has test. Is pure.
 
-    # Return 1 iff $backup is the name of a defined yabsm remote backup.
+    # Return 1 iff $backup is the name of a defined local backup. A
+    # local backup is one in which the backups 'remote' field is set
+    # to 'yes'.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
@@ -1427,6 +1409,23 @@ sub is_remote_backup { # Has test. Is pure.
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'yes';
     }
+
+    else { return 0 }
+}
+
+sub is_local_backup { # Has test. Is pure.
+
+    # Return 1 iff $backup is the name of a defined local backup. A
+    # local backup is one in which the backups 'remote' field is set
+    # to 'no'.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    if (is_backup($config_ref, $backup)) {
+	return $config_ref->{backups}{$backup}{remote} eq 'no';
+    }
+
     else { return 0 }
 }
 
@@ -1477,7 +1476,7 @@ sub generate_cron_strings { # No test. Is pure.
 
     foreach my $subvol (all_subvols($config_ref)) {
 
-	my $_5minute_want = $config_ref->{subvols}{$subvol}{_5minute_want};
+	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};

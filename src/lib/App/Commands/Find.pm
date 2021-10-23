@@ -12,7 +12,7 @@ use warnings;
 use 5.010;
 
 use App::Base;
-use App::Yabsmrc;
+use App::Config;
 
 sub die_usage {
     die "usage: yabsm find <SUBVOL> <QUERY>\n";
@@ -25,7 +25,7 @@ sub main {
 
     if (@_) { die_usage() }
 
-    my $config_ref = Yabsmrc::read_config();
+    my $config_ref = App::Config::read_config();
 
     if (not App::Base::is_subject($config_ref, $subject)) {
 	die "error: '$subject' is not a defined subvol or backup\n";

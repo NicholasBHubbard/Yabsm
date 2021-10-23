@@ -10,6 +10,10 @@
 #  subroutines is created by the read_config() subroutine from the
 #  App::Config module.
 #
+#  App::Config::read_config() ensures that the config it produces is
+#  valid, therefore functions in this library do need to worry about
+#  edge cases caused by an erroneus config.
+#
 #  All the subroutines are annoted to communicate if the subroutine
 #  has a unit test in Base.t, and if the function is pure. If the
 #  function is pure it means it has no effects on any external state
@@ -18,6 +22,9 @@
 #
 #  Just because a function doesn't have a unit test does not mean it
 #  has not been informally tested.
+#
+#  An error message prefixed with 'internal error' is an error for a
+#  scenario that should never occur unless a bug is present.
 
 package App::Base;
 
@@ -30,7 +37,7 @@ use Time::Piece;
 use Carp;
 use List::Util qw(any);
 use File::Copy qw(copy move);
-use File::Path qw(make_path); # make_path() behaves like 'mkdir -p'
+use File::Path qw(make_path); # make_path() behaves like 'mkdir --parents'
 
 sub take_new_snapshot { # No test. Is not pure.
 
@@ -54,7 +61,7 @@ sub take_new_snapshot { # No test. Is not pure.
 
 sub delete_old_snapshots { # No test. Is not pure.
     
-    # delete old snapshot(s) based off $subvol's $timeframe_keep
+    # delete old snapshot(s) based off $subvol's ${timeframe}_keep
     # setting defined in the users config. This function should be
     # called directly after take_new_snapshot().
 
@@ -62,12 +69,11 @@ sub delete_old_snapshots { # No test. Is not pure.
     my $subvol     = shift // confess missing_arg();
     my $timeframe  = shift // confess missing_arg();
 
-    # these snaps are sorted from newest to oldest
     my $existing_snaps_ref = all_snapshots($config_ref, $subvol, $timeframe);
 
     my $num_snaps = scalar @$existing_snaps_ref;
 
-    my $num_to_keep = timeframe_keep($config_ref, $subvol, $timeframe);
+    my $num_to_keep = $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
 
     # There is 1 more snapshot than should be kept because we just
     # took a snapshot.
@@ -138,8 +144,8 @@ sub do_backup_local { # No test. Is not pure.
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    my $bootstrap_snap =
-      [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
+    # bootstrap dir should have one snap
+    my $bootstrap_snap = [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
 
     # we have not already bootstrapped
     if (not defined $bootstrap_snap) {
@@ -153,8 +159,7 @@ sub do_backup_local { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     
-    my $tmp_snap =
-      local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+    my $tmp_snap = local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
     
     system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
     
@@ -180,6 +185,7 @@ sub do_backup_ssh { # No test. Is not pure.
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
+    # bootstrap dir should have one snap
     my $bootstrap_snap =
       [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
 
@@ -199,8 +205,7 @@ sub do_backup_ssh { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     
-    my $tmp_snap =
-      local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+    my $tmp_snap = local_yabsm_dir($config_ref, '.tmp/') . current_time_snapstring();
 	
     system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
 	
@@ -232,7 +237,7 @@ sub do_backup_bootstrap { # No test. Is not pure.
     }
 
     else {
-	confess "internal error: no such defined backup '$backup'";
+	confess "internal error: no such user defined backup '$backup'";
     }
 
     return;
@@ -446,7 +451,7 @@ sub all_snapshots { # No test. Is not pure.
 	
 	foreach my $tf (@timeframes) {
 	    
-	    my $snap_dir = local_snap_dir($config_ref, $subvol, $tf);
+	    my $snap_dir = local_yabsm_dir($config_ref, $subvol, $tf);
 	    
 	    if (-d $snap_dir) {
 		push @all_snaps, glob "$snap_dir/*"; 
@@ -487,34 +492,35 @@ sub all_snapshots { # No test. Is not pure.
 
 sub initialize_directories { # No test. Is not pure.
 
-    # This subroutine is called for yabsm commands that work on the
-    # local filesystem. Before executing the command we call this
-    # subroutine so we can assume that all the directories we need
-    # already exist. Remote directories are not initialized because it
-    # is too expensive to arbitrarily establish an ssh connection.
+    # This subroutine is called before yabsm commands that work on the
+    # local filesystem so the rest of the program can be sure all
+    # neccesary dirs exist. Remote directories are not initialized
+    # because it is too expensive to arbitrarily establish an ssh
+    # connection.
 
     my $config_ref = shift // confess missing_arg();
 
-    my $yabsm_root_dir = $config_ref->{misc}{yabsm_dir};
+    my $yabsm_root_dir = local_yabsm_dir($config_ref);
 
     if (not -d $yabsm_root_dir) {
 	make_path($yabsm_root_dir);
     }
 
-    # .tmp dir temporarily holds backup snapshots before they are btrfs sent
+    # .tmp dir holds backup snapshots before they are 'btrfs send'ed
     if (not -d $yabsm_root_dir . '/.tmp') {
 	make_path($yabsm_root_dir . '/.tmp');
     }
 
     foreach my $subvol (all_subvols($config_ref)) {
 
-	# my $subvol_dir = local_snap_dir($config_ref, $subvol);
-	my $subvol_dir = "$yabsm_root_dir/$subvol";
+	my $subvol_dir = local_yabsm_dir($config_ref, $subvol);
 
 	if (not -d $subvol_dir) {
 	    make_path($subvol_dir);
 	}
 
+        # we enforce that the user defines all of these fields
+        # to either 'yes' or 'no'.
 	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
@@ -539,9 +545,10 @@ sub initialize_directories { # No test. Is not pure.
 	# all the backups that are backing up $subvol
 	foreach my $backup (all_backups_of_subvol($config_ref, $subvol)) {
 
-	    # every backup has a dir to hold its bootstrap snapshot
-	    if (not -d "$subvol_dir/.backups/$backup/bootstrap-snap") {
-		make_path("$subvol_dir/.backups/$backup/bootstrap-snap");
+            my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+
+	    if (not -d $bootstrap_snap_dir) {
+		make_path($bootstrap_snap_dir);
 	    }
 
 	    if (is_local_backup($config_ref, $backup)) {
@@ -552,7 +559,9 @@ sub initialize_directories { # No test. Is not pure.
 	    }
 
 	    # if (is_remote_backup($config_ref, $backup)) {
-	    #   ... too expensive to open an ssh connection arbitrarily
+	    #   ... too expensive to open an ssh connection arbitrarily.
+            #   Any subroutine dealing with remote paths is gonna have
+            #   to perform sanity checking itself.
 	    # }
 	}
     }
@@ -560,7 +569,7 @@ sub initialize_directories { # No test. Is not pure.
     return;
 }
 
-sub local_snap_dir { # Has test. Is pure.
+sub local_yabsm_dir { # Has test. Is pure.
 
     # Return the local directory path for yabsm snapshots. The $subvol
     # and $timeframe arguments are optional. Note that we do not check
@@ -585,16 +594,16 @@ sub local_snap_dir { # Has test. Is pure.
 sub bootstrap_snap_dir { # Has test. Is pure.
 
     # Return the path of the directory holding the bootstrap snapshot for
-    # $backup. The bootstrap snapshot is used for incremental backups.
+    # $backup. The bootstrap snapshot is used for btrfs incremental backups.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
-    my $yabsm_root_dir = $config_ref->{misc}{yabsm_dir};
+    my $yabsm_root_dir = local_yabsm_dir($config_ref);
 
-    return "$yabsm_root_dir/$subvol/.backups/$backup/bootstrap-snap";
+    return "$yabsm_root_dir/.cache/$subvol/backups/$backup/bootstrap-snap";
 }
 
 sub is_snapstring { # Has test. Is pure.
@@ -1298,28 +1307,6 @@ sub is_backup_timeframe { # Has test. Is pure.
     return any { $_ eq $timeframe } all_backup_timeframes();
 }
 
-sub timeframe_want { # Has test. Is pure.
-
-    # True iff $subvol wants $timeframe snapshots.
-
-    my $config_ref = shift // confess missing_arg();
-    my $subvol     = shift // confess missing_arg();
-    my $timeframe  = shift // confess missing_arg();
-
-    return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
-}
-
-sub timeframe_keep { # Has test. Is pure.
-
-    # Return number of $timeframe snapshots to be kept for $subvol.
-
-    my $config_ref = shift // confess missing_arg();
-    my $subvol     = shift // confess missing_arg();
-    my $timeframe  = shift // confess missing_arg();
-
-    return $config_ref->{subvols}{$subvol}{"${timeframe}_keep"};
-}
-
 sub all_subvols { # Has test. Is pure.
 
     # Return an array of the names of every user defined subvol.
@@ -1556,7 +1543,7 @@ sub test_remote_backup_config { # No test. Is not pure.
     # program will die if we cannot connect to $remote_host without a password
     my $ssh = new_ssh_connection($remote_host);
 
-    $ssh->system('sudo -n btrfs --help > /dev/null')
+    $ssh->system('sudo -n btrfs --help 1>/dev/null')
       or die "Could run btrfs as sudo without password on host '$remote_host': " . $ssh->error . "\n";
 
     return;

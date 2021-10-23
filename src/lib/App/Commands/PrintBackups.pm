@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Print the names of all backup's defined in /etc/yabsmrc.
+#  Print the names of all user defined backups separated by newlines.
 
 package App::Commands::PrintBackups;
 

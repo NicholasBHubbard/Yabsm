@@ -7,7 +7,7 @@
 #  erroneous print all errors to stderr and exit with nonzero status.
 #  Else print 'all good' to stdout.
 
-package App::Commands::CheckYabsmrc;
+package App::Commands::CheckConfig;
 
 use strict;
 use warnings;
@@ -21,13 +21,13 @@ sub die_usage {
 
 sub main {
 
-    my $config_path = shift // '/etc/yabsmrc';
+    my $path = shift // '/etc/yabsmrc';
 
     if (@_) { die_usage() }
 
     # read_config() will kill the program with error
     # messages if the config is erroneous.
-    App::Config::read_config($config_path);
+    App::Config::read_config( $path );
 
     say 'all good';
 

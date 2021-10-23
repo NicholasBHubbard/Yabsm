@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Perform the bootstrap phase of an incremental backup.
+#  Perform the bootstrap phase of a btrfs incremental backup.
 
 package App::Commands::BackupBootstrap;
 

@@ -2,6 +2,18 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
+#  Take a single readonly TIMEFRAME snapshot for a user defined SUBVOL
+#  then delete the appropiate snapshot(s). If the number of existing
+#  snapshots is yet to exceed the number of snapshots to be kept then
+#  no snapshots are deleted. If there is one more existing snapshot
+#  then what should be be kept (the most common scenario because we
+#  just took a snapshot) then we delete the oldest existing
+#  snapshot. The final scenario is that the user changed their config
+#  to keep less snapshots than they were keeping prior in which case
+#  we repeatedly delete the oldest snapshot until the number of
+#  existing snapshots is equal to the number of snapshots that should
+#  be kept.
+
 package App::Commands::TakeSnap;
 
 use strict;
@@ -12,7 +24,7 @@ use App::Base;
 use App::Config;
 
 sub die_usage {
-    die "usage: yabsm take-snap <SUBVOL> <QUERY>\n";
+    die "usage: yabsm take-snap <SUBVOL> <TIMEFRAME>\n";
 }
 
 sub main {

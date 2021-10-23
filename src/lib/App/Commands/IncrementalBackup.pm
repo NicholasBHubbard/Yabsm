@@ -3,7 +3,7 @@
 #  License: MIT
 
 #  Perform a single incremental backup. If the bootstrap phase has not 
-#  been completed then perform the bootstrap instead.
+#  been completed then perform then perform the bootstrap instead.
 
 package App::Commands::IncrementalBackup;
 
@@ -34,6 +34,7 @@ sub main {
 
     App::Base::initialize_directories($config_ref);
 
+    # do_backup() will perform the bootstrap phase if needed
     App::Base::do_backup($config_ref, $backup);
 
     return;

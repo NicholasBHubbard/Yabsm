@@ -88,17 +88,17 @@ use App::Commands::TestRemoteBackupConfig;
 
 # command dispatch table
 my %run_command =
-  ( 'take-snap'          => \&App::Commands::TakeSnap::main
-  , 'incremental-backup' => \&App::Commands::IncrementalBackup::main
-  , 'bootstrap-backup'   => \&App::Commands::BackupBootstrap::main
-  , 'find'               => \&App::Commands::Find::main
-  , 'print-subvols'      => \&App::Commands::PrintSubvols::main
-  , 'print-backups'      => \&App::Commands::PrintBackups::main
-  , 'check-config'       => \&App::Commands::CheckYabsmrc::main
-  , 'update-crontab'     => \&App::Commands::UpdateEtcCrontab::main
-  , 'print-crons'        => \&App::Commands::PrintCrons::main
-  , 'test-remote-backup' => \&App::Commands::TestRemoteBackupConfig::main
-  );
+   ( 'take-snap'          => \&App::Commands::TakeSnap::main
+   , 'incremental-backup' => \&App::Commands::IncrementalBackup::main
+   , 'bootstrap-backup'   => \&App::Commands::BackupBootstrap::main
+   , 'find'               => \&App::Commands::Find::main
+   , 'print-subvols'      => \&App::Commands::PrintSubvols::main
+   , 'print-backups'      => \&App::Commands::PrintBackups::main
+   , 'check-config'       => \&App::Commands::CheckConfig::main
+   , 'update-crontab'     => \&App::Commands::UpdateEtcCrontab::main
+   , 'print-crons'        => \&App::Commands::PrintCrons::main
+   , 'test-remote-backup' => \&App::Commands::TestRemoteBackupConfig::main
+   );
 
 sub unabbreviate {
 
@@ -132,7 +132,7 @@ if ($cmd eq '--version') { say $VERSION and exit 0 }
 my $full_cmd = unabbreviate($cmd);
 
 if (not exists $run_command{ $full_cmd} ) {
-    die "yabsm: error: '$cmd' is not a yabsm command\n";
+    die "error: no such command '$cmd'\n";
 }
 
 $run_command{ $full_cmd }->(@ARGV);

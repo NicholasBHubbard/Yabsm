@@ -1,0 +1,14 @@
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ConnectionCache.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/Constants.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ModuleLoader.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/OSTracer.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ObjectRemote.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/SSH.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ShellQuoter.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ShellQuoter/Chain.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ShellQuoter/MSCmd.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ShellQuoter/MSWin.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ShellQuoter/POSIX.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ShellQuoter/csh.pm
+/home/nick/src/perl/yabsm/local/lib/perl5/Net/OpenSSH/ShellQuoter/fish.pm

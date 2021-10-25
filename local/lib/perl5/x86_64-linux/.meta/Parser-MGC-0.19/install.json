@@ -1,0 +1,1 @@
+{"provides":{"Parser::MGC":{"version":"0.19","file":"lib/Parser/MGC.pm"},"Parser::MGC::Examples::EvaluateExpression":{"file":"lib/Parser/MGC/Examples/EvaluateExpression.pm"}},"target":"Parser::MGC","version":"0.19","name":"Parser::MGC","dist":"Parser-MGC-0.19","pathname":"P/PE/PEVANS/Parser-MGC-0.19.tar.gz"}

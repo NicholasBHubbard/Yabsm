@@ -1,0 +1,59 @@
+{
+   "abstract" : "a C<try/catch/finally> syntax for perl",
+   "author" : [
+      "Paul Evans <leonerd@leonerd.org.uk>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Module::Build version 0.4231",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : 2
+   },
+   "name" : "Syntax-Keyword-Try",
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "ExtUtils::CBuilder" : 0
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "Module::Build" : "0.4004",
+            "XS::Parse::Keyword::Builder" : "0.06"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "XS::Parse::Keyword" : "0.06",
+            "perl" : "5.014"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Test::More" : "0.88"
+         }
+      }
+   },
+   "provides" : {
+      "Syntax::Keyword::Try" : {
+         "file" : "lib/Syntax/Keyword/Try.pm",
+         "version" : "0.26"
+      },
+      "Syntax::Keyword::Try::Deparse" : {
+         "file" : "lib/Syntax/Keyword/Try/Deparse.pm",
+         "version" : "0.26"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ],
+      "x_IRC" : "irc://irc.perl.org/#io-async"
+   },
+   "version" : "0.26",
+   "x_serialization_backend" : "JSON::PP version 4.06"
+}

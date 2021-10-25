@@ -55,7 +55,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
-      my $snap_dir = local_snap_dir($config_ref, $subvol, $timeframe);
+      my $snap_dir = local_yabsm_dir($config_ref, $subvol, $timeframe);
   
       my $snap_name = current_time_snapstring();
   
@@ -164,7 +164,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
       
-      my $tmp_snap = local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+      my $tmp_snap = local_yabsm_dir($config_ref, '.tmp/') . current_time_snapstring();
       
       system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
       

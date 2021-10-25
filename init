@@ -5,16 +5,16 @@
 #  WWW:    https://github.com/NicholasBHubbard/yabsm
 #
 #  This script initializes yabsm. This script should be run by the
-#  user after they clone the git repository, and can then be
-#  discarded.
+#  user after they clone the git repository. After running this script
+#  the git repository may be removed.
 
 use strict;
 use warnings;
-use 5.010;
+use v5.16.3;
 
-die "Permission denied\n" if $<;
+die "error: permission denied\n" if $<;
 
-die "[!] Perl version must be at least 5.10\n" if $] < 5.010000;
+die "error: your perl version '$]' is less than 5.16.3" if $] < 5.016003;
 
 use FindBin '$Bin';
 use File::Copy 'copy';

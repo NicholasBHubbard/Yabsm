@@ -10,6 +10,8 @@ use strict;
 use warnings;
 use v5.16.3;
 
+die "error: your perl version '$]' is less than 5.16.3" if $] < 5.016003;
+
 my $YABSM_VERSION = 2.1;
 
 sub usage {

@@ -1,0 +1,88 @@
+=head2 Sun Oct 24 20:12:28 2021: C<Module> L<Exporter::Tiny|Exporter::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/src/lib/App/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.002002>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sun Oct 24 20:12:29 2021: C<Module> L<XSLoader|XSLoader>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/src/lib/App/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.24>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sun Oct 24 20:12:32 2021: C<Module> L<List::MoreUtils::XS|List::MoreUtils::XS>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/src/lib/App/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.430>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sun Oct 24 20:12:35 2021: C<Module> L<List::MoreUtils|List::MoreUtils>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/src/lib/App/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.430>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

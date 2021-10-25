@@ -2,9 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  This module exists to provide the read_config() subroutine that
-#  is used to create the $config_ref variable that is passed around
-#  the rest of yabsm constantly.
+#  This module exists to provide the read_config() subroutine that is
+#  used to create the $config_ref variable that is passed around the
+#  rest of yabsm constantly. See t/Config.t for this modules testing.
 
 package App::Config;
 

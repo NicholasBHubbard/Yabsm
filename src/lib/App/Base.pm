@@ -47,7 +47,7 @@ sub take_new_snapshot { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    my $snap_dir = local_snap_dir($config_ref, $subvol, $timeframe);
+    my $snap_dir = local_yabsm_dir($config_ref, $subvol, $timeframe);
 
     my $snap_name = current_time_snapstring();
 
@@ -156,7 +156,7 @@ sub do_backup_local { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     
-    my $tmp_snap = local_snap_dir($config_ref, '.tmp/') . current_time_snapstring();
+    my $tmp_snap = local_yabsm_dir($config_ref, '.tmp/') . current_time_snapstring();
     
     system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
     

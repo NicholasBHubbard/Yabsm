@@ -177,7 +177,6 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
       return;
   }
   
-  
   sub do_backup_ssh { # No test. Is not pure.
   
       # Perform a single incremental btrfs backup of $backup over ssh,
@@ -429,7 +428,6 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   	return;
       }
   }
-  
   
   sub all_snapshots { # No test. Is not pure.
   
@@ -1314,6 +1312,17 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
       return scalar grep { $_ eq $timeframe } all_backup_timeframes();
   }
   
+  sub timeframe_want { # Has test. Is pure.
+  
+      # true iff $subvol wants to take $timeframe snapshots.
+  
+      my $config_ref = shift // confess missing_arg();
+      my $subvol     = shift // confess missing_arg();
+      my $timeframe  = shift // confess missing_arg();
+  
+      return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
+  }
+  
   sub all_subvols { # Has test. Is pure.
   
       # Return an array of the names of every user defined subvol.
@@ -2020,9 +2029,9 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   #  WWW:     https://github.com/NicholasBHubbard/yabsm
   #  License: MIT
   
-  #  This module exists to provide the read_config() subroutine that
-  #  is used to create the $config_ref variable that is passed around
-  #  the rest of yabsm constantly.
+  #  This module exists to provide the read_config() subroutine that is
+  #  used to create the $config_ref variable that is passed around the
+  #  rest of yabsm constantly. See t/Config.t for this modules testing.
   
   package App::Config;
   
@@ -2040,7 +2049,7 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   use Parser::MGC;
   use base 'Parser::MGC';
   
-  my %regex = ( path      => qr/\/[\w\.\/_-]*/
+  my %regex = ( path      => qr/\/\S*/
               , name      => qr/[a-zA-Z]\w*/
               , whole_num => qr/\d+/
               , nat_num   => qr/[1-9]\d*/

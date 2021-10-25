@@ -566,9 +566,9 @@ sub initialize_directories { # No test. Is not pure.
 
 sub local_yabsm_dir { # Has test. Is pure.
 
-    # Return the local directory path for yabsm snapshots. The $subvol
-    # and $timeframe arguments are optional. Note that we do not check
-    # check that $subvol and $timeframe are a valid subvol/timeframe.
+    # Return the local directory path to the/a yabsm directory. The
+    # $subvol and $timeframe arguments are optional. Note that we do not
+    # check check that $subvol and $timeframe are a valid subvol/timeframe.
 
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift; # optional

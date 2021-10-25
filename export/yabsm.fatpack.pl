@@ -2040,7 +2040,7 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   use Parser::MGC;
   use base 'Parser::MGC';
   
-  my %regex = ( path      => qr/\/\w*/
+  my %regex = ( path      => qr/\/[\w\.\/_-]*/
               , name      => qr/[a-zA-Z]\w*/
               , whole_num => qr/\d+/
               , nat_num   => qr/[1-9]\d*/

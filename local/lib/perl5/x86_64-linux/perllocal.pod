@@ -1,202 +1,4 @@
-=head2 Sun Oct 24 19:33:27 2021: C<Module> L<CPAN::Meta::YAML|CPAN::Meta::YAML>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 0.018>
-
-=item *
-
-C<EXE_FILES: >
-
-=back
-
-=head2 Sun Oct 24 19:33:49 2021: C<Module> L<JSON::PP|JSON::PP>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 4.06>
-
-=item *
-
-C<EXE_FILES: bin/json_pp>
-
-=back
-
-=head2 Sun Oct 24 19:33:50 2021: C<Module> L<CPAN::Meta::Requirements|CPAN::Meta::Requirements>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 2.140>
-
-=item *
-
-C<EXE_FILES: >
-
-=back
-
-=head2 Sun Oct 24 19:33:51 2021: C<Module> L<CPAN::Meta|CPAN::Meta>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 2.150010>
-
-=item *
-
-C<EXE_FILES: >
-
-=back
-
-=head2 Sun Oct 24 19:34:00 2021: C<Module> L<Test::Harness|Test::Harness>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 3.42>
-
-=item *
-
-C<EXE_FILES: bin/prove>
-
-=back
-
-=head2 Sun Oct 24 19:34:22 2021: C<Module> L<Try::Tiny|Try::Tiny>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 0.30>
-
-=item *
-
-C<EXE_FILES: >
-
-=back
-
-=head2 Sun Oct 24 19:34:22 2021: C<Module> L<Test::Fatal|Test::Fatal>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 0.016>
-
-=item *
-
-C<EXE_FILES: >
-
-=back
-
-=head2 Sun Oct 24 19:34:27 2021: C<Module> L<File::Slurp::Tiny|File::Slurp::Tiny>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 0.004>
-
-=item *
-
-C<EXE_FILES: >
-
-=back
-
-=head2 Sun Oct 24 19:40:06 2021: C<Module> L<Array::Utils|Array::Utils>
-
-=over 4
-
-=item *
-
-C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
-
-=item *
-
-C<LINKTYPE: dynamic>
-
-=item *
-
-C<VERSION: 0.5>
-
-=item *
-
-C<EXE_FILES: >
-
-=back
-
-=head2 Sun Oct 24 19:40:17 2021: C<Module> L<Net::OpenSSH|Net::OpenSSH>
+=head2 Mon Oct 25 10:22:37 2021: C<Module> L<Net::OpenSSH|Net::OpenSSH>
 
 =over 4
 
@@ -218,7 +20,7 @@ C<EXE_FILES: >
 
 =back
 
-=head2 Sun Oct 24 19:54:40 2021: C<Module> L<lib::relative|lib::relative>
+=head2 Mon Oct 25 10:22:48 2021: C<Module> L<CPAN::Meta::YAML|CPAN::Meta::YAML>
 
 =over 4
 
@@ -232,7 +34,7 @@ C<LINKTYPE: dynamic>
 
 =item *
 
-C<VERSION: 1.000>
+C<VERSION: 0.018>
 
 =item *
 
@@ -240,7 +42,7 @@ C<EXE_FILES: >
 
 =back
 
-=head2 Mon Oct 25 09:09:20 2021: C<Module> L<Config::General|Config::General>
+=head2 Mon Oct 25 10:23:11 2021: C<Module> L<JSON::PP|JSON::PP>
 
 =over 4
 
@@ -254,7 +56,29 @@ C<LINKTYPE: dynamic>
 
 =item *
 
-C<VERSION: 2.63>
+C<VERSION: 4.06>
+
+=item *
+
+C<EXE_FILES: bin/json_pp>
+
+=back
+
+=head2 Mon Oct 25 10:23:13 2021: C<Module> L<CPAN::Meta::Requirements|CPAN::Meta::Requirements>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.140>
 
 =item *
 
@@ -262,7 +86,7 @@ C<EXE_FILES: >
 
 =back
 
-=head2 Mon Oct 25 09:10:34 2021: C<Module> L<ExtUtils::Config|ExtUtils::Config>
+=head2 Mon Oct 25 10:23:14 2021: C<Module> L<CPAN::Meta|CPAN::Meta>
 
 =over 4
 
@@ -276,7 +100,7 @@ C<LINKTYPE: dynamic>
 
 =item *
 
-C<VERSION: 0.008>
+C<VERSION: 2.150010>
 
 =item *
 
@@ -284,7 +108,7 @@ C<EXE_FILES: >
 
 =back
 
-=head2 Mon Oct 25 09:14:33 2021: C<Module> L<App::FatPacker|App::FatPacker>
+=head2 Mon Oct 25 10:23:22 2021: C<Module> L<Test::Harness|Test::Harness>
 
 =over 4
 
@@ -298,15 +122,103 @@ C<LINKTYPE: dynamic>
 
 =item *
 
-C<VERSION: 0.010008>
+C<VERSION: 3.42>
 
 =item *
 
-C<EXE_FILES: bin/fatpack>
+C<EXE_FILES: bin/prove>
 
 =back
 
-=head2 Mon Oct 25 09:29:37 2021: C<Module> L<Sub::Uplevel|Sub::Uplevel>
+=head2 Mon Oct 25 10:23:44 2021: C<Module> L<Try::Tiny|Try::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.30>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 10:23:44 2021: C<Module> L<Test::Fatal|Test::Fatal>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.016>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 10:23:49 2021: C<Module> L<File::Slurp::Tiny|File::Slurp::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.004>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 10:24:04 2021: C<Module> L<Array::Utils|Array::Utils>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.5>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 10:24:13 2021: C<Module> L<Sub::Uplevel|Sub::Uplevel>
 
 =over 4
 
@@ -328,7 +240,7 @@ C<EXE_FILES: >
 
 =back
 
-=head2 Mon Oct 25 09:29:38 2021: C<Module> L<Test::Exception|Test::Exception>
+=head2 Mon Oct 25 10:24:13 2021: C<Module> L<Test::Exception|Test::Exception>
 
 =over 4
 
@@ -343,6 +255,50 @@ C<LINKTYPE: dynamic>
 =item *
 
 C<VERSION: 0.43>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 10:26:28 2021: C<Module> L<App::FatPacker|App::FatPacker>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.010008>
+
+=item *
+
+C<EXE_FILES: bin/fatpack>
+
+=back
+
+=head2 Mon Oct 25 10:27:19 2021: C<Module> L<lib::relative|lib::relative>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.000>
 
 =item *
 

@@ -240,3 +240,113 @@ C<EXE_FILES: >
 
 =back
 
+=head2 Mon Oct 25 09:09:20 2021: C<Module> L<Config::General|Config::General>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.63>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 09:10:34 2021: C<Module> L<ExtUtils::Config|ExtUtils::Config>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.008>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 09:14:33 2021: C<Module> L<App::FatPacker|App::FatPacker>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.010008>
+
+=item *
+
+C<EXE_FILES: bin/fatpack>
+
+=back
+
+=head2 Mon Oct 25 09:29:37 2021: C<Module> L<Sub::Uplevel|Sub::Uplevel>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.2800>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Oct 25 09:29:38 2021: C<Module> L<Test::Exception|Test::Exception>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.43>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

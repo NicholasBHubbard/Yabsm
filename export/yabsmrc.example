@@ -17,8 +17,8 @@ subvol root {
     midnight_want=yes
     midnight_keep=21
     
-    monthly_want=no
-    monthly_keep=0
+    monthly_want=yes
+    monthly_keep=12
 }
 
 subvol home {

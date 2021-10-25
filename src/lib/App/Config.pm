@@ -32,7 +32,7 @@ my %regex = ( path      => qr/\/\S*/
 
 sub read_config {
 
-    my $file = shift // '/etc/yabsmrc';
+    my $file = shift // '/etc/yabsm.conf';
 
     my $parser = __PACKAGE__->new( toplevel => 'p'
                                  , patterns => { comment => $regex{comment}

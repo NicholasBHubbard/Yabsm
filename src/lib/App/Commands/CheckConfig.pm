@@ -22,7 +22,7 @@ sub die_usage {
 
 sub main {
 
-    my $path = shift // '/etc/yabsmrc';
+    my $path = shift // '/etc/yabsm.conf';
 
     if (@_) { die_usage() }
 

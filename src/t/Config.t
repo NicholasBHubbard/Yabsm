@@ -4,7 +4,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 #
-#  Testing for the Yabsmrc.pm library.
+#  Testing for the Config.pm library.
 
 use strict;
 use warnings;

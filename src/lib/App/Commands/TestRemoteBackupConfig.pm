@@ -4,7 +4,7 @@
 #
 #  TODO
 
-package App::Commands::TestRemoteBackupYabsmrc;
+package App::Commands::TestRemoteBackupConfig;
 
 use strict;
 use warnings;

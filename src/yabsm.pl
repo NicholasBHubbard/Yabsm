@@ -23,20 +23,20 @@ usage: yabsm [--help] [--version]
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or
-                                          subvol defined in /etc/yabsmrc.
+                                          subvol defined in /etc/yabsm.conf.
 
-  check-config, check <?FILE>             Check that FILE is a valid yabsm 
+  check-config, check <?FILE>             Check that FILE is a valid yabsm
                                           config file for errors. If FILE is
-                                          not specified then check /etc/yabsmrc.
-                                          If errors are present print their 
-                                          messages to stderr and exist with non
-                                          zero status, else print 'all good' to
-                                          stdout.
+                                          not specified then check
+                                          /etc/yabsm.conf. If errors are present
+                                          print their messages to stderr and 
+                                          exit with non zero status, else print
+                                          'all good' to stdout.
 
   update-crontab, update                  Update cronjobs in /etc/crontab, based
                                           off the user settings specified in 
-                                          /etc/yabsmrc. This is a root only 
-                                          option.
+                                          /etc/yabsm.conf. This is a root only 
+                                          command.
 
   print-crons, crons                      Display the cronjob strings that would
                                           be written to /etc/crontab if the
@@ -44,31 +44,31 @@ usage: yabsm [--help] [--version]
 
   take-snap, snap <SUBVOL> <TIMEFRAME>    Take a new snapshot of SUBVOL for the
                                           TIMEFRAME category. It is not
-                                          recommended to use this option
-                                          manually. This is a root only option.
+                                          recommended to use this command
+                                          manually. This is a root only command.
 
   incremental-backup, backup <BACKUP>     Perform an incremental backup of
                                           BACKUP. It is not recommended to use
-                                          this option manually. This is a root
-                                          only option.
-
-  print-subvols, subvols                  Print all the subvols defined in
-                                          /etc/yabsmrc to stdout.
-
-  print-backups, backups                  Print all the backups defined in
-                                          /etc/yabsmrc to stdout.
+                                          this command manually. This is a root
+                                          only command.
 
   bootstrap-backup, bootstrap <BACKUP>    Perform the boostrap phase of the
                                           btrfs incremental backup process for
-                                          BACKUP. This is a root only option.
+                                          BACKUP. This is a root only command.
 
-  test-remote-backup, test <BACKUP>       Test that BACKUP has been properly
-                                          configured. For BACKUP to be properly
-                                          configured yabsm should be able to
-                                          connect to the remote host and use the
-                                          btrfs command with sudo without having
-                                          to enter any passwords. This is a root
-                                          only option.
+  print-subvols, subvols                  Print all the subvols defined in
+                                          /etc/yabsm.conf to stdout.
+
+  print-backups, backups                  Print all the backups defined in
+                                          /etc/yabsm.conf to stdout.
+
+  test-remote-conf, test-remote <BACKUP>  Test that the remote BACKUP has been 
+                                          properly configured. For BACKUP to be 
+                                          properly configured yabsm should be
+                                          able to connect to the remote host and
+                                          use the btrfs command with sudo 
+                                          without having to enter any passwords.
+                                          This is a root only command.
 
   Please see 'man yabsm' for more detailed information about yabsm.
 END_USAGE

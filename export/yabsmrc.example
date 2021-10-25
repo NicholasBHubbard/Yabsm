@@ -1,15 +1,8 @@
-# /etc/yabsmrc
-                                      
               #-----------------------------------------#
-              # WELCOME TO THE YABSM CONFIGURATION FILE #
+              #         YABSM CONFIGURATION FILE        #
               #-----------------------------------------#
 
-yabsm_snapshot_dir=/.snapshots/yabsm;
-
-### Every subvolume requires 11 fields
-
-### subvolumes can be named whatever you want. These names only 
-### exist in the world of yabsm.
+yabsm_dir=/.snapshots/yabsm
 
 subvol root {
 
@@ -27,8 +20,6 @@ subvol root {
     monthly_want=no
     monthly_keep=0
 }
-
-### You can define as many subvols as you want
 
 subvol home {
 
@@ -49,14 +40,13 @@ subvol home {
 
 backup homeBackup {
 
-    remote=no
-
-    host=myHost
-
     subvol=home
 
-    # dir on remote host
-    backup_dir=/.backups/home
+    remote=yes
+
+    host=someHost
+
+    backup_dir=/.backups/homeBackup
 
     timeframe=midnight
 

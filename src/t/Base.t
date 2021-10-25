@@ -61,8 +61,8 @@ sub gen_random_config {
 
 	$config{subvols}{$subvol}{mountpoint} = $mountpoint;
 
-	$config{subvols}{$subvol}{_5minute_want} = $_5minute_want;
-	$config{subvols}{$subvol}{_5minute_keep} = $_5minute_keep;
+	$config{subvols}{$subvol}{'5minute_want'} = $_5minute_want;
+	$config{subvols}{$subvol}{'5minute_keep'} = $_5minute_keep;
 
 	$config{subvols}{$subvol}{hourly_want} = $hourly_want;
 	$config{subvols}{$subvol}{hourly_keep} = $hourly_keep;
@@ -1108,6 +1108,26 @@ sub test_is_backup_timeframe {
     my $falses = not($f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8);
 
     ok ( $trues && $falses, 'is_backup_timeframe()' );
+}
+
+test_timeframe_want();
+sub test_timeframe_want {
+
+    my $config_ref = gen_random_config();
+
+    my $t = 1;
+    for my $subvol (App::Base::all_subvols($config_ref)) {
+        for my $tframe (App::Base::all_subvol_timeframes()) {
+            if ('yes' eq $config_ref->{subvols}{$subvol}{"${tframe}_want"}) {
+                $t = 0 unless App::Base::timeframe_want($config_ref, $subvol, $tframe);
+            }
+            else {
+                $t = 0 if App::Base::timeframe_want($config_ref, $subvol, $tframe);
+            }
+        }
+    }
+
+    ok ( $t, 'timeframe_want()' );
 }
 
 test_bootstrap_snap_dir();

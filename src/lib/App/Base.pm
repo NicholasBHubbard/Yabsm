@@ -169,7 +169,6 @@ sub do_backup_local { # No test. Is not pure.
     return;
 }
 
-
 sub do_backup_ssh { # No test. Is not pure.
 
     # Perform a single incremental btrfs backup of $backup over ssh,
@@ -421,7 +420,6 @@ sub delete_old_backups_ssh { # No test. Is not pure.
 	return;
     }
 }
-
 
 sub all_snapshots { # No test. Is not pure.
 
@@ -1304,6 +1302,17 @@ sub is_backup_timeframe { # Has test. Is pure.
     my $timeframe = shift // confess missing_arg();
 
     return scalar grep { $_ eq $timeframe } all_backup_timeframes();
+}
+
+sub timeframe_want { # Has test. Is pure.
+
+    # true iff $subvol wants to take $timeframe snapshots.
+
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
+    my $timeframe  = shift // confess missing_arg();
+
+    return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
 }
 
 sub all_subvols { # Has test. Is pure.

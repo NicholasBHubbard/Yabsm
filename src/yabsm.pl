@@ -99,7 +99,7 @@ my %run_command =
    , 'check-config'       => \&App::Commands::CheckConfig::main
    , 'update-crontab'     => \&App::Commands::UpdateEtcCrontab::main
    , 'print-crons'        => \&App::Commands::PrintCrons::main
-   , 'test-remote-backup' => \&App::Commands::TestRemoteBackupConfig::main
+   , 'test-remote-conf'   => \&App::Commands::TestRemoteBackupConfig::main
    );
 
 sub unabbreviate {
@@ -108,17 +108,17 @@ sub unabbreviate {
 
     my $cmd = shift // die;
 
-    if    ($cmd eq 'snap')      { return 'take-snap'          }
-    elsif ($cmd eq 'backup')    { return 'incremental-backup' }
-    elsif ($cmd eq 'bootstrap') { return 'bootstrap-backup'   }
-    elsif ($cmd eq 'f')         { return 'find'               }
-    elsif ($cmd eq 'subvols')   { return 'print-subvols'      }
-    elsif ($cmd eq 'backups')   { return 'print-backups'      }
-    elsif ($cmd eq 'check')     { return 'check-config'       }
-    elsif ($cmd eq 'update')    { return 'update-crontab'     }
-    elsif ($cmd eq 'crons')     { return 'print-crons'        }
-    elsif ($cmd eq 'test')      { return 'test-remote-backup' }
-    else                        { return $cmd                 }
+    if    ($cmd eq 'snap')        { return 'take-snap'          }
+    elsif ($cmd eq 'backup')      { return 'incremental-backup' }
+    elsif ($cmd eq 'bootstrap')   { return 'bootstrap-backup'   }
+    elsif ($cmd eq 'f')           { return 'find'               }
+    elsif ($cmd eq 'subvols')     { return 'print-subvols'      }
+    elsif ($cmd eq 'backups')     { return 'print-backups'      }
+    elsif ($cmd eq 'check')       { return 'check-config'       }
+    elsif ($cmd eq 'update')      { return 'update-crontab'     }
+    elsif ($cmd eq 'crons')       { return 'print-crons'        }
+    elsif ($cmd eq 'test-remote') { return 'test-remote-conf'   }
+    else                          { return $cmd                 }
 }
 
                  ####################################

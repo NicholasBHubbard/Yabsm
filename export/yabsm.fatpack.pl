@@ -574,9 +574,9 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   
   sub local_yabsm_dir { # Has test. Is pure.
   
-      # Return the local directory path for yabsm snapshots. The $subvol
-      # and $timeframe arguments are optional. Note that we do not check
-      # check that $subvol and $timeframe are a valid subvol/timeframe.
+      # Return the local directory path to the/a yabsm directory. The
+      # $subvol and $timeframe arguments are optional. Note that we do not
+      # check check that $subvol and $timeframe are a valid subvol/timeframe.
   
       my $config_ref = shift // confess missing_arg();
       my $subvol     = shift; # optional
@@ -1642,7 +1642,7 @@ $fatpacked{"App/Commands/CheckConfig.pm"} = '#line '.(1+__LINE__).' "'.__FILE__.
   
   sub main {
   
-      my $path = shift // '/etc/yabsmrc';
+      my $path = shift // '/etc/yabsm.conf';
   
       if (@_) { die_usage() }
   
@@ -1941,7 +1941,7 @@ $fatpacked{"App/Commands/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "
   #
   #  TODO
   
-  package App::Commands::TestRemoteBackupYabsmrc;
+  package App::Commands::TestRemoteBackupConfig;
   
   use strict;
   use warnings;
@@ -2059,7 +2059,7 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   
   sub read_config {
   
-      my $file = shift // '/etc/yabsmrc';
+      my $file = shift // '/etc/yabsm.conf';
   
       my $parser = __PACKAGE__->new( toplevel => 'p'
                                    , patterns => { comment => $regex{comment}
@@ -13158,20 +13158,20 @@ usage: yabsm [--help] [--version]
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or
-                                          subvol defined in /etc/yabsmrc.
+                                          subvol defined in /etc/yabsm.conf.
 
-  check-config, check <?FILE>             Check that FILE is a valid yabsm 
+  check-config, check <?FILE>             Check that FILE is a valid yabsm
                                           config file for errors. If FILE is
-                                          not specified then check /etc/yabsmrc.
-                                          If errors are present print their 
-                                          messages to stderr and exist with non
-                                          zero status, else print 'all good' to
-                                          stdout.
+                                          not specified then check
+                                          /etc/yabsm.conf. If errors are present
+                                          print their messages to stderr and 
+                                          exit with non zero status, else print
+                                          'all good' to stdout.
 
   update-crontab, update                  Update cronjobs in /etc/crontab, based
                                           off the user settings specified in 
-                                          /etc/yabsmrc. This is a root only 
-                                          option.
+                                          /etc/yabsm.conf. This is a root only 
+                                          command.
 
   print-crons, crons                      Display the cronjob strings that would
                                           be written to /etc/crontab if the
@@ -13179,31 +13179,31 @@ usage: yabsm [--help] [--version]
 
   take-snap, snap <SUBVOL> <TIMEFRAME>    Take a new snapshot of SUBVOL for the
                                           TIMEFRAME category. It is not
-                                          recommended to use this option
-                                          manually. This is a root only option.
+                                          recommended to use this command
+                                          manually. This is a root only command.
 
   incremental-backup, backup <BACKUP>     Perform an incremental backup of
                                           BACKUP. It is not recommended to use
-                                          this option manually. This is a root
-                                          only option.
-
-  print-subvols, subvols                  Print all the subvols defined in
-                                          /etc/yabsmrc to stdout.
-
-  print-backups, backups                  Print all the backups defined in
-                                          /etc/yabsmrc to stdout.
+                                          this command manually. This is a root
+                                          only command.
 
   bootstrap-backup, bootstrap <BACKUP>    Perform the boostrap phase of the
                                           btrfs incremental backup process for
-                                          BACKUP. This is a root only option.
+                                          BACKUP. This is a root only command.
 
-  test-remote-backup, test <BACKUP>       Test that BACKUP has been properly
-                                          configured. For BACKUP to be properly
-                                          configured yabsm should be able to
-                                          connect to the remote host and use the
-                                          btrfs command with sudo without having
-                                          to enter any passwords. This is a root
-                                          only option.
+  print-subvols, subvols                  Print all the subvols defined in
+                                          /etc/yabsm.conf to stdout.
+
+  print-backups, backups                  Print all the backups defined in
+                                          /etc/yabsm.conf to stdout.
+
+  test-remote-conf, test-remote <BACKUP>  Test that the remote BACKUP has been 
+                                          properly configured. For BACKUP to be 
+                                          properly configured yabsm should be
+                                          able to connect to the remote host and
+                                          use the btrfs command with sudo 
+                                          without having to enter any passwords.
+                                          This is a root only command.
 
   Please see 'man yabsm' for more detailed information about yabsm.
 END_USAGE
@@ -13234,7 +13234,7 @@ my %run_command =
    , 'check-config'       => \&App::Commands::CheckConfig::main
    , 'update-crontab'     => \&App::Commands::UpdateEtcCrontab::main
    , 'print-crons'        => \&App::Commands::PrintCrons::main
-   , 'test-remote-backup' => \&App::Commands::TestRemoteBackupConfig::main
+   , 'test-remote-conf'   => \&App::Commands::TestRemoteBackupConfig::main
    );
 
 sub unabbreviate {
@@ -13243,17 +13243,17 @@ sub unabbreviate {
 
     my $cmd = shift // die;
 
-    if    ($cmd eq 'snap')      { return 'take-snap'          }
-    elsif ($cmd eq 'backup')    { return 'incremental-backup' }
-    elsif ($cmd eq 'bootstrap') { return 'bootstrap-backup'   }
-    elsif ($cmd eq 'f')         { return 'find'               }
-    elsif ($cmd eq 'subvols')   { return 'print-subvols'      }
-    elsif ($cmd eq 'backups')   { return 'print-backups'      }
-    elsif ($cmd eq 'check')     { return 'check-config'       }
-    elsif ($cmd eq 'update')    { return 'update-crontab'     }
-    elsif ($cmd eq 'crons')     { return 'print-crons'        }
-    elsif ($cmd eq 'test')      { return 'test-remote-backup' }
-    else                        { return $cmd                 }
+    if    ($cmd eq 'snap')        { return 'take-snap'          }
+    elsif ($cmd eq 'backup')      { return 'incremental-backup' }
+    elsif ($cmd eq 'bootstrap')   { return 'bootstrap-backup'   }
+    elsif ($cmd eq 'f')           { return 'find'               }
+    elsif ($cmd eq 'subvols')     { return 'print-subvols'      }
+    elsif ($cmd eq 'backups')     { return 'print-backups'      }
+    elsif ($cmd eq 'check')       { return 'check-config'       }
+    elsif ($cmd eq 'update')      { return 'update-crontab'     }
+    elsif ($cmd eq 'crons')       { return 'print-crons'        }
+    elsif ($cmd eq 'test-remote') { return 'test-remote-conf'   }
+    else                          { return $cmd                 }
 }
 
                  ####################################

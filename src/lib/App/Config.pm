@@ -22,7 +22,7 @@ use Array::Utils 'array_minus';
 use Parser::MGC;
 use base 'Parser::MGC';
 
-my %regex = ( path      => qr/\/\w*/
+my %regex = ( path      => qr/\/[\w\.\/_-]*/
             , name      => qr/[a-zA-Z]\w*/
             , whole_num => qr/\d+/
             , nat_num   => qr/[1-9]\d*/

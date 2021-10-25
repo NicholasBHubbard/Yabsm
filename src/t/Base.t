@@ -22,9 +22,6 @@ use lib "$Bin/../lib";
 # Module to test
 use App::Base;
 
-# Only use this to compare arrays of strings for equality.
-use experimental 'smartmatch';
-
                  ####################################
                  #            GENERATORS            #
                  ####################################
@@ -268,11 +265,11 @@ sub test_snapstring_to_nums {
 
     my $time = 'day=2020_03_02,time=23:15';
 
-    my @output = App::Base::snapstring_to_nums($time);
+    my @got = App::Base::snapstring_to_nums($time);
 
-    my @solution = ('2020','03','02','23','15');
+    my @expected = ('2020','03','02','23','15');
 
-    ok ( @output ~~ @solution, 'snapstring_to_nums()' );
+    is_deeply ( \@got, \@expected, 'snapstring_to_nums()' );
 }
 
 test_snapstring_to_time_piece_obj();
@@ -645,7 +642,7 @@ sub test_all_subvols {
 
     my @expected = sort keys %{$config{subvols}};
 
-    ok ( @got ~~ @expected, 'all_subvols()' );
+    is_deeply ( \@got, \@expected, 'all_subvols()' );
 }
 
 test_all_backups();
@@ -657,7 +654,7 @@ sub test_all_backups {
 
     my @expected = sort keys %{$config{backups}};
 
-    ok ( @got ~~ @expected, 'all_backups()' );
+    is_deeply ( \@got, \@expected, 'all_backups()' );
 }
 
 test_all_backups_of_subvol();
@@ -676,7 +673,7 @@ sub test_all_backups_of_subvol {
 
     my @got = App::Base::all_backups_of_subvol(\%config, $subvol);
 
-    ok ( @got ~~ @expected, 'all_backups_of_subvol()' );
+    is_deeply ( \@got, \@expected, 'all_backups_of_subvol()' );
 }
 
 test_is_literal_time();
@@ -1056,7 +1053,7 @@ sub test_all_subvol_timeframes {
 
     my @got = App::Base::all_subvol_timeframes();
 
-    ok ( @expected ~~ @got, 'all_subvol_timeframes()' );
+    is_deeply ( \@got, \@expected, 'all_subvol_timeframes()' );
 }
 
 test_all_backup_timeframes();
@@ -1066,7 +1063,7 @@ sub test_all_backup_timeframes {
 
     my @got = App::Base::all_backup_timeframes();
 
-    ok ( @expected ~~ @got, 'all_backup_timeframes()' );
+    is_deeply ( \@got, \@expected, 'all_backup_timeframes()' );
 }
 
 test_is_subvol_timeframe();

@@ -6,13 +6,11 @@
 #
 #  See t/Base.t for this modules tests.
 #
-#  The $config_ref variable that is passed around many of this modules
-#  subroutines is created by the read_config() subroutine from the
-#  App::Config module.
-#
-#  App::Config::read_config() ensures that the config it produces is
-#  valid, therefore functions in this library do need to worry about
-#  edge cases caused by an erroneus config.
+#  The $config_ref variable that is passed all around this module is
+#  created by the read_config() subroutine from the App::Config
+#  module. # App::Config::read_config() ensures that the config it
+#  produces is valid, therefore functions in this library do need to
+#  worry about edge cases caused by an erroneus config.
 #
 #  All the subroutines are annoted to communicate if the subroutine
 #  has a unit test in Base.t, and if the function is pure. If the
@@ -30,12 +28,11 @@ package App::Base;
 
 use strict;
 use warnings;
-use 5.010;
+use v5.16.3;
 
 use Net::OpenSSH;
 use Time::Piece;
 use Carp;
-use List::Util qw(any);
 use File::Copy qw(copy move);
 use File::Path qw(make_path); # make_path() behaves like 'mkdir --parents'
 
@@ -666,7 +663,9 @@ sub is_immediate { # Has test. Is pure.
 
 sub is_literal_time { # Has test. Is pure.
 
-    # Literal times can come in one of 5 different forms. 
+    # True if $lit_time is a valid literal time. Literal times can
+    # come in one of 5 different forms which can be seen by the 5
+    # regexps below.
 
     my $lit_time = shift // confess missing_arg();
 
@@ -681,7 +680,7 @@ sub is_literal_time { # Has test. Is pure.
     # mon-day-hr-min
     my $re5 = qr/^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$/;
 
-    return any { $lit_time =~ $_ } ($re1, $re2, $re3, $re4, $re5);
+    return $lit_time =~ /$re1|$re2|$re3|$re4|$re5/;
 }
 
 sub is_relative_time { # Has test. Is pure.
@@ -695,13 +694,13 @@ sub is_relative_time { # Has test. Is pure.
 
     my ($back, $amount, $unit) = split '-', $rel_time, 3;
 
-    return 0 if any { not defined } ($back, $amount, $unit);
+    return 0 if grep { not defined } ($back, $amount, $unit);
 
     my $back_correct = $back =~ /^b(ack)?$/;
 
     my $amount_correct = $amount =~ /^\d+$/;
     
-    my $unit_correct = any { $_ eq $unit } qw(minutes mins m hours hrs h days d);
+    my $unit_correct = grep { $_ eq $unit } qw(minutes mins m hours hrs h days d);
     
     return $back_correct && $amount_correct && $unit_correct;
 }
@@ -1220,7 +1219,7 @@ sub is_newer_than_query { # Has test. Is pure.
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
-    return 0 if any { not defined } ($keyword, $imm);
+    return 0 if grep { not defined } ($keyword, $imm);
 
     my $keyword_correct = $keyword =~ /^(newer|after|aft)$/;
 
@@ -1241,7 +1240,7 @@ sub is_older_than_query { # Has test. Is pure.
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
-    return 0 if any { not defined } ($keyword, $imm);
+    return 0 if grep { not defined } ($keyword, $imm);
 
     my $keyword_correct = $keyword =~ /^(older|before|bef)$/;
 
@@ -1260,7 +1259,7 @@ sub is_between_query { # Has test. Is pure.
 
     my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
 
-    return 0 if any { not defined } ($keyword, $imm1, $imm2);
+    return 0 if grep { not defined } ($keyword, $imm1, $imm2);
 
     my $keyword_correct = $keyword =~ /^bet(ween)?$/;
 
@@ -1295,7 +1294,7 @@ sub is_subvol_timeframe { # Has test. Is pure.
 
     my $timeframe = shift // confess missing_arg();
 
-    return any { $_ eq $timeframe } all_subvol_timeframes();
+    return scalar grep { $_ eq $timeframe } all_subvol_timeframes();
 }
 
 sub is_backup_timeframe { # Has test. Is pure.
@@ -1304,7 +1303,7 @@ sub is_backup_timeframe { # Has test. Is pure.
 
     my $timeframe = shift // confess missing_arg();
 
-    return any { $_ eq $timeframe } all_backup_timeframes();
+    return scalar grep { $_ eq $timeframe } all_backup_timeframes();
 }
 
 sub all_subvols { # Has test. Is pure.
@@ -1366,22 +1365,22 @@ sub is_subject { # Has test. Is pure.
 
 sub is_subvol { # Has test. Is pure.
 
-    # Return 1 iff $subvol is the name of a user defined subvol.
+    # True iff $subvol is the name of a user defined subvol.
     
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
     
-    return any { $_ eq $subvol } all_subvols($config_ref);
+    return scalar grep { $_ eq $subvol } all_subvols($config_ref);
 }
 
 sub is_backup { # Has test. Is pure.
 
-    # Return 1 iff $backup is the name of a user defined backup.
+    # True iff $backup is the name of a user defined backup.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    return any { $_ eq $backup } all_backups($config_ref);
+    return scalar grep { $_ eq $backup } all_backups($config_ref);
 }
 
 sub is_remote_backup { # Has test. Is pure.

@@ -18,8 +18,9 @@ package App::Commands::TakeSnap;
 
 use strict;
 use warnings;
-use 5.010;
+use v5.16.3;
 
+# located using lib::relative in yabsm.pl
 use App::Base;
 use App::Config;
 

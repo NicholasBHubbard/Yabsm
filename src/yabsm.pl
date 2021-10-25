@@ -8,9 +8,9 @@
 
 use strict;
 use warnings;
-use 5.010;
+use v5.16.3;
 
-my $VERSION = 2.1;
+my $YABSM_VERSION = 2.1;
 
 sub usage {
     print <<END_USAGE;
@@ -127,7 +127,7 @@ my $cmd = shift @ARGV || (usage() and exit 1);
 
 if ($cmd eq '--help' || $cmd eq '-h') { usage() and exit 0 }
 
-if ($cmd eq '--version') { say $VERSION and exit 0 }
+if ($cmd eq '--version') { say $YABSM_VERSION and exit 0 }
 
 my $full_cmd = unabbreviate($cmd);
 

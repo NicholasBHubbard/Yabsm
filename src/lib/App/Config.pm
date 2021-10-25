@@ -10,14 +10,14 @@ package App::Config;
 
 use strict;
 use warnings;
-use 5.010;
+use v5.16.3;
 
+# located using lib::relative in yabsm.pl
 use App::Base;
 
 use Carp;
 
 use Array::Utils 'array_minus';
-use List::Util 'any';
 
 use Parser::MGC;
 use base 'Parser::MGC';
@@ -34,11 +34,11 @@ sub read_config {
 
     my $file = shift // '/etc/yabsmrc';
 
-    my $parser = Yabsmrc->new( toplevel => 'p'
-                             , patterns => { comment => $regex{comment}
-                                           , ident   => $regex{ident}
-                                           }
-                             );
+    my $parser = __PACKAGE__->new( toplevel => 'p'
+                                 , patterns => { comment => $regex{comment}
+                                               , ident   => $regex{ident}
+                                               }
+                                 );
 
     my $config_ref = $parser->from_file($file);
 
@@ -240,7 +240,7 @@ sub invalid_backup_settings {
     # check that 'subvol' settings are actually defined subvols.
     for my $backup (App::Base::all_backups($config_ref)) {
         my $subvol = $config_ref->{backups}{$backup}{subvol};
-        unless (any { $subvol eq $_ } App::Base::all_subvols($config_ref)) {
+        unless (grep { $subvol eq $_ } App::Base::all_subvols($config_ref)) {
             push @err_msgs, "config error: backup '$backup' backing up non existent subvol '$subvol'"
           }
     }

@@ -1552,7 +1552,7 @@ sub test_remote_backup_config { # No test. Is not pure.
     my $ssh = new_ssh_connection($remote_host);
 
     $ssh->system('sudo -n btrfs --help 1>/dev/null')
-      or die "Could run btrfs as sudo without password on host '$remote_host': " . $ssh->error . "\n";
+      or die "Could not run btrfs as sudo without password on host '$remote_host': " . $ssh->error . "\n";
 
     return;
 }

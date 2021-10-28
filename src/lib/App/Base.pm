@@ -7,10 +7,10 @@
 #  See t/Base.t for this modules tests.
 #
 #  The $config_ref variable that is passed all around this module is
-#  created by the read_config() subroutine from the App::Config
-#  module. # App::Config::read_config() ensures that the config it
-#  produces is valid, therefore functions in this library do need to
-#  worry about edge cases caused by an erroneus config.
+#  created by read_config() from the App::Config module. #
+#  App::Config::read_config() ensures that the config it produces is
+#  valid, therefore functions in this library do need to worry about
+#  edge cases caused by an erroneus config.
 #
 #  All the subroutines are annoted to communicate if the subroutine
 #  has a unit test in Base.t, and if the function is pure. If the

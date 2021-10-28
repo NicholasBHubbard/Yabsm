@@ -1561,15 +1561,15 @@ sub subvol_keywords { # No test. Is pure.
     return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
 }
 
-sub backup_keywords {
+sub backup_keywords { # No test. Is pure.
     return qw(remote host subvol backup_dir timeframe keep);
 }
 
-sub misc_keywords {
+sub misc_keywords { # No test. Is pure.
     return qw(yabsm_dir);
 }
 
-sub missing_arg {
+sub missing_arg { # No test. Is pure.
     return 'internal error: subroutine missing a required arg';
 }
 

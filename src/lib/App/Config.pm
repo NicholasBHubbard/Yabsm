@@ -22,12 +22,12 @@ use Array::Utils 'array_minus';
 use Parser::MGC;
 use base 'Parser::MGC';
 
-my %regex = ( path      => qr/\/\S*/
+my %regex = ( path      => qr/\/[-.\w]*/
             , name      => qr/[a-zA-Z]\w*/
             , whole_num => qr/\d+/
             , nat_num   => qr/[1-9]\d*/
             , comment   => qr/#.*/
-            , ident     => qr/[\w-]+/
+            , ident     => qr/[-\w]+/
             );
 
 sub read_config {

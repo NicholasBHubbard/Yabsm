@@ -1557,6 +1557,18 @@ sub test_remote_backup_config { # No test. Is not pure.
     return;
 }
 
+sub subvol_keywords { # No test. Is pure.
+    return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
+}
+
+sub backup_keywords {
+    return qw(remote host subvol backup_dir timeframe keep);
+}
+
+sub misc_keywords {
+    return qw(yabsm_dir);
+}
+
 sub missing_arg {
     return 'internal error: subroutine missing a required arg';
 }

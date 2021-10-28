@@ -83,7 +83,7 @@ sub p {
                 $config{backups}{$name} = $kvs;
             },
             sub { 
-                my $k = $self->token_kw( misc_keywords() );
+                my $k = $self->token_kw( App::Base::misc_keywords() );
                 $self->commit;
                 $self->maybe_expect( '=' ) // $self->fail("expected '='");
                 my $v;
@@ -111,7 +111,7 @@ sub subvol_def_p {
 
     my $self = shift // confess App::Base::missing_arg();
 
-    my @keywords = subvol_keywords();
+    my @keywords = App::Base::subvol_keywords();
 
     my %kvs; # return this
     my $k;
@@ -147,7 +147,7 @@ sub backup_def_p {
 
     my $self = shift // confess App::Base::missing_arg();
 
-    my @keywords = backup_keywords();
+    my @keywords = App::Base::backup_keywords();
 
     my %kvs; # return this
     my $k;
@@ -201,14 +201,14 @@ sub missing_required_settings {
     my @err_msgs = ();
 
     for my $subvol (App::Base::all_subvols($config_ref)) {
-        my @required = subvol_keywords();
+        my @required = App::Base::subvol_keywords();
         my @defined  = keys %{ $config_ref->{subvols}{$subvol} };
         my @missing  = array_minus( @required, @defined );
         push @err_msgs, "config error: subvol '$subvol' missing required setting '$_'" for @missing;
     }
 
     for my $backup (App::Base::all_backups($config_ref)) {
-        my @required = backup_keywords();
+        my @required = App::Base::backup_keywords();
         my @defined  = keys %{ $config_ref->{backups}{$backup} };
 
         # only remote backups require a 'host' setting
@@ -222,7 +222,7 @@ sub missing_required_settings {
     }
 
     # all misc settings are required at this time
-    for my $misc (misc_keywords()) {
+    for my $misc (App::Base::misc_keywords()) {
         if (not exists $config_ref->{misc}{$misc}) {
             push @err_msgs, "config error: missing setting '$misc'";
         }
@@ -246,18 +246,6 @@ sub invalid_backup_settings {
     }
     
     return @err_msgs;
-}
-
-sub subvol_keywords {
-    return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
-}
-
-sub backup_keywords {
-    return qw(remote host subvol backup_dir timeframe keep);
-}
-
-sub misc_keywords {
-    return qw(yabsm_dir);
 }
 
 1;

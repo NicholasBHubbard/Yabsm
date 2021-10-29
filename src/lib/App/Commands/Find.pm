@@ -24,7 +24,7 @@ sub main {
     my $subject = shift // die_usage();
     my $query   = shift // die_usage();
 
-    if (@_) { die_usage() }
+    die_usage() if @_;
 
     my $config_ref = App::Config::read_config();
 

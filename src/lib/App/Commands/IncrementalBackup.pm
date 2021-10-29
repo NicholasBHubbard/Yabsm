@@ -25,7 +25,7 @@ sub main {
 
     my $backup = shift // die_usage();
 
-    if (@_) { die_usage() }
+    die_usage() if @_;
 
     my $config_ref = App::Config::read_config();
 

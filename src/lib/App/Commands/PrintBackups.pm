@@ -20,7 +20,7 @@ sub die_usage {
 
 sub main {
 
-    if (@_) { die_usage() }
+    die_usage() if @_;
 
     my $config_ref = App::Config::read_config();
 

@@ -24,7 +24,7 @@ sub main {
 
     my $path = shift // '/etc/yabsm.conf';
 
-    if (@_) { die_usage() }
+    die_usage() if @_;
 
     # read_config() will kill the program with error
     # messages if the config is erroneous.

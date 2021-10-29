@@ -54,6 +54,10 @@ sub gen_random_config {
 	my $midnight_want = yes_or_no();
 	my $midnight_keep = 1 + int(rand(1000));
 
+	my $weekly_want = yes_or_no();
+	my $weekly_keep = 1 + int(rand(1000));
+	my $weekly_day  = rand_day_of_week();
+
 	my $monthly_want  = yes_or_no();
 	my $monthly_keep  = 1 + int(rand(1000));
 
@@ -69,6 +73,10 @@ sub gen_random_config {
 
 	$config{subvols}{$subvol}{midnight_want} = $midnight_want;
 	$config{subvols}{$subvol}{midnight_keep} = $midnight_keep;
+
+	$config{subvols}{$subvol}{weekly_want} = $weekly_want;
+	$config{subvols}{$subvol}{weekly_keep} = $weekly_keep;
+	$config{subvols}{$subvol}{weekly_day} = $weekly_day;
 
 	$config{subvols}{$subvol}{monthly_want} = $monthly_want;
 	$config{subvols}{$subvol}{monthly_keep} = $monthly_keep;
@@ -159,11 +167,25 @@ sub rand_backup_timeframe {
 
     # randomly return a backup timeframe
 
-    my $rand = int(rand(3));
+    my $rand = int(rand(4));
 
-    if    ($rand == 1) { return 'hourly' }
+    if    ($rand == 1) { return 'hourly'   }
     elsif ($rand == 2) { return 'midnight' }
-    else               { return 'monthly' }
+    elsif ($rand == 3) { return 'weekly'   }
+    else               { return 'monthly'  }
+}
+
+sub rand_day_of_week {
+
+    # randomly return a backup timeframe
+
+    my $rand = int(rand(5));
+
+    if    ($rand == 1) { return '5minute'  }
+    elsif ($rand == 2) { return 'hourly'   }
+    elsif ($rand == 3) { return 'midnight' }
+    elsif ($rand == 4) { return 'weekly'   }
+    else               { return 'monthly'  }
 }
 
                  ####################################
@@ -1046,10 +1068,69 @@ sub test_local_yabsm_dir {
     ok ( $correct1 && $correct2 && $correct3, 'local_yabsm_dir()' );
 }
 
+test_is_day_of_week();
+sub test_is_day_of_week {
+
+    my $t1  = App::Base::is_day_of_week('mon');
+    my $t2  = App::Base::is_day_of_week('monday');
+    my $t3  = App::Base::is_day_of_week('tue');
+    my $t4  = App::Base::is_day_of_week('tuesday');
+    my $t5  = App::Base::is_day_of_week('wed');
+    my $t6  = App::Base::is_day_of_week('wednesday');
+    my $t7  = App::Base::is_day_of_week('thu');
+    my $t8  = App::Base::is_day_of_week('thursday');
+    my $t9  = App::Base::is_day_of_week('fri');
+    my $t10 = App::Base::is_day_of_week('friday');
+    my $t11 = App::Base::is_day_of_week('sat');
+    my $t12 = App::Base::is_day_of_week('saturday');
+    my $t13 = App::Base::is_day_of_week('sun');
+    my $t14 = App::Base::is_day_of_week('sunday');
+
+    my $f1  = App::Base::is_day_of_week('MON');
+    my $f2  = App::Base::is_day_of_week('Mon');
+    my $f3  = App::Base::is_day_of_week('mOn');
+    my $f4  = App::Base::is_day_of_week('moN');
+    my $f5  = App::Base::is_day_of_week(' mon');
+    my $f6  = App::Base::is_day_of_week('mon ');
+    my $f7  = App::Base::is_day_of_week(' mon ');
+    my $f8  = App::Base::is_day_of_week('mondays');
+
+    my $trues =  $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7
+              && $t8 && $t9 && $t10 && $t11 && $t12 && $t13 && $t14;
+
+    my $falses = not( $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8 );
+
+    ok ( $trues && $falses, 'is_day_of_week()' );
+}
+
+test_day_of_week_num();
+sub test_day_of_week_num {
+
+    my $t1  = 1 == App::Base::day_of_week_num('mon');
+    my $t2  = 1 == App::Base::day_of_week_num('monday');
+    my $t3  = 2 == App::Base::day_of_week_num('tue');
+    my $t4  = 2 == App::Base::day_of_week_num('tuesday');
+    my $t5  = 3 == App::Base::day_of_week_num('wed');
+    my $t6  = 3 == App::Base::day_of_week_num('wednesday');
+    my $t7  = 4 == App::Base::day_of_week_num('thu');
+    my $t8  = 4 == App::Base::day_of_week_num('thursday');
+    my $t9  = 5 == App::Base::day_of_week_num('fri');
+    my $t10 = 5 == App::Base::day_of_week_num('friday');
+    my $t11 = 6 == App::Base::day_of_week_num('sat');
+    my $t12 = 6 == App::Base::day_of_week_num('saturday');
+    my $t13 = 7 == App::Base::day_of_week_num('sun');
+    my $t14 = 7 == App::Base::day_of_week_num('sunday');
+
+    my $correct =  $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7
+                && $t8 && $t9 && $t10 && $t11 && $t12 && $t13 && $t14;
+
+    ok ( $correct, 'day_of_week_num()' );
+}
+
 test_all_subvol_timeframes();
 sub test_all_subvol_timeframes {
 
-    my @expected = qw(5minute hourly midnight monthly);
+    my @expected = qw(5minute hourly midnight weekly monthly);
 
     my @got = App::Base::all_subvol_timeframes();
 
@@ -1059,7 +1140,7 @@ sub test_all_subvol_timeframes {
 test_all_backup_timeframes();
 sub test_all_backup_timeframes {
 
-    my @expected = qw(hourly midnight monthly);
+    my @expected = qw(hourly midnight weekly monthly);
 
     my @got = App::Base::all_backup_timeframes();
 
@@ -1128,6 +1209,24 @@ sub test_timeframe_want {
     }
 
     ok ( $t, 'timeframe_want()' );
+}
+
+test_subvols_timeframes();
+sub test_subvols_timeframes {
+
+    my $config_ref = gen_random_config();
+
+    my $t = 1;
+    for my $subvol (App::Base::all_subvols($config_ref)) {
+
+        my @subvols_timeframes = App::Base::subvols_timeframes($config_ref, $subvol);
+
+        for my $tf (@subvols_timeframes) {
+            $t = 0 if not 'yes' eq $config_ref->{subvols}{$subvol}{"${tf}_want"};
+        }
+    }
+
+    ok ( $t, 'subvols_timeframes()' );
 }
 
 test_bootstrap_snap_dir();

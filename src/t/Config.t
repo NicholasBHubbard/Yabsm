@@ -38,40 +38,51 @@ yabsm_dir=/
 
 subvol root {
     mountpoint=/
+
     5minute_want=no
-    5minute_keep=0
+
     hourly_want=yes
     hourly_keep=24
+
     midnight_want=no
-    midnight_keep=0
+
+    weekly_want=yes
+    weekly_keep=7
+    weekly_day=tue
+
     monthly_want=yes
     monthly_keep=12
 }
 
 subvol home {
     mountpoint=/home
+
     5minute_want=yes
     5minute_keep=12
+
     hourly_want=no
-    hourly_keep=0
+
     midnight_want=yes
     midnight_keep=14
+
+    weekly_want=no
+
     monthly_want=no
-    monthly_keep=5
 }
 
 backup rootBackup {
-    remote=no
     subvol=root
+    remote=no
     backup_dir=/
-    timeframe=midnight
     keep=100
+    timeframe=weekly
+    weekly_day=friday
 }
 
 backup homeBackup {
+    subvol=home
     remote=yes
     host=foohost
-    subvol=home
     backup_dir=/home
     timeframe=hourly
     keep=12
@@ -82,11 +93,12 @@ my %t_conf = ( misc    => { yabsm_dir => '/' }
 
              , subvols => { root => { mountpoint   => '/'
                                     , '5minute_want' => 'no'
-                                    , '5minute_keep' => '0'
                                     , hourly_want => 'yes'
                                     , hourly_keep => '24'
                                     , midnight_want => 'no'
-                                    , midnight_keep => '0'
+                                    , weekly_want => 'yes'
+                                    , weekly_keep => '7'
+                                    , weekly_day => 'tue'
                                     , monthly_want => 'yes'
                                     , monthly_keep => '12'
                                     } 
@@ -95,11 +107,10 @@ my %t_conf = ( misc    => { yabsm_dir => '/' }
                                     , '5minute_want' => 'yes'
                                     , '5minute_keep' => '12'
                                     , hourly_want => 'no'
-                                    , hourly_keep => '0'
                                     , midnight_want => 'yes'
                                     , midnight_keep => '14'
+                                    , weekly_want => 'no'
                                     , monthly_want => 'no'
-                                    , monthly_keep => '5'
                                     } 
 
                           }
@@ -107,8 +118,9 @@ my %t_conf = ( misc    => { yabsm_dir => '/' }
              , backups => { rootBackup => { remote => 'no'
                                           , subvol => 'root'
                                           , backup_dir => '/'
-                                          , timeframe => 'midnight'
                                           , keep => '100'
+                                          , timeframe => 'weekly'
+                                          , weekly_day => 'friday'
                                           }
 
                           , homeBackup => { remote => 'yes'
@@ -127,5 +139,4 @@ my $tmp_file = '/tmp/yabsm_tmp_conf';
 my $config_ref = App::Config::read_config($tmp_file);
 `rm $tmp_file`;
 
-print "\ntesting correct data structure layout\n";
 is_deeply($config_ref, \%t_conf, 'data structure layout');

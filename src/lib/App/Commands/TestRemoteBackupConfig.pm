@@ -2,7 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 #
-#  TODO
+#  A valid remote backup config is setup so the root user can connect
+#  to the remote host and run btrfs with sudo without having to enter
+#  any passwords.
 
 package App::Commands::TestRemoteBackupConfig;
 
@@ -24,7 +26,7 @@ sub main {
 
     my $backup = shift // die_usage();
 
-    if (@_) { die_usage() }
+    die_usage() if @_;
 
     my $config_ref = App::Config::read_config();
 
@@ -36,11 +38,13 @@ sub main {
 	die "error: backup '$backup' is a local backup\n";
     }
 
-    # we know that $backup is a remote backup
+    # new_ssh_connection() will kill the program if a passwordless
+    # connection cannot be established.
+    my $ssh = App::Base::new_ssh_connection();
 
-    # The program will die if the remote backup is not configure
-    # properly.
-    App::Base::test_remote_backup_config($config_ref, $backup);
+    if (my $out = $ssh->system('sudo -n btrfs --help 2>&1 1>/dev/null')) {
+        die "$out\n";
+    }
 
     say 'all good';
 

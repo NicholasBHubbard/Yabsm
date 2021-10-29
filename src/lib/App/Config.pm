@@ -16,24 +16,31 @@ use v5.16.3;
 use App::Base;
 
 use Carp;
-
 use Array::Utils 'array_minus';
 
 use Parser::MGC;
 use base 'Parser::MGC';
 
-my %regex = ( path      => qr/\/[-.\w]*/
-            , name      => qr/[a-zA-Z]\w*/
-            , whole_num => qr/\d+/
-            , nat_num   => qr/[1-9]\d*/
-            , comment   => qr/#.*/
-            , ident     => qr/[-\w]+/
+                 ####################################
+                 #         REGEX LOOKUP TABLE       #
+                 ####################################
+
+my %regex = ( path         => qr/\/[^#\s]*/
+            , subject_name => qr/[a-zA-Z][-\w]*/
+            , pos_int      => qr/[1-9]\d*/
+            , comment      => qr/#.*/
+            , ident        => qr/[-\w]+/
             );
+
+                 ####################################
+                 #         MAIN SUBROUTINE          #
+                 ####################################
 
 sub read_config {
 
     my $file = shift // '/etc/yabsm.conf';
 
+    # see documentation of Parser::MGC to see what is going on here
     my $parser = __PACKAGE__->new( toplevel => 'p'
                                  , patterns => { comment => $regex{comment}
                                                , ident   => $regex{ident}
@@ -44,11 +51,9 @@ sub read_config {
 
     my @errors = ();
 
-    push @errors, missing_required_settings($config_ref);
-    push @errors, invalid_backup_settings($config_ref);
-
-    # not neccesary due to parser semantics
-    # push @errors, invalid_subvol_settings($config_ref);
+    push @errors, $_ for missing_subvol_settings($config_ref);
+    push @errors, $_ for missing_backup_settings($config_ref);
+    push @errors, $_ for missing_misc_settings($config_ref);
 
     if (@errors) {
         die ((join "\n", @errors) . "\n");
@@ -56,6 +61,10 @@ sub read_config {
 
     return $config_ref;
 }
+
+                 ####################################
+                 #              PARSER              #
+                 ####################################
 
 sub p {
 
@@ -69,7 +78,7 @@ sub p {
             sub {
                 $self->token_kw( 'subvol' );
                 $self->commit;
-                my $name = $self->maybe_expect( $regex{name} );
+                my $name = $self->maybe_expect( $regex{subject_name} );
                 $name // $self->fail('expected alphanumeric sequence starting with letter');
                 my $kvs  = $self->scope_of('{', 'subvol_def_p', '}');
                 $config{subvols}{$name} = $kvs;
@@ -77,13 +86,13 @@ sub p {
             sub {                     
                 $self->token_kw( 'backup' );
                 $self->commit;
-                my $name = $self->maybe_expect( $regex{name} );
+                my $name = $self->maybe_expect( $regex{subject_name} );
                 $name // $self->fail('expected alphanumeric sequence starting with letter');
                 my $kvs  = $self->scope_of('{', 'backup_def_p', '}');
                 $config{backups}{$name} = $kvs;
             },
             sub { 
-                my $k = $self->token_kw( App::Base::misc_keywords() );
+                my $k = $self->token_kw( misc_keywords() );
                 $self->commit;
                 $self->maybe_expect( '=' ) // $self->fail("expected '='");
                 my $v;
@@ -111,16 +120,14 @@ sub subvol_def_p {
 
     my $self = shift // confess App::Base::missing_arg();
 
-    my @keywords = App::Base::subvol_keywords();
-
     my %kvs; # return this
     my $k;
     my $v;
 
     $self->sequence_of( sub {
         $self->commit;
-        $k = $self->token_kw( @keywords );
-        $self->maybe_expect( '=' ) // $self->fail("expected literal '='");
+        $k = $self->token_kw( subvol_keywords() );
+        $self->maybe_expect( '=' ) // $self->fail("expected '='");
         if ($k eq 'mountpoint') {
             $v = $self->maybe_expect( $regex{path} );
             $v // $self->fail('expected file path');
@@ -130,8 +137,11 @@ sub subvol_def_p {
             $v // $self->fail( q(expected 'yes' or 'no') );
         }
         elsif ($k =~ /_keep$/) {
-            $v = $self->maybe_expect( $regex{whole_num} );
-            $v // $self->fail('expected whole number');
+            $v = $self->maybe_expect( $regex{pos_int} );
+            $v // $self->fail('expected positive integer');
+        }
+        elsif ($k eq 'weekly_day') {
+            $v = $self->token_kw( App::Base::all_days_of_week() );
         }
         else {
             confess "internal error: no such subvol setting '$k'";
@@ -147,39 +157,41 @@ sub backup_def_p {
 
     my $self = shift // confess App::Base::missing_arg();
 
-    my @keywords = App::Base::backup_keywords();
-
     my %kvs; # return this
     my $k;
     my $v;
 
     $self->sequence_of( sub {
         $self->commit;
-        $k = $self->token_kw( @keywords );
-        $self->maybe_expect( '=' ) // $self->fail("expected literal '='");
+        $k = $self->token_kw( backup_keywords() );
+        $self->maybe_expect( '=' ) // $self->fail("expected '='");
+
         if ($k eq 'remote') {
             $v = $self->maybe( sub { $self->token_kw( 'yes', 'no' ) } );
             $v // $self->fail( q(expected 'yes' or 'no') );
         }
         elsif ($k eq 'timeframe') {
-            $v = $self->token_kw( 'hourly', 'midnight', 'monthly' );
+            $v = $self->token_kw( App::Base::all_backup_timeframes() );
         }
         elsif ($k eq 'backup_dir') {
             $v = $self->maybe_expect( $regex{path} );
             $v // $self->fail('expected file path');
         }
         elsif ($k eq 'keep') {
-            $v = $self->maybe_expect( $regex{nat_num} );
-            $v // $self->fail('expected natural number');
+            $v = $self->maybe_expect( $regex{pos_int} );
+            $v // $self->fail('expected positive integer');
         }
         elsif ($k eq 'host') {
-            $v = $self->maybe_expect( $regex{name} );
+            $v = $self->maybe_expect( $regex{subject_name} );
             $v // $self->fail('expected alphanumeric sequence starting with a letter');
         }
         elsif ($k eq 'subvol') {
             # We check that $v is a defined subvol later
-            $v = $self->maybe_expect( $regex{name} );
+            $v = $self->maybe_expect( $regex{subject_name} );
             $v // $self->fail('expected alphanumeric sequence starting with a letter');
+        }
+        elsif ($k eq 'weekly_day') {
+            $v = $self->token_kw( App::Base::all_days_of_week() );
         }
         else {
             confess "internal error: no such backup setting '$k'";
@@ -191,61 +203,137 @@ sub backup_def_p {
     return \%kvs;
 }
 
-sub missing_required_settings {
+                 ####################################
+                 #       STATIC CONFIG ANALYSIS     #
+                 ####################################
 
-    # Return error messages for every required setting
-    # that is not defined.
+sub missing_subvol_settings {
 
     my $config_ref = shift // confess App::Base::missing_arg();
 
     my @err_msgs = ();
 
     for my $subvol (App::Base::all_subvols($config_ref)) {
-        my @required = App::Base::subvol_keywords();
-        my @defined  = keys %{ $config_ref->{subvols}{$subvol} };
-        my @missing  = array_minus( @required, @defined );
-        push @err_msgs, "config error: subvol '$subvol' missing required setting '$_'" for @missing;
-    }
 
-    for my $backup (App::Base::all_backups($config_ref)) {
-        my @required = App::Base::backup_keywords();
-        my @defined  = keys %{ $config_ref->{backups}{$backup} };
+        # base required settings
+        my @req = qw(mountpoint 5minute_want hourly_want midnight_want weekly_want monthly_want);
 
-        # only remote backups require a 'host' setting
-        my $remote = $config_ref->{backups}{$backup}{remote} // 'no';
-        if ($remote eq 'no') { 
-            @required = grep { $_ ne 'host' } @required;
+        my @def = keys %{ $config_ref->{subvols}{$subvol} };
+
+        if (my @missing = array_minus(@req, @def)) {
+            push @err_msgs, "error: subvol '$subvol' missing required setting '$_'" for @missing;
         }
 
-        my @missing = array_minus( @required, @defined );
-        push @err_msgs, "config error: backup '$backup' missing required setting '$_'" for @missing;
-    }
+        else { # the base required settings are defined
 
-    # all misc settings are required at this time
-    for my $misc (App::Base::misc_keywords()) {
-        if (not exists $config_ref->{misc}{$misc}) {
-            push @err_msgs, "config error: missing setting '$misc'";
+            for my $tframe (App::Base::subvols_timeframes($config_ref, $subvol)) {
+                if ($tframe eq '5minute') {
+                    push @req, '5minute_keep';
+                }
+                elsif ($tframe eq 'hourly') {
+                    push @req, 'hourly_keep';
+                }
+                elsif ($tframe eq 'midnight') {
+                    push @req, 'midnight_keep';
+                }
+                elsif ($tframe eq 'weekly') {
+                    push @req, 'weekly_keep', 'weekly_day';
+                }
+                elsif ($tframe eq 'monthly') {
+                    push @req, 'monthly_keep';
+                }
+                else {
+                    confess "internal error: no such timeframe '$tframe'";
+                }
+            }
+
+            my @def = keys %{ $config_ref->{subvols}{$subvol} };
+
+            if (my @missing = array_minus(@req, @def)) {
+                push @err_msgs, "error: subvol '$subvol' missing required setting '$_'" for @missing;
+            }
         }
     }
 
     return @err_msgs;
 }
 
-sub invalid_backup_settings {
+sub missing_backup_settings {
 
     my $config_ref = shift // confess App::Base::missing_arg();
 
     my @err_msgs = ();
 
-    # check that 'subvol' settings are actually defined subvols.
     for my $backup (App::Base::all_backups($config_ref)) {
-        my $subvol = $config_ref->{backups}{$backup}{subvol};
-        unless (grep { $subvol eq $_ } App::Base::all_subvols($config_ref)) {
-            push @err_msgs, "config error: backup '$backup' backing up non existent subvol '$subvol'"
-          }
+
+        # base required settings
+        my @req = qw(remote subvol backup_dir timeframe keep);
+
+        my @def = keys %{ $config_ref->{backups}{$backup} };
+
+        if (my @missing = array_minus(@req, @def)) {
+            push @err_msgs, "error: backup '$backup' missing required setting '$_'" for @missing;
+        }
+
+        else { # the base required settings are defined
+
+            my $subvol = $config_ref->{backups}{$backup}{subvol};
+            my $remote = $config_ref->{backups}{$backup}{remote};
+            my $tframe = $config_ref->{backups}{$backup}{timeframe};
+
+            if (not grep { $subvol eq $_ } App::Base::all_subvols($config_ref)) {
+                push @err_msgs, "error: backup '$backup' backing up undefined subvol '$subvol'";
+            }
+
+            if ($remote eq 'yes') {
+                push @req, 'host';
+            }
+
+            if ($tframe eq 'weekly') {
+                push @req, 'weekly_day';
+            }
+
+            if (my @missing = array_minus(@req, @def)) {
+                push @err_msgs, "error: backup '$backup' missing required setting '$_'" for @missing;
+            }
+        }
     }
-    
+
     return @err_msgs;
+}
+
+sub missing_misc_settings {
+
+    my $config_ref = shift // confess App::Base::missing_arg();
+
+    my @err_msgs = ();
+
+    # for now all misc settings are required
+    my @req = misc_keywords();
+
+    my @def = keys %{ $config_ref->{misc} };
+
+    my @missing = array_minus(@req, @def);
+
+    push @err_msgs, "error: missing misc setting '$_'" for @missing;
+
+    return @err_msgs;
+}
+
+                 ####################################
+                 #           KEYWORD ARRAYS         #
+                 ####################################
+
+sub subvol_keywords {
+    return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep weekly_want weekly_keep weekly_day monthly_want monthly_keep);
+}
+
+sub backup_keywords {
+    return qw(subvol remote host keep backup_dir timeframe weekly_day);
+}
+
+sub misc_keywords {
+    return qw(yabsm_dir);
 }
 
 1;

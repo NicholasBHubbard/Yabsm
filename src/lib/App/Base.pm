@@ -7,10 +7,10 @@
 #  See t/Base.t for this modules tests.
 #
 #  The $config_ref variable that is passed all around this module is
-#  created by read_config() from the App::Config module. #
-#  App::Config::read_config() ensures that the config it produces is
-#  valid, therefore functions in this library do need to worry about
-#  edge cases caused by an erroneus config.
+#  created by read_config() from the App::Config module. read_config()
+#  ensures that the config it produces is valid, so therefore functions
+#  in this library do need to worry about edge cases caused by an
+#  erroneus config.
 #
 #  All the subroutines are annoted to communicate if the subroutine
 #  has a unit test in Base.t, and if the function is pure. If the
@@ -519,6 +519,7 @@ sub initialize_directories { # No test. Is not pure.
 	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
+	my $weekly_want   = $config_ref->{subvols}{$subvol}{weekly_want};
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
 	
 	if ($_5minute_want eq 'yes' && not -d "$subvol_dir/5minute") {
@@ -531,6 +532,10 @@ sub initialize_directories { # No test. Is not pure.
 
 	if ($midnight_want eq 'yes' && not -d "$subvol_dir/midnight") {
 	    make_path("$subvol_dir/midnight");
+	}
+
+	if ($weekly_want eq 'yes' && not -d "$subvol_dir/weekly") {
+	    make_path("$subvol_dir/weekly");
 	}
 
 	if ($monthly_want eq 'yes' && not -d "$subvol_dir/monthly") {
@@ -1272,7 +1277,7 @@ sub all_subvol_timeframes { # Has test. Is pure.
 
     # Return an array of all valid subvol timeframe categories.
 
-    my @timeframes = qw(5minute hourly midnight monthly);
+    my @timeframes = qw(5minute hourly midnight weekly monthly);
 
     return wantarray ? @timeframes : \@timeframes;
 }
@@ -1281,7 +1286,7 @@ sub all_backup_timeframes { # Has test. Is pure.
 
     # Return an array of all valid backup timeframes.
 
-    my @timeframes = qw(hourly midnight monthly);
+    my @timeframes = qw(hourly midnight weekly monthly);
 
     return wantarray ? @timeframes : \@timeframes;
 }
@@ -1313,6 +1318,24 @@ sub timeframe_want { # Has test. Is pure.
     my $timeframe  = shift // confess missing_arg();
 
     return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
+}
+
+sub subvols_timeframes { # Has test. Is pure.
+
+    # Return an array of all the timeframes that $subvol wants snapshots for.
+
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
+    
+    my @tframes = ();
+
+    foreach my $tframe (all_subvol_timeframes()) {
+        if (timeframe_want($config_ref, $subvol, $tframe)) {
+            push @tframes, $tframe;
+        }
+    }
+
+    return wantarray ? @tframes : \@tframes;
 }
 
 sub all_subvols { # Has test. Is pure.
@@ -1474,6 +1497,7 @@ sub generate_cron_strings { # No test. Is pure.
 	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
 	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
+	my $weekly_want  = $config_ref->{subvols}{$subvol}{weekly_want};
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
         
         my $_5minute_cron = ( '*/5 * * * * root' # every 5 minutes
@@ -1487,12 +1511,17 @@ sub generate_cron_strings { # No test. Is pure.
         my $midnight_cron = ( '59 23 * * * root' # 11:59 every night
                             . " yabsm take-snap $subvol midnight"
 			    ) if $midnight_want eq 'yes';
+
+        my $weekly_cron   = ( '59 23 * * '
+                            . day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day})
+                            . " root yabsm take-snap $subvol weekly"
+                            ) if $weekly_want eq 'yes';
         
         my $monthly_cron  = ( '0 0 1 * * root' # First day of every month
 			    . " yabsm take-snap $subvol monthly"
 			    ) if $monthly_want eq 'yes';
 
-        push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron);
+        push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron, $monthly_cron);
     }
 
     foreach my $backup (all_backups($config_ref)) {
@@ -1505,6 +1534,11 @@ sub generate_cron_strings { # No test. Is pure.
 
 	elsif ($timeframe eq 'midnight') {
 	    push @crons, "59 23 * * * root yabsm incremental-backup $backup";
+	}
+
+	elsif ($timeframe eq 'weekly') {
+            my $dow_num = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
+	    push @crons, "59 23 * * $dow_num root yabsm incremental-backup $backup";
 	}
 
 	elsif ($timeframe eq 'monthly') {
@@ -1557,16 +1591,51 @@ sub test_remote_backup_config { # No test. Is not pure.
     return;
 }
 
-sub subvol_keywords { # No test. Is pure.
-    return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
+sub is_day_of_week { # Has test. Is pure.
+
+    # Return 1 iff $dow is a valid day of week string. A day of week
+    # can either be the full name of the day or just the first 3
+    # letters and must be all lowercase letters.
+
+    my $dow = shift // confess missing_arg();
+
+    my $mon = qr/^mon(day)?$/;
+    my $tue = qr/^tue(sday)?$/;
+    my $wed = qr/^wed(nesday)?$/;
+    my $thu = qr/^thu(rsday)?$/;
+    my $fri = qr/^fri(day)?$/;
+    my $sat = qr/^sat(urday)?$/;
+    my $sun = qr/^sun(day)?$/;
+
+    return $dow =~ /$mon|$tue|$wed|$thu|$fri|$sat|$sun/;
 }
 
-sub backup_keywords { # No test. Is pure.
-    return qw(remote host subvol backup_dir timeframe keep);
+sub day_of_week_num { # Has test. Is pure.
+
+    # Take day of week string ($dow) and return the cooresponding
+    # number in the week. We consider monday the first day because
+    # cronjobs do, and this function is used to generate cron
+    # strings. We expect $dow to have already been cleansed.
+
+    my $dow = shift // confess missing_arg();
+
+    if    ($dow =~ /^mon(day)?$/)    { return 1 }
+    elsif ($dow =~ /^tue(sday)?$/)   { return 2 }
+    elsif ($dow =~ /^wed(nesday)?$/) { return 3 }
+    elsif ($dow =~ /^thu(rsday)?$/)  { return 4 }
+    elsif ($dow =~ /^fri(day)?$/)    { return 5 }
+    elsif ($dow =~ /^sat(urday)?$/)  { return 6 }
+    elsif ($dow =~ /^sun(day)?$/)    { return 7 }
+    else {
+        confess "internal error: no such day of week '$dow'";
+    }
 }
 
-sub misc_keywords { # No test. Is pure.
-    return qw(yabsm_dir);
+sub all_days_of_week { # No test. Is pure.
+
+    # Return all the valid days of the week.
+
+    return qw(mon monday tue tuesday wed wednesday thu thursday fri friday sat saturday sun sunday);
 }
 
 sub missing_arg { # No test. Is pure.

@@ -22,13 +22,13 @@ sub die_usage {
 
 sub main {
 
-    my $path = shift // '/etc/yabsm.conf';
+    my $file = shift // '/etc/yabsm.conf';
 
     die_usage() if @_;
 
     # read_config() will kill the program with error
     # messages if the config is erroneous.
-    App::Config::read_config( $path );
+    App::Config::read_config( $file );
 
     say 'all good';
 

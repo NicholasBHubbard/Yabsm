@@ -15,10 +15,10 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   #  See t/Base.t for this modules tests.
   #
   #  The $config_ref variable that is passed all around this module is
-  #  created by the read_config() subroutine from the App::Config
-  #  module. # App::Config::read_config() ensures that the config it
-  #  produces is valid, therefore functions in this library do need to
-  #  worry about edge cases caused by an erroneus config.
+  #  created by read_config() from the App::Config module. read_config()
+  #  ensures that the config it produces is valid, so therefore functions
+  #  in this library do need to worry about edge cases caused by an
+  #  erroneus config.
   #
   #  All the subroutines are annoted to communicate if the subroutine
   #  has a unit test in Base.t, and if the function is pure. If the
@@ -527,6 +527,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
   	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
   	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
+  	my $weekly_want   = $config_ref->{subvols}{$subvol}{weekly_want};
   	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
   	
   	if ($_5minute_want eq 'yes' && not -d "$subvol_dir/5minute") {
@@ -539,6 +540,10 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   
   	if ($midnight_want eq 'yes' && not -d "$subvol_dir/midnight") {
   	    make_path("$subvol_dir/midnight");
+  	}
+  
+  	if ($weekly_want eq 'yes' && not -d "$subvol_dir/weekly") {
+  	    make_path("$subvol_dir/weekly");
   	}
   
   	if ($monthly_want eq 'yes' && not -d "$subvol_dir/monthly") {
@@ -1280,7 +1285,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   
       # Return an array of all valid subvol timeframe categories.
   
-      my @timeframes = qw(5minute hourly midnight monthly);
+      my @timeframes = qw(5minute hourly midnight weekly monthly);
   
       return wantarray ? @timeframes : \@timeframes;
   }
@@ -1289,7 +1294,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   
       # Return an array of all valid backup timeframes.
   
-      my @timeframes = qw(hourly midnight monthly);
+      my @timeframes = qw(hourly midnight weekly monthly);
   
       return wantarray ? @timeframes : \@timeframes;
   }
@@ -1321,6 +1326,24 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
       my $timeframe  = shift // confess missing_arg();
   
       return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
+  }
+  
+  sub subvols_timeframes { # Has test. Is pure.
+  
+      # Return an array of all the timeframes that $subvol wants snapshots for.
+  
+      my $config_ref = shift // confess missing_arg();
+      my $subvol     = shift // confess missing_arg();
+      
+      my @tframes = ();
+  
+      foreach my $tframe (all_subvol_timeframes()) {
+          if (timeframe_want($config_ref, $subvol, $tframe)) {
+              push @tframes, $tframe;
+          }
+      }
+  
+      return wantarray ? @tframes : \@tframes;
   }
   
   sub all_subvols { # Has test. Is pure.
@@ -1482,6 +1505,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
   	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
   	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
+  	my $weekly_want  = $config_ref->{subvols}{$subvol}{weekly_want};
   	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
           
           my $_5minute_cron = ( '*/5 * * * * root' # every 5 minutes
@@ -1495,12 +1519,17 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
           my $midnight_cron = ( '59 23 * * * root' # 11:59 every night
                               . " yabsm take-snap $subvol midnight"
   			    ) if $midnight_want eq 'yes';
+  
+          my $weekly_cron   = ( '59 23 * * '
+                              . day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day})
+                              . " root yabsm take-snap $subvol weekly"
+                              ) if $weekly_want eq 'yes';
           
           my $monthly_cron  = ( '0 0 1 * * root' # First day of every month
   			    . " yabsm take-snap $subvol monthly"
   			    ) if $monthly_want eq 'yes';
   
-          push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron);
+          push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron, $monthly_cron);
       }
   
       foreach my $backup (all_backups($config_ref)) {
@@ -1513,6 +1542,11 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   
   	elsif ($timeframe eq 'midnight') {
   	    push @crons, "59 23 * * * root yabsm incremental-backup $backup";
+  	}
+  
+  	elsif ($timeframe eq 'weekly') {
+              my $dow_num = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
+  	    push @crons, "59 23 * * $dow_num root yabsm incremental-backup $backup";
   	}
   
   	elsif ($timeframe eq 'monthly') {
@@ -1546,26 +1580,54 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
       return $ssh;
   }
   
-  sub test_remote_backup_config { # No test. Is not pure.
+  sub is_day_of_week { # Has test. Is pure.
   
-      # Test that we can connect to $backup's remote host, and run a btrfs
-      # command with sudo without needing to enter any passwords.
+      # Return 1 iff $dow is a valid day of week string. A day of week
+      # can either be the full name of the day or just the first 3
+      # letters and must be all lowercase letters.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $dow = shift // confess missing_arg();
   
-      my $remote_host = $config_ref->{backups}{$backup}{host};
+      my $mon = qr/^mon(day)?$/;
+      my $tue = qr/^tue(sday)?$/;
+      my $wed = qr/^wed(nesday)?$/;
+      my $thu = qr/^thu(rsday)?$/;
+      my $fri = qr/^fri(day)?$/;
+      my $sat = qr/^sat(urday)?$/;
+      my $sun = qr/^sun(day)?$/;
   
-      # program will die if we cannot connect to $remote_host without a password
-      my $ssh = new_ssh_connection($remote_host);
-  
-      $ssh->system('sudo -n btrfs --help 1>/dev/null')
-        or die "Could run btrfs as sudo without password on host '$remote_host': " . $ssh->error . "\n";
-  
-      return;
+      return $dow =~ /$mon|$tue|$wed|$thu|$fri|$sat|$sun/;
   }
   
-  sub missing_arg {
+  sub day_of_week_num { # Has test. Is pure.
+  
+      # Take day of week string ($dow) and return the cooresponding
+      # number in the week. We consider monday the first day because
+      # cronjobs do, and this function is used to generate cron
+      # strings. We expect $dow to have already been cleansed.
+  
+      my $dow = shift // confess missing_arg();
+  
+      if    ($dow =~ /^mon(day)?$/)    { return 1 }
+      elsif ($dow =~ /^tue(sday)?$/)   { return 2 }
+      elsif ($dow =~ /^wed(nesday)?$/) { return 3 }
+      elsif ($dow =~ /^thu(rsday)?$/)  { return 4 }
+      elsif ($dow =~ /^fri(day)?$/)    { return 5 }
+      elsif ($dow =~ /^sat(urday)?$/)  { return 6 }
+      elsif ($dow =~ /^sun(day)?$/)    { return 7 }
+      else {
+          confess "internal error: no such day of week '$dow'";
+      }
+  }
+  
+  sub all_days_of_week { # No test. Is pure.
+  
+      # Return all the valid days of the week.
+  
+      return qw(mon monday tue tuesday wed wednesday thu thursday fri friday sat saturday sun sunday);
+  }
+  
+  sub missing_arg { # No test. Is pure.
       return 'internal error: subroutine missing a required arg';
   }
   
@@ -1599,7 +1661,7 @@ $fatpacked{"App/Commands/BackupBootstrap.pm"} = '#line '.(1+__LINE__).' "'.__FIL
   
       my $backup = shift // die_usage();
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1644,7 +1706,7 @@ $fatpacked{"App/Commands/CheckConfig.pm"} = '#line '.(1+__LINE__).' "'.__FILE__.
   
       my $path = shift // '/etc/yabsm.conf';
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       # read_config() will kill the program with error
       # messages if the config is erroneous.
@@ -1685,7 +1747,7 @@ $fatpacked{"App/Commands/Find.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
       my $subject = shift // die_usage();
       my $query   = shift // die_usage();
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1735,7 +1797,7 @@ $fatpacked{"App/Commands/IncrementalBackup.pm"} = '#line '.(1+__LINE__).' "'.__F
   
       my $backup = shift // die_usage();
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1777,7 +1839,7 @@ $fatpacked{"App/Commands/PrintBackups.pm"} = '#line '.(1+__LINE__).' "'.__FILE__
   
   sub main {
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1818,7 +1880,7 @@ $fatpacked{"App/Commands/PrintCrons.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."
   
   sub main {
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1855,7 +1917,7 @@ $fatpacked{"App/Commands/PrintSubvols.pm"} = '#line '.(1+__LINE__).' "'.__FILE__
   
   sub main {
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1907,7 +1969,7 @@ $fatpacked{"App/Commands/TakeSnap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"
       my $subvol    = shift // die_usage();
       my $timeframe = shift // die_usage();
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1939,7 +2001,9 @@ $fatpacked{"App/Commands/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "
   #  WWW:     https://github.com/NicholasBHubbard/yabsm
   #  License: MIT
   #
-  #  TODO
+  #  A valid remote backup config is setup so the root user can connect
+  #  to the remote host and run btrfs with sudo without having to enter
+  #  any passwords.
   
   package App::Commands::TestRemoteBackupConfig;
   
@@ -1961,7 +2025,7 @@ $fatpacked{"App/Commands/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "
   
       my $backup = shift // die_usage();
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -1973,11 +2037,13 @@ $fatpacked{"App/Commands/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).' "
   	die "error: backup '$backup' is a local backup\n";
       }
   
-      # we know that $backup is a remote backup
+      # new_ssh_connection() will kill the program if a passwordless
+      # connection cannot be established.
+      my $ssh = App::Base::new_ssh_connection();
   
-      # The program will die if the remote backup is not configure
-      # properly.
-      App::Base::test_remote_backup_config($config_ref, $backup);
+      if (my $out = $ssh->system('sudo -n btrfs --help 2>&1 1>/dev/null')) {
+          die "$out\n";
+      }
   
       say 'all good';
   
@@ -2012,7 +2078,7 @@ $fatpacked{"App/Commands/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__FI
   
       die "error: permission denied\n" if $<;
   
-      if (@_) { die_usage() }
+      die_usage() if @_;
   
       my $config_ref = App::Config::read_config();
   
@@ -2043,24 +2109,31 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   use App::Base;
   
   use Carp;
-  
   use Array::Utils 'array_minus';
   
   use Parser::MGC;
   use base 'Parser::MGC';
   
-  my %regex = ( path      => qr/\/\S*/
-              , name      => qr/[a-zA-Z]\w*/
-              , whole_num => qr/\d+/
-              , nat_num   => qr/[1-9]\d*/
-              , comment   => qr/#.*/
-              , ident     => qr/[\w-]+/
+                   ####################################
+                   #         REGEX LOOKUP TABLE       #
+                   ####################################
+  
+  my %regex = ( path         => qr/\/[^#\s]*/
+              , subject_name => qr/[a-zA-Z][-\w]*/
+              , pos_int      => qr/[1-9]\d*/
+              , comment      => qr/#.*/
+              , ident        => qr/[-\w]+/
               );
+  
+                   ####################################
+                   #         MAIN SUBROUTINE          #
+                   ####################################
   
   sub read_config {
   
       my $file = shift // '/etc/yabsm.conf';
   
+      # see documentation of Parser::MGC to see what is going on here
       my $parser = __PACKAGE__->new( toplevel => 'p'
                                    , patterns => { comment => $regex{comment}
                                                  , ident   => $regex{ident}
@@ -2071,11 +2144,9 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   
       my @errors = ();
   
-      push @errors, missing_required_settings($config_ref);
-      push @errors, invalid_backup_settings($config_ref);
-  
-      # not neccesary due to parser semantics
-      # push @errors, invalid_subvol_settings($config_ref);
+      push @errors, $_ for missing_subvol_settings($config_ref);
+      push @errors, $_ for missing_backup_settings($config_ref);
+      push @errors, $_ for missing_misc_settings($config_ref);
   
       if (@errors) {
           die ((join "\n", @errors) . "\n");
@@ -2083,6 +2154,10 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   
       return $config_ref;
   }
+  
+                   ####################################
+                   #              PARSER              #
+                   ####################################
   
   sub p {
   
@@ -2096,7 +2171,7 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
               sub {
                   $self->token_kw( 'subvol' );
                   $self->commit;
-                  my $name = $self->maybe_expect( $regex{name} );
+                  my $name = $self->maybe_expect( $regex{subject_name} );
                   $name // $self->fail('expected alphanumeric sequence starting with letter');
                   my $kvs  = $self->scope_of('{', 'subvol_def_p', '}');
                   $config{subvols}{$name} = $kvs;
@@ -2104,7 +2179,7 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
               sub {                     
                   $self->token_kw( 'backup' );
                   $self->commit;
-                  my $name = $self->maybe_expect( $regex{name} );
+                  my $name = $self->maybe_expect( $regex{subject_name} );
                   $name // $self->fail('expected alphanumeric sequence starting with letter');
                   my $kvs  = $self->scope_of('{', 'backup_def_p', '}');
                   $config{backups}{$name} = $kvs;
@@ -2138,16 +2213,14 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   
       my $self = shift // confess App::Base::missing_arg();
   
-      my @keywords = subvol_keywords();
-  
       my %kvs; # return this
       my $k;
       my $v;
   
       $self->sequence_of( sub {
           $self->commit;
-          $k = $self->token_kw( @keywords );
-          $self->maybe_expect( '=' ) // $self->fail("expected literal '='");
+          $k = $self->token_kw( subvol_keywords() );
+          $self->maybe_expect( '=' ) // $self->fail("expected '='");
           if ($k eq 'mountpoint') {
               $v = $self->maybe_expect( $regex{path} );
               $v // $self->fail('expected file path');
@@ -2157,8 +2230,11 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
               $v // $self->fail( q(expected 'yes' or 'no') );
           }
           elsif ($k =~ /_keep$/) {
-              $v = $self->maybe_expect( $regex{whole_num} );
-              $v // $self->fail('expected whole number');
+              $v = $self->maybe_expect( $regex{pos_int} );
+              $v // $self->fail('expected positive integer');
+          }
+          elsif ($k eq 'weekly_day') {
+              $v = $self->token_kw( App::Base::all_days_of_week() );
           }
           else {
               confess "internal error: no such subvol setting '$k'";
@@ -2174,39 +2250,41 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
   
       my $self = shift // confess App::Base::missing_arg();
   
-      my @keywords = backup_keywords();
-  
       my %kvs; # return this
       my $k;
       my $v;
   
       $self->sequence_of( sub {
           $self->commit;
-          $k = $self->token_kw( @keywords );
-          $self->maybe_expect( '=' ) // $self->fail("expected literal '='");
+          $k = $self->token_kw( backup_keywords() );
+          $self->maybe_expect( '=' ) // $self->fail("expected '='");
+  
           if ($k eq 'remote') {
               $v = $self->maybe( sub { $self->token_kw( 'yes', 'no' ) } );
               $v // $self->fail( q(expected 'yes' or 'no') );
           }
           elsif ($k eq 'timeframe') {
-              $v = $self->token_kw( 'hourly', 'midnight', 'monthly' );
+              $v = $self->token_kw( App::Base::all_backup_timeframes() );
           }
           elsif ($k eq 'backup_dir') {
               $v = $self->maybe_expect( $regex{path} );
               $v // $self->fail('expected file path');
           }
           elsif ($k eq 'keep') {
-              $v = $self->maybe_expect( $regex{nat_num} );
-              $v // $self->fail('expected natural number');
+              $v = $self->maybe_expect( $regex{pos_int} );
+              $v // $self->fail('expected positive integer');
           }
           elsif ($k eq 'host') {
-              $v = $self->maybe_expect( $regex{name} );
+              $v = $self->maybe_expect( $regex{subject_name} );
               $v // $self->fail('expected alphanumeric sequence starting with a letter');
           }
           elsif ($k eq 'subvol') {
               # We check that $v is a defined subvol later
-              $v = $self->maybe_expect( $regex{name} );
+              $v = $self->maybe_expect( $regex{subject_name} );
               $v // $self->fail('expected alphanumeric sequence starting with a letter');
+          }
+          elsif ($k eq 'weekly_day') {
+              $v = $self->token_kw( App::Base::all_days_of_week() );
           }
           else {
               confess "internal error: no such backup setting '$k'";
@@ -2218,69 +2296,133 @@ $fatpacked{"App/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_
       return \%kvs;
   }
   
-  sub missing_required_settings {
+                   ####################################
+                   #       STATIC CONFIG ANALYSIS     #
+                   ####################################
   
-      # Return error messages for every required setting
-      # that is not defined.
+  sub missing_subvol_settings {
   
       my $config_ref = shift // confess App::Base::missing_arg();
   
       my @err_msgs = ();
   
       for my $subvol (App::Base::all_subvols($config_ref)) {
-          my @required = subvol_keywords();
-          my @defined  = keys %{ $config_ref->{subvols}{$subvol} };
-          my @missing  = array_minus( @required, @defined );
-          push @err_msgs, "config error: subvol '$subvol' missing required setting '$_'" for @missing;
-      }
   
-      for my $backup (App::Base::all_backups($config_ref)) {
-          my @required = backup_keywords();
-          my @defined  = keys %{ $config_ref->{backups}{$backup} };
+          # base required settings
+          my @req = qw(mountpoint 5minute_want hourly_want midnight_want weekly_want monthly_want);
   
-          # only remote backups require a 'host' setting
-          my $remote = $config_ref->{backups}{$backup}{remote} // 'no';
-          if ($remote eq 'no') { 
-              @required = grep { $_ ne 'host' } @required;
+          my @def = keys %{ $config_ref->{subvols}{$subvol} };
+  
+          if (my @missing = array_minus(@req, @def)) {
+              push @err_msgs, "error: subvol '$subvol' missing required setting '$_'" for @missing;
           }
   
-          my @missing = array_minus( @required, @defined );
-          push @err_msgs, "config error: backup '$backup' missing required setting '$_'" for @missing;
-      }
+          else { # the base required settings are defined
   
-      # all misc settings are required at this time
-      for my $misc (misc_keywords()) {
-          if (not exists $config_ref->{misc}{$misc}) {
-              push @err_msgs, "config error: missing setting '$misc'";
+              for my $tframe (App::Base::subvols_timeframes($config_ref, $subvol)) {
+                  if ($tframe eq '5minute') {
+                      push @req, '5minute_keep';
+                  }
+                  elsif ($tframe eq 'hourly') {
+                      push @req, 'hourly_keep';
+                  }
+                  elsif ($tframe eq 'midnight') {
+                      push @req, 'midnight_keep';
+                  }
+                  elsif ($tframe eq 'weekly') {
+                      push @req, 'weekly_keep', 'weekly_day';
+                  }
+                  elsif ($tframe eq 'monthly') {
+                      push @req, 'monthly_keep';
+                  }
+                  else {
+                      confess "internal error: no such timeframe '$tframe'";
+                  }
+              }
+  
+              my @def = keys %{ $config_ref->{subvols}{$subvol} };
+  
+              if (my @missing = array_minus(@req, @def)) {
+                  push @err_msgs, "error: subvol '$subvol' missing required setting '$_'" for @missing;
+              }
           }
       }
   
       return @err_msgs;
   }
   
-  sub invalid_backup_settings {
+  sub missing_backup_settings {
   
       my $config_ref = shift // confess App::Base::missing_arg();
   
       my @err_msgs = ();
   
-      # check that 'subvol' settings are actually defined subvols.
       for my $backup (App::Base::all_backups($config_ref)) {
-          my $subvol = $config_ref->{backups}{$backup}{subvol};
-          unless (grep { $subvol eq $_ } App::Base::all_subvols($config_ref)) {
-              push @err_msgs, "config error: backup '$backup' backing up non existent subvol '$subvol'"
-            }
+  
+          # base required settings
+          my @req = qw(remote subvol backup_dir timeframe keep);
+  
+          my @def = keys %{ $config_ref->{backups}{$backup} };
+  
+          if (my @missing = array_minus(@req, @def)) {
+              push @err_msgs, "error: backup '$backup' missing required setting '$_'" for @missing;
+          }
+  
+          else { # the base required settings are defined
+  
+              my $subvol = $config_ref->{backups}{$backup}{subvol};
+              my $remote = $config_ref->{backups}{$backup}{remote};
+              my $tframe = $config_ref->{backups}{$backup}{timeframe};
+  
+              if (not grep { $subvol eq $_ } App::Base::all_subvols($config_ref)) {
+                  push @err_msgs, "error: backup '$backup' backing up undefined subvol '$subvol'";
+              }
+  
+              if ($remote eq 'yes') {
+                  push @req, 'host';
+              }
+  
+              if ($tframe eq 'weekly') {
+                  push @req, 'weekly_day';
+              }
+  
+              if (my @missing = array_minus(@req, @def)) {
+                  push @err_msgs, "error: backup '$backup' missing required setting '$_'" for @missing;
+              }
+          }
       }
-      
+  
       return @err_msgs;
   }
   
+  sub missing_misc_settings {
+  
+      my $config_ref = shift // confess App::Base::missing_arg();
+  
+      my @err_msgs = ();
+  
+      # for now all misc settings are required
+      my @req = misc_keywords();
+  
+      my @def = keys %{ $config_ref->{misc} };
+  
+      my @missing = array_minus(@req, @def);
+  
+      push @err_msgs, "error: missing misc setting '$_'" for @missing;
+  
+      return @err_msgs;
+  }
+  
+                   ####################################
+                   #           KEYWORD ARRAYS         #
+                   ####################################
+  
   sub subvol_keywords {
-      return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep monthly_want monthly_keep);
+      return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep weekly_want weekly_keep weekly_day monthly_want monthly_keep);
   }
   
   sub backup_keywords {
-      return qw(remote host subvol backup_dir timeframe keep);
+      return qw(subvol remote host keep backup_dir timeframe weekly_day);
   }
   
   sub misc_keywords {

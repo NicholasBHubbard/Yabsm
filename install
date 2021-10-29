@@ -19,7 +19,7 @@ die "error: your perl version '$]' is less than 5.16.3" if $] < 5.016003;
 use FindBin '$Bin';
 use File::Copy 'copy';
 
-copy "$Bin/export/yabsmrc.example", '/etc/yabsm.conf.example';
+copy "$Bin/export/yabsm.conf.example", '/etc/yabsm.conf.example';
 copy "$Bin/export/yabsm.fatpack.pl", '/usr/local/bin/yabsm';
 
 chmod 0644, '/etc/yabsm.conf.example';

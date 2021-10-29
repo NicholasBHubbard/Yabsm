@@ -1505,7 +1505,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
   	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
   	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
-  	my $weekly_want  = $config_ref->{subvols}{$subvol}{weekly_want};
+  	my $weekly_want   = $config_ref->{subvols}{$subvol}{weekly_want};
   	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
           
           my $_5minute_cron = ( '*/5 * * * * root' # every 5 minutes
@@ -1529,7 +1529,7 @@ $fatpacked{"App/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'APP_BA
   			    . " yabsm take-snap $subvol monthly"
   			    ) if $monthly_want eq 'yes';
   
-          push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $monthly_cron, $monthly_cron);
+          push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $weekly_cron, $monthly_cron);
       }
   
       foreach my $backup (all_backups($config_ref)) {

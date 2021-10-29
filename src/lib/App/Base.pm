@@ -1572,25 +1572,6 @@ sub new_ssh_connection { # No test. Is not pure.
     return $ssh;
 }
 
-sub test_remote_backup_config { # No test. Is not pure.
-
-    # Test that we can connect to $backup's remote host, and run a btrfs
-    # command with sudo without needing to enter any passwords.
-
-    my $config_ref = shift // confess missing_arg();
-    my $backup     = shift // confess missing_arg();
-
-    my $remote_host = $config_ref->{backups}{$backup}{host};
-
-    # program will die if we cannot connect to $remote_host without a password
-    my $ssh = new_ssh_connection($remote_host);
-
-    $ssh->system('sudo -n btrfs --help 1>/dev/null')
-      or die "Could not run btrfs as sudo without password on host '$remote_host': " . $ssh->error . "\n";
-
-    return;
-}
-
 sub is_day_of_week { # Has test. Is pure.
 
     # Return 1 iff $dow is a valid day of week string. A day of week

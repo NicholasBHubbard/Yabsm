@@ -1,22 +1,15 @@
 #
-# This config shows that we cannot omit a closing curly brace
-# in a define subvol block
+# This config shows we cannot omit a closing curly brace in a
+# define subvol block.
 #
 
-yabsm_dir=/
+yabsm_dir=/#always required
 
 subvol home {
-
     mountpoint=/home
-
     5minute_want=no
-    5minute_keep=0
-
     hourly_want=no
-    hourly_keep=0
-
     midnight_want=no
-    midnight_keep=0
-
+    weekly_want=no
     monthly_want=no
-    monthly_keep=0
+#missing closing brace

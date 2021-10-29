@@ -1,70 +1,30 @@
 #
-# this config shows that trailing whitespace is ignored
+# this config shows that trailing whitespace is ignored. Every line/setting has trailing whitespace.
 #
-
-# has trailing whitespace
-yabsm_dir=/       
+yabsm_dir=/    
+        
+subvol home {  
+       mountpoint=/home  
+       5minute_want=yes             
+       5minute_keep=1    
+       hourly_want=yes    
+       hourly_keep=1     
+       midnight_want=yes     
+       midnight_keep=1      
+       weekly_want=yes  
+       weekly_keep=1         
+       weekly_day=monday        
+       monthly_want=yes     
+       monthly_keep=1       
+}       
     
-# all these settings have trailing whitespace
-subvol home {         
-
-    mountpoint=/home      
-
-    5minute_want=no       
-    5minute_keep=0     
-
-    hourly_want=no 
-    hourly_keep=0     
-
-    midnight_want=no           
-    midnight_keep=0         
-
-    monthly_want=no       
-    monthly_keep=0         
-}         
-
-# all these settings have trailing whitespace followed by a comment
-subvol tmp {   # comment
-
-    mountpoint=/tmp      #comment
-
-    5minute_want=no #comment       
-    5minute_keep=0             #comment     
-
-    hourly_want=no #comment
-    hourly_keep=0    #comment     
-
-    midnight_want=no      #comment           
-    midnight_keep=0  #comment         
-
-    monthly_want=no #comment       
-    monthly_keep=0 #comment         
-}  #comment       
-
-# all these settings have trailing whitespace
-backup homeBackup {           
-
-    remote=no	      
-    
-    subvol=home          
-
-    backup_dir=/            
-
-    timeframe=hourly                 
-
-    keep=100                     
+backup homeBackup {         
+       subvol=home    
+       remote=yes     
+       host=foobar      
+       backup_dir=/       
+       timeframe=weekly      
+       weekly_day=monday     
+       keep=1    
 }      
-
-# all these settings have trailing whitespace followed by a comment
-backup homeBackup {     #comment           
-
-    remote=no	      #comment
-    
-    subvol=tmp      #comment
-
-    backup_dir=/ #comment
-
-    timeframe=hourly #comment                
-
-    keep=100                 #comment    
-}    #comment
+       

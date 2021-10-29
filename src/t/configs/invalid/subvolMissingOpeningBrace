@@ -1,23 +1,15 @@
 #
-# this config shows that we cannot parse a subvol missing
-# an opening curly brace
+# This config shows we cannot omit a opening curly brace in a
+# define subvol block.
 #
 
 yabsm_dir=/#always required
 
-subvol home # missing curly brace
-
+subvol home #missing opening brace
     mountpoint=/home
-
     5minute_want=no
-    5minute_keep=0
-
     hourly_want=no
-    hourly_keep=0
-
     midnight_want=no
-    midnight_keep=0
-
+    weekly_want=no
     monthly_want=no
-    monthly_keep=0
 }

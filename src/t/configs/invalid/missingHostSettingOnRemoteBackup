@@ -8,30 +8,19 @@ define_backup homeBackup {
 
     remote=yes
     
-    ### host=whatever
+    ### host=foobar
 
     subvol=home
-    
     backup_dir=/
-    
     timeframe=hourly
-    
     keep=100
 }
 
 define_subvol home {
-
     mountpoint=/home
-
     5minute_want=no
-    5minute_keep=0
-
     hourly_want=no
-    hourly_keep=0
-
     midnight_want=no
-    midnight_keep=0
-
+    weekly_want=no
     monthly_want=no
-    monthly_keep=0
 }

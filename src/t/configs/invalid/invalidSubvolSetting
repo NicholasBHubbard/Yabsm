@@ -5,20 +5,11 @@
 yabsm_dir=/#always required
 
 subvol home {
-
     some_invalid_setting=whatever
-
     mountpoint=/home
-
     5minute_want=no
-    5minute_keep=0
-
     hourly_want=no
-    hourly_keep=0
-
     midnight_want=no
-    midnight_keep=0
-
+    weekly_want=no
     monthly_want=no
-    monthly_keep=0
 }

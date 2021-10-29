@@ -1,0 +1,25 @@
+#
+# this config shows we must have a valid weekly_day setting for a weekly timeframe backup
+#
+
+yabsm_dir=/#always required
+
+backup homeBackup {
+    timeframe=weekly
+    weekly_day=notaday
+
+    remote=no
+    subvol=home
+    backup_dir=/
+    keep=100
+}
+
+subvol home {
+    mountpoint=/home
+    5minute_want=no
+    hourly_want=no
+    midnight_want=no
+    weekly_want=no
+    monthly_want=no
+}
+

@@ -1,0 +1,30 @@
+#
+# This config shows that the the order we define settings doesn't matter
+#
+
+subvol home {
+       weekly_day=monday
+       5minute_keep=100
+       mountpoint=/home
+       hourly_want=yes
+       monthly_keep=100
+       5minute_want=yes
+       midnight_keep=100
+       monthly_want=yes
+       weekly_keep=100
+       hourly_keep=100
+       midnight_want=yes
+       weekly_want=yes
+}
+
+yabsm_dir=/
+
+backup homeBackup {
+       weekly_day=monday
+       host=foobar
+       backup_dir=/
+       timeframe=weekly
+       keep=100
+       subvol=home
+       remote=yes
+}

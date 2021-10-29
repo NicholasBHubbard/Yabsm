@@ -1,0 +1,41 @@
+#
+# This config contains the minimum number of required settings.
+#
+
+yabsm_dir=/ # always required
+
+subvol home {
+       mountpoint=/home # always required
+
+       5minute_want=no     # always required
+       ###5minute_keep=100 # only required if 5minute_want=yes
+
+       hourly_want=no     # always required
+       ###hourly_keep=100 # only required if hourly_want=no
+
+       midnight_want=no     # always required
+       ###midnight_keep=100 # only required if midnight_want=yes
+
+       weekly_want=no       # always required
+       ###weekly_keep=100   # only required if weekly_want=yes
+       ###weekly_day=monday # only required if weekly_want=yes
+
+       monthly_want=no     # always required
+       ###monthly_keep=100 # only required if monthly_want=yes
+}
+
+backup homeBackup {
+       subvol=home # always required
+
+       remote=no # always required
+
+       ###host=foobar # only required if host=yes
+
+       backup_dir=/ # always required
+
+       keep=100 # always required
+
+       timeframe=midnight # always required
+
+       ###weekly_day=monday # only required if timeframe=weekly
+}

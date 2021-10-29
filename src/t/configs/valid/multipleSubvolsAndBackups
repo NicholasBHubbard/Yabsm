@@ -1,0 +1,58 @@
+
+#
+# This config shows we can defined multiple subvols and backups
+#
+
+yabsm_dir=/
+
+subvol root {
+    mountpoint=/
+
+    5minute_want=no
+
+    hourly_want=yes
+    hourly_keep=24
+
+    midnight_want=no
+
+    weekly_want=yes
+    weekly_keep=7
+    weekly_day=tue
+
+    monthly_want=yes
+    monthly_keep=12
+}
+
+subvol home {
+    mountpoint=/home
+
+    5minute_want=yes
+    5minute_keep=12
+
+    hourly_want=no
+
+    midnight_want=yes
+    midnight_keep=14
+
+    weekly_want=no
+
+    monthly_want=no
+}
+
+backup rootBackup {
+    subvol=root
+    remote=no
+    backup_dir=/
+    keep=100
+    timeframe=weekly
+    weekly_day=friday
+}
+
+backup homeBackup {
+    subvol=home
+    remote=yes
+    host=foohost
+    backup_dir=/home
+    timeframe=hourly
+    keep=12
+}

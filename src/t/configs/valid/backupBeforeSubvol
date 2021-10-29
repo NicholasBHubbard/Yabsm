@@ -1,0 +1,32 @@
+#
+# This config shows we can define a backup before the subvol it backs up
+#
+
+yabsm_dir=/
+
+# backup comes first
+backup homeBackup {
+    subvol=home
+    remote=yes
+    host=foohost
+    backup_dir=/home
+    timeframe=hourly
+    keep=12
+}
+
+subvol home {
+    mountpoint=/home
+
+    5minute_want=yes
+    5minute_keep=12
+
+    hourly_want=no
+
+    midnight_want=yes
+    midnight_keep=14
+
+    weekly_want=no
+
+    monthly_want=no
+}
+

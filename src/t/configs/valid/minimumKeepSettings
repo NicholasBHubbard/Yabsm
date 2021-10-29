@@ -1,0 +1,37 @@
+#
+# This config has minimum *keep* setting values.
+#
+
+yabsm_dir=/ # always required
+
+subvol home {
+       mountpoint=/home
+
+       5minute_want=yes
+       5minute_keep=1 # minimum is 1
+
+       hourly_want=yes
+       hourly_keep=1 # minimum is 1
+
+       midnight_want=yes
+       midnight_keep=1 # minimum is 1
+
+       weekly_want=yes
+       weekly_keep=1 # minimum is 1
+       weekly_day=monday
+
+       monthly_want=no
+       monthly_keep=1 # minimum is 1
+}
+
+backup homeBackup {
+       subvol=home
+
+       remote=no
+
+       backup_dir=/
+
+       keep=1 # minimum is 1
+
+       timeframe=midnight
+}

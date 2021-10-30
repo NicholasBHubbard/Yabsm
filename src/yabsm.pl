@@ -3,8 +3,9 @@
 #  Author:  Nicholas Hubbard
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
-#
-#  yabsm is a btrfs snapshot manager.
+
+#  This is the toplevel script of yabsm. The actual program that is
+#  installed on the end users system is this script but fatpacked.
 
 use strict;
 use warnings;
@@ -19,19 +20,17 @@ sub usage {
 usage: yabsm [--help] [--version]
              <command> [<args>]
 
-  Use one of the following commands:
-
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or
                                           subvol defined in /etc/yabsm.conf.
 
-  check-config, check <?FILE>             Check that FILE is a valid yabsm
+  check-config, c <?FILE>                 Check that FILE is a valid yabsm
                                           config file for errors. If FILE is
                                           not specified then check
                                           /etc/yabsm.conf. If errors are present
                                           print their messages to stderr and 
                                           exit with non zero status, else print
-                                          'all good' to stdout.
+                                          'all good'.
 
   update-crontab, update                  Update cronjobs in /etc/crontab, based
                                           off the user settings specified in 
@@ -56,13 +55,13 @@ usage: yabsm [--help] [--version]
                                           btrfs incremental backup process for
                                           BACKUP. This is a root only command.
 
-  print-subvols, subvols                  Print all the subvols defined in
-                                          /etc/yabsm.conf to stdout.
+  print-subvols, subvols                  Print the names of all the subvols 
+                                          defined in /etc/yabsm.conf.
 
-  print-backups, backups                  Print all the backups defined in
-                                          /etc/yabsm.conf to stdout.
+  print-backups, backups                  Print the names of all the backups 
+                                          defined in /etc/yabsm.conf.
 
-  test-remote-conf, test-remote <BACKUP>  Test that the remote BACKUP has been 
+  test-remote-config, tr <BACKUP>         Test that the remote BACKUP has been 
                                           properly configured. For BACKUP to be 
                                           properly configured yabsm should be
                                           able to connect to the remote host and
@@ -99,7 +98,7 @@ my %run_command =
    , 'check-config'       => \&App::Commands::CheckConfig::main
    , 'update-crontab'     => \&App::Commands::UpdateEtcCrontab::main
    , 'print-crons'        => \&App::Commands::PrintCrons::main
-   , 'test-remote-conf'   => \&App::Commands::TestRemoteBackupConfig::main
+   , 'test-remote-config' => \&App::Commands::TestRemoteBackupConfig::main
    );
 
 sub unabbreviate {
@@ -108,17 +107,17 @@ sub unabbreviate {
 
     my $cmd = shift // die;
 
-    if    ($cmd eq 'snap')        { return 'take-snap'          }
-    elsif ($cmd eq 'backup')      { return 'incremental-backup' }
-    elsif ($cmd eq 'bootstrap')   { return 'bootstrap-backup'   }
-    elsif ($cmd eq 'f')           { return 'find'               }
-    elsif ($cmd eq 'subvols')     { return 'print-subvols'      }
-    elsif ($cmd eq 'backups')     { return 'print-backups'      }
-    elsif ($cmd eq 'check')       { return 'check-config'       }
-    elsif ($cmd eq 'update')      { return 'update-crontab'     }
-    elsif ($cmd eq 'crons')       { return 'print-crons'        }
-    elsif ($cmd eq 'test-remote') { return 'test-remote-conf'   }
-    else                          { return $cmd                 }
+    if    ($cmd eq 'snap')      { return 'take-snap'          }
+    elsif ($cmd eq 'backup')    { return 'incremental-backup' }
+    elsif ($cmd eq 'bootstrap') { return 'bootstrap-backup'   }
+    elsif ($cmd eq 'f')         { return 'find'               }
+    elsif ($cmd eq 'subvols')   { return 'print-subvols'      }
+    elsif ($cmd eq 'backups')   { return 'print-backups'      }
+    elsif ($cmd eq 'c')         { return 'check-config'       }
+    elsif ($cmd eq 'update')    { return 'update-crontab'     }
+    elsif ($cmd eq 'crons')     { return 'print-crons'        }
+    elsif ($cmd eq 'tr')        { return 'test-remote-config' }
+    else                        { return $cmd                 }
 }
 
                  ####################################

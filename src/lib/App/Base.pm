@@ -33,7 +33,6 @@ use v5.16.3;
 use Net::OpenSSH;
 use Time::Piece;
 use Carp;
-use File::Copy qw(copy move);
 use File::Path qw(make_path); # make_path() behaves like 'mkdir --parents'
 
 sub take_new_snapshot { # No test. Is not pure.
@@ -141,7 +140,7 @@ sub do_backup_local { # No test. Is not pure.
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    # bootstrap dir should have one snap
+    # bootstrap dir should have exactly one snap
     my $bootstrap_snap = [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
 
     # we have not already bootstrapped
@@ -181,7 +180,7 @@ sub do_backup_ssh { # No test. Is not pure.
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    # bootstrap dir should have one snap
+    # bootstrap dir should have exactly one snap
     my $bootstrap_snap =
       [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
 
@@ -302,9 +301,11 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    # create $remote_backup_dir if it does not exist.
-    $ssh->system( "if [ ! -d \"$remote_backup_dir\" ];"
-		. "then mkdir -p $remote_backup_dir; fi"
+    # create $remote_backup_dir if it does not exist. This will
+    # fail if the remote user does not have write permissions
+    # for $remote_backup_dir.
+    $ssh->system( "if [ ! -d \"$remote_backup_dir\" ]; then "
+		. "mkdir -p $remote_backup_dir; fi"
 		);
 
     # send the bootstrap backup to remote host
@@ -1446,42 +1447,6 @@ sub is_local_backup { # Has test. Is pure.
 
     else { return 0 }
 }
-
-sub update_etc_crontab { # No test. Is not pure.
-    
-    # Write cronjobs to '/etc/crontab'.
-
-    my $config_ref = shift // confess missing_arg();
-
-    open (my $etc_crontab_fh, '<', '/etc/crontab')
-      or die "internal error: failed to open file '/etc/crontab'\n";
-
-    open (my $tmp_fh, '>', '/tmp/yabsm-update-tmp')
-      or die "internal error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
-
-    # Copy all lines from /etc/crontab into the tmp file, excluding
-    # the existing yabsm cronjobs.
-    while (<$etc_crontab_fh>) {
-
-	s/\s+$//; # strip trailing whitespace
-
-	next if /yabsm/; # don't copy the old yabsm cronjobs
-
-	say $tmp_fh $_;
-    }
-
-    # Now append the cronjob strings to $tmp file.
-    my @cron_strings = generate_cron_strings($config_ref);
-
-    say $tmp_fh $_ for @cron_strings;
-
-    close $etc_crontab_fh;
-    close $tmp_fh;
-
-    move '/tmp/yabsm-update-tmp', '/etc/crontab';
-
-    return;
-} 
 
 sub generate_cron_strings { # No test. Is pure.
 

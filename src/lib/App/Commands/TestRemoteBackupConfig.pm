@@ -40,7 +40,7 @@ sub main {
 
     # new_ssh_connection() will kill the program if a passwordless
     # connection cannot be established.
-    my $ssh = App::Base::new_ssh_connection();
+    my $ssh = App::Base::new_ssh_connection( $config_ref->{backups}{$backup}{host} );
 
     # make sure user can use btrfs with non-interactive sudo
     if (my $out = $ssh->system('sudo -n btrfs --help 2>&1 1>/dev/null')) {

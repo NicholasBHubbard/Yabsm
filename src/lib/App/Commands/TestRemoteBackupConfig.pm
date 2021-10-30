@@ -42,7 +42,20 @@ sub main {
     # connection cannot be established.
     my $ssh = App::Base::new_ssh_connection();
 
+    # make sure user can use btrfs with non-interactive sudo
     if (my $out = $ssh->system('sudo -n btrfs --help 2>&1 1>/dev/null')) {
+        die "$out\n";
+    }
+
+    # make sure user has read/write permissions on the remote backup_dir
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    my $test_rw =
+      "if ! [ -r $backup_dir ] || ! [ -w $backup_dir ]; then "
+    . qq(echo "error: remote user '\$(whoami)' does not have read/write permissions on directory '$backup_dir'" ; exit 1)
+    . "; fi";
+
+    if (my $out = $ssh->system( $test_rw )) {
         die "$out\n";
     }
 

@@ -105,36 +105,20 @@ sub delete_old_snapshots { # No test. Is not pure.
     }
 }
 
-sub has_bootstrap { # No test. Is not pure.
-
-    # True if $backup already has a bootstrap snapshot.
-
-    my $config_ref = shift // confess missing_arg();
-    my $backup     = shift // confess missing_arg();
-
-    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
-
-    if (glob "$bootstrap_snap_dir/*") {
-        return 1;
-    }
-
-    else { return 0 }
-}
-
-sub do_backup { # No test. Is not pure.
+sub do_incremental_backup { # No test. Is not pure.
 
     # Determine if $backup is local or remote and dispatch the
-    # corresponding do_backup_* subroutine.
+    # corresponding do_incremental_backup_* subroutine.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
     if (is_local_backup($config_ref, $backup)) {
-	do_backup_local($config_ref, $backup);
+	do_incremental_backup_local($config_ref, $backup);
     }
 
     elsif (is_remote_backup($config_ref, $backup)) {
-	do_backup_ssh($config_ref, $backup);
+	do_incremental_backup_ssh($config_ref, $backup);
     }
 
     else {
@@ -144,7 +128,7 @@ sub do_backup { # No test. Is not pure.
     return;
 }
 
-sub do_backup_local { # No test. Is not pure.
+sub do_incremental_backup_local { # No test. Is not pure.
 
     # Perform a single incremental btrfs backup of $backup, or in the
     # case that the bootstrap process has not yet happened we call
@@ -154,24 +138,29 @@ sub do_backup_local { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+    if (not has_bootstrap($config_ref, $backup)) {
+        die "yabsm: internal error: backup '$backup' has not bootstrapped";
+    }
 
     # bootstrap dir should have exactly one snap
     my $bootstrap_snap = [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
 
-    # we have not already bootstrapped
-    if (not defined $bootstrap_snap) {
-	do_backup_bootstrap_local($config_ref, $backup);
-	return;
-    }
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
+    make_path $backup_dir if not -d $backup_dir;
+
+    # we have not already bootstrapped
     # do incremental backup
 	
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+
+    my $tmp_dir = local_yabsm_dir($config_ref, '.tmp');
+
+    make_path $tmp_dir if not -d $tmp_dir;
     
-    my $tmp_snap = local_yabsm_dir($config_ref, '.tmp/') . current_time_snapstring();
+    my $tmp_snap = "$tmp_dir/*" . current_time_snapstring();
     
     system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
     
@@ -184,7 +173,7 @@ sub do_backup_local { # No test. Is not pure.
     return;
 }
 
-sub do_backup_ssh { # No test. Is not pure.
+sub do_incremental_backup_ssh { # No test. Is not pure.
 
     # Perform a single incremental btrfs backup of $backup over ssh,
     # or in the case that the bootstrap process has not yet happened
@@ -216,7 +205,11 @@ sub do_backup_ssh { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     
-    my $tmp_snap = local_yabsm_dir($config_ref, '.tmp/') . current_time_snapstring();
+    my $tmp_dir = local_yabsm_dir($config_ref, '.tmp');
+
+    make_path $tmp_dir if not -d $tmp_dir;
+
+    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
 	
     system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
 	
@@ -336,6 +329,22 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
     # neccesary because the user may be redoing the bootstrap phase
     # and will therefore end up with an extra backup.
     delete_old_backups_ssh($config_ref, $ssh, $backup);
+}
+
+sub has_bootstrap { # No test. Is not pure.
+
+    # True if $backup already has a bootstrap snapshot.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+
+    if (glob "$bootstrap_snap_dir/*") {
+        return 1;
+    }
+
+    else { return 0 }
 }
 
 sub delete_old_backups_local { # No test. Is not pure.

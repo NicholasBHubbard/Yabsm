@@ -23,17 +23,17 @@ sub die_usage {
 
 sub main {
 
-    die "error: permission denied\n" if $<;
+    die "yabsm: error: permission denied\n" if $<;
 
     die_usage() if @_;
 
     my $config_ref = App::Config::read_config();
 
     open (my $etc_crontab_fh, '<', '/etc/crontab')
-      or die "error: failed to open file '/etc/crontab'\n";
+      or die "yabsm: error: failed to open file '/etc/crontab'\n";
 
     open (my $tmp_fh, '>', '/tmp/yabsm-update-tmp')
-      or die "error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
+      or die "yabsm: error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
 
     # rewrite non-yabsm data to the tmp file
     while (<$etc_crontab_fh>) {
@@ -50,7 +50,7 @@ sub main {
     say $tmp_fh $_ for @cron_strings;
 
     # crontab files must end with a blank line.
-    say $tmp_fh, ''; 
+    print $tmp_fh, "\n"; 
 
     close $etc_crontab_fh;
     close $tmp_fh;

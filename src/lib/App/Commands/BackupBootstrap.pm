@@ -20,7 +20,7 @@ sub die_usage {
 
 sub main {
 
-    die "error: permission denied\n" if $<;
+    die "yabsm: error: permission denied\n" if $<;
 
     my $backup = shift // die_usage();
 
@@ -29,7 +29,7 @@ sub main {
     my $config_ref = App::Config::read_config();
 
     if (not App::Base::is_backup($config_ref, $backup)) {
-	die "error: no such defined backup '$backup'\n";
+	die "yabsm: error: no such defined backup '$backup'\n";
     }
 
     App::Base::initialize_directories($config_ref);

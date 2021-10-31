@@ -12,6 +12,9 @@ use strict;
 use warnings;
 use v5.16.3;
 
+use Exporter 'import';
+our @EXPORT_OK 'read_config';
+
 # located using lib::relative in yabsm.pl
 use App::Base;
 

@@ -105,6 +105,22 @@ sub delete_old_snapshots { # No test. Is not pure.
     }
 }
 
+sub has_bootstrap { # No test. Is not pure.
+
+    # True if $backup already has a bootstrap snapshot.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+
+    if (glob "$bootstrap_snap_dir/*") {
+        return 1;
+    }
+
+    else { return 0 }
+}
+
 sub do_backup { # No test. Is not pure.
 
     # Determine if $backup is local or remote and dispatch the
@@ -251,6 +267,8 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
 
     my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
+    make_path $bootstrap_snap_dir if not -d $bootstrap_snap_dir;
+
     # delete old bootstrap snap
     system("btrfs subvol delete $_") for glob "$bootstrap_snap_dir/*";
 
@@ -262,6 +280,8 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
     
+    make_path $backup_dir if not -d $backup_dir;
+
     system("btrfs subvol snapshot -r $mountpoint $$bootstrap_snap");
 
     system("btrfs subvol send $bootstrap_snap | btrfs receive $backup_dir");

@@ -20,16 +20,16 @@ use FindBin '$Bin';
 use lib "$Bin/../lib";
 
 # Module to test
-use App::Config;
+use Yabsm::Config;
 
 print "Testing that all the valid configs parse successfully ...\n";
 for my $config_file (glob './configs/valid/*') {
-    lives_ok { App::Config::read_config($config_file) } $config_file;
+    lives_ok { Yabsm::Config::read_config($config_file) } $config_file;
 }
 
 print "\nTesting that all the invalid configs kill the program ...\n";
 for my $config_file (glob './configs/invalid/*') {
-    dies_ok { App::Config::read_config($config_file) } $config_file;
+    dies_ok { Yabsm::Config::read_config($config_file) } $config_file;
 }
 
 print "\nTesting read_config() returns correct data structure\n";
@@ -136,7 +136,7 @@ my %t_conf = ( misc    => { yabsm_dir => '/' }
 
 my $tmp_file = '/tmp/yabsm_tmp_conf';
 `echo '$file_str' > $tmp_file`;
-my $config_ref = App::Config::read_config($tmp_file);
+my $config_ref = Yabsm::Config::read_config($tmp_file);
 `rm $tmp_file`;
 
 is_deeply($config_ref, \%t_conf, 'data structure layout');

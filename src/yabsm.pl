@@ -76,29 +76,29 @@ END_USAGE
 use lib::relative 'lib';
 
 # Every command has their own module with a main() function
-use App::Commands::TakeSnap;
-use App::Commands::IncrementalBackup;
-use App::Commands::BackupBootstrap;
-use App::Commands::Find;
-use App::Commands::PrintSubvols;
-use App::Commands::PrintBackups;
-use App::Commands::CheckConfig;
-use App::Commands::UpdateEtcCrontab;
-use App::Commands::PrintCrons;
-use App::Commands::TestRemoteBackupConfig;
+use Yabsm::Commands::TakeSnap;
+use Yabsm::Commands::IncrementalBackup;
+use Yabsm::Commands::BackupBootstrap;
+use Yabsm::Commands::Find;
+use Yabsm::Commands::PrintSubvols;
+use Yabsm::Commands::PrintBackups;
+use Yabsm::Commands::CheckConfig;
+use Yabsm::Commands::UpdateEtcCrontab;
+use Yabsm::Commands::PrintCrons;
+use Yabsm::Commands::TestRemoteBackupConfig;
 
 # command dispatch table
 my %run_command =
-   ( 'take-snap'          => \&App::Commands::TakeSnap::main
-   , 'incremental-backup' => \&App::Commands::IncrementalBackup::main
-   , 'bootstrap-backup'   => \&App::Commands::BackupBootstrap::main
-   , 'find'               => \&App::Commands::Find::main
-   , 'print-subvols'      => \&App::Commands::PrintSubvols::main
-   , 'print-backups'      => \&App::Commands::PrintBackups::main
-   , 'check-config'       => \&App::Commands::CheckConfig::main
-   , 'update-crontab'     => \&App::Commands::UpdateEtcCrontab::main
-   , 'print-crons'        => \&App::Commands::PrintCrons::main
-   , 'test-remote-config' => \&App::Commands::TestRemoteBackupConfig::main
+   ( 'take-snap'          => \&Yabsm::Commands::TakeSnap::main
+   , 'incremental-backup' => \&Yabsm::Commands::IncrementalBackup::main
+   , 'bootstrap-backup'   => \&Yabsm::Commands::BackupBootstrap::main
+   , 'find'               => \&Yabsm::Commands::Find::main
+   , 'print-subvols'      => \&Yabsm::Commands::PrintSubvols::main
+   , 'print-backups'      => \&Yabsm::Commands::PrintBackups::main
+   , 'check-config'       => \&Yabsm::Commands::CheckConfig::main
+   , 'update-crontab'     => \&Yabsm::Commands::UpdateEtcCrontab::main
+   , 'print-crons'        => \&Yabsm::Commands::PrintCrons::main
+   , 'test-remote-config' => \&Yabsm::Commands::TestRemoteBackupConfig::main
    );
 
 sub unabbreviate {
@@ -133,7 +133,7 @@ if ($cmd eq '--version') { say $YABSM_VERSION and exit 0 }
 my $full_cmd = unabbreviate($cmd);
 
 if (not exists $run_command{ $full_cmd} ) {
-    die "error: no such command '$cmd'\n";
+    die "yabsm: error: no such command '$cmd'\n";
 }
 
 $run_command{ $full_cmd }->(@ARGV);

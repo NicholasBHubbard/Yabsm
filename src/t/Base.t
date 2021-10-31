@@ -20,7 +20,7 @@ use FindBin '$Bin';
 use lib "$Bin/../lib";
 
 # Module to test
-use App::Base;
+use Yabsm::Base;
 
                  ####################################
                  #            GENERATORS            #

@@ -21,7 +21,7 @@
 #  Just because a function doesn't have a unit test does not mean it
 #  has not been informally tested.
 #
-#  An error message prefixed with 'internal error' is an error for a
+#  An error message prefixed with 'yabsm: internal error' is an error for a
 #  scenario that should never occur unless a bug is present.
 
 package App::Base;
@@ -122,7 +122,7 @@ sub do_backup { # No test. Is not pure.
     }
 
     else {
-	confess "internal error: no such defined backup '$backup'";
+	confess "yabsm: internal error: no such defined backup '$backup'";
     }
 
     return;
@@ -232,7 +232,7 @@ sub do_backup_bootstrap { # No test. Is not pure.
     }
 
     else {
-	confess "internal error: no such user defined backup '$backup'";
+	confess "yabsm: internal error: no such user defined backup '$backup'";
     }
 
     return;
@@ -478,7 +478,7 @@ sub all_snapshots { # No test. Is not pure.
 	@all_snaps = map { chomp; $_ = "$remote_host:$_" } $ssh->capture("ls -d $backup_dir/*");
     }
     
-    else { confess "internal error: '$subject' is not a subvol or backup" }
+    else { confess "yabsm: internal error: '$subject' is not a subvol or backup" }
     
     # return the snapshots sorted newest to oldest
     my $snaps_sorted_ref = sort_snaps(\@all_snaps);
@@ -561,7 +561,7 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
     if    ($unit =~ /^(minutes|mins|m)$/) { $seconds_per_unit = 60    }
     elsif ($unit =~ /^(hours|hrs|h)$/   ) { $seconds_per_unit = 3600  }
     elsif ($unit =~ /^(days|d)$/        ) { $seconds_per_unit = 86400 }
-    else  { confess "internal error: '$unit' is not a valid time unit" }
+    else  { confess "yabsm: internal error: '$unit' is not a valid time unit" }
 
     my $current_time = current_time_snapstring();
 
@@ -641,7 +641,7 @@ sub immediate_to_snapstring { # No test. Is pure.
     }
 
     # input should have already been cleansed. 
-    confess "internal error: '$imm' is not an immediate";
+    confess "yabsm: internal error: '$imm' is not an immediate";
 }
 
 sub literal_time_to_snapstring { # Has test. Is pure.
@@ -681,7 +681,7 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     }
 
     # input should have already been cleansed. 
-    confess "internal error: '$lit_time' is not a valid literal time";
+    confess "yabsm: internal error: '$lit_time' is not a valid literal time";
 }
 
 sub relative_time_to_snapstring { # Has test. Is not pure.
@@ -995,7 +995,7 @@ sub newest_snap { # Has test. Is not pure.
 	return $all_snaps_ref->[0];
     }
 
-    confess "internal error: '$ref' has ref type '$ref_type'";
+    confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
 }
 
 sub oldest_snap { # Has test. Is not pure.
@@ -1020,7 +1020,7 @@ sub oldest_snap { # Has test. Is not pure.
 	return $all_snaps_ref->[-1];
     }
     
-    confess "internal error: '$ref' has ref type '$ref_type'";
+    confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
 }
 
 sub answer_query { # No test. Is not pure.
@@ -1103,7 +1103,7 @@ sub answer_query { # No test. Is not pure.
     }
 
     else { # input should have already been cleansed
-	confess "internal error: '$query' is not a valid query";
+	confess "yabsm: internal error: '$query' is not a valid query";
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;
@@ -1427,7 +1427,7 @@ sub generate_cron_strings { # No test. Is pure.
 	}
 
 	else {
-	    confess "internal error: backup '$backup' has invalid timeframe '$timeframe'";
+	    confess "yabsm: internal error: backup '$backup' has invalid timeframe '$timeframe'";
 	}
     }
 
@@ -1448,7 +1448,7 @@ sub new_ssh_connection { # No test. Is not pure.
 			       );
 
     $ssh->error and
-      die 'error: could not establish SSH connection: ' . $ssh->error . "\n";
+      die 'ssh: error: could not establish SSH connection: ' . $ssh->error . "\n";
     
     return $ssh;
 }
@@ -1489,7 +1489,7 @@ sub day_of_week_num { # Has test. Is pure.
     elsif ($dow =~ /^sat(urday)?$/)  { return 6 }
     elsif ($dow =~ /^sun(day)?$/)    { return 7 }
     else {
-        confess "internal error: no such day of week '$dow'";
+        confess "yabsm: internal error: no such day of week '$dow'";
     }
 }
 
@@ -1501,7 +1501,7 @@ sub all_days_of_week { # No test. Is pure.
 }
 
 sub missing_arg { # No test. Is pure.
-    return 'internal error: subroutine missing a required arg';
+    return 'yabsm: internal error: subroutine missing a required arg';
 }
 
 1;

@@ -51,8 +51,6 @@ sub main {
 	die "yabsm: error: subvol '$subvol' is not taking '$timeframe' snapshots\n";
     }
 
-    Yabsm::Base::initialize_directories($config_ref);
-
     Yabsm::Base::take_new_snapshot($config_ref, $subvol, $timeframe);
     Yabsm::Base::delete_old_snapshots($config_ref, $subvol, $timeframe);
 

@@ -32,8 +32,6 @@ sub main {
 	die "yabsm: error: no such defined backup '$backup'\n";
     }
 
-    Yabsm::Base::initialize_directories($config_ref);
-
     Yabsm::Base::do_backup_bootstrap($config_ref, $backup);
 
     return;

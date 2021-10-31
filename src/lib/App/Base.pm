@@ -478,7 +478,7 @@ sub all_snapshots { # No test. Is not pure.
 	@all_snaps = map { chomp; $_ = "$remote_host:$_" } $ssh->capture("ls -d $backup_dir/*");
     }
     
-    else { confess }
+    else { confess "internal error: '$subject' is not a subvol or backup" }
     
     # return the snapshots sorted newest to oldest
     my $snaps_sorted_ref = sort_snaps(\@all_snaps);

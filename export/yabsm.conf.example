@@ -1,54 +1,77 @@
-              #-----------------------------------------#
-              #         YABSM CONFIGURATION FILE        #
-              #-----------------------------------------#
-
+# 'yabsm_dir' is a required setting. The directory value is taken
+# literally so you almost certainly want this setting to end in
+# '/yabsm'. Yabsm will create this directory for you if it does
+# not exist.
 yabsm_dir=/.snapshots/yabsm
 
+# This is a subvol definition with the maximum settings. There are no
+# other possible subvol settings than the ones specified here. The
+# name of this subvol is 'root'. A subvol name should match
+# /[a-zA-Z][-_0-9a-zA-Z]*/
 subvol root {
 
+    # the mountpoint setting is the interface between a yabsm subvol and a
+    # btrfs subvolume. mountpoint is always required.
     mountpoint=/
 
-    5minute_want=yes
+    5minute_want=yes # take a snapshot every 5 minutes
     5minute_keep=24
 
-    hourly_want=yes
+    hourly_want=yes # take a snapshot at the beginning of every hour
     hourly_keep=36
 
-    midnight_want=yes
+    midnight_want=yes # take a snapshot every night at 23:59
     midnight_keep=21
-    
-    monthly_want=yes
-    monthly_keep=12
-}
 
+    weekly_want=yes # take a snapshot at 23:59 on one day of the week
+    weekly_keep=21
+    weekly_day=sunday # can be any day of the week (all lowercase)
+    
+    monthly_want=yes # take a snapshot at 00:00 on the first of every month
+    monthly_keep=12 
+
+} # closing brace
+
+# This is a minimal subvol definition. Comparing this subvol 
+# to the first subvol we can see that if 'TIMEFRAME_want=no
+# then it is unnecessary to define TIMEFRAMEs other settings.
 subvol home {
 
     mountpoint=/home
 
-    5minute_want=yes 
-    5minute_keep=24
+    5minute_want=no 
 
-    hourly_want=yes
-    hourly_keep=36
+    hourly_want=no
 
-    midnight_want=yes
-    midnight_keep=21
+    midnight_want=no
+
+    weekly_want=no
 
     monthly_want=no
-    monthly_keep=0
 }
 
+# Backup definition headers have the form 'backup NAME {'
+# A subvol name should match /[a-zA-Z][-_0-9a-zA-Z]*/
 backup homeBackup {
 
+    # must be a defined subvol.
     subvol=home
 
     remote=yes
 
-    host=someHost
+    # because remote=yes we must define a 'host'. This host can be
+    # a 'Host' defined in ~/.ssh/config or a host with user@ip form.
+    host=user@192.168.1.12
 
-    backup_dir=/.backups/homeBackup
+    # This directory is taken literally. If the backup is a remote backup
+    # this directory will not be created automatically.
+    backup_dir=/backups/yabsm/homeBackup
 
+    # how often should a backup occur?
+    # can be any of 5minute, hourly, midnight, weekly, monthly
     timeframe=midnight
 
+    # minimum is 1
     keep=60
-}
+
+} # closing brace

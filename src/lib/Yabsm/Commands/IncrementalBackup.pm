@@ -33,8 +33,12 @@ sub main {
 	die "yabsm: error: no such defined backup '$backup'\n";
     }
 
-    # do_backup() will perform the bootstrap phase if needed
-    Yabsm::Base::do_backup($config_ref, $backup);
+    if (Yabsm::Base::has_bootstrap($config_ref, $backup)) {
+        Yabsm::Base::do_incremental_backup($config_ref, $backup);
+    }
+    else {
+        Yabsm::Base::do_backup_bootstrap($config_ref, $backup);
+    }
 
     return;
 }

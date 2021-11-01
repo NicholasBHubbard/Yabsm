@@ -17,7 +17,7 @@ subvol root {
 
     weekly_want=yes
     weekly_keep=7
-    weekly_day=tue
+    weekly_day=tuesday
 
     monthly_want=yes
     monthly_keep=12

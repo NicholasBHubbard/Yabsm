@@ -22,7 +22,7 @@
 #  has not been informally tested.
 #
 #  An error message prefixed with 'yabsm: internal error' is an error for a
-#  scenario that should never occur unless a bug is present.
+#  scenario that will only occur a bug is present.
 
 package Yabsm::Base;
 
@@ -33,6 +33,7 @@ use v5.16.3;
 use Net::OpenSSH;
 use Time::Piece;
 use Carp;
+use List::Util 1.33 qw(any);
 use File::Path qw(make_path); # make_path() behaves like 'mkdir --parents'
 
 sub take_new_snapshot { # No test. Is not pure.
@@ -43,6 +44,8 @@ sub take_new_snapshot { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
     my $timeframe  = shift // confess missing_arg();
+
+    assert_root();
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
@@ -64,6 +67,8 @@ sub delete_old_snapshots { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
     my $timeframe  = shift // confess missing_arg();
+
+    assert_root();
 
     my $existing_snaps_ref = all_snapshots($config_ref, $subvol, $timeframe);
 
@@ -113,6 +118,8 @@ sub do_incremental_backup { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
+    assert_root();
+
     if (is_local_backup($config_ref, $backup)) {
 	do_incremental_backup_local($config_ref, $backup);
     }
@@ -138,8 +145,10 @@ sub do_incremental_backup_local { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
+    assert_root();
+
     if (not has_bootstrap($config_ref, $backup)) {
-        die "yabsm: internal error: backup '$backup' has not bootstrapped";
+        die "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
     # bootstrap dir should have exactly one snap
@@ -183,7 +192,13 @@ sub do_incremental_backup_ssh { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
+    assert_root();
+
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    if (not has_bootstrap($config_ref, $backup)) {
+        die "yabsm: internal error: backup '$backup' has not been bootstrapped";
+    }
 
     # bootstrap dir should have exactly one snap
     my $bootstrap_snap =
@@ -232,6 +247,8 @@ sub do_backup_bootstrap { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
+    assert_root();
+
     if (is_local_backup($config_ref, $backup)) {
 	do_backup_bootstrap_local($config_ref, $backup);
     }
@@ -257,6 +274,8 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
+
+    assert_root();
 
     my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
@@ -294,6 +313,8 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
+
+    assert_root();
 
     my $remote_host = $config_ref->{backups}{$backup}{host};
 
@@ -356,6 +377,8 @@ sub delete_old_backups_local { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
+    assert_root();
+
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
     my @existing_backups = all_snapshots($config_ref, $backup);
@@ -408,6 +431,8 @@ sub delete_old_backups_ssh { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $ssh        = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
+
+    assert_root();
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
 
@@ -471,7 +496,7 @@ sub all_snapshots { # No test. Is not pure.
 
 	# default to all timeframes
 	if (not @timeframes) {
-	    @timeframes = qw(5minute hourly midnight monthly);
+	    @timeframes = all_timeframes();
 	}
 	
 	foreach my $tf (@timeframes) {
@@ -643,13 +668,13 @@ sub is_relative_time { # Has test. Is pure.
 
     my ($back, $amount, $unit) = split '-', $rel_time, 3;
 
-    return 0 if grep { not defined } ($back, $amount, $unit);
+    return 0 if any { not defined } ($back, $amount, $unit);
 
     my $back_correct = $back =~ /^b(ack)?$/;
 
     my $amount_correct = $amount =~ /^\d+$/;
     
-    my $unit_correct = grep { $_ eq $unit } qw(minutes mins m hours hrs h days d);
+    my $unit_correct = any { $unit eq $_ } qw(minutes mins m hours hrs h days d);
     
     return $back_correct && $amount_correct && $unit_correct;
 }
@@ -1168,7 +1193,7 @@ sub is_newer_than_query { # Has test. Is pure.
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
-    return 0 if grep { not defined } ($keyword, $imm);
+    return 0 if any { not defined } ($keyword, $imm);
 
     my $keyword_correct = $keyword =~ /^(newer|after|aft)$/;
 
@@ -1189,7 +1214,7 @@ sub is_older_than_query { # Has test. Is pure.
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
-    return 0 if grep { not defined } ($keyword, $imm);
+    return 0 if any { not defined } ($keyword, $imm);
 
     my $keyword_correct = $keyword =~ /^(older|before|bef)$/;
 
@@ -1208,7 +1233,7 @@ sub is_between_query { # Has test. Is pure.
 
     my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
 
-    return 0 if grep { not defined } ($keyword, $imm1, $imm2);
+    return 0 if any { not defined } ($keyword, $imm1, $imm2);
 
     my $keyword_correct = $keyword =~ /^bet(ween)?$/;
 
@@ -1219,40 +1244,20 @@ sub is_between_query { # Has test. Is pure.
     return $keyword_correct && $imm1_correct && $imm2_correct;
 }
 
-sub all_subvol_timeframes { # Has test. Is pure.
+sub all_timeframes { # TODO
 
-    # Return an array of all valid subvol timeframe categories.
+    # Return an array of all yabsm timeframes.
 
-    my @timeframes = qw(5minute hourly midnight weekly monthly);
-
-    return wantarray ? @timeframes : \@timeframes;
+    return qw(5minute hourly midnight weekly monthly);
 }
 
-sub all_backup_timeframes { # Has test. Is pure.
+sub is_timeframe { # TODO
 
-    # Return an array of all valid backup timeframes.
+    # true if $tf is a yabsm timeframe.
 
-    my @timeframes = qw(hourly midnight weekly monthly);
+    my $tf = shift // confess missing_arg();
 
-    return wantarray ? @timeframes : \@timeframes;
-}
-
-sub is_subvol_timeframe { # Has test. Is pure.
-
-    # true iff $timeframe is a valid subvol timeframe category.
-
-    my $timeframe = shift // confess missing_arg();
-
-    return scalar grep { $_ eq $timeframe } all_subvol_timeframes();
-}
-
-sub is_backup_timeframe { # Has test. Is pure.
-
-    # true iff $backup is a valid backup timeframe.
-
-    my $timeframe = shift // confess missing_arg();
-
-    return scalar grep { $_ eq $timeframe } all_backup_timeframes();
+    return any { $tf eq $_ } all_timeframes();
 }
 
 sub timeframe_want { # Has test. Is pure.
@@ -1273,15 +1278,15 @@ sub subvols_timeframes { # Has test. Is pure.
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
     
-    my @tframes = ();
+    my @tfs = ();
 
-    foreach my $tframe (all_subvol_timeframes()) {
-        if (timeframe_want($config_ref, $subvol, $tframe)) {
-            push @tframes, $tframe;
+    foreach my $tf (all_timeframes()) {
+        if (timeframe_want($config_ref, $subvol, $tf)) {
+            push @tfs, $tf;
         }
     }
 
-    return wantarray ? @tframes : \@tframes;
+    return wantarray ? @tfs : \@tfs;
 }
 
 sub all_subvols { # Has test. Is pure.
@@ -1348,7 +1353,7 @@ sub is_subvol { # Has test. Is pure.
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
     
-    return scalar grep { $_ eq $subvol } all_subvols($config_ref);
+    return any { $subvol eq $_ } all_subvols($config_ref);
 }
 
 sub is_backup { # Has test. Is pure.
@@ -1358,7 +1363,7 @@ sub is_backup { # Has test. Is pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    return scalar grep { $_ eq $backup } all_backups($config_ref);
+    return any { $backup eq $_ } all_backups($config_ref);
 }
 
 sub is_remote_backup { # Has test. Is pure.
@@ -1438,7 +1443,11 @@ sub generate_cron_strings { # No test. Is pure.
 
 	my $timeframe = $config_ref->{backups}{$backup}{timeframe};
 
-	if ($timeframe eq 'hourly') {
+        if ($timeframe eq '5minute') {
+	    push @crons, "*/5 * * * * root yabsm incremental-backup $backup";
+        }
+
+	elsif ($timeframe eq 'hourly') {
 	    push @crons, "0 */1 * * * root yabsm incremental-backup $backup";
 	}
 
@@ -1510,13 +1519,13 @@ sub day_of_week_num { # Has test. Is pure.
 
     my $dow = shift // confess missing_arg();
 
-    if    ($dow =~ /^mon(day)?$/)    { return 1 }
-    elsif ($dow =~ /^tue(sday)?$/)   { return 2 }
-    elsif ($dow =~ /^wed(nesday)?$/) { return 3 }
-    elsif ($dow =~ /^thu(rsday)?$/)  { return 4 }
-    elsif ($dow =~ /^fri(day)?$/)    { return 5 }
-    elsif ($dow =~ /^sat(urday)?$/)  { return 6 }
-    elsif ($dow =~ /^sun(day)?$/)    { return 7 }
+    if    ($dow eq 'monday')    { return 1 }
+    elsif ($dow eq 'tuesday')   { return 2 }
+    elsif ($dow eq 'wednesday') { return 3 }
+    elsif ($dow eq 'thursday')  { return 4 }
+    elsif ($dow eq 'friday')    { return 5 }
+    elsif ($dow eq 'saturday')  { return 6 }
+    elsif ($dow eq 'sunday')    { return 7 }
     else {
         confess "yabsm: internal error: no such day of week '$dow'";
     }
@@ -1526,10 +1535,14 @@ sub all_days_of_week { # No test. Is pure.
 
     # Return all the valid days of the week.
 
-    return qw(mon monday tue tuesday wed wednesday thu thursday fri friday sat saturday sun sunday);
+    return qw(monday tuesday wednesday thursday friday saturday sunday);
 }
 
-sub missing_arg { # No test. Is pure.
+sub assert_root {
+    confess "yabsm: internal error: not root user" if $<;
+}
+
+sub missing_arg { 
     return 'yabsm: internal error: subroutine missing a required arg';
 }
 

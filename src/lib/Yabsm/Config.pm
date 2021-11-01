@@ -30,9 +30,9 @@ use base 'Parser::MGC';
 
 my %regex = ( path         => qr/\/[^#\s]*/
             , subject_name => qr/[a-zA-Z][-\w]*/
-            , pos_int      => qr/[1-9]\d*/
+            , ssh_host     => qr/[-@.\/\w]+/
             , comment      => qr/#.*/
-            , ident        => qr/[-\w]+/
+            , pos_int      => qr/[1-9]\d*/
             );
 
                  ####################################
@@ -46,7 +46,7 @@ sub read_config {
     # see documentation of Parser::MGC to see what is going on here
     my $parser = __PACKAGE__->new( toplevel => 'p'
                                  , patterns => { comment => $regex{comment}
-                                               , ident   => $regex{ident}
+                                               , ident   => qr/[-\w]+/
                                                }
                                  );
 
@@ -71,7 +71,7 @@ sub read_config {
 
 sub p {
 
-    my $self = shift // confess Yabsm::Base::missing_arg();
+    my $self = shift // Yabsm::Base::missing_arg();
 
     my %config;
 
@@ -121,7 +121,7 @@ sub p {
 
 sub subvol_def_p {
 
-    my $self = shift // confess Yabsm::Base::missing_arg();
+    my $self = shift // Yabsm::Base::missing_arg();
 
     my %kvs; # return this
     my $k;
@@ -158,7 +158,7 @@ sub subvol_def_p {
 
 sub backup_def_p {
 
-    my $self = shift // confess Yabsm::Base::missing_arg();
+    my $self = shift // Yabsm::Base::missing_arg();
 
     my %kvs; # return this
     my $k;
@@ -174,7 +174,7 @@ sub backup_def_p {
             $v // $self->fail( q(expected 'yes' or 'no') );
         }
         elsif ($k eq 'timeframe') {
-            $v = $self->token_kw( Yabsm::Base::all_backup_timeframes() );
+            $v = $self->token_kw( Yabsm::Base::all_timeframes() );
         }
         elsif ($k eq 'backup_dir') {
             $v = $self->maybe_expect( $regex{path} );
@@ -185,7 +185,7 @@ sub backup_def_p {
             $v // $self->fail('expected positive integer');
         }
         elsif ($k eq 'host') {
-            $v = $self->maybe_expect( $regex{subject_name} );
+            $v = $self->maybe_expect( $regex{ssh_host} );
             $v // $self->fail('expected alphanumeric sequence starting with a letter');
         }
         elsif ($k eq 'subvol') {
@@ -212,7 +212,7 @@ sub backup_def_p {
 
 sub missing_subvol_settings {
 
-    my $config_ref = shift // confess Yabsm::Base::missing_arg();
+    my $config_ref = shift // Yabsm::Base::missing_arg();
 
     my @err_msgs = ();
 
@@ -263,7 +263,7 @@ sub missing_subvol_settings {
 
 sub missing_backup_settings {
 
-    my $config_ref = shift // confess Yabsm::Base::missing_arg();
+    my $config_ref = shift // Yabsm::Base::missing_arg();
 
     my @err_msgs = ();
 
@@ -307,7 +307,7 @@ sub missing_backup_settings {
 
 sub missing_misc_settings {
 
-    my $config_ref = shift // confess Yabsm::Base::missing_arg();
+    my $config_ref = shift // Yabsm::Base::missing_arg();
 
     my @err_msgs = ();
 

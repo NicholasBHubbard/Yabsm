@@ -48,7 +48,7 @@ subvol root {
 
     weekly_want=yes
     weekly_keep=7
-    weekly_day=tue
+    weekly_day=tuesday
 
     monthly_want=yes
     monthly_keep=12
@@ -98,7 +98,7 @@ my %t_conf = ( misc    => { yabsm_dir => '/' }
                                     , midnight_want => 'no'
                                     , weekly_want => 'yes'
                                     , weekly_keep => '7'
-                                    , weekly_day => 'tue'
+                                    , weekly_day => 'tuesday'
                                     , monthly_want => 'yes'
                                     , monthly_keep => '12'
                                     } 

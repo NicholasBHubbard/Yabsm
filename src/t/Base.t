@@ -143,7 +143,7 @@ sub gen_n_random_snap_paths {
 
 	my $min = int(rand(60));
 
-	my $snapstring = App::Base::nums_to_snapstring($yr, $mon, $day, $hr, $min);
+	my $snapstring = Yabsm::Base::nums_to_snapstring($yr, $mon, $day, $hr, $min);
 
 	my $path = $potential_paths[ rand @potential_paths ];
 
@@ -204,25 +204,25 @@ sub test_cmp_snaps {
     my $newest  = '/.snapshots/yabsm/root/daily/day=2020_03_07,time=15:30';
 
     # should be -1
-    my $t1 = App::Base::cmp_snaps($newest, $middle1);
+    my $t1 = Yabsm::Base::cmp_snaps($newest, $middle1);
 
     # should be -1
-    my $t2 = App::Base::cmp_snaps($newest, $oldest);
+    my $t2 = Yabsm::Base::cmp_snaps($newest, $oldest);
 
     # should be -1
-    my $t3 = App::Base::cmp_snaps($middle1, $oldest);
+    my $t3 = Yabsm::Base::cmp_snaps($middle1, $oldest);
 
     # should be 1
-    my $t4 = App::Base::cmp_snaps($oldest, $middle1);
+    my $t4 = Yabsm::Base::cmp_snaps($oldest, $middle1);
 
     # should be 1
-    my $t5 = App::Base::cmp_snaps($oldest, $newest);
+    my $t5 = Yabsm::Base::cmp_snaps($oldest, $newest);
 
     # should be 0
-    my $t6 = App::Base::cmp_snaps($middle1, $middle2);
+    my $t6 = Yabsm::Base::cmp_snaps($middle1, $middle2);
 
     # should be 0
-    my $t7 = App::Base::cmp_snaps($middle2, $middle1);
+    my $t7 = Yabsm::Base::cmp_snaps($middle2, $middle1);
 
     my $sum = $t1 + $t2 + $t3 + $t4 + $t5 + $t6 + $t7;;
 
@@ -236,7 +236,7 @@ sub test_sort_snaps {
 
     my @rand_snaps1 = gen_n_random_snap_paths(15);
 
-    my @sorted_snaps1 = App::Base::sort_snaps(\@rand_snaps1);
+    my @sorted_snaps1 = Yabsm::Base::sort_snaps(\@rand_snaps1);
 
     my $correct = 1;
     for my $i (0 .. $#sorted_snaps1 - 1) {
@@ -244,7 +244,7 @@ sub test_sort_snaps {
 	my $this_snap = $sorted_snaps1[$i];
 	my $next_snap = $sorted_snaps1[$i+1];
 
-	my $cmp = App::Base::cmp_snaps($this_snap, $next_snap);
+	my $cmp = Yabsm::Base::cmp_snaps($this_snap, $next_snap);
 
 	# if $this_snap is newer than $next_snap
 	if ($cmp == 1) { $correct = 0 }
@@ -258,17 +258,17 @@ sub test_n_units_ago_snapstring {
 
     my $t = localtime();
 
-    my $mins_ago  = App::Base::time_piece_obj_to_snapstring($t - (120 * 60));
-    my $hours_ago = App::Base::time_piece_obj_to_snapstring($t - (2 * 3600));
-    my $days_ago  = App::Base::time_piece_obj_to_snapstring($t - (2 * 86400));
+    my $mins_ago  = Yabsm::Base::time_piece_obj_to_snapstring($t - (120 * 60));
+    my $hours_ago = Yabsm::Base::time_piece_obj_to_snapstring($t - (2 * 3600));
+    my $days_ago  = Yabsm::Base::time_piece_obj_to_snapstring($t - (2 * 86400));
 
-    my $min         = App::Base::n_units_ago_snapstring(120, 'minutes');
+    my $min         = Yabsm::Base::n_units_ago_snapstring(120, 'minutes');
     my $min_correct = $min eq $mins_ago;
 
-    my $hr          = App::Base::n_units_ago_snapstring(2, 'hours');
+    my $hr          = Yabsm::Base::n_units_ago_snapstring(2, 'hours');
     my $hr_correct  = $hr eq $hours_ago;
 
-    my $day         = App::Base::n_units_ago_snapstring(2, 'days');
+    my $day         = Yabsm::Base::n_units_ago_snapstring(2, 'days');
     my $day_correct = $day eq $days_ago;
 
     ok ( $min_correct && $hr_correct && $day_correct, 'n_units_ago_snapstring()' );
@@ -277,7 +277,7 @@ sub test_n_units_ago_snapstring {
 test_nums_to_snapstring();
 sub test_nums_to_snapstring {
 
-    my $output = App::Base::nums_to_snapstring(2020, 3, 2, 23, 15);
+    my $output = Yabsm::Base::nums_to_snapstring(2020, 3, 2, 23, 15);
 
     ok( $output eq 'day=2020_03_02,time=23:15', 'nums_to_snapstring()' );
 }
@@ -287,7 +287,7 @@ sub test_snapstring_to_nums {
 
     my $time = 'day=2020_03_02,time=23:15';
 
-    my @got = App::Base::snapstring_to_nums($time);
+    my @got = Yabsm::Base::snapstring_to_nums($time);
 
     my @expected = ('2020','03','02','23','15');
 
@@ -299,7 +299,7 @@ sub test_snapstring_to_time_piece_obj {
     
     my $time = 'day=2020_03_02,time=23:15';
 
-    my $time_piece_obj = App::Base::snapstring_to_time_piece_obj($time);
+    my $time_piece_obj = Yabsm::Base::snapstring_to_time_piece_obj($time);
 
     my $output = $time_piece_obj->year;
 
@@ -312,7 +312,7 @@ sub test_time_piece_obj_to_snapstring {
     my $time_piece_obj =
       Time::Piece->strptime('2020/3/06/12/0','%Y/%m/%d/%H/%M');
 
-    my $output = App::Base::time_piece_obj_to_snapstring($time_piece_obj);
+    my $output = Yabsm::Base::time_piece_obj_to_snapstring($time_piece_obj);
 
     ok ( $output eq 'day=2020_03_06,time=12:00'
        , 'time_piece_obj_to_snapstring()' );
@@ -329,31 +329,31 @@ sub test_literal_time_to_snapstring {
     # yr-mon-day-hr-min
     my $form1 = '2020-12-25-1-2';
     my $sol1  = 'day=2020_12_25,time=01:02';
-    my $out1  = App::Base::literal_time_to_snapstring($form1);
+    my $out1  = Yabsm::Base::literal_time_to_snapstring($form1);
     my $t1    = $out1 eq $sol1;
 
     # yr-mon-day
     my $form2 = '2023-12-25';
     my $sol2  = 'day=2023_12_25,time=00:00';
-    my $out2  = App::Base::literal_time_to_snapstring($form2);
+    my $out2  = Yabsm::Base::literal_time_to_snapstring($form2);
     my $t2    = $out2 eq $sol2;
 
     # mon-day-hr
     my $form3 = '1-2-3';
     my $sol3  = "day=${cur_yr}_01_02,time=03:00";
-    my $out3  = App::Base::literal_time_to_snapstring($form3);
+    my $out3  = Yabsm::Base::literal_time_to_snapstring($form3);
     my $t3    = $out3 eq $sol3;
 
     # mon-day-hr-min
     my $form4 = '12-25-3-30';
     my $sol4  = "day=${cur_yr}_12_25,time=03:30";
-    my $out4  = App::Base::literal_time_to_snapstring($form4);
+    my $out4  = Yabsm::Base::literal_time_to_snapstring($form4);
     my $t4    = $out4 eq $sol4;
     
     # mon-day
     my $form5 = '12-25';
     my $sol5  = "day=${cur_yr}_12_25,time=00:00";
-    my $out5  = App::Base::literal_time_to_snapstring($form5);
+    my $out5  = Yabsm::Base::literal_time_to_snapstring($form5);
     my $t5    = $out5 eq $sol5;
 
     my $correct = $t1 && $t2 && $t3 && $t4 && $t5;
@@ -369,14 +369,14 @@ sub test_relative_time_to_snapstring {
     my $rel3 = 'b-4-d';
 
     # n_units_ago_snapstring() is already tested so should be safe to use
-    my $out1 = App::Base::relative_time_to_snapstring($rel1);
-    my $out2 = App::Base::relative_time_to_snapstring($rel2);
-    my $out3 = App::Base::relative_time_to_snapstring($rel3);
+    my $out1 = Yabsm::Base::relative_time_to_snapstring($rel1);
+    my $out2 = Yabsm::Base::relative_time_to_snapstring($rel2);
+    my $out3 = Yabsm::Base::relative_time_to_snapstring($rel3);
 
     my $t = localtime();
-    my $sol1  = App::Base::time_piece_obj_to_snapstring($t - (4 * 60));
-    my $sol2  = App::Base::time_piece_obj_to_snapstring($t - (4 * 3600));
-    my $sol3  = App::Base::time_piece_obj_to_snapstring($t - (4 * 86400));
+    my $sol1  = Yabsm::Base::time_piece_obj_to_snapstring($t - (4 * 60));
+    my $sol2  = Yabsm::Base::time_piece_obj_to_snapstring($t - (4 * 3600));
+    my $sol3  = Yabsm::Base::time_piece_obj_to_snapstring($t - (4 * 86400));
 
     my $t1 = $out1 = $sol1;
     my $t2 = $out2 = $sol2;
@@ -397,31 +397,31 @@ sub test_snap_closer {
 
     # TEST 1
 
-    my $output1 = App::Base::snap_closer($target, $snap1, $snap2);
+    my $output1 = Yabsm::Base::snap_closer($target, $snap1, $snap2);
 
     my $correct1 = $output1 eq $snap1;
 
     # TEST 2
 
-    my $output2 = App::Base::snap_closer($target, $target, $snap1);
+    my $output2 = Yabsm::Base::snap_closer($target, $target, $snap1);
 
     my $correct2 = $target eq $output2;
 
     # TEST 3
 
-    my $output3 = App::Base::snap_closer($target, $snap1, $target);
+    my $output3 = Yabsm::Base::snap_closer($target, $snap1, $target);
 
     my $correct3 = $target eq $output3;
 
     # TEST 4
 
-    my $output4 = App::Base::snap_closer($target, $snap1, $snap3);
+    my $output4 = Yabsm::Base::snap_closer($target, $snap1, $snap3);
 
     my $correct4 = $output4 eq $snap1;
 
     # TEST 5
 
-    my $output5 = App::Base::snap_closer($target, $snap3, $snap1);
+    my $output5 = Yabsm::Base::snap_closer($target, $snap3, $snap1);
 
     my $correct5 = $output5 eq $snap3;
 
@@ -433,44 +433,44 @@ sub test_snap_closer {
 test_snap_closest_to();
 sub test_snap_closest_to {
 
-    my $t0 = App::Base::n_units_ago_snapstring(0,  'hours');
-    my $t1 = App::Base::n_units_ago_snapstring(10, 'hours');
-    my $t2 = App::Base::n_units_ago_snapstring(20, 'hours');
-    my $t3 = App::Base::n_units_ago_snapstring(30, 'hours');
-    my $t4 = App::Base::n_units_ago_snapstring(40, 'hours');
-    my $t5 = App::Base::n_units_ago_snapstring(50, 'hours');
+    my $t0 = Yabsm::Base::n_units_ago_snapstring(0,  'hours');
+    my $t1 = Yabsm::Base::n_units_ago_snapstring(10, 'hours');
+    my $t2 = Yabsm::Base::n_units_ago_snapstring(20, 'hours');
+    my $t3 = Yabsm::Base::n_units_ago_snapstring(30, 'hours');
+    my $t4 = Yabsm::Base::n_units_ago_snapstring(40, 'hours');
+    my $t5 = Yabsm::Base::n_units_ago_snapstring(50, 'hours');
 
     my @all_snaps = ($t0, $t1, $t2, $t3, $t4, $t5);
 
     # TEST 1
-    my $target1 = App::Base::n_units_ago_snapstring(34, 'hours');
+    my $target1 = Yabsm::Base::n_units_ago_snapstring(34, 'hours');
 
-    my $output1 = App::Base::snap_closest_to(\@all_snaps, $target1);
+    my $output1 = Yabsm::Base::snap_closest_to(\@all_snaps, $target1);
 
     my $correct1 = $output1 eq $t3;
 
 
     # TEST 2
 
-    my $target2 = App::Base::n_units_ago_snapstring(36, 'hours');
+    my $target2 = Yabsm::Base::n_units_ago_snapstring(36, 'hours');
 
-    my $output2 = App::Base::snap_closest_to(\@all_snaps, $target2);
+    my $output2 = Yabsm::Base::snap_closest_to(\@all_snaps, $target2);
 
     my $correct2 = $output2 eq $t4;
 
     # TEST 3
 
     # equidistant. Should return the newer one
-    my $target3 = App::Base::n_units_ago_snapstring(35, 'hours');
+    my $target3 = Yabsm::Base::n_units_ago_snapstring(35, 'hours');
 
-    my $output3 = App::Base::snap_closest_to(\@all_snaps, $target3);
+    my $output3 = Yabsm::Base::snap_closest_to(\@all_snaps, $target3);
 
     my $correct3 = $output3 eq $t3;
 
     # TEST 4
 
     # equal to one of the snaps
-    my $output4 = App::Base::snap_closest_to(\@all_snaps, $t3);
+    my $output4 = Yabsm::Base::snap_closest_to(\@all_snaps, $t3);
 
     my $correct4 = $output4 eq $t3;
 
@@ -493,7 +493,7 @@ sub test_snaps_newer_than {
 
     # TEST 1
 
-    my @snaps_newer1 = App::Base::snaps_newer_than(\@all_snaps, $t5);
+    my @snaps_newer1 = Yabsm::Base::snaps_newer_than(\@all_snaps, $t5);
 
     # note that $t5 is excluded
     my @solution1 = ($t1, $t2, $t3, $t4);
@@ -504,7 +504,7 @@ sub test_snaps_newer_than {
 
     my $target2 = 'day=3000_08_24,time=00:00';
 
-    my @snaps_newer2 = App::Base::snaps_newer_than(\@all_snaps, $target2);
+    my @snaps_newer2 = Yabsm::Base::snaps_newer_than(\@all_snaps, $target2);
 
     my @solution2 = ();
 
@@ -515,7 +515,7 @@ sub test_snaps_newer_than {
 
     my @all_snaps_empty = ();
 
-    my @snaps_newer3 = App::Base::snaps_newer_than(\@all_snaps_empty, $t4);
+    my @snaps_newer3 = Yabsm::Base::snaps_newer_than(\@all_snaps_empty, $t4);
 
     my @solution3 = ();
 
@@ -540,7 +540,7 @@ sub test_snaps_older_than {
 
     # TEST 1
 
-    my @snaps_older1 = App::Base::snaps_older_than(\@all_snaps, $t5);
+    my @snaps_older1 = Yabsm::Base::snaps_older_than(\@all_snaps, $t5);
 
     # note that $t5 is excluded
     my @solution1 = ($t6, $t7);
@@ -551,7 +551,7 @@ sub test_snaps_older_than {
 
     my $target2 = 'day=1999_08_24,time=00:00'; 
 
-    my @snaps_older2 = App::Base::snaps_older_than(\@all_snaps, $target2);
+    my @snaps_older2 = Yabsm::Base::snaps_older_than(\@all_snaps, $target2);
 
     my @solution2 = ();
 
@@ -561,7 +561,7 @@ sub test_snaps_older_than {
 
     my @all_snaps_empty = ();
 
-    my @snaps_older3 = App::Base::snaps_older_than(\@all_snaps_empty, $t4);
+    my @snaps_older3 = Yabsm::Base::snaps_older_than(\@all_snaps_empty, $t4);
 
     my @solution3 = ();
 
@@ -587,8 +587,8 @@ sub test_snaps_between {
     # TEST 1
 
     # target snaps are reversed
-    my @t1_snaps_between1 = App::Base::snaps_between(\@all_snaps, $t2, $t5);
-    my @t1_snaps_between2 = App::Base::snaps_between(\@all_snaps, $t5, $t2);
+    my @t1_snaps_between1 = Yabsm::Base::snaps_between(\@all_snaps, $t2, $t5);
+    my @t1_snaps_between2 = Yabsm::Base::snaps_between(\@all_snaps, $t5, $t2);
     my @t1_solution = ($t2, $t3, $t4, $t5);
 
     my $test1 = @t1_snaps_between1 ~~ @t1_solution
@@ -599,7 +599,7 @@ sub test_snaps_between {
     my $t2_bound1 = 'day=2025_08_24,time=11:30';
     my $t2_bound2 = 'day=2021_08_24,time=11:30';
 
-    my @t2_snaps_between = App::Base::snaps_between(\@all_snaps, $t2_bound1, $t2_bound2);
+    my @t2_snaps_between = Yabsm::Base::snaps_between(\@all_snaps, $t2_bound1, $t2_bound2);
     my @t2_solution = ($t3, $t4, $t5);
 
     my $test2 = @t2_snaps_between ~~ @t2_solution;
@@ -609,7 +609,7 @@ sub test_snaps_between {
     my $t3_bound1 = 'day=2028_08_24,time=11:30';
     my $t3_bound2 = 'day=2027_08_24,time=11:30';
 
-    my @t3_snaps_between = App::Base::snaps_between(\@all_snaps, $t3_bound1, $t3_bound2);
+    my @t3_snaps_between = Yabsm::Base::snaps_between(\@all_snaps, $t3_bound1, $t3_bound2);
     my @t3_solution = ();
 
     my $test3 = @t3_snaps_between ~~ @t3_solution;
@@ -629,7 +629,7 @@ sub test_newest_snap {
     # sorted from newest to oldest
     my @all_snaps = ($t1, $t2, $t3);
 
-    my $newest = App::Base::newest_snap(\@all_snaps);
+    my $newest = Yabsm::Base::newest_snap(\@all_snaps);
 
     my $correct = $newest eq 'day=2026_08_24,time=00:00';
 
@@ -648,7 +648,7 @@ sub test_oldest_snap {
     # sorted from newest to oldest
     my @all_snaps = ($t1, $t2, $t3);
 
-    my $oldest = App::Base::oldest_snap(\@all_snaps);
+    my $oldest = Yabsm::Base::oldest_snap(\@all_snaps);
 
     my $correct = $oldest eq 'day=2024_08_24,time=00:00';
 
@@ -660,7 +660,7 @@ sub test_all_subvols {
 
     my %config = gen_random_config();
 
-    my @got = App::Base::all_subvols(\%config);
+    my @got = Yabsm::Base::all_subvols(\%config);
 
     my @expected = sort keys %{$config{subvols}};
 
@@ -672,7 +672,7 @@ sub test_all_backups {
 
     my %config = gen_random_config();
 
-    my @got = App::Base::all_backups(\%config);
+    my @got = Yabsm::Base::all_backups(\%config);
 
     my @expected = sort keys %{$config{backups}};
 
@@ -684,16 +684,16 @@ sub test_all_backups_of_subvol {
 
     my %config = gen_random_config();
 
-    my $subvol = [App::Base::all_subvols(\%config)]->[0];
+    my $subvol = [Yabsm::Base::all_subvols(\%config)]->[0];
 
     my @expected = ();
-    foreach my $backup (App::Base::all_backups(\%config)) {
+    foreach my $backup (Yabsm::Base::all_backups(\%config)) {
 	if ($config{backups}{$backup}{subvol} eq $subvol) {
 	    push @expected, $backup;
 	}
     }
 
-    my @got = App::Base::all_backups_of_subvol(\%config, $subvol);
+    my @got = Yabsm::Base::all_backups_of_subvol(\%config, $subvol);
 
     is_deeply ( \@got, \@expected, 'all_backups_of_subvol()' );
 }
@@ -702,21 +702,21 @@ test_is_literal_time();
 sub test_is_literal_time {
 
     # these should all be true
-    my $t0 = App::Base::is_literal_time('2020-12-25-15-05');
-    my $t1 = App::Base::is_literal_time('2020-12-25-5-3');
-    my $t2 = App::Base::is_literal_time('12-25-5-3');
-    my $t3 = App::Base::is_literal_time('12-25-3');
-    my $t4 = App::Base::is_literal_time('12-25');
-    my $t5 = App::Base::is_literal_time('1-2');
+    my $t0 = Yabsm::Base::is_literal_time('2020-12-25-15-05');
+    my $t1 = Yabsm::Base::is_literal_time('2020-12-25-5-3');
+    my $t2 = Yabsm::Base::is_literal_time('12-25-5-3');
+    my $t3 = Yabsm::Base::is_literal_time('12-25-3');
+    my $t4 = Yabsm::Base::is_literal_time('12-25');
+    my $t5 = Yabsm::Base::is_literal_time('1-2');
 
     # these should all be false
-    my $f0 = App::Base::is_literal_time('');
-    my $f1 = App::Base::is_literal_time(' 2020-12-25-15-30');
-    my $f2 = App::Base::is_literal_time('2020-12-25-5-3 ');
-    my $f3 = App::Base::is_literal_time('12');
-    my $f4 = App::Base::is_literal_time('20202-12-25-3-04');
-    my $f5 = App::Base::is_literal_time('20-12-25-12-30');
-    my $f6 = App::Base::is_literal_time('2020-123-25-12-30');
+    my $f0 = Yabsm::Base::is_literal_time('');
+    my $f1 = Yabsm::Base::is_literal_time(' 2020-12-25-15-30');
+    my $f2 = Yabsm::Base::is_literal_time('2020-12-25-5-3 ');
+    my $f3 = Yabsm::Base::is_literal_time('12');
+    my $f4 = Yabsm::Base::is_literal_time('20202-12-25-3-04');
+    my $f5 = Yabsm::Base::is_literal_time('20-12-25-12-30');
+    my $f6 = Yabsm::Base::is_literal_time('2020-123-25-12-30');
 
     my $trues = $t0 && $t1 && $t2 && $t3 && $t4 && $t5;
     my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5);
@@ -728,27 +728,27 @@ test_is_relative_time();
 sub test_is_relative_time {
 
     # these should all be true
-    my $t0 = App::Base::is_relative_time('back-10-m');
-    my $t1 = App::Base::is_relative_time('b-10-mins');
-    my $t2 = App::Base::is_relative_time('b-10-minutes');
-    my $t3 = App::Base::is_relative_time('b-10000-h');
-    my $t4 = App::Base::is_relative_time('b-10000-hrs');
-    my $t5 = App::Base::is_relative_time('b-1-hours');
-    my $t6 = App::Base::is_relative_time('back-1-hours');
-    my $t7 = App::Base::is_relative_time('back-4-d');
-    my $t8 = App::Base::is_relative_time('b-4-days');
+    my $t0 = Yabsm::Base::is_relative_time('back-10-m');
+    my $t1 = Yabsm::Base::is_relative_time('b-10-mins');
+    my $t2 = Yabsm::Base::is_relative_time('b-10-minutes');
+    my $t3 = Yabsm::Base::is_relative_time('b-10000-h');
+    my $t4 = Yabsm::Base::is_relative_time('b-10000-hrs');
+    my $t5 = Yabsm::Base::is_relative_time('b-1-hours');
+    my $t6 = Yabsm::Base::is_relative_time('back-1-hours');
+    my $t7 = Yabsm::Base::is_relative_time('back-4-d');
+    my $t8 = Yabsm::Base::is_relative_time('b-4-days');
 
     # these should all be false
-    my $f0 = App::Base::is_relative_time('');
-    my $f1 = App::Base::is_relative_time(' back-10-m');
-    my $f2 = App::Base::is_relative_time('b-10-mins ');
-    my $f3 = App::Base::is_relative_time('b-10-minutess');
-    my $f4 = App::Base::is_relative_time('back 3 h');
-    my $f5 = App::Base::is_relative_time('b-10-d b-10-d');
-    my $f6 = App::Base::is_relative_time('b-10-dayss');
-    my $f7 = App::Base::is_relative_time('back-1-v');
-    my $f8 = App::Base::is_relative_time('ba-4-d');
-    my $f9 = App::Base::is_relative_time('4-h');
+    my $f0 = Yabsm::Base::is_relative_time('');
+    my $f1 = Yabsm::Base::is_relative_time(' back-10-m');
+    my $f2 = Yabsm::Base::is_relative_time('b-10-mins ');
+    my $f3 = Yabsm::Base::is_relative_time('b-10-minutess');
+    my $f4 = Yabsm::Base::is_relative_time('back 3 h');
+    my $f5 = Yabsm::Base::is_relative_time('b-10-d b-10-d');
+    my $f6 = Yabsm::Base::is_relative_time('b-10-dayss');
+    my $f7 = Yabsm::Base::is_relative_time('back-1-v');
+    my $f8 = Yabsm::Base::is_relative_time('ba-4-d');
+    my $f9 = Yabsm::Base::is_relative_time('4-h');
 
     my $trues = $t0 && $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7 && $t8;
     my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5
@@ -761,16 +761,16 @@ test_is_immediate();
 sub test_is_immediate {
 
     # these should all be true
-    my $t0 = App::Base::is_immediate('2020-12-25-08-30');
-    my $t1 = App::Base::is_immediate('b-45-m');
-    my $t2 = App::Base::is_immediate('12-30');
-    my $t3 = App::Base::is_immediate('back-12-days');
+    my $t0 = Yabsm::Base::is_immediate('2020-12-25-08-30');
+    my $t1 = Yabsm::Base::is_immediate('b-45-m');
+    my $t2 = Yabsm::Base::is_immediate('12-30');
+    my $t3 = Yabsm::Base::is_immediate('back-12-days');
 
     # these should all be false
-    my $f0 = App::Base::is_immediate('before b-5-d'); 
-    my $f1 = App::Base::is_immediate(''); 
-    my $f2 = App::Base::is_immediate(' b-5-d '); 
-    my $f3 = App::Base::is_immediate('back-4-WRONG'); 
+    my $f0 = Yabsm::Base::is_immediate('before b-5-d'); 
+    my $f1 = Yabsm::Base::is_immediate(''); 
+    my $f2 = Yabsm::Base::is_immediate(' b-5-d '); 
+    my $f3 = Yabsm::Base::is_immediate('back-4-WRONG'); 
 
     my $trues = $t0 && $t1 && $t2 && $t3;
     my $falses = not ($f0 || $f1 || $f2 || $f3);
@@ -782,21 +782,21 @@ test_is_newer_than_query();
 sub test_is_newer_than_query {
 
     # these should all be true
-    my $t0 = App::Base::is_newer_than_query('newer b-45-m');
-    my $t1 = App::Base::is_newer_than_query('newer 12-30');
-    my $t2 = App::Base::is_newer_than_query('after b-45-m');
-    my $t3 = App::Base::is_newer_than_query('after 12-30');
-    my $t4 = App::Base::is_newer_than_query('aft 12-30');
+    my $t0 = Yabsm::Base::is_newer_than_query('newer b-45-m');
+    my $t1 = Yabsm::Base::is_newer_than_query('newer 12-30');
+    my $t2 = Yabsm::Base::is_newer_than_query('after b-45-m');
+    my $t3 = Yabsm::Base::is_newer_than_query('after 12-30');
+    my $t4 = Yabsm::Base::is_newer_than_query('aft 12-30');
     
     # these should all be false
-    my $f0 = App::Base::is_newer_than_query('newer b-5-d 12-30'); 
-    my $f1 = App::Base::is_newer_than_query('newer b-WRONG-d'); 
-    my $f2 = App::Base::is_newer_than_query('new b-5-d'); 
-    my $f3 = App::Base::is_newer_than_query(''); 
-    my $f4 = App::Base::is_newer_than_query(' newer b-6-h'); 
-    my $f5 = App::Base::is_newer_than_query('newer b-6-h '); 
-    my $f6 = App::Base::is_newer_than_query(' after b-6-h'); 
-    my $f7 = App::Base::is_newer_than_query('after b-6-h '); 
+    my $f0 = Yabsm::Base::is_newer_than_query('newer b-5-d 12-30'); 
+    my $f1 = Yabsm::Base::is_newer_than_query('newer b-WRONG-d'); 
+    my $f2 = Yabsm::Base::is_newer_than_query('new b-5-d'); 
+    my $f3 = Yabsm::Base::is_newer_than_query(''); 
+    my $f4 = Yabsm::Base::is_newer_than_query(' newer b-6-h'); 
+    my $f5 = Yabsm::Base::is_newer_than_query('newer b-6-h '); 
+    my $f6 = Yabsm::Base::is_newer_than_query(' after b-6-h'); 
+    my $f7 = Yabsm::Base::is_newer_than_query('after b-6-h '); 
 
     my $trues = $t0 && $t1 && $t2 && $t3 && $t4;
     my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
@@ -808,21 +808,21 @@ test_is_older_than_query();
 sub test_is_older_than_query {
 
     # these should all be true
-    my $t0 = App::Base::is_older_than_query('older b-45-m');
-    my $t1 = App::Base::is_older_than_query('older 12-30');
-    my $t2 = App::Base::is_older_than_query('before b-45-m');
-    my $t3 = App::Base::is_older_than_query('before 12-30');
-    my $t4 = App::Base::is_older_than_query('bef 12-30');
+    my $t0 = Yabsm::Base::is_older_than_query('older b-45-m');
+    my $t1 = Yabsm::Base::is_older_than_query('older 12-30');
+    my $t2 = Yabsm::Base::is_older_than_query('before b-45-m');
+    my $t3 = Yabsm::Base::is_older_than_query('before 12-30');
+    my $t4 = Yabsm::Base::is_older_than_query('bef 12-30');
     
     # these should all be false
-    my $f0 = App::Base::is_older_than_query('older b-5-d 12-30'); 
-    my $f1 = App::Base::is_older_than_query('older b-WRONG-d'); 
-    my $f2 = App::Base::is_older_than_query('old b-5-d'); 
-    my $f3 = App::Base::is_older_than_query(''); 
-    my $f4 = App::Base::is_older_than_query(' older b-6-h'); 
-    my $f5 = App::Base::is_older_than_query('older b-6-h '); 
-    my $f6 = App::Base::is_older_than_query(' before b-6-h'); 
-    my $f7 = App::Base::is_older_than_query('before b-6-h '); 
+    my $f0 = Yabsm::Base::is_older_than_query('older b-5-d 12-30'); 
+    my $f1 = Yabsm::Base::is_older_than_query('older b-WRONG-d'); 
+    my $f2 = Yabsm::Base::is_older_than_query('old b-5-d'); 
+    my $f3 = Yabsm::Base::is_older_than_query(''); 
+    my $f4 = Yabsm::Base::is_older_than_query(' older b-6-h'); 
+    my $f5 = Yabsm::Base::is_older_than_query('older b-6-h '); 
+    my $f6 = Yabsm::Base::is_older_than_query(' before b-6-h'); 
+    my $f7 = Yabsm::Base::is_older_than_query('before b-6-h '); 
 
     my $trues = $t0 && $t1 && $t2 && $t3 && $t4;
     my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
@@ -834,20 +834,20 @@ test_is_between_query();
 sub test_is_between_query {
     
     # these should all be true
-    my $t1 = App::Base::is_between_query('between b-4-d b-5-d');
-    my $t2 = App::Base::is_between_query('bet b-4-d b-5-d');
-    my $t3 = App::Base::is_between_query('bet 12-25 2020-12-25');
-    my $t4 = App::Base::is_between_query('bet 12-24 b-5-m');
-    my $t5 = App::Base::is_between_query('bet 12-24 b-5-m');
-    my $t6 = App::Base::is_between_query('bet b-2-d b-5-d');
+    my $t1 = Yabsm::Base::is_between_query('between b-4-d b-5-d');
+    my $t2 = Yabsm::Base::is_between_query('bet b-4-d b-5-d');
+    my $t3 = Yabsm::Base::is_between_query('bet 12-25 2020-12-25');
+    my $t4 = Yabsm::Base::is_between_query('bet 12-24 b-5-m');
+    my $t5 = Yabsm::Base::is_between_query('bet 12-24 b-5-m');
+    my $t6 = Yabsm::Base::is_between_query('bet b-2-d b-5-d');
 
-    my $f1 = App::Base::is_between_query('');
-    my $f2 = App::Base::is_between_query('bet b-WRONG-d b-5-d');
-    my $f3 = App::Base::is_between_query('bet 12-25 WRONG');
-    my $f4 = App::Base::is_between_query(' bet 12-24 b-5-m');
-    my $f5 = App::Base::is_between_query('bet 12-24 b-5-m ');
-    my $f6 = App::Base::is_between_query(' bet 12-24 b-5-m');
-    my $f7 = App::Base::is_between_query('betw 12-24 b-5-m');
+    my $f1 = Yabsm::Base::is_between_query('');
+    my $f2 = Yabsm::Base::is_between_query('bet b-WRONG-d b-5-d');
+    my $f3 = Yabsm::Base::is_between_query('bet 12-25 WRONG');
+    my $f4 = Yabsm::Base::is_between_query(' bet 12-24 b-5-m');
+    my $f5 = Yabsm::Base::is_between_query('bet 12-24 b-5-m ');
+    my $f6 = Yabsm::Base::is_between_query(' bet 12-24 b-5-m');
+    my $f7 = Yabsm::Base::is_between_query('betw 12-24 b-5-m');
 
     my $trues = $t1 && $t2 && $t3 && $t4 && $t5 && $t6;
     my $falses = not ($f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
@@ -859,34 +859,34 @@ test_is_valid_query();
 sub test_is_valid_query {
 
     # these should all be true
-    my $t0 = App::Base::is_valid_query('b-4-h');
-    my $t1 = App::Base::is_valid_query('2020-12-25-0-0');
-    my $t2 = App::Base::is_valid_query('back-80-days');
-    my $t3 = App::Base::is_valid_query('newer b-52-m');
-    my $t4 = App::Base::is_valid_query('newer 12-25');
-    my $t5 = App::Base::is_valid_query('older b-8-mins');
-    my $t6 = App::Base::is_valid_query('older b-8-mins');
-    my $t7 = App::Base::is_valid_query('between 8-30 2021-12-25');
-    my $t8 = App::Base::is_valid_query('between 2021-12-25 8-30');
-    my $t9 = App::Base::is_valid_query('bet 12-25 b-5-d');
-    my $t10 = App::Base::is_valid_query('oldest');
-    my $t11 = App::Base::is_valid_query('newest');
-    my $t12 = App::Base::is_valid_query('before b-8-mins');
-    my $t13 = App::Base::is_valid_query('after b-8-mins');
+    my $t0 = Yabsm::Base::is_valid_query('b-4-h');
+    my $t1 = Yabsm::Base::is_valid_query('2020-12-25-0-0');
+    my $t2 = Yabsm::Base::is_valid_query('back-80-days');
+    my $t3 = Yabsm::Base::is_valid_query('newer b-52-m');
+    my $t4 = Yabsm::Base::is_valid_query('newer 12-25');
+    my $t5 = Yabsm::Base::is_valid_query('older b-8-mins');
+    my $t6 = Yabsm::Base::is_valid_query('older b-8-mins');
+    my $t7 = Yabsm::Base::is_valid_query('between 8-30 2021-12-25');
+    my $t8 = Yabsm::Base::is_valid_query('between 2021-12-25 8-30');
+    my $t9 = Yabsm::Base::is_valid_query('bet 12-25 b-5-d');
+    my $t10 = Yabsm::Base::is_valid_query('oldest');
+    my $t11 = Yabsm::Base::is_valid_query('newest');
+    my $t12 = Yabsm::Base::is_valid_query('before b-8-mins');
+    my $t13 = Yabsm::Base::is_valid_query('after b-8-mins');
 
     # these should all be false
-    my $f0 = App::Base::is_valid_query('');
-    my $f1 = App::Base::is_valid_query('before WRONG');
-    my $f2 = App::Base::is_valid_query('after WRONG');
-    my $f3 = App::Base::is_valid_query('back 90 mins');
-    my $f4 = App::Base::is_valid_query('between b-2-d WRONG');
-    my $f5 = App::Base::is_valid_query('bet WRONG b-2-d');
-    my $f6 = App::Base::is_valid_query('2021 10 12');
-    my $f7 = App::Base::is_valid_query(' b-4-d');
-    my $f8 = App::Base::is_valid_query('b-4-d ');
-    my $f9 = App::Base::is_valid_query('newest b-4-4');
-    my $f10 = App::Base::is_valid_query('oldest 12-25');
-    my $f11 = App::Base::is_valid_query('before after b-8-h');
+    my $f0 = Yabsm::Base::is_valid_query('');
+    my $f1 = Yabsm::Base::is_valid_query('before WRONG');
+    my $f2 = Yabsm::Base::is_valid_query('after WRONG');
+    my $f3 = Yabsm::Base::is_valid_query('back 90 mins');
+    my $f4 = Yabsm::Base::is_valid_query('between b-2-d WRONG');
+    my $f5 = Yabsm::Base::is_valid_query('bet WRONG b-2-d');
+    my $f6 = Yabsm::Base::is_valid_query('2021 10 12');
+    my $f7 = Yabsm::Base::is_valid_query(' b-4-d');
+    my $f8 = Yabsm::Base::is_valid_query('b-4-d ');
+    my $f9 = Yabsm::Base::is_valid_query('newest b-4-4');
+    my $f10 = Yabsm::Base::is_valid_query('oldest 12-25');
+    my $f11 = Yabsm::Base::is_valid_query('before after b-8-h');
 
     my $trues = ($t0 && $t2 && $t4 && $t5 && $t6
 	      && $t7 && $t8 && $t9 && $t10 && $t11 && $t12 && $t13);
@@ -902,15 +902,15 @@ sub test_is_subvol {
 
     my %config = gen_random_config();
 
-    my @all_subvols = App::Base::all_subvols(\%config);
+    my @all_subvols = Yabsm::Base::all_subvols(\%config);
 
     my $t1 = 1;
     foreach my $subvol (@all_subvols) {
-	$t1 = 0 unless App::Base::is_subvol(\%config, $subvol);
+	$t1 = 0 unless Yabsm::Base::is_subvol(\%config, $subvol);
     }
 
     my $f1 = 1;
-    $f1 = 0 if App::Base::is_subvol(\%config, 'this is not a subvol');
+    $f1 = 0 if Yabsm::Base::is_subvol(\%config, 'this is not a subvol');
 
     ok ( $t1 && $f1, 'is_subvol()' );
 }
@@ -920,15 +920,15 @@ sub test_is_backup {
     
     my %config = gen_random_config();
 
-    my @all_backups = App::Base::all_backups(\%config);
+    my @all_backups = Yabsm::Base::all_backups(\%config);
 
     my $t1 = 1;
     foreach my $backup (@all_backups) {
-	$t1 = 0 unless App::Base::is_backup(\%config, $backup);
+	$t1 = 0 unless Yabsm::Base::is_backup(\%config, $backup);
     }
 
     my $f1 = 1;
-    $f1 = 0 if App::Base::is_backup(\%config, 'this is not a backup');
+    $f1 = 0 if Yabsm::Base::is_backup(\%config, 'this is not a backup');
 
     ok ( $t1 && $f1, 'is_backup()' );
 }
@@ -938,17 +938,17 @@ sub test_is_subject {
 
     my %config = gen_random_config();
 
-    my @all_subvols = App::Base::all_subvols(\%config);
-    my @all_backups = App::Base::all_backups(\%config);
+    my @all_subvols = Yabsm::Base::all_subvols(\%config);
+    my @all_backups = Yabsm::Base::all_backups(\%config);
 
     my @all_subjects = (@all_subvols, @all_backups);
 
     my $correct = 1;
     for my $subject (@all_subjects) {
-	$correct = 0 if not App::Base::is_subject(\%config, $subject);
+	$correct = 0 if not Yabsm::Base::is_subject(\%config, $subject);
     }
 
-    $correct = 0 if App::Base::is_subject(\%config, 'not a subject');
+    $correct = 0 if Yabsm::Base::is_subject(\%config, 'not a subject');
 
     ok ( $correct, 'is_subject()' );
 }
@@ -958,19 +958,19 @@ sub test_is_local_backup {
 
     my %config = gen_random_config();
 
-    my @all_backups = App::Base::all_backups(\%config);
+    my @all_backups = Yabsm::Base::all_backups(\%config);
 
     my $correct = 1;
     for my $backup (@all_backups) {
 	if ($config{backups}{$backup}{remote} eq 'no') {
-	    $correct = 0 unless App::Base::is_local_backup(\%config, $backup);
+	    $correct = 0 unless Yabsm::Base::is_local_backup(\%config, $backup);
 	}
 	else {
-	    $correct = 0 if App::Base::is_local_backup(\%config, $backup); 
+	    $correct = 0 if Yabsm::Base::is_local_backup(\%config, $backup); 
 	}
     }
 
-    $correct = 0 if App::Base::is_local_backup(\%config, 'not a backup'); 
+    $correct = 0 if Yabsm::Base::is_local_backup(\%config, 'not a backup'); 
 
     ok ( $correct, 'is_local_backup()' );
 }
@@ -980,19 +980,19 @@ sub test_is_remote_backup {
 
     my %config = gen_random_config();
 
-    my @all_backups = App::Base::all_backups(\%config);
+    my @all_backups = Yabsm::Base::all_backups(\%config);
 
     my $correct = 1;
     for my $backup (@all_backups) {
 	if ($config{backups}{$backup}{remote} eq 'yes') {
-	    $correct = 0 unless App::Base::is_remote_backup(\%config, $backup);
+	    $correct = 0 unless Yabsm::Base::is_remote_backup(\%config, $backup);
 	}
 	else {
-	    $correct = 0 if App::Base::is_remote_backup(\%config, $backup); 
+	    $correct = 0 if Yabsm::Base::is_remote_backup(\%config, $backup); 
 	}
     }
 
-    $correct = 0 if App::Base::is_remote_backup(\%config, 'not a backup'); 
+    $correct = 0 if Yabsm::Base::is_remote_backup(\%config, 'not a backup'); 
 
     ok ( $correct, 'is_remote_backup()' );
 }
@@ -1000,20 +1000,20 @@ sub test_is_remote_backup {
 test_is_snapstring();
 sub test_is_snapstring {
 
-    my $t1 = App::Base::is_snapstring('/some/path/day=2020_12_25,time=10:40');
-    my $t2 = App::Base::is_snapstring('day=2020_12_25,time=10:40');
-    my $t3 = App::Base::is_snapstring('day=8459_34_98,time=67:90');
-    my $t4 = App::Base::is_snapstring('  day=2020_12_25,time=12:30');
+    my $t1 = Yabsm::Base::is_snapstring('/some/path/day=2020_12_25,time=10:40');
+    my $t2 = Yabsm::Base::is_snapstring('day=2020_12_25,time=10:40');
+    my $t3 = Yabsm::Base::is_snapstring('day=8459_34_98,time=67:90');
+    my $t4 = Yabsm::Base::is_snapstring('  day=2020_12_25,time=12:30');
 
-    my $f1 = App::Base::is_snapstring('');
-    my $f2 = App::Base::is_snapstring(' ');
-    my $f3 = App::Base::is_snapstring('da=2020_12_25,time=10:30');
-    my $f4 = App::Base::is_snapstring('/some/path/day=202_12_25,time=10:40');
-    my $f5 = App::Base::is_snapstring('day=2020_1_25,time=10:40');
-    my $f6 = App::Base::is_snapstring('day=2020_12_2,time=10:40');
-    my $f7 = App::Base::is_snapstring('day=2020_12_25,time=1:40');
-    my $f8 = App::Base::is_snapstring('day=2020_12_25,time=10:4');
-    my $f9 = App::Base::is_snapstring('day=2020_12_25,time=12:30   ');
+    my $f1 = Yabsm::Base::is_snapstring('');
+    my $f2 = Yabsm::Base::is_snapstring(' ');
+    my $f3 = Yabsm::Base::is_snapstring('da=2020_12_25,time=10:30');
+    my $f4 = Yabsm::Base::is_snapstring('/some/path/day=202_12_25,time=10:40');
+    my $f5 = Yabsm::Base::is_snapstring('day=2020_1_25,time=10:40');
+    my $f6 = Yabsm::Base::is_snapstring('day=2020_12_2,time=10:40');
+    my $f7 = Yabsm::Base::is_snapstring('day=2020_12_25,time=1:40');
+    my $f8 = Yabsm::Base::is_snapstring('day=2020_12_25,time=10:4');
+    my $f9 = Yabsm::Base::is_snapstring('day=2020_12_25,time=12:30   ');
 
     my $trues = $t1 && $t2 && $t3 && $t4;
 
@@ -1025,7 +1025,7 @@ sub test_is_snapstring {
 test_current_time_snapstring();
 sub test_current_time_snapstring {
 
-    my $ct = App::Base::current_time_snapstring();
+    my $ct = Yabsm::Base::current_time_snapstring();
 
     my $test = $ct =~ /^day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/;
 
@@ -1039,11 +1039,11 @@ sub test_local_yabsm_dir {
 
     my $snapshot_root_dir = $config{misc}{yabsm_dir};
 
-    my $subvol = [App::Base::all_subvols(\%config)]->[0];
+    my $subvol = [Yabsm::Base::all_subvols(\%config)]->[0];
 
     # TEST 1
 
-    my $output1 = App::Base::local_yabsm_dir(\%config);
+    my $output1 = Yabsm::Base::local_yabsm_dir(\%config);
 
     my $solution1 = "$snapshot_root_dir";
 
@@ -1051,7 +1051,7 @@ sub test_local_yabsm_dir {
 
     # TEST 2
 
-    my $output2 = App::Base::local_yabsm_dir(\%config, $subvol);
+    my $output2 = Yabsm::Base::local_yabsm_dir(\%config, $subvol);
 
     my $solution2 = "$snapshot_root_dir/$subvol";
 
@@ -1059,7 +1059,7 @@ sub test_local_yabsm_dir {
 
     # TEST 3
 
-    my $output3 = App::Base::local_yabsm_dir(\%config, $subvol, '5minute');
+    my $output3 = Yabsm::Base::local_yabsm_dir(\%config, $subvol, '5minute');
 
     my $solution3 = "$snapshot_root_dir/$subvol/5minute";
 
@@ -1071,34 +1071,33 @@ sub test_local_yabsm_dir {
 test_is_day_of_week();
 sub test_is_day_of_week {
 
-    my $t1  = App::Base::is_day_of_week('mon');
-    my $t2  = App::Base::is_day_of_week('monday');
-    my $t3  = App::Base::is_day_of_week('tue');
-    my $t4  = App::Base::is_day_of_week('tuesday');
-    my $t5  = App::Base::is_day_of_week('wed');
-    my $t6  = App::Base::is_day_of_week('wednesday');
-    my $t7  = App::Base::is_day_of_week('thu');
-    my $t8  = App::Base::is_day_of_week('thursday');
-    my $t9  = App::Base::is_day_of_week('fri');
-    my $t10 = App::Base::is_day_of_week('friday');
-    my $t11 = App::Base::is_day_of_week('sat');
-    my $t12 = App::Base::is_day_of_week('saturday');
-    my $t13 = App::Base::is_day_of_week('sun');
-    my $t14 = App::Base::is_day_of_week('sunday');
+    my $t1 = Yabsm::Base::is_day_of_week('monday');
+    my $t2 = Yabsm::Base::is_day_of_week('tuesday');
+    my $t3 = Yabsm::Base::is_day_of_week('wednesday');
+    my $t4 = Yabsm::Base::is_day_of_week('thursday');
+    my $t5 = Yabsm::Base::is_day_of_week('friday');
+    my $t6 = Yabsm::Base::is_day_of_week('saturday');
+    my $t7 = Yabsm::Base::is_day_of_week('sunday');
 
-    my $f1  = App::Base::is_day_of_week('MON');
-    my $f2  = App::Base::is_day_of_week('Mon');
-    my $f3  = App::Base::is_day_of_week('mOn');
-    my $f4  = App::Base::is_day_of_week('moN');
-    my $f5  = App::Base::is_day_of_week(' mon');
-    my $f6  = App::Base::is_day_of_week('mon ');
-    my $f7  = App::Base::is_day_of_week(' mon ');
-    my $f8  = App::Base::is_day_of_week('mondays');
+    my $f1  = Yabsm::Base::is_day_of_week('mon');
+    my $f2  = Yabsm::Base::is_day_of_week('tue');
+    my $f3  = Yabsm::Base::is_day_of_week('wed');
+    my $f4  = Yabsm::Base::is_day_of_week('thu');
+    my $f5  = Yabsm::Base::is_day_of_week('fri');
+    my $f6  = Yabsm::Base::is_day_of_week('sat');
+    my $f7  = Yabsm::Base::is_day_of_week('MONDAY');
+    my $f8  = Yabsm::Base::is_day_of_week('Monday');
+    my $f9  = Yabsm::Base::is_day_of_week('mOnday');
+    my $f10 = Yabsm::Base::is_day_of_week('moNday');
+    my $f11 = Yabsm::Base::is_day_of_week(' monday');
+    my $f12 = Yabsm::Base::is_day_of_week('monday ');
+    my $f13 = Yabsm::Base::is_day_of_week(' monday ');
+    my $f14 = Yabsm::Base::is_day_of_week('mondays');
 
-    my $trues =  $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7
-              && $t8 && $t9 && $t10 && $t11 && $t12 && $t13 && $t14;
+    my $trues =  $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7;
 
-    my $falses = not( $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8 );
+    my $falses = not( $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 ||
+                      $f8 || $f9 || $f10 || $f11 || $f12 || $f13 || $f14);
 
     ok ( $trues && $falses, 'is_day_of_week()' );
 }
@@ -1106,89 +1105,51 @@ sub test_is_day_of_week {
 test_day_of_week_num();
 sub test_day_of_week_num {
 
-    my $t1  = 1 == App::Base::day_of_week_num('mon');
-    my $t2  = 1 == App::Base::day_of_week_num('monday');
-    my $t3  = 2 == App::Base::day_of_week_num('tue');
-    my $t4  = 2 == App::Base::day_of_week_num('tuesday');
-    my $t5  = 3 == App::Base::day_of_week_num('wed');
-    my $t6  = 3 == App::Base::day_of_week_num('wednesday');
-    my $t7  = 4 == App::Base::day_of_week_num('thu');
-    my $t8  = 4 == App::Base::day_of_week_num('thursday');
-    my $t9  = 5 == App::Base::day_of_week_num('fri');
-    my $t10 = 5 == App::Base::day_of_week_num('friday');
-    my $t11 = 6 == App::Base::day_of_week_num('sat');
-    my $t12 = 6 == App::Base::day_of_week_num('saturday');
-    my $t13 = 7 == App::Base::day_of_week_num('sun');
-    my $t14 = 7 == App::Base::day_of_week_num('sunday');
+    my $t1 = 1 == Yabsm::Base::day_of_week_num('monday');
+    my $t2 = 2 == Yabsm::Base::day_of_week_num('tuesday');
+    my $t3 = 3 == Yabsm::Base::day_of_week_num('wednesday');
+    my $t4 = 4 == Yabsm::Base::day_of_week_num('thursday');
+    my $t5 = 5 == Yabsm::Base::day_of_week_num('friday');
+    my $t6 = 6 == Yabsm::Base::day_of_week_num('saturday');
+    my $t7 = 7 == Yabsm::Base::day_of_week_num('sunday');
 
-    my $correct =  $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7
-                && $t8 && $t9 && $t10 && $t11 && $t12 && $t13 && $t14;
+    my $correct =  $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7;
 
     ok ( $correct, 'day_of_week_num()' );
 }
 
-test_all_subvol_timeframes();
-sub test_all_subvol_timeframes {
+test_all_timeframes();
+sub test_all_timeframes {
 
     my @expected = qw(5minute hourly midnight weekly monthly);
 
-    my @got = App::Base::all_subvol_timeframes();
+    my @got = Yabsm::Base::all_timeframes();
 
-    is_deeply ( \@got, \@expected, 'all_subvol_timeframes()' );
-}
-
-test_all_backup_timeframes();
-sub test_all_backup_timeframes {
-
-    my @expected = qw(hourly midnight weekly monthly);
-
-    my @got = App::Base::all_backup_timeframes();
-
-    is_deeply ( \@got, \@expected, 'all_backup_timeframes()' );
+    is_deeply ( \@got, \@expected, 'all_timeframes()' );
 }
 
 test_is_subvol_timeframe();
 sub test_is_subvol_timeframe {
 
-    my $t1 = App::Base::is_subvol_timeframe('5minute');
-    my $t2 = App::Base::is_subvol_timeframe('hourly');
-    my $t3 = App::Base::is_subvol_timeframe('midnight');
-    my $t4 = App::Base::is_subvol_timeframe('monthly');
+    my $t1 = Yabsm::Base::is_timeframe('5minute');
+    my $t2 = Yabsm::Base::is_timeframe('hourly');
+    my $t3 = Yabsm::Base::is_timeframe('midnight');
+    my $t4 = Yabsm::Base::is_timeframe('weekly');
+    my $t5 = Yabsm::Base::is_timeframe('monthly');
 
-    my $f1 = App::Base::is_subvol_timeframe('_5minute');
-    my $f2 = App::Base::is_subvol_timeframe('');
-    my $f3 = App::Base::is_subvol_timeframe(' ');
-    my $f4 = App::Base::is_subvol_timeframe('not a timeframe');
-    my $f5 = App::Base::is_subvol_timeframe(' hourly');
-    my $f6 = App::Base::is_subvol_timeframe('hourly ');
-    my $f7 = App::Base::is_subvol_timeframe(' hourly ');
+    my $f1 = Yabsm::Base::is_timeframe('_5minute');
+    my $f2 = Yabsm::Base::is_timeframe('');
+    my $f3 = Yabsm::Base::is_timeframe(' ');
+    my $f4 = Yabsm::Base::is_timeframe('not a timeframe');
+    my $f5 = Yabsm::Base::is_timeframe(' hourly');
+    my $f6 = Yabsm::Base::is_timeframe('hourly ');
+    my $f7 = Yabsm::Base::is_timeframe(' hourly ');
+    my $f8 = Yabsm::Base::is_timeframe('HOURLY');
 
-    my $trues = $t1 && $t2 && $t3 && $t4;
-    my $falses = not($f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
-
-    ok ( $trues && $falses, 'is_subvol_timeframe()' );
-}
-
-test_is_backup_timeframe();
-sub test_is_backup_timeframe {
-
-    my $t1 = App::Base::is_backup_timeframe('hourly');
-    my $t2 = App::Base::is_backup_timeframe('midnight');
-    my $t3 = App::Base::is_backup_timeframe('monthly');
-
-    my $f1 = App::Base::is_backup_timeframe('5minute');
-    my $f2 = App::Base::is_backup_timeframe('_5minute');
-    my $f3 = App::Base::is_backup_timeframe(' ');
-    my $f4 = App::Base::is_backup_timeframe('not a timeframe');
-    my $f5 = App::Base::is_backup_timeframe(' hourly');
-    my $f6 = App::Base::is_backup_timeframe('hourly ');
-    my $f7 = App::Base::is_backup_timeframe(' hourly ');
-    my $f8 = App::Base::is_backup_timeframe('');
-
-    my $trues = $t1 && $t2 && $t3;
+    my $trues = $t1 && $t2 && $t3 && $t4 && $t5;
     my $falses = not($f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8);
 
-    ok ( $trues && $falses, 'is_backup_timeframe()' );
+    ok ( $trues && $falses, 'is_timeframe()' );
 }
 
 test_timeframe_want();
@@ -1197,13 +1158,13 @@ sub test_timeframe_want {
     my $config_ref = gen_random_config();
 
     my $t = 1;
-    for my $subvol (App::Base::all_subvols($config_ref)) {
-        for my $tframe (App::Base::all_subvol_timeframes()) {
+    for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
+        for my $tframe (Yabsm::Base::all_timeframes()) {
             if ('yes' eq $config_ref->{subvols}{$subvol}{"${tframe}_want"}) {
-                $t = 0 unless App::Base::timeframe_want($config_ref, $subvol, $tframe);
+                $t = 0 unless Yabsm::Base::timeframe_want($config_ref, $subvol, $tframe);
             }
             else {
-                $t = 0 if App::Base::timeframe_want($config_ref, $subvol, $tframe);
+                $t = 0 if Yabsm::Base::timeframe_want($config_ref, $subvol, $tframe);
             }
         }
     }
@@ -1217,9 +1178,9 @@ sub test_subvols_timeframes {
     my $config_ref = gen_random_config();
 
     my $t = 1;
-    for my $subvol (App::Base::all_subvols($config_ref)) {
+    for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
 
-        my @subvols_timeframes = App::Base::subvols_timeframes($config_ref, $subvol);
+        my @subvols_timeframes = Yabsm::Base::subvols_timeframes($config_ref, $subvol);
 
         for my $tf (@subvols_timeframes) {
             $t = 0 if not 'yes' eq $config_ref->{subvols}{$subvol}{"${tf}_want"};
@@ -1236,11 +1197,11 @@ sub test_bootstrap_snap_dir {
 
     my $yabsm_dir = $config{misc}{yabsm_dir};
 
-    my $backup = [App::Base::all_backups(\%config)]->[0];
+    my $backup = [Yabsm::Base::all_backups(\%config)]->[0];
 
     my $subvol = $config{backups}{$backup}{subvol};
 
-    my $got = App::Base::bootstrap_snap_dir(\%config, $backup);
+    my $got = Yabsm::Base::bootstrap_snap_dir(\%config, $backup);
 
     my $expected = "$yabsm_dir/.cache/$subvol/backups/$backup/bootstrap-snap";
 

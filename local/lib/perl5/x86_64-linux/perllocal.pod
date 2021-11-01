@@ -306,3 +306,25 @@ C<EXE_FILES: >
 
 =back
 
+=head2 Mon Nov  1 13:03:43 2021: C<Module> L<List::Util|List::Util>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nick/src/perl/yabsm/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.33>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

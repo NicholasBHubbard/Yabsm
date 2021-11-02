@@ -24,8 +24,8 @@ subvol root {
     midnight_keep=21
 
     weekly_want=yes # take a snapshot at 23:59 on one day of the week
-    weekly_keep=21
     weekly_day=sunday # can be any day of the week (all lowercase)
+    weekly_keep=21
     
     monthly_want=yes # take a snapshot at 00:00 on the first of every month
     monthly_keep=12 

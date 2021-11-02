@@ -1,2 +1,151 @@
-.TH "YABSM.CONF" "5" "2021" "YABSM.CONF" "YABSM Configuration Guide"
+.TH "YABSM.CONF" "5" "NOVEMBER 2021" "YABSM.CONF(5)"
 .SH "NAME"
+yabsm.conf - Configuration file for yabsm
+.SH "DESCRIPTION"
+\fIyabsm.conf\fR is the configuration file for \fByabsm\fR(1). This file must be
+stored in the \fI/etc\fR directory. On installation of \fByabsm\fR the file
+\fI/etc/yabsm.conf.example\fR is installed which provides a documented example
+configuration.
+
+Effort has been put in to ensure that erroneous configurations are rejected
+with meaningful error messages. To check if a \fIyabsm.conf\fR is valid use
+the '\fByabsm check-config\fR' command.
+
+A \fIyabsm.conf\fR is made up of \fBmisc settings\fB, \fBsubvols\fR, and
+\fBbackups\fR.
+.SH "MISC SETTINGS"
+A misc setting takes the form \fBsetting=value\fR. As of \fByabsm\fR version 2.1
+the only misc setting is \fByabsm_dir\fR. This setting is always required. The
+value of this setting is taken literally so you almost certainly want the
+directory path to end in \fB/yabsm\fR. If the directory does not exist yabsm
+will create it for you.
+.SH "SUBVOLS"
+You can define one or more \fBsubvols\fR in \fIyabsm.conf\fR. A \fBsubvol\fR definition
+takes the following form:
+.nf
+
+    subvol name {
+        setting=value
+        ...
+    }
+
+.fi
+The subvol \fBname\fR must match the regex: \fB^[a-zA-Z][-_a-zA-Z0-9]*$\fR
+.SS "SUBVOL SETTINGS"
+.TP
+.BR "mountpoint"
+The \fBmountpoint\fR setting is the interface between a yabsm subvol and a btrfs
+subvolume. This is the directory that will be snapshotted. This setting is
+always required.
+.TP
+.BR "5minute_want"
+Do you want to take a snapshot every 5 minutes? The value for this setting must
+be either \fByes\fR or \fBno\fR. This setting is always required.
+.TP
+.BR "5minute_keep"
+How many snapshots in the \fB5minute\fR timeframe do you want to keep around?
+The value must be a positive integer. This setting is only required if
+\fB5minute_want=yes\fR.
+.TP
+.BR "hourly_want"
+Do you want to take a snapshot at the beginning of every hour? The value for
+this setting must be either \fByes\fR or \fBno\fR. This setting is always
+required.
+.TP
+.BR "hourly_keep"
+How many snapshots in the \fBhourly\fR timeframe do you want to keep around?
+The value must be a positive integer. This setting is only required if
+\fBhourly_want=yes\fR.
+.TP
+.BR "midnight_want"
+Do you want to take a snapshot every night at 23:59? The value for this setting
+must be either \fByes\fR or \fBno\fR. This setting is always required.
+.TP
+.BR "midnight_keep"
+How many snapshots in the \fBmidnight\fR timeframe do you want to keep around?
+The value must be a positive integer. This setting is only required if
+\fBmidnight_want=yes\fR.
+.TP
+.BR "weekly_want"
+Do you want to take a snapshot at 23:59 on one day of the week? The value for
+this setting must be either \fByes\fR or \fBno\fR. This setting is always
+required.
+.TP
+.BR "weekly_day"
+Which day of the week do you want the weekly snapshot? The value can be one of
+\fBsunday\fR, \fBmonday\fR, \fBtuesday\fR, \fBwednesday\fR, \fBthursday\fR,
+\fBfriday\fR, \fBsaturday\fR. This setting is only required if
+\fBweekly_want=yes\fR.
+.TP
+.BR "weekly_keep"
+How many snapshots in the \fBweekly\fR timeframe do you want to keep around?
+The value must be a positive integer. This setting is only required if
+\fBweekly_want=yes\fR.
+.TP
+.BR "monthly_want"
+Do you want to take a snapshot at 00:00 on the first of every monthy? The value
+for this setting must be either \fByes\fR or \fBno\fR. This setting is always
+required.
+.TP
+.BR "monthly_keep"
+How many snapshots in the \fBmonthly\fR timeframe do you want to keep around?
+The value must be a positive integer. This setting is only required if
+\fBmonthly_want=yes\fR.
+.SH "BACKUPS"
+You can define one or more \fBbackups\fR in \fIyabsm.conf\fR. A \fBbackup\fR definition
+takes the following form:
+.nf
+
+    backup name {
+        setting=value
+        ...
+    }
+
+.fi
+The backup \fBname\fR must match the regex: \fB^[a-zA-Z][-_a-zA-Z0-9]*$\fR
+.SS "BACKUP SETTINGS"
+.TP
+.BR "subvol  "
+The name of the yabsm subvol that is being backed up. This setting is always
+required.
+.TP
+.BR "remote  "
+Is this backup a remote backup (to a server over ssh)? The value for this
+setting must be either \fByes\fR or \fBno\fR. If \fBremote=no\fR then the backup
+must be a local backup (hard drive plugged into the computer). This setting is
+always required.
+.TP
+.BR "host    "
+The hostname of a server for a remote backup. This setting is only required if \fBremote=yes\fR.
+The value can be any hostname that works with \fBssh\fR(1).
+.TP
+.BR "backup_dir"
+Directory to place the backup snapshots. The value is taken literally so you
+probably want \fB/yabsm/\fR to be somewhere in this path. If the backup is a
+local backup this directory will be created for you. However if the backup is a
+remote backup then the directory must already exist. This setting is always
+required
+.TP
+.BR "keep    "
+The number of backups to keep around. The value must be a positive integer. This
+setting is always required.
+.TP
+.BR "timeframe"
+The timeframe for performing backups. Can be any of \fB5minute\fR, \fBhourly\fR,
+\fBmidnight\fR, \fBweekly\fR, \fBmonthly\fR. This setting is always required.
+.TP
+.BR "weekly_day"
+Which day of the week do you want to perform the backup? The value can be one of
+\fBsunday\fR, \fBmonday\fR, \fBtuesday\fR, \fBwednesday\fR, \fBthursday\fR,
+\fBfriday\fR, \fBsaturday\fR. This setting is only required if
+\fBtimeframe=weekly\fR.
+.SH "REPORTING BUGS"
+Please report bugs at 
+.UR https://github.com/NicholasBHubbard/yabsm/issues
+.UE .
+.SH "SEE ALSO"
+yabsm(1), ssh_config(5)
+.SH "AUTHOR"
+Written by Nicholas Hubbard
+.SH "LICENSE"
+MIT

@@ -45,8 +45,6 @@ sub take_new_snapshot { # No test. Is not pure.
     my $subvol     = shift // confess missing_arg();
     my $timeframe  = shift // confess missing_arg();
 
-    assert_root();
-
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
     my $snap_dir = local_yabsm_dir($config_ref, $subvol, $timeframe);
@@ -67,8 +65,6 @@ sub delete_old_snapshots { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $subvol     = shift // confess missing_arg();
     my $timeframe  = shift // confess missing_arg();
-
-    assert_root();
 
     my $existing_snaps_ref = all_snapshots($config_ref, $subvol, $timeframe);
 
@@ -118,8 +114,6 @@ sub do_incremental_backup { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    assert_root();
-
     if (is_local_backup($config_ref, $backup)) {
 	do_incremental_backup_local($config_ref, $backup);
     }
@@ -144,8 +138,6 @@ sub do_incremental_backup_local { # No test. Is not pure.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
-
-    assert_root();
 
     if (not has_bootstrap($config_ref, $backup)) {
         die "yabsm: internal error: backup '$backup' has not been bootstrapped";
@@ -191,8 +183,6 @@ sub do_incremental_backup_ssh { # No test. Is not pure.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
-
-    assert_root();
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
@@ -247,8 +237,6 @@ sub do_backup_bootstrap { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    assert_root();
-
     if (is_local_backup($config_ref, $backup)) {
 	do_backup_bootstrap_local($config_ref, $backup);
     }
@@ -274,8 +262,6 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
-
-    assert_root();
 
     my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
@@ -313,8 +299,6 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
-
-    assert_root();
 
     my $remote_host = $config_ref->{backups}{$backup}{host};
 
@@ -377,8 +361,6 @@ sub delete_old_backups_local { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    assert_root();
-
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
     my @existing_backups = all_snapshots($config_ref, $backup);
@@ -431,8 +413,6 @@ sub delete_old_backups_ssh { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $ssh        = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
-
-    assert_root();
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
 
@@ -1536,10 +1516,6 @@ sub all_days_of_week { # No test. Is pure.
     # Return all the valid days of the week.
 
     return qw(monday tuesday wednesday thursday friday saturday sunday);
-}
-
-sub assert_root {
-    confess "yabsm: internal error: not root user" if $<;
 }
 
 sub missing_arg { 

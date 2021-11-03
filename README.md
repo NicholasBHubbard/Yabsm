@@ -35,7 +35,7 @@ It is unlikely that you do not already have these installed.
 
     yabsm_dir=/.snapshots/yabsm
 
-    subvol root {
+    subvol home {
         mountpoint=/home
 
         5minute_want=yes
@@ -53,14 +53,14 @@ It is unlikely that you do not already have these installed.
         monthly_want=no
     }
 
-    backup rootBackup {
-        subvol=root
+    backup homeBackup {
+        subvol=home
 
         remote=yes
 
         host=alice@192.168.1.73
 
-        backup_dir=/backups/yabsm/desktopRootBackup
+        backup_dir=/backups/yabsm/desktopHomeBackup
 
         timeframe=midnight
 
@@ -74,7 +74,7 @@ incremental backups. This directory is taken literally so you probably want it
 to end in =/yabsm=. It only makes sense for this directory to be a btrfs
 subvolume.
 
-*** Subvols
+*** Subvol Definitions
 A yabsm subvol has the following form
 #+BEGIN_SRC
 subvol name {
@@ -87,6 +87,10 @@ The subvols =name= must match the regex: =^[a-zA-Z][-_a-zA-Z0-9]*$=
 You can define as many subvols as you want.
 
 *** Subvol Settings
-test
 
-**** fourth depth
+**** mountpoint
+      This setting is the interface between a yabsm =subvol= and the
+      corresponding btrfs subvolume.
+**** 5minute_want
+     Do you want to take a snapshot of this subvol every 5 minutes> Value must
+     be either =yes= or =no=.

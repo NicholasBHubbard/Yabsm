@@ -3,7 +3,7 @@
 #+author: Nicholas Hubbard
 
 * Why should I use YABSM?
-  Yabsm makes it easy to set up btrfs snapshot and backup system. Yabsm
+  Yabsm makes it easy to set up a btrfs snapshot and backup system. Yabsm
   can be configured to be useful as a workflow tool where you can quickly
   jump back in time to an old system state.
 
@@ -19,7 +19,6 @@
   $ git clone https://github.com/NicholasBHubbard/yabsm
   # yabsm/install
   #+END_SRC  
-
 * Dependencies
   + [[https://github.com/kdave/btrfs-progs][btrfs-progs]]
   + [[https://www.openssh.com/][OpenSSH]]
@@ -36,7 +35,8 @@ It is unlikely that you do not already have these installed.
   meaningful error messages. To check that your config is valid run 
   =yabsm check-config=.
 
-  * * Minimal example config
+* * Example Config
+#+BEGIN_SRC 
     # /etc/yabsm.conf
 
     yabsm_dir=/.snapshots/yabsm
@@ -72,5 +72,6 @@ It is unlikely that you do not already have these installed.
 
         keep=365
     }
+#+BEGIN_SRC 
   
     

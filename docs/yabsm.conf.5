@@ -116,15 +116,15 @@ must be a local backup (hard drive plugged into the computer). This setting is
 always required.
 .TP
 .BR "host    "
-The hostname of a server for a remote backup. This setting is only required if \fBremote=yes\fR.
-The value can be any hostname that works with \fBssh\fR(1).
+The hostname of a server for a remote backup. The value can be any hostname that
+works with \fBssh\fR(1). This setting is only required if \fBremote=yes\fR.
 .TP
 .BR "backup_dir"
-Directory to place the backup snapshots. The value is taken literally so you
+The directory to place the backup snapshots. The value is taken literally so you
 probably want \fB/yabsm/\fR to be somewhere in this path. If the backup is a
 local backup this directory will be created for you. However if the backup is a
 remote backup then the directory must already exist. This setting is always
-required
+required.
 .TP
 .BR "keep    "
 The number of backups to keep around. The value must be a positive integer. This

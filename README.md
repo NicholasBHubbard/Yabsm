@@ -83,3 +83,9 @@ subvol name {
 }
 #+END_SRC
 The subvols =name= must match the regex: =^[a-zA-Z][-_a-zA-Z0-9]*$=
+
+You can define as many subvols as you want.
+
+*** Subvol Settings
+test
+**** fourth depth

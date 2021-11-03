@@ -90,7 +90,8 @@ You can define as many subvols as you want.
 
 **** mountpoint
       The =mountpoint= setting is the interface between a yabsm =subvol= and
-      the corresponding btrfs subvolume. This setting is always required.
+      the corresponding btrfs subvolume. The value is the directory that will
+      be snapshotted by yabsm. This setting is always required.
 **** 5minute_want
      Do you want to take a snapshot of this subvol every 5 minutes? The value
      must be either =yes= or =no=. This setting is always required.

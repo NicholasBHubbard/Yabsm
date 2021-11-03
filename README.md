@@ -69,7 +69,17 @@ It is unlikely that you do not already have these installed.
 #+END_SRC 
   
 *** yabsm_dir
-The directory for yabsm to store snapshots. This directory is taken literally
-so you probably want it to end in =/yabsm=. 
+The directory for yabsm to store snapshots and use as a working directory for
+incremental backups. This directory is taken literally so you probably want it
+to end in =/yabsm=. It only makes sense for this directory to be a btrfs
+subvolume.
 
-test
+*** Subvols
+A yabsm subvol has the following form
+#+BEGIN_SRC
+subvol name {
+    setting=value
+    ...
+}
+#+END_SRC
+The subvols =name= must match the regex: =^[a-zA-Z][-_a-zA-Z0-9]*$=

@@ -95,38 +95,38 @@ You can define as many subvols as you want.
      Do you want to take a snapshot of this subvol every 5 minutes? The value
      must be either =yes= or =no=. This setting is always required.
 **** 5minute_keep
-     How many snapshots in the 5minute timeframe do you want to keep. The value
-     must be a positive integer. This setting is only required if
+     How many snapshots in the =5minute= timeframe do you want to keep. The
+     value must be a positive integer. This setting is only required if
      =5minute_want=yes=.
 **** hourly_want
      Do you want to take a snapshot at the beginning of every hour? The value
      must be either =yes= or =no=. This setting is always required.
 **** hourly_keep
-     How many snapshots in the hourly timeframe do you want to keep. The value
-     must be a positive integer. This setting is only required if
+     How many snapshots in the =hourly= timeframe do you want to keep. The
+     value must be a positive integer. This setting is only required if
      =hourly_want=yes=.
 **** midnight_want
      Do you want to take a snapshot every night at 23:59? The value
      must be either =yes= or =no=. This setting is always required.
 **** midnight_keep
-     How many snapshots in the midnight timeframe do you want to keep. The
+     How many snapshots in the =midnight= timeframe do you want to keep. The
      value must be a positive integer. This setting is only required if
      =midnight_want=yes=.
 **** weekly_want
      Do you want to take a snapshot at 23:59 on one day of the week? The value
      must be either =yes= or =no=. This setting is always required.
 **** weekly_day
-     Which day of the week do you want the weekly snapshots? The value be any of
-     sunday, monday, tuesday, wednesday, thursday, friday, or saturday. This
+     Which day of the week do you want the =weekly= snapshot? The value be any
+     of sunday, monday, tuesday, wednesday, thursday, friday, or saturday. This
      setting is only required if =weekly_want=yes=.
 **** weekly_keep
-     How many snapshots in the weekly timeframe do you want to keep. The
+     How many snapshots in the =weekly= timeframe do you want to keep. The
      value must be a positive integer. This setting is only required if
      =weekly_want=yes=.
 **** monthly_want
      Do you want to take a snapshot at 00:00 on the first of every month? The
      value must be either =yes= or =no=. This setting is always required.
 **** monthly_keep
-     How many snapshots in the monthly timeframe do you want to keep. The value
-     must be a positive integer. This setting is only required if
+     How many snapshots in the =monthly= timeframe do you want to keep. The
+     value must be a positive integer. This setting is only required if
      =monthly_want=yes=.

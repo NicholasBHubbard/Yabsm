@@ -29,7 +29,7 @@ It is unlikely that you do not already have these installed.
   meaningful error messages. To check that your config is valid run 
   =yabsm check-config=.
 
-** Example Config
+*** Example Config
 #+BEGIN_SRC 
     # /etc/yabsm.conf
 
@@ -68,7 +68,7 @@ It is unlikely that you do not already have these installed.
     }
 #+END_SRC 
   
-** yabsm_dir
+*** yabsm_dir
 The directory for yabsm to store snapshots. This directory is taken literally
 so you probably want it to end in =/yabsm=. 
 

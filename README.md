@@ -35,7 +35,7 @@ It is unlikely that you do not already have these installed.
   meaningful error messages. To check that your config is valid run 
   =yabsm check-config=.
 
-* * Example Config
+** Example Config
 #+BEGIN_SRC 
     # /etc/yabsm.conf
 
@@ -72,6 +72,6 @@ It is unlikely that you do not already have these installed.
 
         keep=365
     }
-#+BEGIN_SRC 
+#+END_SRC 
   
     

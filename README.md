@@ -26,8 +26,8 @@
 It is unlikely that you do not already have these installed.
 
 * Configuration
-  Yabsm is configured through the //etc/yabsm.conf/ file. By default yabsm only
-  installs the //etc/yabsm.conf.example/ file so you may want to run =cp
+  Yabsm is configured through the /\/etc/yabsm.conf/ file. By default yabsm only
+  installs the /\/etc/yabsm.conf.example/ file so you may want to run =cp
   /etc/yabsm.conf.example /etc/yabsm.conf= and then create your config using
   the example.
   

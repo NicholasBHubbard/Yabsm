@@ -72,7 +72,8 @@ It is unlikely that you do not already have these installed.
 The directory for yabsm to store snapshots and use as a working directory for
 incremental backups. This directory is taken literally so you probably want it
 to end in =/yabsm=. It only makes sense for this directory to be a btrfs
-subvolume.
+subvolume. If the directory does not exist then yabsm will create it
+automatically.
 
 *** Subvol Definitions
 A yabsm subvol has the following form
@@ -131,3 +132,47 @@ You can define as many subvols as you want.
      How many snapshots in the =monthly= timeframe do you want to keep? The
      value must be a positive integer. This setting is only required if
      =monthly_want=yes=.
+
+
+*** Backup Definitions
+A yabsm backup has the following form
+#+BEGIN_SRC
+backup name {
+    setting=value
+    ...
+}
+#+END_SRC
+The backups =name= must match the regex: =^[a-zA-Z][-_a-zA-Z0-9]*$=
+
+You can define as many backups as you want.
+
+*** Backup Settings
+**** subvol
+     The name of the yabsm subvol that is being backed up. This setting is
+     always required.
+**** remote
+     Is this backup a remote backup (to a server over ssh)? The value for this
+     setting must be either =yes= or =no=. If =remote=no= then the backup must
+     be a local backup (hard drive plugged into the computer). This setting is
+     always required.
+**** host
+     The hostname of a server for a remote backup. The value can be any
+     hostname that works with =ssh=. This setting is only required if
+     =remote=yes=.
+**** backup_dir     
+     The directory to place the backup snapshots. The value is taken literally
+     so you probably want =/yabsm/= somewhere in the path. If the backup is a
+     local backup then this directory will be created automatically. If the
+     backup is a remote backup then this directory must already exist on the
+     remote machine. This setting is always required.
+**** keep
+     The number of backups to keep around. The value must be a positive
+     integer. This setting is always required.
+**** timeframe
+     The timeframe for performing backups. This value can be any of 5minute,
+     hourly, midnight, weekly, or monthly. These timeframes are the same as a
+     subvols timeframes. This setting is always required.
+**** weekly_day
+     The day of the week to perform the backup? The value can be any of sunday,
+     monday, tuesday, wednesday, thursday, frieday, or saturday. This setting
+     is only required if =timeframe=weekly=.

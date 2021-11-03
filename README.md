@@ -2,7 +2,7 @@
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
 * Features
-  + Organize your snapshots into 5minute, hourly, midnight, weekly and monthly
+  + Organize snapshots into 5minute, hourly, midnight, weekly and monthly
     timeframe categories.
   + Cycle out old snapshots on a per-timeframe basis.
   + Remote and local incremental backups.

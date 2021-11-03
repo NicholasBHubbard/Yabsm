@@ -1,12 +1,6 @@
 # -*- mode:org;mode:auto-fill;fill-column:79 -*-
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
-
-* Why should I use YABSM?
-  Yabsm makes it easy to set up a btrfs snapshot and backup system. Yabsm
-  can be configured to be useful as a workflow tool where you can quickly
-  jump back in time to an old system state.
-
 * Features
   + Organize your snapshots into 5minute, hourly, midnight, weekly and monthly
     timeframe categories.
@@ -26,10 +20,10 @@
 It is unlikely that you do not already have these installed.
 
 * Configuration
-  Yabsm is configured through the //etc/yabsm.conf// file. By default yabsm only
-  installs the /etc/yabsm.conf.example/ file so you may want to run 
-  ~cp /etc/yabsm.conf.example /etc/yabsm.conf~ and then create your config using
-  the example.
+  Yabsm is configured through the =/etc/yabsm.conf= file. By default yabsm only
+  installs the =/etc/yabsm.conf.example= file so you may want to run 
+  =cp /etc/yabsm.conf.example /etc/yabsm.conf= and then create your config
+  based off an example.
   
   Effort has been put in to ensure that erroneous configs are rejected with
   meaningful error messages. To check that your config is valid run 
@@ -64,7 +58,7 @@ It is unlikely that you do not already have these installed.
 
         remote=yes
 
-        host=alice@192.168.1.1
+        host=alice@192.168.1.73
 
         backup_dir=/backups/yabsm/desktopRootBackup
 
@@ -74,4 +68,3 @@ It is unlikely that you do not already have these installed.
     }
 #+END_SRC 
   
-A 

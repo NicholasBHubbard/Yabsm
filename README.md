@@ -257,7 +257,7 @@ are found they are printed linewise sorted from newest to oldest.
 There are 7 different kinds of queries: =relative time=, =literal time=,
 =newest=, =oldest=, =before=, =after=, =between=.
 
-**** Relative Time
+**** Relative Time Query
      A =relative time= is a time relative to the current time.
 
      A =relative time= query matches the one snapshot closest to the time denoted
@@ -277,8 +277,8 @@ There are 7 different kinds of queries: =relative time=, =literal time=,
 
      =days= can be abbreviated to =d=.
 
-**** Literal Time
-     A =literal time= is a denotes a date of the form =YEAR=MONTH-DAY-HOUR-MINUTE=.
+**** Literal Time Query
+     A =literal time= denotes a date of the form =YEAR-MONTH-DAY-HOUR-MINUTE=.
 
      A =literal time= query matches the one snapshot closest to the time denoted
      by the =literal time=.
@@ -291,14 +291,41 @@ There are 7 different kinds of queries: =relative time=, =literal time=,
      + mon-day-hr
      + mon-day-hr-min
        
-     The first form =yr-mon-day-hr-min= is the base form that all other forms
-     are shorthand for.
+     The first form =yr-mon-day-hr-min= is the base form that all the other
+     forms are a shorthand for.
 
      The shorthand rules are simple, if the =yr= field is omitted then the
      current year is assumed. If either the =hr= or =min= field are omitted
      then they are assumed to be zero. Therefore if the current year is 2020
-     then the literal time =12-25= is equivalent to =2020-12-25-0-0=
+     then the literal time =12-25= is equivalent to =2020-12-25-0-0=.
+**** Before Query     
+     A =before= query takes either a =relative time= or a =literal time= as an
+     argument and matches all the snapshots taken before (not inclusive) the
+     denoted time.
 
-     
+     =older= is an alias for =before=.
 
-     
+     A =before= query must be quoted when passed via the command line.
+
+**** After Query     
+     An =after= query takes either a =relative time= or a =literal time= as an
+     argument and matches all the snapshots taken after (not inclusive) the
+     denoted time.
+
+     =newer= is an alias for =after=.
+
+     An =after= query must be quoted when passed via the command line.
+
+**** Between Query
+     A =between= query takes two =relative= / =literal= times and matches all
+     the snapshots taken between (inclusive) the denoted times.
+
+     A =between= query must be quoted when passed via the command line.
+
+**** Newest Query
+     A =newest= query is denoted by simply passing the constant string
+     "newest". A =newest= query matches the one snapshot that is the newest.
+
+**** Oldest Query
+     An =oldest= query is denoted by simply passing the constant string
+     "oldest". An =oldest= query matches the one snapshot that is the oldest.

@@ -2,10 +2,11 @@
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
 * Contents
-  [[#Features][Features]]
-  [[#Installation][Installation]]
-  [[#Commands][Commands]]
-  [[#Configuration][Configuration]]
+  + [[#Features][Features]]
+  + [[#Installation][Installation]]
+  + [[#Commands][Commands]]
+  + [[#Configuration][Configuration]]
+  + [[#Finding Snapshots][Finding Snapshots]]
 
 # Features
 * Features
@@ -227,3 +228,26 @@ You can define as many backups as you want.
      The day of the week to perform the backup? The value can be any of sunday,
      monday, tuesday, wednesday, thursday, frieday, or saturday. This setting
      is only required if =timeframe=weekly=.
+
+# Finding Snapshots
+* Finding Snapshots
+  
+Yabsm comes with a simple query language for locating snapshots and
+backups. Yabsm comes with the =find= command that lets you query snapshots
+by asking questions like: "find a snapshot of my home subvol from 2 hours ago",
+or "find all the snapshots taken after 2 days ago".
+
+*** Examples
+    Assume that you have a =subvol= named "home".
+
+    + yabsm find home back-20-minutes
+    + yabsm find home back-10-hours
+    + yabsm find home back-2-days
+    + yabsm find home 'between back-2-hours 12-25'
+    + yabsm find home 2020-12-25-17-30
+    + yabsm find home 12-25
+    + yabsm find home newest
+    + yabsm find home oldest
+    + yabsm find home 'after b-2-d'
+    + yabsm find home 'before b-10-h'
+

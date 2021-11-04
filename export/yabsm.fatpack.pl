@@ -8559,6 +8559,720 @@ $fatpacked{"lib/relative.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LI
   L<lib>, L<FindBin>, L<Dir::Self>
 LIB_RELATIVE
 
+$fatpacked{"x86_64-linux/List/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_LIST_UTIL';
+  # List::Util.pm
+  #
+  # Copyright (c) 1997-2009 Graham Barr <gbarr@pobox.com>. All rights reserved.
+  # This program is free software; you can redistribute it and/or
+  # modify it under the same terms as Perl itself.
+  #
+  # This module is normally only loaded if the XS module is not available
+  
+  package List::Util;
+  
+  use strict;
+  require Exporter;
+  
+  our @ISA        = qw(Exporter);
+  our @EXPORT_OK  = qw(
+    all any first min max minstr maxstr none notall reduce sum sum0 shuffle
+    pairmap pairgrep pairfirst pairs pairkeys pairvalues
+  );
+  our $VERSION    = "1.33";
+  our $XS_VERSION = $VERSION;
+  $VERSION    = eval $VERSION;
+  
+  require XSLoader;
+  XSLoader::load('List::Util', $XS_VERSION);
+  
+  sub import
+  {
+    my $pkg = caller;
+  
+    # (RT88848) Touch the caller's $a and $b, to avoid the warning of
+    #   Name "main::a" used only once: possible typo" warning
+    no strict 'refs';
+    ${"${pkg}::a"} = ${"${pkg}::a"};
+    ${"${pkg}::b"} = ${"${pkg}::b"};
+  
+    goto &Exporter::import;
+  }
+  
+  sub sum0
+  {
+     return 0 unless @_;
+     goto &sum;
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  List::Util - A selection of general-utility list subroutines
+  
+  =head1 SYNOPSIS
+  
+      use List::Util qw(first max maxstr min minstr reduce shuffle sum);
+  
+  =head1 DESCRIPTION
+  
+  C<List::Util> contains a selection of subroutines that people have
+  expressed would be nice to have in the perl core, but the usage would
+  not really be high enough to warrant the use of a keyword, and the size
+  so small such that being individual extensions would be wasteful.
+  
+  By default C<List::Util> does not export any subroutines.
+  
+  =cut
+  
+  =head1 LIST-REDUCTION FUNCTIONS
+  
+  The following set of functions all reduce a list down to a single value.
+  
+  =cut
+  
+  =head2 reduce BLOCK LIST
+  
+  Reduces LIST by calling BLOCK, in a scalar context, multiple times,
+  setting C<$a> and C<$b> each time. The first call will be with C<$a>
+  and C<$b> set to the first two elements of the list, subsequent
+  calls will be done by setting C<$a> to the result of the previous
+  call and C<$b> to the next element in the list.
+  
+  Returns the result of the last call to BLOCK. If LIST is empty then
+  C<undef> is returned. If LIST only contains one element then that
+  element is returned and BLOCK is not executed.
+  
+      $foo = reduce { $a < $b ? $a : $b } 1..10       # min
+      $foo = reduce { $a lt $b ? $a : $b } 'aa'..'zz' # minstr
+      $foo = reduce { $a + $b } 1 .. 10               # sum
+      $foo = reduce { $a . $b } @bar                  # concat
+  
+  If your algorithm requires that C<reduce> produce an identity value, then
+  make sure that you always pass that identity value as the first argument to prevent
+  C<undef> being returned
+  
+    $foo = reduce { $a + $b } 0, @values;             # sum with 0 identity value
+  
+  The remaining list-reduction functions are all specialisations of this
+  generic idea.
+  
+  =head2 any BLOCK LIST
+  
+  Similar to C<grep> in that it evaluates BLOCK setting C<$_> to each element
+  of LIST in turn. C<any> returns true if any element makes the BLOCK return a
+  true value. If BLOCK never returns true or LIST was empty then it returns
+  false.
+  
+  Many cases of using C<grep> in a conditional can be written using C<any>
+  instead, as it can short-circuit after the first true result.
+  
+      if( any { length > 10 } @strings ) {
+          # at least one string has more than 10 characters
+      }
+  
+  =head2 all BLOCK LIST
+  
+  Similar to C<any>, except that it requires all elements of the LIST to make
+  the BLOCK return true. If any element returns false, then it returns true. If
+  the BLOCK never returns false or the LIST was empty then it returns true.
+  
+  =head2 none BLOCK LIST
+  
+  =head2 notall BLOCK LIST
+  
+  Similar to C<any> and C<all>, but with the return sense inverted. C<none>
+  returns true if no value in the LIST causes the BLOCK to return true, and
+  C<notall> returns true if not all of the values do.
+  
+  =head2 first BLOCK LIST
+  
+  Similar to C<grep> in that it evaluates BLOCK setting C<$_> to each element
+  of LIST in turn. C<first> returns the first element where the result from
+  BLOCK is a true value. If BLOCK never returns true or LIST was empty then
+  C<undef> is returned.
+  
+      $foo = first { defined($_) } @list    # first defined value in @list
+      $foo = first { $_ > $value } @list    # first value in @list which
+                                            # is greater than $value
+  
+  This function could be implemented using C<reduce> like this
+  
+      $foo = reduce { defined($a) ? $a : wanted($b) ? $b : undef } undef, @list
+  
+  for example wanted() could be defined() which would return the first
+  defined value in @list
+  
+  =head2 max LIST
+  
+  Returns the entry in the list with the highest numerical value. If the
+  list is empty then C<undef> is returned.
+  
+      $foo = max 1..10                # 10
+      $foo = max 3,9,12               # 12
+      $foo = max @bar, @baz           # whatever
+  
+  This function could be implemented using C<reduce> like this
+  
+      $foo = reduce { $a > $b ? $a : $b } 1..10
+  
+  =head2 maxstr LIST
+  
+  Similar to C<max>, but treats all the entries in the list as strings
+  and returns the highest string as defined by the C<gt> operator.
+  If the list is empty then C<undef> is returned.
+  
+      $foo = maxstr 'A'..'Z'          # 'Z'
+      $foo = maxstr "hello","world"   # "world"
+      $foo = maxstr @bar, @baz        # whatever
+  
+  This function could be implemented using C<reduce> like this
+  
+      $foo = reduce { $a gt $b ? $a : $b } 'A'..'Z'
+  
+  =head2 min LIST
+  
+  Similar to C<max> but returns the entry in the list with the lowest
+  numerical value. If the list is empty then C<undef> is returned.
+  
+      $foo = min 1..10                # 1
+      $foo = min 3,9,12               # 3
+      $foo = min @bar, @baz           # whatever
+  
+  This function could be implemented using C<reduce> like this
+  
+      $foo = reduce { $a < $b ? $a : $b } 1..10
+  
+  =head2 minstr LIST
+  
+  Similar to C<min>, but treats all the entries in the list as strings
+  and returns the lowest string as defined by the C<lt> operator.
+  If the list is empty then C<undef> is returned.
+  
+      $foo = minstr 'A'..'Z'          # 'A'
+      $foo = minstr "hello","world"   # "hello"
+      $foo = minstr @bar, @baz        # whatever
+  
+  This function could be implemented using C<reduce> like this
+  
+      $foo = reduce { $a lt $b ? $a : $b } 'A'..'Z'
+  
+  =head2 sum LIST
+  
+  Returns the sum of all the elements in LIST. If LIST is empty then
+  C<undef> is returned.
+  
+      $foo = sum 1..10                # 55
+      $foo = sum 3,9,12               # 24
+      $foo = sum @bar, @baz           # whatever
+  
+  This function could be implemented using C<reduce> like this
+  
+      $foo = reduce { $a + $b } 1..10
+  
+  =head2 sum0 LIST
+  
+  Similar to C<sum>, except this returns 0 when given an empty list, rather
+  than C<undef>.
+  
+  =cut
+  
+  =head1 KEY/VALUE PAIR LIST FUNCTIONS
+  
+  The following set of functions, all inspired by L<List::Pairwise>, consume
+  an even-sized list of pairs. The pairs may be key/value associations from a
+  hash, or just a list of values. The functions will all preserve the original
+  ordering of the pairs, and will not be confused by multiple pairs having the
+  same "key" value - nor even do they require that the first of each pair be a
+  plain string.
+  
+  =cut
+  
+  =head2 pairgrep BLOCK KVLIST
+  
+  Similar to perl's C<grep> keyword, but interprets the given list as an
+  even-sized list of pairs. It invokes the BLOCK multiple times, in scalar
+  context, with C<$a> and C<$b> set to successive pairs of values from the
+  KVLIST.
+  
+  Returns an even-sized list of those pairs for which the BLOCK returned true
+  in list context, or the count of the B<number of pairs> in scalar context.
+  (Note, therefore, in scalar context that it returns a number half the size
+  of the count of items it would have returned in list context).
+  
+      @subset = pairgrep { $a =~ m/^[[:upper:]]+$/ } @kvlist
+  
+  Similar to C<grep>, C<pairgrep> aliases C<$a> and C<$b> to elements of the
+  given list. Any modifications of it by the code block will be visible to
+  the caller.
+  
+  =head2 pairfirst BLOCK KVLIST
+  
+  Similar to the C<first> function, but interprets the given list as an
+  even-sized list of pairs. It invokes the BLOCK multiple times, in scalar
+  context, with C<$a> and C<$b> set to successive pairs of values from the
+  KVLIST.
+  
+  Returns the first pair of values from the list for which the BLOCK returned
+  true in list context, or an empty list of no such pair was found. In scalar
+  context it returns a simple boolean value, rather than either the key or the
+  value found.
+  
+      ( $key, $value ) = pairfirst { $a =~ m/^[[:upper:]]+$/ } @kvlist
+  
+  Similar to C<grep>, C<pairfirst> aliases C<$a> and C<$b> to elements of the
+  given list. Any modifications of it by the code block will be visible to
+  the caller.
+  
+  =head2 pairmap BLOCK KVLIST
+  
+  Similar to perl's C<map> keyword, but interprets the given list as an
+  even-sized list of pairs. It invokes the BLOCK multiple times, in list
+  context, with C<$a> and C<$b> set to successive pairs of values from the
+  KVLIST.
+  
+  Returns the concatenation of all the values returned by the BLOCK in list
+  context, or the count of the number of items that would have been returned
+  in scalar context.
+  
+      @result = pairmap { "The key $a has value $b" } @kvlist
+  
+  Similar to C<map>, C<pairmap> aliases C<$a> and C<$b> to elements of the
+  given list. Any modifications of it by the code block will be visible to
+  the caller.
+  
+  =head2 pairs KVLIST
+  
+  A convenient shortcut to operating on even-sized lists of pairs, this
+  function returns a list of ARRAY references, each containing two items from
+  the given list. It is a more efficient version of
+  
+      pairmap { [ $a, $b ] } KVLIST
+  
+  It is most convenient to use in a C<foreach> loop, for example:
+  
+      foreach ( pairs @KVLIST ) {
+         my ( $key, $value ) = @$_;
+         ...
+      }
+  
+  =head2 pairkeys KVLIST
+  
+  A convenient shortcut to operating on even-sized lists of pairs, this
+  function returns a list of the the first values of each of the pairs in
+  the given list. It is a more efficient version of
+  
+      pairmap { $a } KVLIST
+  
+  =head2 pairvalues KVLIST
+  
+  A convenient shortcut to operating on even-sized lists of pairs, this
+  function returns a list of the the second values of each of the pairs in
+  the given list. It is a more efficient version of
+  
+      pairmap { $b } KVLIST
+  
+  =cut
+  
+  =head1 OTHER FUNCTIONS
+  
+  =cut
+  
+  =head2 shuffle LIST
+  
+  Returns the elements of LIST in a random order
+  
+      @cards = shuffle 0..51      # 0..51 in a random order
+  
+  =cut
+  
+  =head1 KNOWN BUGS
+  
+  With perl versions prior to 5.005 there are some cases where reduce
+  will return an incorrect result. This will show up as test 7 of
+  reduce.t failing.
+  
+  =head1 SUGGESTED ADDITIONS
+  
+  The following are additions that have been requested, but I have been reluctant
+  to add due to them being very simple to implement in perl
+  
+    # How many elements are true
+  
+    sub true { scalar grep { $_ } @_ }
+  
+    # How many elements are false
+  
+    sub false { scalar grep { !$_ } @_ }
+  
+  =head1 SEE ALSO
+  
+  L<Scalar::Util>, L<List::MoreUtils>
+  
+  =head1 COPYRIGHT
+  
+  Copyright (c) 1997-2007 Graham Barr <gbarr@pobox.com>. All rights reserved.
+  This program is free software; you can redistribute it and/or
+  modify it under the same terms as Perl itself.
+  
+  Recent additions and current maintenance by
+  Paul Evans, <leonerd@leonerd.org.uk>.
+  
+  =cut
+X86_64-LINUX_LIST_UTIL
+
+$fatpacked{"x86_64-linux/List/Util/XS.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_LIST_UTIL_XS';
+  package List::Util::XS;
+  use strict;
+  use List::Util;
+  
+  our $VERSION = "1.33";       # FIXUP
+  $VERSION = eval $VERSION;    # FIXUP
+  
+  1;
+  __END__
+  
+  =head1 NAME
+  
+  List::Util::XS - Indicate if List::Util was compiled with a C compiler
+  
+  =head1 SYNOPSIS
+  
+      use List::Util::XS 1.20;
+  
+  =head1 DESCRIPTION
+  
+  C<List::Util::XS> can be used as a dependency to ensure List::Util was
+  installed using a C compiler and that the XS version is installed.
+  
+  During installation C<$List::Util::XS::VERSION> will be set to
+  C<undef> if the XS was not compiled.
+  
+  Starting with release 1.23_03, Scalar-List-Util is B<always> using
+  the XS implementation, but for backwards compatibility, we still
+  ship the C<List::Util::XS> module which just loads C<List::Util>.
+  
+  =head1 SEE ALSO
+  
+  L<Scalar::Util>, L<List::Util>, L<List::MoreUtils>
+  
+  =head1 COPYRIGHT
+  
+  Copyright (c) 2008 Graham Barr <gbarr@pobox.com>. All rights reserved.
+  This program is free software; you can redistribute it and/or
+  modify it under the same terms as Perl itself.
+  
+  =cut
+X86_64-LINUX_LIST_UTIL_XS
+
+$fatpacked{"x86_64-linux/Scalar/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_SCALAR_UTIL';
+  # Scalar::Util.pm
+  #
+  # Copyright (c) 1997-2007 Graham Barr <gbarr@pobox.com>. All rights reserved.
+  # This program is free software; you can redistribute it and/or
+  # modify it under the same terms as Perl itself.
+  
+  package Scalar::Util;
+  
+  use strict;
+  require Exporter;
+  require List::Util; # List::Util loads the XS
+  
+  our @ISA       = qw(Exporter);
+  our @EXPORT_OK = qw(
+    blessed
+    dualvar
+    isdual
+    isvstring
+    isweak
+    looks_like_number
+    openhandle
+    readonly
+    refaddr
+    reftype
+    set_prototype
+    tainted
+    weaken
+  );
+  our $VERSION    = "1.33";
+  $VERSION   = eval $VERSION;
+  
+  our @EXPORT_FAIL;
+  
+  unless (defined &weaken) {
+    push @EXPORT_FAIL, qw(weaken);
+  }
+  unless (defined &isweak) {
+    push @EXPORT_FAIL, qw(isweak isvstring);
+  }
+  unless (defined &isvstring) {
+    push @EXPORT_FAIL, qw(isvstring);
+  }
+  
+  sub export_fail {
+    if (grep { /^(?:weaken|isweak)$/ } @_ ) {
+      require Carp;
+      Carp::croak("Weak references are not implemented in the version of perl");
+    }
+  
+    if (grep { /^isvstring$/ } @_ ) {
+      require Carp;
+      Carp::croak("Vstrings are not implemented in the version of perl");
+    }
+  
+    @_;
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Scalar::Util - A selection of general-utility scalar subroutines
+  
+  =head1 SYNOPSIS
+  
+      use Scalar::Util qw(blessed dualvar isdual readonly refaddr reftype
+                          tainted weaken isweak isvstring looks_like_number
+                          set_prototype);
+                          # and other useful utils appearing below
+  
+  =head1 DESCRIPTION
+  
+  C<Scalar::Util> contains a selection of subroutines that people have
+  expressed would be nice to have in the perl core, but the usage would
+  not really be high enough to warrant the use of a keyword, and the size
+  so small such that being individual extensions would be wasteful.
+  
+  By default C<Scalar::Util> does not export any subroutines. The
+  subroutines defined are
+  
+  =head2 blessed EXPR
+  
+  If EXPR evaluates to a blessed reference the name of the package
+  that it is blessed into is returned. Otherwise C<undef> is returned.
+  
+     $scalar = "foo";
+     $class  = blessed $scalar;           # undef
+  
+     $ref    = [];
+     $class  = blessed $ref;              # undef
+  
+     $obj    = bless [], "Foo";
+     $class  = blessed $obj;              # "Foo"
+  
+  Take care when using this function simply as a truth test (such as in
+  C<if(blessed $ref)...>) because the package name C<"0"> is defined yet
+  false.
+  
+  =head2 dualvar NUM, STRING
+  
+  Returns a scalar that has the value NUM in a numeric context and the
+  value STRING in a string context.
+  
+      $foo = dualvar 10, "Hello";
+      $num = $foo + 2;                    # 12
+      $str = $foo . " world";             # Hello world
+  
+  =head2 isdual EXPR
+  
+  If EXPR is a scalar that is a dualvar, the result is true.
+  
+      $foo = dualvar 86, "Nix";
+      $dual = isdual($foo);               # true
+  
+  Note that a scalar can be made to have both string and numeric content
+  through numeric operations:
+  
+      $foo = "10";
+      $dual = isdual($foo);               # false
+      $bar = $foo + 0;
+      $dual = isdual($foo);               # true
+  
+  Note that although C<$!> appears to be dual-valued variable, it is
+  actually implemented using a tied scalar:
+  
+      $! = 1;
+      print("$!\n");                      # "Operation not permitted"
+      $dual = isdual($!);                 # false
+  
+  You can capture its numeric and string content using:
+  
+      $err = dualvar $!, $!;
+      $dual = isdual($err);               # true
+  
+  =head2 isvstring EXPR
+  
+  If EXPR is a scalar which was coded as a vstring the result is true.
+  
+      $vs   = v49.46.48;
+      $fmt  = isvstring($vs) ? "%vd" : "%s"; #true
+      printf($fmt,$vs);
+  
+  =head2 looks_like_number EXPR
+  
+  Returns true if perl thinks EXPR is a number. See
+  L<perlapi/looks_like_number>.
+  
+  =head2 openhandle FH
+  
+  Returns FH if FH may be used as a filehandle and is open, or FH is a tied
+  handle. Otherwise C<undef> is returned.
+  
+      $fh = openhandle(*STDIN);           # \*STDIN
+      $fh = openhandle(\*STDIN);          # \*STDIN
+      $fh = openhandle(*NOTOPEN);         # undef
+      $fh = openhandle("scalar");         # undef
+  
+  =head2 readonly SCALAR
+  
+  Returns true if SCALAR is readonly.
+  
+      sub foo { readonly($_[0]) }
+  
+      $readonly = foo($bar);              # false
+      $readonly = foo(0);                 # true
+  
+  =head2 refaddr EXPR
+  
+  If EXPR evaluates to a reference the internal memory address of
+  the referenced value is returned. Otherwise C<undef> is returned.
+  
+      $addr = refaddr "string";           # undef
+      $addr = refaddr \$var;              # eg 12345678
+      $addr = refaddr [];                 # eg 23456784
+  
+      $obj  = bless {}, "Foo";
+      $addr = refaddr $obj;               # eg 88123488
+  
+  =head2 reftype EXPR
+  
+  If EXPR evaluates to a reference the type of the variable referenced
+  is returned. Otherwise C<undef> is returned.
+  
+      $type = reftype "string";           # undef
+      $type = reftype \$var;              # SCALAR
+      $type = reftype [];                 # ARRAY
+  
+      $obj  = bless {}, "Foo";
+      $type = reftype $obj;               # HASH
+  
+  =head2 set_prototype CODEREF, PROTOTYPE
+  
+  Sets the prototype of the given function, or deletes it if PROTOTYPE is
+  undef. Returns the CODEREF.
+  
+      set_prototype \&foo, '$$';
+  
+  =head2 tainted EXPR
+  
+  Return true if the result of EXPR is tainted
+  
+      $taint = tainted("constant");       # false
+      $taint = tainted($ENV{PWD});        # true if running under -T
+  
+  =head2 weaken REF
+  
+  REF will be turned into a weak reference. This means that it will not
+  hold a reference count on the object it references. Also when the reference
+  count on that object reaches zero, REF will be set to undef.
+  
+  This is useful for keeping copies of references , but you don't want to
+  prevent the object being DESTROY-ed at its usual time.
+  
+      {
+        my $var;
+        $ref = \$var;
+        weaken($ref);                     # Make $ref a weak reference
+      }
+      # $ref is now undef
+  
+  Note that if you take a copy of a scalar with a weakened reference,
+  the copy will be a strong reference.
+  
+      my $var;
+      my $foo = \$var;
+      weaken($foo);                       # Make $foo a weak reference
+      my $bar = $foo;                     # $bar is now a strong reference
+  
+  This may be less obvious in other situations, such as C<grep()>, for instance
+  when grepping through a list of weakened references to objects that may have
+  been destroyed already:
+  
+      @object = grep { defined } @object;
+  
+  This will indeed remove all references to destroyed objects, but the remaining
+  references to objects will be strong, causing the remaining objects to never
+  be destroyed because there is now always a strong reference to them in the
+  @object array.
+  
+  =head2 isweak EXPR
+  
+  If EXPR is a scalar which is a weak reference the result is true.
+  
+      $ref  = \$foo;
+      $weak = isweak($ref);               # false
+      weaken($ref);
+      $weak = isweak($ref);               # true
+  
+  B<NOTE>: Copying a weak reference creates a normal, strong, reference.
+  
+      $copy = $ref;
+      $weak = isweak($copy);              # false
+  
+  =head1 DIAGNOSTICS
+  
+  Module use may give one of the following errors during import.
+  
+  =over
+  
+  =item Weak references are not implemented in the version of perl
+  
+  The version of perl that you are using does not implement weak references, to use
+  C<isweak> or C<weaken> you will need to use a newer release of perl.
+  
+  =item Vstrings are not implemented in the version of perl
+  
+  The version of perl that you are using does not implement Vstrings, to use
+  C<isvstring> you will need to use a newer release of perl.
+  
+  =item C<NAME> is only available with the XS version of Scalar::Util
+  
+  C<Scalar::Util> contains both perl and C implementations of many of its functions
+  so that those without access to a C compiler may still use it. However some of the functions
+  are only available when a C compiler was available to compile the XS version of the extension.
+  
+  At present that list is: weaken, isweak, dualvar, isvstring, set_prototype
+  
+  =back
+  
+  =head1 KNOWN BUGS
+  
+  There is a bug in perl5.6.0 with UV's that are >= 1<<31. This will
+  show up as tests 8 and 9 of dualvar.t failing
+  
+  =head1 SEE ALSO
+  
+  L<List::Util>
+  
+  =head1 COPYRIGHT
+  
+  Copyright (c) 1997-2007 Graham Barr <gbarr@pobox.com>. All rights reserved.
+  This program is free software; you can redistribute it and/or modify it
+  under the same terms as Perl itself.
+  
+  Except weaken and isweak which are
+  
+  Copyright (c) 1999 Tuomas J. Lukka <lukka@iki.fi>. All rights reserved.
+  This program is free software; you can redistribute it and/or modify it
+  under the same terms as perl itself.
+  
+  =cut
+X86_64-LINUX_SCALAR_UTIL
+
 $fatpacked{"x86_64-linux/Syntax/Keyword/Try.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_SYNTAX_KEYWORD_TRY';
   #  You may distribute under the terms of either the GNU General Public License
   #  or the Artistic License (the same terms as Perl itself)
@@ -10874,6 +11588,11 @@ usage: yabsm [--help] [--version]
                                           QUERY. SUBJECT must be a backup or
                                           subvol defined in /etc/yabsm.conf.
 
+  update-crontab, update                  Write cronjobs to /etc/crontab, based
+                                          off the settings specified in 
+                                          /etc/yabsm.conf. This is a root only 
+                                          command.
+
   check-config, c <?FILE>                 Check that FILE is a valid yabsm
                                           config file for errors. If FILE is
                                           not specified then check
@@ -10881,35 +11600,6 @@ usage: yabsm [--help] [--version]
                                           print their messages to stderr and 
                                           exit with non zero status, else print
                                           'all good'.
-
-  update-crontab, update                  Update cronjobs in /etc/crontab, based
-                                          off the user settings specified in 
-                                          /etc/yabsm.conf. This is a root only 
-                                          command.
-
-  print-crons, crons                      Display the cronjob strings that would
-                                          be written to /etc/crontab if the
-                                          update-crontab command were used.
-
-  take-snap, snap <SUBVOL> <TIMEFRAME>    Take a new snapshot of SUBVOL for the
-                                          TIMEFRAME category. It is not
-                                          recommended to use this command
-                                          manually. This is a root only command.
-
-  incremental-backup, backup <BACKUP>     Perform an incremental backup of
-                                          BACKUP. It is not recommended to use
-                                          this command manually. This is a root
-                                          only command.
-
-  bootstrap-backup, bootstrap <BACKUP>    Perform the boostrap phase of the
-                                          btrfs incremental backup process for
-                                          BACKUP. This is a root only command.
-
-  print-subvols, subvols                  Print the names of all the subvols 
-                                          defined in /etc/yabsm.conf.
-
-  print-backups, backups                  Print the names of all the backups 
-                                          defined in /etc/yabsm.conf.
 
   test-remote-config, tr <BACKUP>         Test that the remote BACKUP has been 
                                           properly configured. For BACKUP to be 
@@ -10919,7 +11609,30 @@ usage: yabsm [--help] [--version]
                                           without having to enter any passwords.
                                           This is a root only command.
 
-  Please see 'man yabsm' for more detailed information about yabsm.
+  bootstrap-backup, bootstrap <BACKUP>    Perform the boostrap phase of the
+                                          btrfs incremental backup process for
+                                          BACKUP. This is a root only command.
+
+  print-crons, crons                      Display the cronjob strings that would
+                                          be written to /etc/crontab if the
+                                          update-crontab command were used.
+
+  print-subvols, subvols                  Print the names of all the subvols 
+                                          defined in /etc/yabsm.conf.
+
+  print-backups, backups                  Print the names of all the backups 
+                                          defined in /etc/yabsm.conf.
+
+  take-snap SUBVOL TIMEFRAME              Take a single read-only snapshot of
+                                          SUBVOL and put it in the TIMEFRAME
+                                          directory. This command should only
+                                          be used manually for debugging
+                                          purposes. This is a root only command.
+
+  incremental-backup BACKUP               Perform a single incremental backup
+                                          of BACKUP. This command should only
+                                          be used manually for debugging
+                                          purposes. This is a root only command.
 END_USAGE
 }
 
@@ -10928,45 +11641,43 @@ use lib::relative 'lib';
 # Every command has their own module with a main() function
 use Yabsm::Commands::TakeSnap;
 use Yabsm::Commands::IncrementalBackup;
-use Yabsm::Commands::BackupBootstrap;
 use Yabsm::Commands::Find;
+use Yabsm::Commands::UpdateEtcCrontab;
+use Yabsm::Commands::CheckConfig;
+use Yabsm::Commands::TestRemoteBackupConfig;
+use Yabsm::Commands::BackupBootstrap;
+use Yabsm::Commands::PrintCrons;
 use Yabsm::Commands::PrintSubvols;
 use Yabsm::Commands::PrintBackups;
-use Yabsm::Commands::CheckConfig;
-use Yabsm::Commands::UpdateEtcCrontab;
-use Yabsm::Commands::PrintCrons;
-use Yabsm::Commands::TestRemoteBackupConfig;
 
 # command dispatch table
 my %run_command =
    ( 'take-snap'          => \&Yabsm::Commands::TakeSnap::main
    , 'incremental-backup' => \&Yabsm::Commands::IncrementalBackup::main
-   , 'bootstrap-backup'   => \&Yabsm::Commands::BackupBootstrap::main
    , 'find'               => \&Yabsm::Commands::Find::main
+   , 'update-crontab'     => \&Yabsm::Commands::UpdateEtcCrontab::main
+   , 'check-config'       => \&Yabsm::Commands::CheckConfig::main
+   , 'test-remote-config' => \&Yabsm::Commands::TestRemoteBackupConfig::main
+   , 'bootstrap-backup'   => \&Yabsm::Commands::BackupBootstrap::main
+   , 'print-crons'        => \&Yabsm::Commands::PrintCrons::main
    , 'print-subvols'      => \&Yabsm::Commands::PrintSubvols::main
    , 'print-backups'      => \&Yabsm::Commands::PrintBackups::main
-   , 'check-config'       => \&Yabsm::Commands::CheckConfig::main
-   , 'update-crontab'     => \&Yabsm::Commands::UpdateEtcCrontab::main
-   , 'print-crons'        => \&Yabsm::Commands::PrintCrons::main
-   , 'test-remote-config' => \&Yabsm::Commands::TestRemoteBackupConfig::main
    );
 
 sub unabbreviate {
 
-    # provide the user with convenient command abbreviations
+    # provide the user with command abbreviations
 
     my $cmd = shift // die;
 
-    if    ($cmd eq 'snap')      { return 'take-snap'          }
-    elsif ($cmd eq 'backup')    { return 'incremental-backup' }
+    if    ($cmd eq 'f')         { return 'find'               }
+    elsif ($cmd eq 'update')    { return 'update-crontab'     }
+    elsif ($cmd eq 'c')         { return 'check-config'       }
+    elsif ($cmd eq 'tr')        { return 'test-remote-config' }
     elsif ($cmd eq 'bootstrap') { return 'bootstrap-backup'   }
-    elsif ($cmd eq 'f')         { return 'find'               }
+    elsif ($cmd eq 'crons')     { return 'print-crons'        }
     elsif ($cmd eq 'subvols')   { return 'print-subvols'      }
     elsif ($cmd eq 'backups')   { return 'print-backups'      }
-    elsif ($cmd eq 'c')         { return 'check-config'       }
-    elsif ($cmd eq 'update')    { return 'update-crontab'     }
-    elsif ($cmd eq 'crons')     { return 'print-crons'        }
-    elsif ($cmd eq 'tr')        { return 'test-remote-config' }
     else                        { return $cmd                 }
 }
 

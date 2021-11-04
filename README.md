@@ -2,7 +2,7 @@
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
 * Contents
-  [[Features][Features]]
+  [[#Features][Features]]
 
   [[Installation]]
 

@@ -2,12 +2,10 @@
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
 * Contents
+  <<target>>Features
   <<Features>>
-  <<Installation>>
-  <<Dependencies>>
-  <<Commands>>
-  <<Configuration>>
-  
+
+#+NAME:Features
 * Features
   + Organize snapshots into 5minute, hourly, midnight, weekly and monthly
     timeframe categories.

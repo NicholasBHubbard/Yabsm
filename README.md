@@ -6,7 +6,7 @@
   + [[#Installation][Installation]]
   + [[#Commands][Commands]]
   + [[#Configuration][Configuration]]
-  + [[#Finding Snapshots][Finding Snapshots]]
+  + [[#Finding-Snapshots][Finding Snapshots]]
 
 # Features
 * Features
@@ -229,7 +229,7 @@ You can define as many backups as you want.
      monday, tuesday, wednesday, thursday, frieday, or saturday. This setting
      is only required if =timeframe=weekly=.
 
-# Finding Snapshots
+# Finding-Snapshots
 * Finding Snapshots
   
 Yabsm comes with a simple query language for locating snapshots and

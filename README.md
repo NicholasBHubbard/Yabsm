@@ -4,13 +4,11 @@
 * Contents
   [[#Features][Features]]
 
-  [[Installation]]
+  [[#Installation][Installation]]
+  
+  [[#Commands][Commands]]
 
-  [[Dependencies]]
-
-  [[Commands]]
-
-  [[Configuration]]
+  [[#Configuration][Configuration]]
 
 # Features
 * Features
@@ -20,6 +18,7 @@
   + Remote and local incremental backups.
   + Query snapshots and backups to quickly jump back to a previous machine state.
 
+# Installation
 * Installation
   #+BEGIN_SRC  
   $ git clone https://github.com/NicholasBHubbard/yabsm
@@ -31,6 +30,7 @@
   + [[https://www.perl.org/][Perl (>= version 5.16.3)]]
 It is unlikely that you do not already have these installed.
 
+# Commands
 * Commands
   Yabsm comes with commands that can be used like =yabsm <command> <arg(s)>=.
 **** find, f SUBJECT QUERY
@@ -71,6 +71,8 @@ It is unlikely that you do not already have these installed.
 
      Perform a single incremental backup of BACKUP. Delete old backup(s) that
      should be cycled out based off the users config.
+
+# Configuration
 * Configuration
   Yabsm is configured through the =/etc/yabsm.conf= file. By default yabsm only
   installs the =/etc/yabsm.conf.example= file so you may want to run 

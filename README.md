@@ -1,6 +1,13 @@
 # -*- mode:org;mode:auto-fill;fill-column:79 -*-
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
+* Contents
+  <<Features>>
+  <<Installation>>
+  <<Dependencies>>
+  <<Commands>>
+  <<Configuration>>
+  
 * Features
   + Organize snapshots into 5minute, hourly, midnight, weekly and monthly
     timeframe categories.
@@ -20,7 +27,7 @@
 It is unlikely that you do not already have these installed.
 
 * Commands
-  Yabsm comes with commands that can be used like =yabsm <command> <args>=.
+  Yabsm comes with commands that can be used like =yabsm <command> <arg(s)>=.
 **** find, f SUBJECT QUERY
      Find one or more snapshots of SUBJECT that matches QUERY. SUBJECT can be
      any =subvol= or =backup= defined in =/etc/yabsm.conf=. For more

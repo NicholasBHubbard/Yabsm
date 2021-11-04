@@ -232,10 +232,13 @@ You can define as many backups as you want.
 # Finding-Snapshots
 * Finding Snapshots
   
-Yabsm comes with a simple query language for locating snapshots and
-backups. Yabsm comes with the =find= command that lets you query snapshots
-by asking questions like: "find a snapshot of my home subvol from 2 hours ago",
-or "find all the snapshots taken after 2 days ago".
+Yabsm comes with a simple query language for locating snapshots and backups. To
+query snapshots and backups use the =find= command that lets you ask questions
+like: "find a snapshot of my home subvol from 2 hours ago", or "find all the
+snapshots taken after 2 days ago".
+
+When a snapshot is found it's path is printed to stdout. If multiple snapshots
+are found they are printed linewise sorted from newest to oldest.
 
 *** Examples
     Assume that you have a =subvol= named "home".
@@ -244,10 +247,58 @@ or "find all the snapshots taken after 2 days ago".
     + yabsm find home back-10-hours
     + yabsm find home back-2-days
     + yabsm find home 'between back-2-hours 12-25'
-    + yabsm find home 2020-12-25-17-30
+    + yabsm find home 2020-12-25-17-5
     + yabsm find home 12-25
     + yabsm find home newest
     + yabsm find home oldest
     + yabsm find home 'after b-2-d'
     + yabsm find home 'before b-10-h'
 
+There are 7 different kinds of queries: =relative time=, =literal time=,
+=newest=, =oldest=, =before=, =after=, =between=.
+
+**** Relative Time
+     A =relative time= is a time relative to the current time.
+
+     A =relative time= query matches the one snapshot closest to the time denoted
+     by the =relative time=.
+
+     A =relative time= has the form =back-amount-unit=.
+
+     =back= can always be abbreviated to =b=.
+
+     =amount= can be any non-negative integer.
+
+     =unit= can be one of =minutes=, =hours=, =days=.
+
+     =minutes= can be abbreviated to =mins= or =m=.
+
+     =hours= can be abbreviated to =hrs= or =h=.
+
+     =days= can be abbreviated to =d=.
+
+**** Literal Time
+     A =literal time= is a denotes a date of the form =YEAR=MONTH-DAY-HOUR-MINUTE=.
+
+     A =literal time= query matches the one snapshot closest to the time denoted
+     by the =literal time=.
+
+     A =literal time= comes in one of 5 forms:
+
+     + yr-mon-day-hr-min
+     + yr-mon-day
+     + mon-day
+     + mon-day-hr
+     + mon-day-hr-min
+       
+     The first form =yr-mon-day-hr-min= is the base form that all other forms
+     are shorthand for.
+
+     The shorthand rules are simple, if the =yr= field is omitted then the
+     current year is assumed. If either the =hr= or =min= field are omitted
+     then they are assumed to be zero. Therefore if the current year is 2020
+     then the literal time =12-25= is equivalent to =2020-12-25-0-0=
+
+     
+
+     

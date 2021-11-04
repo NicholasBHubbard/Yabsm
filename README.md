@@ -3,11 +3,8 @@
 #+author: Nicholas Hubbard
 * Contents
   [[#Features][Features]]
-
   [[#Installation][Installation]]
-  
   [[#Commands][Commands]]
-
   [[#Configuration][Configuration]]
 
 # Features

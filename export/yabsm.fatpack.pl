@@ -10463,6 +10463,8 @@ $fatpacked{"Yabsm/Commands/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__
   	print $tmp_fh $_ unless /yabsm (incremental-backup|take-snap)/;
       }
   
+      print $tmp_fh "\n"; 
+  
       # append the cronjob strings to $tmp file.
       say $tmp_fh $_ for Yabsm::Base::generate_cron_strings( $config_ref );
   

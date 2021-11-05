@@ -37,7 +37,7 @@ sub main {
 
     # rewrite non-yabsm data to the tmp file
     while (<$etc_crontab_fh>) {
-	say $tmp_fh $_ unless /yabsm (incremental-backup|take-snap)/;
+	print $tmp_fh $_ unless /yabsm (incremental-backup|take-snap)/;
     }
 
     # append the cronjob strings to $tmp file.

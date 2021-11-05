@@ -15,7 +15,8 @@ use v5.16.3;
 use Yabsm::Base;
 use Yabsm::Config;
 
-use File::Copy 'move';
+use File::Temp 'tempfile';
+use File::Copy 'copy';
 
 sub die_usage {
     die "usage: yabsm update-crontab\n";
@@ -32,30 +33,24 @@ sub main {
     open (my $etc_crontab_fh, '<', '/etc/crontab')
       or die "yabsm: error: failed to open file '/etc/crontab'\n";
 
-    open (my $tmp_fh, '>', '/tmp/yabsm-update-tmp')
-      or die "yabsm: error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
+    my $config_ref = Yabsm::Config::read_config();
+
+    my ($tmp_fh, $tmp_filename) = tempfile(DIR => '/tmp', UNLINK => 1);
 
     # rewrite non-yabsm data to the tmp file
     while (<$etc_crontab_fh>) {
-
-	s/\s+$//; # strip trailing whitespace
-
-	next if /yabsm/; # don't copy the old yabsm cronjobs
-
-	say $tmp_fh $_;
+        say $tmp_fh $_ if $_ !~ /yabsm (take-snap|incremental-backup)/;
     }
 
-    # append the cronjob strings to $tmp file.
-    my @cron_strings = Yabsm::Base::generate_cron_strings($config_ref);
-    say $tmp_fh $_ for @cron_strings;
+    # Write new cronjobs
+    say $tmp_fh $_ for Yabsm::Base::generate_cron_strings( $config_ref );
 
-    # crontab files must end with a blank line.
-    print $tmp_fh, "\n"; 
+    # crontab file must end with a blank line
+    print $tmp_fh "\n";
+
+    copy $tmp_filename, '/etc/crontab';
 
     close $etc_crontab_fh;
-    close $tmp_fh;
-
-    move '/tmp/yabsm-update-tmp', '/etc/crontab';
 
     return;
 } 

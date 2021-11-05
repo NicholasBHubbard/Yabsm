@@ -253,10 +253,11 @@ are found they are printed linewise sorted from newest to oldest.
     + yabsm find home 'between back-2-hours 12-25'
     + yabsm find home 2020-12-25-17-5
     + yabsm find home 12-25
-    + yabsm find home newest
-    + yabsm find home oldest
     + yabsm find home 'after b-2-d'
     + yabsm find home 'before b-10-h'
+    + yabsm find home newest
+    + yabsm find home oldest
+    + yabsm find home all
 
 There are 7 different kinds of queries: =relative time=, =literal time=,
 =newest=, =oldest=, =before=, =after=, =between=.
@@ -327,6 +328,10 @@ There are 7 different kinds of queries: =relative time=, =literal time=,
 **** Oldest Query
      An =oldest= query is denoted by simply passing the constant string
      "oldest". An =oldest= query matches the one snapshot that is the oldest.
+
+**** All Query
+     An =all= query is denoted by simply passing the constant string
+     "all". An =all= query matches every snapshot.
 
 # Remote-Backups
 * Remote Backups

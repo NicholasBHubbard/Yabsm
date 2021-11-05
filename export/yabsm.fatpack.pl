@@ -10456,8 +10456,6 @@ $fatpacked{"Yabsm/Commands/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__
       open (my $etc_crontab_fh, '<', '/etc/crontab')
         or die "yabsm: error: failed to open file '/etc/crontab'\n";
   
-      my $config_ref = Yabsm::Config::read_config();
-  
       my ($tmp_fh, $tmp_filename) = tempfile(DIR => '/tmp', UNLINK => 1);
   
       # rewrite non-yabsm data to the tmp file

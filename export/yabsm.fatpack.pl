@@ -10331,7 +10331,7 @@ $fatpacked{"Yabsm/Commands/TakeSnap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."
   	die "yabsm: error: no such defined subvol '$subvol'\n";
       }
   
-      if (not Yabsm::Base::is_subvol_timeframe($timeframe)) {
+      if (not Yabsm::Base::is_timeframe($timeframe)) {
   	die "yabsm: error: '$timeframe' is not a subvol timeframe\n";
       }
   

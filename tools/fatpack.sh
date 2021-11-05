@@ -1,8 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
-# path to this script
-P="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit 1 ; pwd -P )"
+cd "$(dirname "$0")" || echo 'error: could not change directory' && exit 1;
 
-plx --perl "$P"/../local/bin/fatpack pack "$P"/../src/yabsm.pl > "$P"/../export/yabsm.fatpack.pl
+plx --perl ../local/bin/fatpack pack ../src/yabsm.pl > ../export/yabsm.fatpack.pl
 
-rm -rf "$P"/fatlib
+rm -rf fatlib

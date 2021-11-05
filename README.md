@@ -262,12 +262,8 @@ There are 7 different kinds of queries: =relative time=, =literal time=,
 =newest=, =oldest=, =before=, =after=, =between=.
 
 **** Relative Time Query
-     A =relative time= is a time relative to the current time.
-
      A =relative time= query matches the one snapshot closest to the time denoted
-     by the =relative time=.
-
-     A =relative time= has the form =back-amount-unit=.
+     by the =relative time= which has the from =back-amount-unit=.
 
      =back= can always be abbreviated to =b=.
 
@@ -282,12 +278,10 @@ There are 7 different kinds of queries: =relative time=, =literal time=,
      =days= can be abbreviated to =d=.
 
 **** Literal Time Query
-     A =literal time= denotes a date of the form =YEAR-MONTH-DAY-HOUR-MINUTE=.
-
      A =literal time= query matches the one snapshot closest to the time denoted
      by the =literal time=.
 
-     A =literal time= comes in one of 5 forms:
+     There are 5 forms of =literal times=.
 
      + yr-mon-day-hr-min
      + yr-mon-day

@@ -508,7 +508,7 @@ sub all_snapshots { # No test. Is not pure.
 
 	my $ssh = new_ssh_connection($remote_host);
 	
-	# prepend all snapshots with host name and backup_dir
+	# prepend all snapshots with host name and backup dir path
 	@all_snaps = map { chomp; $_ = "$remote_host:$backup_dir/$_" } $ssh->capture("ls $backup_dir");
     }
     

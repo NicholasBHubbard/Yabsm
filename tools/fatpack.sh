@@ -1,7 +1,19 @@
 #!/bin/bash
 
-cd "$(dirname "$0")" || echo 'error: could not change directory' && exit 1;
+YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 
-plx --perl ../local/bin/fatpack pack ../src/yabsm.pl > ../export/yabsm.fatpack.pl
+SRC_DIR="$YABSM_ROOT"/src
+EXPORT_DIR="$YABSM_ROOT"/export
+FATPACK="$YABSM_ROOT"/local/bin/fatpack
 
-rm -rf fatlib
+# $SRC_DIR should be the working dir
+cd "$SRC_DIR" || (echo "error: could not cd to dir '$SRC_DIR'" >&2 && exit 1)
+
+if ! [ -x "$(command -v plx)" ]; then
+    echo "error: could not find program 'plx'" >&2
+    exit 1
+fi
+
+plx --perl "$FATPACK" pack "$SRC_DIR"/yabsm.pl > "$EXPORT_DIR/yabsm.fatpack.pl"
+
+rm -rf "$SRC_DIR"/fatlib

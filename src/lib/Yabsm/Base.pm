@@ -509,7 +509,7 @@ sub all_snapshots { # No test. Is not pure.
 	my $ssh = new_ssh_connection($remote_host);
 	
 	# prepend paths with host name
-	@all_snaps = map { chomp; $_ = "$remote_host:$_" } $ssh->capture("ls -d $backup_dir/*");
+	@all_snaps = map { chomp; $_ = "$remote_host:$backup_dir/$_" } $ssh->capture("ls $backup_dir");
     }
     
     else { confess "yabsm: internal error: '$subject' is not a subvol or backup" }

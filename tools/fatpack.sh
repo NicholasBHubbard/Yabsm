@@ -16,4 +16,5 @@ fi
 
 plx --perl "$FATPACK" pack "$SRC_DIR"/yabsm.pl > "$EXPORT_DIR/yabsm.fatpack.pl"
 
+# no reason to keep this dir around
 rm -rf "$SRC_DIR"/fatlib

@@ -10459,17 +10459,20 @@ $fatpacked{"Yabsm/Commands/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__
         or die "yabsm: error: failed to open tmp file '/tmp/yabsm-update-tmp'\n";
   
       # rewrite non-yabsm data to the tmp file
+      my $last_line;
       while (<$etc_crontab_fh>) {
+          $last_line = $_;
   	print $tmp_fh $_ unless /yabsm (incremental-backup|take-snap)/;
       }
   
-      print $tmp_fh "\n"; 
+      # in case user has an erroneous config that doesn't end in a newline.
+      print $tmp_fh "\n" unless $last_line =~ /\n$/;
   
       # append the cronjob strings to $tmp file.
       say $tmp_fh $_ for Yabsm::Base::generate_cron_strings( $config_ref );
   
       # crontab files must end with a blank line.
-      print $tmp_fh "\n"; 
+      print $tmp_fh "\n";
   
       close $etc_crontab_fh;
       close $tmp_fh;
@@ -10477,7 +10480,7 @@ $fatpacked{"Yabsm/Commands/UpdateEtcCrontab.pm"} = '#line '.(1+__LINE__).' "'.__
       move '/tmp/yabsm-update-tmp', '/etc/crontab';
   
       return;
-  } 
+  }
   
   1;
 YABSM_COMMANDS_UPDATEETCCRONTAB

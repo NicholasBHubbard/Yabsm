@@ -6,7 +6,6 @@ SRC_DIR="$YABSM_ROOT"/src
 EXPORT_DIR="$YABSM_ROOT"/export
 FATPACK="$YABSM_ROOT"/local/bin/fatpack
 
-# $SRC_DIR should be the working dir
 cd "$SRC_DIR" || (echo "error: could not cd to dir '$SRC_DIR'" >&2 && exit 1)
 
 if ! [ -x "$(command -v plx)" ]; then
@@ -16,5 +15,4 @@ fi
 
 plx --perl "$FATPACK" pack "$SRC_DIR"/yabsm.pl > "$EXPORT_DIR/yabsm.fatpack.pl"
 
-# no reason to keep this dir around
 rm -rf "$SRC_DIR"/fatlib

@@ -48,7 +48,7 @@ usage: yabsm [--help] [--version]
                                           btrfs incremental backup process for
                                           BACKUP. This is a root only command.
 
-  print-crons, crons                      Display the cronjob strings that would
+  print-crons, crons                      Print the cronjob strings that would
                                           be written to /etc/crontab if the
                                           update-crontab command were used.
 

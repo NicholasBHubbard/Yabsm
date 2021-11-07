@@ -8802,11 +8802,24 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
-      if (scalar glob "$bootstrap_snap_dir/*") {
+      opendir(my $dh, $bootstrap_snap_dir) or
+        confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
+  
+      my @snaps = grep { /^[^.]/ } readdir($dh);
+  
+      closedir $dh;
+  
+      if (@snaps == 1) {
           return 1;
       }
   
-      else { return 0 }
+      elsif (@snaps == 0) {
+          return 0;
+      }
+  
+      else {
+          confess "yabsm: internal error: multiple bootstrap snaps found in '$bootstrap_snap_dir'";
+      }
   }
   
   sub delete_old_backups_local { # No test. Is not pure.

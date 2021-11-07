@@ -187,7 +187,7 @@ sub do_incremental_backup_ssh { # No test. Is not pure.
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
     if (not has_bootstrap($config_ref, $backup)) {
-        die "yabsm: internal error: backup '$backup' has not been bootstrapped";
+        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
     # bootstrap dir should have exactly one snap

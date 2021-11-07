@@ -8620,7 +8620,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
-      my $tmp_dir = local_yabsm_dir($config_ref, '.tmp');
+      my $tmp_dir = local_yabsm_dir($config_ref) . '/.tmp';
   
       make_path $tmp_dir if not -d $tmp_dir;
       
@@ -8647,11 +8647,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $config_ref = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
   
-      my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-  
       if (not has_bootstrap($config_ref, $backup)) {
-          die "yabsm: internal error: backup '$backup' has not been bootstrapped";
+          confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
       }
+  
+      my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
       # bootstrap dir should have exactly one snap
       my $bootstrap_snap =
@@ -8673,7 +8673,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
       
-      my $tmp_dir = local_yabsm_dir($config_ref, '.tmp');
+      my $tmp_dir = local_yabsm_dir($config_ref) . '/.tmp';
   
       make_path $tmp_dir if not -d $tmp_dir;
   

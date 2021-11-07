@@ -352,4 +352,10 @@ you must set up a =sudoers= rule. For example you could add this line to your
 user	ALL=(ALL:ALL) NOPASSWD : /path/to/btrfs
 #+END_SRC 
 
-Finally a remote backups =backup_dir= must already exist.
+Finally the remote backups =backup_dir= must already exist.
+
+# Warning
+* Warning
+
+All defined behavior goes out the window if manually delete yabsm snapshots or
+backups.

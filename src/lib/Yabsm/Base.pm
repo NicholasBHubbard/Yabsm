@@ -188,21 +188,15 @@ sub do_incremental_backup_ssh { # No test. Is not pure.
         confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
-    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-
     # bootstrap dir should have exactly one snap
     my $bootstrap_snap =
       [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
 
-    # we have not already bootstrapped
-    if (not defined $bootstrap_snap) {
-	do_backup_bootstrap_ssh($config_ref, $backup);
-	return;
-    }
-
     # do incremental backup
-	
+
     my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
     
     my $remote_host = $config_ref->{backups}{$backup}{host};
 
@@ -345,7 +339,7 @@ sub has_bootstrap { # No test. Is not pure.
 
     my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
-    if (glob "$bootstrap_snap_dir/*") {
+    if (scalar glob "$bootstrap_snap_dir/*") {
         return 1;
     }
 

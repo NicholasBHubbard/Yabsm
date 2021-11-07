@@ -25,23 +25,22 @@ usage: yabsm [--help] [--version]
                                           subvol defined in /etc/yabsm.conf.
 
   update-crontab, update                  Write cronjobs to /etc/crontab, based
-                                          off the settings specified in 
-                                          /etc/yabsm.conf. This is a root only 
+                                          off the settings specified in
+                                          /etc/yabsm.conf. This is a root only
                                           command.
 
   check-config, c <?FILE>                 Check that FILE is a valid yabsm
-                                          config file for errors. If FILE is
-                                          not specified then check
-                                          /etc/yabsm.conf. If errors are present
-                                          print their messages to stderr and 
-                                          exit with non zero status, else print
-                                          'all good'.
+                                          config file. If FILE is not specified
+                                          then check /etc/yabsm.conf. If errors
+                                          are present print their messages to
+                                          stderr and exit with non zero status,
+                                          else print 'all good'.
 
-  test-remote-config, tr <BACKUP>         Test that the remote BACKUP has been 
-                                          properly configured. For BACKUP to be 
+  test-remote-config, tr <BACKUP>         Test that the remote BACKUP has been
+                                          properly configured. For BACKUP to be
                                           properly configured yabsm should be
                                           able to connect to the remote host and
-                                          use the btrfs command with sudo 
+                                          use the btrfs command with sudo
                                           without having to enter any passwords.
                                           This is a root only command.
 
@@ -53,10 +52,10 @@ usage: yabsm [--help] [--version]
                                           be written to /etc/crontab if the
                                           update-crontab command were used.
 
-  print-subvols, subvols                  Print the names of all the subvols 
+  print-subvols, subvols                  Print the names of all the subvols
                                           defined in /etc/yabsm.conf.
 
-  print-backups, backups                  Print the names of all the backups 
+  print-backups, backups                  Print the names of all the backups
                                           defined in /etc/yabsm.conf.
 
   take-snap SUBVOL TIMEFRAME              Take a single read-only snapshot of

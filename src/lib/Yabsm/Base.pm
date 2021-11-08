@@ -257,36 +257,34 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+    my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
     # delete old bootstrap snap
-    if (-d $bootstrap_snap_dir) {
-        system "btrfs subvol delete $_" for glob "$bootstrap_snap_dir/*";
+    if (-d $boot_snap_dir) {
+        system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
     }
     else {
-        make_path $bootstrap_snap_dir;
+        make_path $boot_snap_dir;
     }
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    # if $backup_dir exists this cannot be the first time bootstrapping
+    # if $backup_dir exists this cannot be the first time
+    # bootstrapping so we need to delete the old bootstrap snap.
     if (-d $backup_dir) {
-        system( "ls -d $backup_dir/* "
-              . '| grep BOOT-day '
-              . '| while read -r line; do btrfs subvol delete "$line"; done'
-              );
+        system "btrfs subvol delete $_" for grep { $_ =~ /BOOT-day/ } glob "$backup_dir/*";
     }
     else {
         make_path $backup_dir;
     }
 
-    my $boot_snap = "$bootstrap_snap_dir/BOOT-" . current_time_snapstring();
+    my $boot_snap = "$boot_snap_dir/BOOT-" . current_time_snapstring();
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    system("btrfs subvol snapshot -r $mountpoint $$boot_snap");
+    system("btrfs subvol snapshot -r $mountpoint $boot_snap");
 
     system("btrfs subvol send $boot_snap | btrfs receive $backup_dir");
 }

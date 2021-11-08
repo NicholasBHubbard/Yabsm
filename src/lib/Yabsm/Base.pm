@@ -357,16 +357,11 @@ sub has_bootstrap { # No test. Is not pure.
 
     closedir $dh;
 
-    if (@snaps == 1) {
+    if (@snaps) {
         return 1;
     }
-
-    elsif (@snaps == 0) {
-        return 0;
-    }
-
     else {
-        confess "yabsm: internal error: multiple bootstrap snaps found in '$bootstrap_snap_dir'";
+        return 0;
     }
 }
 

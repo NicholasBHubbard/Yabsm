@@ -583,12 +583,9 @@ sub current_time_snapstring { # No test. Is not pure.
     
     # Return a snapstring of the current time.
     
-    my $t = localtime;
+    my $t = localtime();
 
-    my ($yr, $mon, $day, $hr, $min) =
-      map { sprintf '%02d', $_ } ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
-    
-    return "day=${yr}_${mon}_${day},time=${hr}:$min";
+    return nums_to_snapstring($t->year, $t->mon, $t->mday, $t->hour, $t->min);
 }
 
 sub n_units_ago_snapstring { # Has test. Is not pure.
@@ -762,7 +759,7 @@ sub nums_to_snapstring { # Has test. Is pure.
 
     my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
 
-    return "day=${yr}_${mon}_${day},time=${hr}:$min";
+    return "day=${yr}_${mon}_${day},time=${hr}:${min}";
 }
 
 sub snapstring_to_time_piece_obj { # Has test. Is pure.
@@ -788,6 +785,8 @@ sub time_piece_obj_to_snapstring { # Has test. Is pure.
     my $day = $time_piece_obj->mday;
     my $hr  = $time_piece_obj->hour;
     my $min = $time_piece_obj->min;
+
+    say for ($yr, $mon, $day, $hr, $min);
 
     return nums_to_snapstring($yr, $mon, $day, $hr, $min);
 }

@@ -261,7 +261,7 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
 
     # delete old bootstrap snap
     if (-d $bootstrap_snap_dir) {
-        system('btrfs subvol delete $_') for glob "$bootstrap_snap_dir/*";
+        system "btrfs subvol delete $_" for glob "$bootstrap_snap_dir/*";
     }
 
     else {
@@ -304,7 +304,7 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
-    # delete old bootstrap snap
+    # delete old bootstrap snap.
     if (-d $boot_snap_dir) {
         system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
     }

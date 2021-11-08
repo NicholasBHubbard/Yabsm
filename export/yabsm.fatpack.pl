@@ -8891,7 +8891,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
   
       my @existing_backups =
-        sort_snaps([$ssh->capture("ls -d $remote_backup_dir/*")]);
+        sort_snaps([ $ssh->capture("ls -d $remote_backup_dir/*") ]);
   
       my $num_backups = scalar @existing_backups;
   
@@ -9046,13 +9046,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       
       # Return a snapstring of the current time.
       
-      my ($min, $hr, $day, $mon, $yr) =
-        map { sprintf '%02d', $_ } (localtime)[1..5]; 
-      
-      $mon++;      # month count starts at zero. 
-      $yr += 1900; # year represents years since 1900. 
-      
-      return "day=${yr}_${mon}_${day},time=${hr}:$min";
+      my $t = localtime();
+  
+      return nums_to_snapstring($t->year, $t->mon, $t->mday, $t->hour, $t->min);
   }
   
   sub n_units_ago_snapstring { # Has test. Is not pure.
@@ -9226,7 +9222,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
   
-      return "day=${yr}_${mon}_${day},time=${hr}:$min";
+      return "day=${yr}_${mon}_${day},time=${hr}:${min}";
   }
   
   sub snapstring_to_time_piece_obj { # Has test. Is pure.
@@ -9252,6 +9248,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $day = $time_piece_obj->mday;
       my $hr  = $time_piece_obj->hour;
       my $min = $time_piece_obj->min;
+  
+      say for ($yr, $mon, $day, $hr, $min);
   
       return nums_to_snapstring($yr, $mon, $day, $hr, $min);
   }

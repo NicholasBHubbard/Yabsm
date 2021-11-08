@@ -1473,7 +1473,7 @@ sub new_ssh_connection { # No test. Is not pure.
 			       );
 
     $ssh->error and
-      die 'ssh: error: could not establish SSH connection: ' . $ssh->error . "\n";
+      die 'yabsm: ssh error: could not establish passwordless SSH connection: ' . $ssh->error . "\n";
     
     return $ssh;
 }

@@ -8726,20 +8726,22 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if (-d $bootstrap_snap_dir) {
           system "btrfs subvol delete $_" for glob "$bootstrap_snap_dir/*";
       }
-  
       else {
           make_path $bootstrap_snap_dir;
       }
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
-      make_path $backup_dir if not -d $backup_dir;
-  
-      # delete the old bootstrap snap in the $backup_dir
-      system( "ls -d $backup_dir/* "
-            . '| grep BOOT-day '
-            . '| while read -r line; do btrfs subvol delete "$line"; done'
-            );
+      # if $backup_dir exists this cannot be the first time bootstrapping
+      if (-d $backup_dir) {
+          system( "ls -d $backup_dir/* "
+                . '| grep BOOT-day '
+                . '| while read -r line; do btrfs subvol delete "$line"; done'
+                );
+      }
+      else {
+          make_path $backup_dir;
+      }
   
       my $boot_snap = "$bootstrap_snap_dir/BOOT-" . current_time_snapstring();
   
@@ -8767,7 +8769,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
-      # delete old bootstrap snap.
+      # if $boot_snap_dir exists this cannot be the first time bootstrapping
       if (-d $boot_snap_dir) {
           system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
       }

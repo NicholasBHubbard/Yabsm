@@ -347,15 +347,10 @@ you must set up a passwordless ssh key pair.
 
 To allow yabsm to use the =btrfs= command with sudo without entering a password
 you must set up a =sudoers= rule. For example you could add this line to your
-=/etc/sudoers= file.
+=/etc/sudoers= file to allow members of the group =btrfsers= to use the =btrfs=
+command without a password.
 #+BEGIN_SRC 
-user	ALL=(ALL:ALL) NOPASSWD : /path/to/btrfs
+%btrfsers  ALL=(ALL) NOPASSWD: /path/to/btrfs
 #+END_SRC 
 
 Finally the remote backups =backup_dir= must already exist.
-
-# Warning
-* Warning
-
-All defined behavior goes out the window if manually delete yabsm snapshots or
-backups.

@@ -157,11 +157,11 @@ sub do_incremental_backup_local { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    my $tmp_dir = local_yabsm_dir($config_ref) . '/.tmp';
+    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
 
     make_path $tmp_dir if not -d $tmp_dir;
     
-    my $tmp_snap = "$tmp_dir/*" . current_time_snapstring();
+    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
     
     system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
     
@@ -204,7 +204,7 @@ sub do_incremental_backup_ssh { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     
-    my $tmp_dir = local_yabsm_dir($config_ref) . '/.tmp';
+    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
 
     make_path $tmp_dir if not -d $tmp_dir;
 
@@ -471,57 +471,70 @@ sub has_bootstrap { # No test. Is not pure.
 
 sub all_snaps { # No test. Is not pure.
 
-    # Gather all snapshots (full paths) of $subvol and return them
-    # sorted from newest to oldest. $subvol can be any user defined
+    # Gather all snapshots (full paths) of $subject and return them
+    # sorted from newest to oldest. $subject can be any user defined
     # subvol or backup. If $subject is a subvol it may make sense to
     # only want snapshots from certain timeframes which can be passed
     # as the >=3'rd arguments.
 
     my $config_ref = shift // confess missing_arg();
-    my $subvol     = shift // confess missing_arg();
+    my $subject    = shift // confess missing_arg();
     my @timeframes = @_;
 
     my @all_snaps = (); # return this
 
-    # default to all timeframes
-    if (not @timeframes) {
-        @timeframes = all_timeframes();
-    }
-    
-    foreach my $tf (@timeframes) {
-        
-        my $snap_dir = local_yabsm_dir($config_ref, $subvol, $tf);
-        
-        if (-d $snap_dir) {
-            push @all_snaps, glob "$snap_dir/*"; 
+    if (is_subvol($config_ref, $subject)) {
+        # default to all timeframes
+        if (not @timeframes) {
+            @timeframes = all_timeframes();
         }
+    
+        foreach my $tf (@timeframes) {
+        
+            my $snap_dir = local_yabsm_dir($config_ref, $subject, $tf);
+        
+            if (-d $snap_dir) {
+                push @all_snaps, glob "$snap_dir/*"; 
+            }
+        }
+
+        @all_snaps = sort_snaps(\@all_snaps);
     }
 
-    my $snaps_sorted_ref = sort_snaps(\@all_snaps);
+    if (is_backup($config_ref, $subject)) {
+        # all_backup_snaps returns snaps sorted
+        @all_snaps = all_backup_snaps($config_ref, $subject);
+    }
 
-    return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
+    return wantarray ? @all_snaps : \@all_snaps;
 }
 
 sub all_backup_snaps { # No test. Is not pure.
     
     # Gather all snapshots (full paths) of $backup and return them
     # sorted from newest to oldest. A Net::OpenSSH connection object
-    # must be passed as an arg if $backup is a remote backup.
+    # can be passed as an arg if $backup is a remote backup, otherwise
+    # a new connection will be opened.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+    my @all_backups = ();
     
     if (is_remote_backup($config_ref, $backup)) {
-        my $ssh = shift // confess missing_arg();
-        return sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture('ls $backup_dir')]);
+        my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+        my $remote_host = $config_ref->{backups}{$backup}{host};
+        my $ssh = shift // new_ssh_connection( $remote_host );
+        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture('ls $backup_dir') ]);
 
     }
 
     if (is_local_backup($config_ref, $backup)) {
-        return sort_snaps([ grep { $_ !~ /BOOT-day/ } glob "$backup_dir/*" ]);
+        my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+        @all_backups = sort_snaps([ grep { $_ !~ /BOOT-day/ } glob "$backup_dir/*" ]);
     }
+
+    return wantarray ? @all_backups : \@all_backups;
 }
 
 sub local_yabsm_dir { # Has test. Is pure.

@@ -306,7 +306,7 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     # delete old bootstrap snap
     if (-d $boot_snap_dir) {
-        system 'btrfs subvol delete $_' for glob "$boot_snap_dir/*";
+        system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
     }
     else {
         make_path $boot_snap_dir;

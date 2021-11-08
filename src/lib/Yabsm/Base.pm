@@ -583,11 +583,10 @@ sub current_time_snapstring { # No test. Is not pure.
     
     # Return a snapstring of the current time.
     
-    my ($min, $hr, $day, $mon, $yr) =
-      map { sprintf '%02d', $_ } (localtime)[1..5]; 
-    
-    $mon++;      # month count starts at zero. 
-    $yr += 1900; # year represents years since 1900. 
+    my $t = localtime;
+
+    my ($yr, $mon, $day, $hr, $min) =
+      map { sprintf '%02d', $_ } ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
     
     return "day=${yr}_${mon}_${day},time=${hr}:$min";
 }

@@ -525,7 +525,7 @@ sub all_backup_snaps { # No test. Is not pure.
         my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
         my $remote_host = $config_ref->{backups}{$backup}{host};
         my $ssh = shift // new_ssh_connection( $remote_host );
-        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture('ls $backup_dir') ]);
+        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture("ls $backup_dir") ]);
 
     }
 

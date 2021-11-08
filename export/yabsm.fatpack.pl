@@ -8890,7 +8890,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
   
-      my @existing_backups = all_snapshots($config_ref, $backup);
+      my @existing_backups = $ssh->capture("ls -d $remote_backup_dir/*");
   
       my $num_backups = scalar @existing_backups;
   

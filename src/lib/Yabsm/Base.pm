@@ -427,7 +427,7 @@ sub delete_old_backups_ssh { # No test. Is not pure.
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
 
-    my @existing_backups = sort_snaps($ssh->capture("ls -d $remote_backup_dir/*"));
+    my @existing_backups = sort_snaps(\$ssh->capture("ls -d $remote_backup_dir/*"));
 
     my $num_backups = scalar @existing_backups;
 

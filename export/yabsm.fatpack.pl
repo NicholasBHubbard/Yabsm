@@ -8802,6 +8802,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
+      return 0 if not -d $bootstrap_snap_dir;
+  
       opendir(my $dh, $bootstrap_snap_dir) or
         confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
   

@@ -8724,7 +8724,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # delete old bootstrap snap
       if (-d $bootstrap_snap_dir) {
-          system('btrfs subvol delete $_') for glob "$bootstrap_snap_dir/*";
+          system "btrfs subvol delete $_" for glob "$bootstrap_snap_dir/*";
       }
   
       else {
@@ -8767,7 +8767,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
-      # delete old bootstrap snap
+      # delete old bootstrap snap.
       if (-d $boot_snap_dir) {
           system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
       }

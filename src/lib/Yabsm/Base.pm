@@ -339,32 +339,6 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 	        );
 }
 
-sub has_bootstrap { # No test. Is not pure.
-
-    # True if $backup already has a bootstrap snapshot.
-
-    my $config_ref = shift // confess missing_arg();
-    my $backup     = shift // confess missing_arg();
-
-    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
-
-    return 0 if not -d $bootstrap_snap_dir;
-
-    opendir(my $dh, $bootstrap_snap_dir) or
-      confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
-
-    my @snaps = grep { /^[^.]/ } readdir($dh);
-
-    closedir $dh;
-
-    if (@snaps) {
-        return 1;
-    }
-    else {
-        return 0;
-    }
-}
-
 sub delete_old_backups_local { # No test. Is not pure.
 
     # Delete old backup snapshot(s) based off $backup's
@@ -376,7 +350,7 @@ sub delete_old_backups_local { # No test. Is not pure.
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    my @existing_backups = all_snaps($config_ref, $backup);
+    my @existing_backups = all_backup_snaps($config_ref, $backup);
 
     my $num_backups = scalar @existing_backups;
 
@@ -429,8 +403,7 @@ sub delete_old_backups_ssh { # No test. Is not pure.
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
 
-    my @existing_backups =
-      sort_snaps([ grep { $_ !~ /^.|BOOT-day/ } $ssh->capture("ls -d $remote_backup_dir/*") ]);
+    my @existing_backups = all_backup_snaps($config_ref, $backup, $ssh);
 
     my $num_backups = scalar @existing_backups;
 
@@ -470,6 +443,32 @@ sub delete_old_backups_ssh { # No test. Is not pure.
     }
 }
 
+sub has_bootstrap { # No test. Is not pure.
+
+    # True if $backup already has a bootstrap snapshot.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+
+    return 0 if not -d $bootstrap_snap_dir;
+
+    opendir(my $dh, $bootstrap_snap_dir) or
+      confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
+
+    my @snaps = grep { /^[^.]/ } readdir($dh);
+
+    closedir $dh;
+
+    if (@snaps) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
 sub all_snaps { # No test. Is not pure.
 
     # Gather all snapshots (full paths) of $subvol and return them
@@ -482,7 +481,7 @@ sub all_snaps { # No test. Is not pure.
     my $subvol     = shift // confess missing_arg();
     my @timeframes = @_;
 
-    my @all_snaps; # return this
+    my @all_snaps = (); # return this
 
     # default to all timeframes
     if (not @timeframes) {
@@ -501,6 +500,28 @@ sub all_snaps { # No test. Is not pure.
     my $snaps_sorted_ref = sort_snaps(\@all_snaps);
 
     return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
+}
+
+sub all_backup_snaps { # No test. Is not pure.
+    
+    # Gather all snapshots (full paths) of $backup and return them
+    # sorted from newest to oldest. A Net::OpenSSH connection object
+    # must be passed as an arg if $backup is a remote backup.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+    
+    if (is_remote_backup($config_ref, $backup)) {
+        my $ssh = shift // confess missing_arg();
+        return sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture('ls $backup_dir')]);
+
+    }
+
+    if (is_local_backup($config_ref, $backup)) {
+        return sort_snaps([ grep { $_ !~ /BOOT-day/ } glob "$backup_dir/*" ]);
+    }
 }
 
 sub local_yabsm_dir { # Has test. Is pure.

@@ -8763,6 +8763,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
+      make_path $bootstrap_snap_dir if not -d $bootstrap_snap_dir;
+  
       my $bootstrap_snap = "$bootstrap_snap_dir/" . current_time_snapstring();
   
       # delete old bootstrap snap

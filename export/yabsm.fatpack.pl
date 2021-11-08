@@ -8529,7 +8529,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $subvol     = shift // confess missing_arg();
       my $timeframe  = shift // confess missing_arg();
   
-      my $existing_snaps_ref = all_snapshots($config_ref, $subvol, $timeframe);
+      my $existing_snaps_ref = all_snaps($config_ref, $subvol, $timeframe);
   
       my $num_snaps = scalar @$existing_snaps_ref;
   
@@ -8652,7 +8652,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       # bootstrap dir should have exactly one snap
-      my $bootstrap_snap =
+      my $boot_snap =
         [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
   
       # do incremental backup
@@ -8676,7 +8676,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
   	
       # send an incremental backup over ssh
-      $ssh->system({stdin_file => ['-|', "btrfs send -p $bootstrap_snap $tmp_snap"]}
+      $ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]}
   		                , "sudo -n btrfs receive $remote_backup_dir");
   	
       system("btrfs subvol delete $tmp_snap");
@@ -8722,28 +8722,34 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
-      make_path $bootstrap_snap_dir if not -d $bootstrap_snap_dir;
-  
       # delete old bootstrap snap
-      system("btrfs subvol delete $_") for glob "$bootstrap_snap_dir/*";
+      if (-d $bootstrap_snap_dir) {
+          system('btrfs subvol delete $_') for glob "$bootstrap_snap_dir/*";
+      }
   
-      my $bootstrap_snap = "$bootstrap_snap_dir/" . current_time_snapstring();
+      else {
+          make_path $bootstrap_snap_dir;
+      }
+  
+      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+  
+      make_path $backup_dir if not -d $backup_dir;
+  
+      # delete the old bootstrap snap in the $backup_dir
+      system( "ls -d $backup_dir/* "
+            . '| grep BOOT-day '
+            . '| while read -r line; do btrfs subvol delete "$line"; done'
+            );
+  
+      my $boot_snap = "$bootstrap_snap_dir/BOOT-" . current_time_snapstring();
   
       my $subvol = $config_ref->{backups}{$backup}{subvol};
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
-      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-      
-      make_path $backup_dir if not -d $backup_dir;
+      system("btrfs subvol snapshot -r $mountpoint $$boot_snap");
   
-      system("btrfs subvol snapshot -r $mountpoint $$bootstrap_snap");
-  
-      system("btrfs subvol send $bootstrap_snap | btrfs receive $backup_dir");
-  
-      # neccesary because the user may be redoing the bootstrap phase
-      # and therefore may end up with an extra backup.
-      delete_old_backups_local($config_ref, $backup);
+      system("btrfs subvol send $boot_snap | btrfs receive $backup_dir");
   }
   
   sub do_backup_bootstrap_ssh { # No test. Is not pure.
@@ -8757,73 +8763,43 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $config_ref = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
   
-      my $remote_host = $config_ref->{backups}{$backup}{host};
+      ### LOCAL ###
   
-      my $ssh = new_ssh_connection($remote_host);
-  
-      my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
-  
-      make_path $bootstrap_snap_dir if not -d $bootstrap_snap_dir;
-  
-      my $bootstrap_snap = "$bootstrap_snap_dir/" . current_time_snapstring();
+      my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
       # delete old bootstrap snap
-      system("btrfs subvol delete $_") for glob "$bootstrap_snap_dir/*";
+      if (-d $boot_snap_dir) {
+          system 'btrfs subvol delete $_' for glob "$boot_snap_dir/*";
+      }
+      else {
+          make_path $boot_snap_dir;
+      }
   
       my $subvol = $config_ref->{backups}{$backup}{subvol};
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+  
+      my $boot_snap = "$boot_snap_dir/BOOT-" . current_time_snapstring();
       
-      system("btrfs subvol snapshot -r $mountpoint $bootstrap_snap");
+      system("btrfs subvol snapshot -r $mountpoint $boot_snap");
   
-      my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+      ### REMOTE ###
+      
+      # setup local bootstrap snap
+      my $ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
   
-      # create $remote_backup_dir if it does not exist. This will
-      # fail if the remote user does not have write permissions
-      # for $remote_backup_dir.
-      $ssh->system( "if [ ! -d \"$remote_backup_dir\" ]; then "
-  		. "mkdir -p $remote_backup_dir; fi"
-  		);
+      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+  
+      # delete old remote bootstrap snap(s) if it exists
+      $ssh->system( "ls -d $backup_dir/* "
+                  . '| grep BOOT-day '
+                  . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
+                  );
   
       # send the bootstrap backup to remote host
-      $ssh->system({stdin_file => ['-|', "btrfs send $bootstrap_snap"]}
-  		, "sudo -n btrfs receive $remote_backup_dir"
+      $ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
+  		, "sudo -n btrfs receive $backup_dir"
   	        );
-  
-      # neccesary because the user may be redoing the bootstrap phase
-      # and will therefore end up with an extra backup.
-      delete_old_backups_ssh($config_ref, $ssh, $backup);
-  }
-  
-  sub has_bootstrap { # No test. Is not pure.
-  
-      # True if $backup already has a bootstrap snapshot.
-  
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
-  
-      my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
-  
-      return 0 if not -d $bootstrap_snap_dir;
-  
-      opendir(my $dh, $bootstrap_snap_dir) or
-        confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
-  
-      my @snaps = grep { /^[^.]/ } readdir($dh);
-  
-      closedir $dh;
-  
-      if (@snaps == 1) {
-          return 1;
-      }
-  
-      elsif (@snaps == 0) {
-          return 0;
-      }
-  
-      else {
-          confess "yabsm: internal error: multiple bootstrap snaps found in '$bootstrap_snap_dir'";
-      }
   }
   
   sub delete_old_backups_local { # No test. Is not pure.
@@ -8837,7 +8813,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
-      my @existing_backups = all_snapshots($config_ref, $backup);
+      my @existing_backups = all_backup_snaps($config_ref, $backup);
   
       my $num_backups = scalar @existing_backups;
   
@@ -8890,8 +8866,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
   
-      my @existing_backups =
-        sort_snaps([ $ssh->capture("ls -d $remote_backup_dir/*") ]);
+      my @existing_backups = all_backup_snaps($config_ref, $backup, $ssh);
   
       my $num_backups = scalar @existing_backups;
   
@@ -8931,68 +8906,85 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   }
   
-  sub all_snapshots { # No test. Is not pure.
+  sub has_bootstrap { # No test. Is not pure.
   
-      # Gather all snapshots (full paths) of $subject and return them
-      # sorted from newest to oldest. $subject can be any user defined
+      # True if $backup already has a bootstrap snapshot.
+  
+      my $config_ref = shift // confess missing_arg();
+      my $backup     = shift // confess missing_arg();
+  
+      my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+  
+      return 0 if not -d $bootstrap_snap_dir;
+  
+      opendir(my $dh, $bootstrap_snap_dir) or
+        confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
+  
+      my @snaps = grep { /^[^.]/ } readdir($dh);
+  
+      closedir $dh;
+  
+      if (@snaps) {
+          return 1;
+      }
+      else {
+          return 0;
+      }
+  }
+  
+  sub all_snaps { # No test. Is not pure.
+  
+      # Gather all snapshots (full paths) of $subvol and return them
+      # sorted from newest to oldest. $subvol can be any user defined
       # subvol or backup. If $subject is a subvol it may make sense to
       # only want snapshots from certain timeframes which can be passed
       # as the >=3'rd arguments.
   
       my $config_ref = shift // confess missing_arg();
-      my $subject    = shift // confess missing_arg();
+      my $subvol     = shift // confess missing_arg();
       my @timeframes = @_;
   
-      my @all_snaps; # return this
+      my @all_snaps = (); # return this
   
-      if (is_subvol($config_ref, $subject)) {
-  	
-  	my $subvol = $subject;
-  
-  	# default to all timeframes
-  	if (not @timeframes) {
-  	    @timeframes = all_timeframes();
-  	}
-  	
-  	foreach my $tf (@timeframes) {
-  	    
-  	    my $snap_dir = local_yabsm_dir($config_ref, $subvol, $tf);
-  	    
-  	    if (-d $snap_dir) {
-  		push @all_snaps, glob "$snap_dir/*"; 
-  	    }
-  	}
-      }
-  
-      elsif (is_local_backup($config_ref, $subject)) {
-  
-  	my $backup = $subject;
-  
-  	my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-  
-  	@all_snaps = glob "$backup_dir/*";
-      }
-  
-      elsif (is_remote_backup($config_ref, $subject)) {
-  	
-  	my $backup = $subject;
-  
-  	my $remote_host = $config_ref->{backups}{$backup}{host};
-  	
-  	my $backup_dir  = $config_ref->{backups}{$backup}{backup_dir};
-  
-  	my $ssh = new_ssh_connection($remote_host);
-  	
-  	# prepend all snapshots with host name and backup dir path
-  	@all_snaps = map { chomp; $_ = "$remote_host:$backup_dir/$_" } $ssh->capture("ls $backup_dir");
+      # default to all timeframes
+      if (not @timeframes) {
+          @timeframes = all_timeframes();
       }
       
-      else { confess "yabsm: internal error: '$subject' is not a subvol or backup" }
-      
-      # return the snapshots sorted newest to oldest
+      foreach my $tf (@timeframes) {
+          
+          my $snap_dir = local_yabsm_dir($config_ref, $subvol, $tf);
+          
+          if (-d $snap_dir) {
+              push @all_snaps, glob "$snap_dir/*"; 
+          }
+      }
+  
       my $snaps_sorted_ref = sort_snaps(\@all_snaps);
   
       return wantarray ? @$snaps_sorted_ref : $snaps_sorted_ref;
+  }
+  
+  sub all_backup_snaps { # No test. Is not pure.
+      
+      # Gather all snapshots (full paths) of $backup and return them
+      # sorted from newest to oldest. A Net::OpenSSH connection object
+      # must be passed as an arg if $backup is a remote backup.
+  
+      my $config_ref = shift // confess missing_arg();
+      my $backup     = shift // confess missing_arg();
+  
+      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+      
+      if (is_remote_backup($config_ref, $backup)) {
+          my $ssh = shift // confess missing_arg();
+          return sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture('ls $backup_dir')]);
+  
+      }
+  
+      if (is_local_backup($config_ref, $backup)) {
+          return sort_snaps([ grep { $_ !~ /BOOT-day/ } glob "$backup_dir/*" ]);
+      }
   }
   
   sub local_yabsm_dir { # Has test. Is pure.
@@ -9249,8 +9241,6 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $hr  = $time_piece_obj->hour;
       my $min = $time_piece_obj->min;
   
-      say for ($yr, $mon, $day, $hr, $min);
-  
       return nums_to_snapstring($yr, $mon, $day, $hr, $min);
   }
   
@@ -9498,7 +9488,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       if ($ref_type eq 'HASH') {
-  	my $all_snaps_ref = all_snapshots($ref, $subvol);
+  	my $all_snaps_ref = all_snaps($ref, $subvol);
   	return $all_snaps_ref->[0];
       }
   
@@ -9523,7 +9513,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       if ($ref_type eq 'HASH') {
   	my $subject = shift // confess missing_arg();
-  	my $all_snaps_ref = all_snapshots($ref, $subject);
+  	my $all_snaps_ref = all_snaps($ref, $subject);
   	return $all_snaps_ref->[-1];
       }
       
@@ -9540,7 +9530,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $subject    = shift // confess missing_arg();
       my $query      = shift // confess missing_arg();
   
-      my $all_snaps_ref = all_snapshots($config_ref, $subject);
+      my $all_snaps_ref = all_snaps($config_ref, $subject);
   
       my @snaps_to_return;
   

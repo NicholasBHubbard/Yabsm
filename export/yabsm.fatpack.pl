@@ -8607,7 +8607,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       # bootstrap dir should have exactly one snap
-      my $bootstrap_snap = [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
+      my $boot_snap = [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
@@ -8628,7 +8628,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       
       system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
       
-      system("btrfs send -p $bootstrap_snap $tmp_snap | btrfs receive $backup_dir");
+      system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
   
       system("btrfs subvol delete $tmp_snap");
   
@@ -8749,7 +8749,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       system("btrfs subvol snapshot -r $mountpoint $boot_snap");
   
-      system("btrfs subvol send $boot_snap | btrfs receive $backup_dir");
+      system("btrfs send $boot_snap | btrfs receive $backup_dir");
   }
   
   sub do_backup_bootstrap_ssh { # No test. Is not pure.

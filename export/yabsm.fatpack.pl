@@ -9936,7 +9936,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   			       );
   
       $ssh->error and
-        die 'ssh: error: could not establish SSH connection: ' . $ssh->error . "\n";
+        die 'yabsm: ssh error: could not establish passwordless SSH connection: ' . $ssh->error . "\n";
       
       return $ssh;
   }

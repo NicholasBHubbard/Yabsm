@@ -1,0 +1,29 @@
+#!/usr/local/perl5/perl-5.16.3/bin/perl
+
+eval 'exec /usr/local/perl5/perl-5.16.3/bin/perl  -S $0 ${1+"$@"}'
+    if 0; # not running under some shell
+use Mojo::Base -strict;
+
+use Mojolicious::Commands;
+
+Mojolicious::Commands->start_app('Mojo::HelloWorld');
+
+=encoding utf8
+
+=head1 NAME
+
+mojo - The Mojolicious command system
+
+=head1 SYNOPSIS
+
+  $ mojo --help
+
+=head1 DESCRIPTION
+
+List and run L<Mojolicious> commands as described in L<Mojolicious::Commands>.
+
+=head1 SEE ALSO
+
+L<Mojolicious>, L<Mojolicious::Guides>, L<https://mojolicious.org>.
+
+=cut

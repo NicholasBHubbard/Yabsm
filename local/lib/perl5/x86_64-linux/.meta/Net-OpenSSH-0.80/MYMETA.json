@@ -4,13 +4,13 @@
       "Salvador Fandino <sfandino@yahoo.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "ExtUtils::MakeMaker version 7.34, CPAN::Meta::Converter version 2.150010, CPAN::Meta::Converter version 2.120630",
+   "generated_by" : "ExtUtils::MakeMaker version 7.34, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : "2"
+      "version" : 2
    },
    "name" : "Net-OpenSSH",
    "no_index" : {
@@ -43,5 +43,5 @@
       }
    },
    "version" : "0.80",
-   "x_serialization_backend" : "JSON::PP version 4.02"
+   "x_serialization_backend" : "JSON::PP version 4.06"
 }

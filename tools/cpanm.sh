@@ -12,7 +12,4 @@ if ! [ -x "$(command -v plx)" ]; then
     exit 1
 fi
 
-for module in "$@"
-do
-    plx --cpanm -Llocal "$module"
-done
+plx --cpanm -Llocal "$@"

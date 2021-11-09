@@ -131,10 +131,9 @@ sub do_incremental_backup { # No test. Is not pure.
 
 sub do_incremental_backup_local { # No test. Is not pure.
 
-    # Perform a single incremental btrfs backup of $backup, or in the
-    # case that the bootstrap process has not yet happened we call
-    # do_backup_bootstrap_local() and return. See btrfs documentation
-    # on incremental backups for more information.
+    # Perform a single incremental btrfs backup of $backup. This
+    # function will kill the program if the bootstrap phase has not
+    # yet been completed.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
@@ -148,8 +147,6 @@ sub do_incremental_backup_local { # No test. Is not pure.
       [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-
-    make_path $backup_dir if not -d $backup_dir;
 
     # we have not already bootstrapped
     # do incremental backup
@@ -177,10 +174,9 @@ sub do_incremental_backup_local { # No test. Is not pure.
 
 sub do_incremental_backup_ssh { # No test. Is not pure.
 
-    # Perform a single incremental btrfs backup of $backup over ssh,
-    # or in the case that the bootstrap process has not yet happened
-    # we call do_backup_bootstrap_ssh() and return. See btrfs
-    # documentation on incremental backups for more information.
+    # Perform a single incremental btrfs backup of $backup over ssh.
+    # This function will kill the program if the bootstrap phase has
+    # not yet been completed.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
@@ -227,7 +223,7 @@ sub do_incremental_backup_ssh { # No test. Is not pure.
 sub do_backup_bootstrap { # No test. Is not pure.
 
     # Determine if $backup is local or remote and dispatch the
-    # corresponding do_backup_bootstrap* subroutine.
+    # corresponding do_backup_bootstrap_* subroutine.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
@@ -251,9 +247,8 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
 
     # Perform bootstrap phase of a btrfs incremental backup. To
     # bootstrap a backup we create a new snapshot and place it in the
-    # subvol being snapped's backup bootstrap dir (for example
-    # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
-    # then btrfs send/receive the bootstrap snap.
+    # backups backup bootstrap dir and then then btrfs send/receive
+    # the bootstrap snap.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();

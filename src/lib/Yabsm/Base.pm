@@ -144,7 +144,8 @@ sub do_incremental_backup_local { # No test. Is not pure.
     }
 
     # bootstrap dir should have exactly one snap
-    my $boot_snap = [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
+    my $boot_snap =
+      [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 

@@ -273,13 +273,13 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     # if $backup_dir exists this cannot be the first time
     # bootstrapping so we need to delete the old bootstrap snap.
     if (-d $backup_dir) {
-        system "btrfs subvol delete $_" for grep { $_ =~ /BOOT-day/ } glob "$backup_dir/*";
+        system "btrfs subvol delete $_" for grep { $_ =~ /BOOTSTRAP-day/ } glob "$backup_dir/*";
     }
     else {
         make_path $backup_dir;
     }
 
-    my $boot_snap = "$boot_snap_dir/BOOT-" . current_time_snapstring();
+    my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
@@ -317,7 +317,7 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    my $boot_snap = "$boot_snap_dir/BOOT-" . current_time_snapstring();
+    my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
     
     system("btrfs subvol snapshot -r $mountpoint $boot_snap");
 
@@ -330,7 +330,7 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     # delete old remote bootstrap snap(s) if it exists
     $ssh->system( "ls -d $backup_dir/* "
-                . '| grep BOOT-day '
+                . '| grep BOOTSTRAP-day '
                 . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
                 );
 
@@ -526,13 +526,13 @@ sub all_backup_snaps { # No test. Is not pure.
         my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
         my $remote_host = $config_ref->{backups}{$backup}{host};
         my $ssh = shift // new_ssh_connection( $remote_host );
-        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture("ls $backup_dir") ]);
+        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $ssh->capture("ls $backup_dir") ]);
 
     }
 
     if (is_local_backup($config_ref, $backup)) {
         my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-        @all_backups = sort_snaps([ grep { $_ !~ /BOOT-day/ } glob "$backup_dir/*" ]);
+        @all_backups = sort_snaps([ grep { $_ !~ /BOOTSTRAP-day/ } glob "$backup_dir/*" ]);
     }
 
     return wantarray ? @all_backups : \@all_backups;

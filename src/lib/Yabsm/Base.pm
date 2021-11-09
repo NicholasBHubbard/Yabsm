@@ -140,7 +140,7 @@ sub do_incremental_backup_local { # No test. Is not pure.
     my $backup     = shift // confess missing_arg();
 
     if (not has_bootstrap($config_ref, $backup)) {
-        die "yabsm: internal error: backup '$backup' has not been bootstrapped";
+        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
     # bootstrap dir should have exactly one snap

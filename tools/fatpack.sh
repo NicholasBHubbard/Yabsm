@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 

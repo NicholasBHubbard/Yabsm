@@ -169,6 +169,8 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     system("btrfs subvol snapshot -r $mountpoint $boot_snap");
 
     system("btrfs send $boot_snap | btrfs receive $backup_dir");
+
+    return;
 }
 
 sub do_backup_bootstrap_ssh { # No test. Is not pure.
@@ -219,6 +221,8 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
     $ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
 		, "sudo -n btrfs receive $backup_dir"
 	        );
+
+    return;
 }
 
 sub do_incremental_backup { # No test. Is not pure.

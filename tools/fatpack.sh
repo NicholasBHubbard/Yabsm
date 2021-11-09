@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# fatpack yabsm into export/yabsm.fatpack.pl
+
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 
 SRC_DIR="$YABSM_ROOT"/src

@@ -106,120 +106,6 @@ sub delete_old_snapshots { # No test. Is not pure.
     }
 }
 
-sub do_incremental_backup { # No test. Is not pure.
-
-    # Determine if $backup is local or remote and dispatch the
-    # corresponding do_incremental_backup_* subroutine.
-
-    my $config_ref = shift // confess missing_arg();
-    my $backup     = shift // confess missing_arg();
-
-    if (is_local_backup($config_ref, $backup)) {
-	do_incremental_backup_local($config_ref, $backup);
-    }
-
-    elsif (is_remote_backup($config_ref, $backup)) {
-	do_incremental_backup_ssh($config_ref, $backup);
-    }
-
-    else {
-	confess "yabsm: internal error: no such defined backup '$backup'";
-    }
-
-    return;
-}
-
-sub do_incremental_backup_local { # No test. Is not pure.
-
-    # Perform a single incremental btrfs backup of $backup. This
-    # function will kill the program if the bootstrap phase has not
-    # yet been completed.
-
-    my $config_ref = shift // confess missing_arg();
-    my $backup     = shift // confess missing_arg();
-
-    if (not has_bootstrap($config_ref, $backup)) {
-        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
-    }
-
-    # bootstrap dir should have exactly one snap
-    my $boot_snap =
-      [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
-
-    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-
-    # we have not already bootstrapped
-    # do incremental backup
-	
-    my $subvol = $config_ref->{backups}{$backup}{subvol};
-
-    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-
-    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-
-    make_path $tmp_dir if not -d $tmp_dir;
-    
-    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
-    
-    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-    
-    system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
-
-    system("btrfs subvol delete $tmp_snap");
-
-    delete_old_backups_local($config_ref, $backup);
-
-    return;
-}
-
-sub do_incremental_backup_ssh { # No test. Is not pure.
-
-    # Perform a single incremental btrfs backup of $backup over ssh.
-    # This function will kill the program if the bootstrap phase has
-    # not yet been completed.
-
-    my $config_ref = shift // confess missing_arg();
-    my $backup     = shift // confess missing_arg();
-
-    if (not has_bootstrap($config_ref, $backup)) {
-        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
-    }
-
-    # bootstrap dir should have exactly one snap
-    my $boot_snap =
-      [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
-
-    # do incremental backup
-
-    my $subvol = $config_ref->{backups}{$backup}{subvol};
-
-    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-    
-    my $remote_host = $config_ref->{backups}{$backup}{host};
-
-    my $ssh = new_ssh_connection($remote_host);
-
-    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-    
-    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-
-    make_path $tmp_dir if not -d $tmp_dir;
-
-    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
-	
-    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-	
-    # send an incremental backup over ssh
-    $ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]}
-		                , "sudo -n btrfs receive $remote_backup_dir");
-	
-    system("btrfs subvol delete $tmp_snap");
-	
-    delete_old_backups_ssh($config_ref, $ssh, $backup);
-
-    return;
-}
-
 sub do_backup_bootstrap { # No test. Is not pure.
 
     # Determine if $backup is local or remote and dispatch the
@@ -333,6 +219,120 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
     $ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
 		, "sudo -n btrfs receive $backup_dir"
 	        );
+}
+
+sub do_incremental_backup { # No test. Is not pure.
+
+    # Determine if $backup is local or remote and dispatch the
+    # corresponding do_incremental_backup_* subroutine.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    if (is_local_backup($config_ref, $backup)) {
+	do_incremental_backup_local($config_ref, $backup);
+    }
+
+    elsif (is_remote_backup($config_ref, $backup)) {
+	do_incremental_backup_ssh($config_ref, $backup);
+    }
+
+    else {
+	confess "yabsm: internal error: no such defined backup '$backup'";
+    }
+
+    return;
+}
+
+sub do_incremental_backup_local { # No test. Is not pure.
+
+    # Perform a single incremental btrfs backup of $backup. This
+    # function will kill the program if the bootstrap phase has not
+    # yet been completed.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    if (not has_bootstrap($config_ref, $backup)) {
+        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
+    }
+
+    # bootstrap dir should have exactly one snap
+    my $boot_snap =
+      [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
+
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+
+    # we have not already bootstrapped
+    # do incremental backup
+	
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+
+    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
+
+    make_path $tmp_dir if not -d $tmp_dir;
+    
+    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+    
+    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    
+    system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
+
+    system("btrfs subvol delete $tmp_snap");
+
+    delete_old_backups_local($config_ref, $backup);
+
+    return;
+}
+
+sub do_incremental_backup_ssh { # No test. Is not pure.
+
+    # Perform a single incremental btrfs backup of $backup over ssh.
+    # This function will kill the program if the bootstrap phase has
+    # not yet been completed.
+
+    my $config_ref = shift // confess missing_arg();
+    my $backup     = shift // confess missing_arg();
+
+    if (not has_bootstrap($config_ref, $backup)) {
+        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
+    }
+
+    # bootstrap dir should have exactly one snap
+    my $boot_snap =
+      [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
+
+    # do incremental backup
+
+    my $subvol = $config_ref->{backups}{$backup}{subvol};
+
+    my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+    
+    my $remote_host = $config_ref->{backups}{$backup}{host};
+
+    my $ssh = new_ssh_connection($remote_host);
+
+    my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    
+    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
+
+    make_path $tmp_dir if not -d $tmp_dir;
+
+    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+	
+    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+	
+    # send an incremental backup over ssh
+    $ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]}
+		                , "sudo -n btrfs receive $remote_backup_dir");
+	
+    system("btrfs subvol delete $tmp_snap");
+	
+    delete_old_backups_ssh($config_ref, $ssh, $backup);
+
+    return;
 }
 
 sub delete_old_backups_local { # No test. Is not pure.

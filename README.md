@@ -3,7 +3,9 @@
 #+author: Nicholas Hubbard
 * Contents
   + [[#Features][Features]]
+  + [[#Dependencies][Dependencies]]
   + [[#Installation][Installation]]
+  + [[#Post-Installation][Post Installation]]
   + [[#Commands][Commands]]
   + [[#Configuration][Configuration]]
   + [[#Finding-Snapshots][Finding Snapshots]]
@@ -17,21 +19,39 @@
   + Remote and local incremental backups.
   + Query snapshots and backups to quickly jump back to a previous machine state.
 
-# Installation
-* Installation
-  #+BEGIN_SRC  
-  $ git clone https://github.com/NicholasBHubbard/yabsm
-  # yabsm/install
-  #+END_SRC  
+# Dependencies
 * Dependencies
   + [[https://github.com/kdave/btrfs-progs][btrfs-progs]]
   + [[https://www.openssh.com/][OpenSSH]]
   + [[https://www.perl.org/][Perl (>= version 5.16.3)]]
 It is unlikely that you do not already have these installed.
 
+# Installation
+* Installation
+  #+BEGIN_SRC  
+  $ git clone https://github.com/NicholasBHubbard/yabsm
+  # yabsm/install
+  #+END_SRC  
+
+# Post-Installation
+* Post Installation
+By default yabsm only installs the =/etc/yabsm.conf.example= example
+configuration file. You will probably want to copy this file to
+=/etc/yabsm.conf= and then build your custom config based off the
+example.
+
+After you are finished creating your config you will need to write the proper
+yabsm cronjobs to your =/etc/crontab= file.
+#+BEGIN_SRC
+# yabsm update-crontab
+#+END_SRC
+
+For more information on how to create a config see the section titled
+[[#Configuration][Configuration]].
+
 # Commands
 * Commands
-  Yabsm comes with commands that can be used like =yabsm <command> <arg(s)>=.
+  Yabsm's functionality is implemented in the following commands.
 **** find, f SUBJECT QUERY
      Find one or more snapshots of SUBJECT that matches QUERY. SUBJECT can be
      any =subvol= or =backup= defined in =/etc/yabsm.conf=. For more
@@ -76,13 +96,10 @@ It is unlikely that you do not already have these installed.
 
 # Configuration
 * Configuration
-  Yabsm is configured through the =/etc/yabsm.conf= file. By default yabsm only
-  installs the =/etc/yabsm.conf.example= file so you may want to run 
-  =cp /etc/yabsm.conf.example /etc/yabsm.conf= and then create your config
-  based off the example.
-  
+  Yabsm is configured through the =/etc/yabsm.conf= file.
+
   Effort has been put in to ensure that erroneous configs are rejected with
-  meaningful error messages. To check that your config is valid run 
+  meaningful error messages. To check that your config is valid run
   =yabsm check-config=.
 
 *** Example Config
@@ -146,49 +163,46 @@ You can define as many subvols as you want.
 *** Subvol Settings
 
 **** mountpoint
-      The =mountpoint= setting is the interface between a yabsm =subvol= and
-      the corresponding btrfs subvolume. The value is the directory that will
-      be snapshotted by yabsm. This setting is always required.
+     The =mountpoint= setting is the interface between a yabsm =subvol= and
+     the corresponding btrfs subvolume. The value is the directory that will
+     be snapshotted by yabsm. This setting is always required.
 **** 5minute_want
      Do you want to take a snapshot of this subvol every 5 minutes? The value
      must be either =yes= or =no=. This setting is always required.
 **** 5minute_keep
-     How many snapshots in the =5minute= timeframe do you want to keep? The
-     value must be a positive integer. This setting is only required if
+     The number of snapshots to keep for the =5minute= timeframe. The value
+     must be a positive integer. This setting is only required if
      =5minute_want=yes=.
 **** hourly_want
      Do you want to take a snapshot at the beginning of every hour? The value
      must be either =yes= or =no=. This setting is always required.
 **** hourly_keep
-     How many snapshots in the =hourly= timeframe do you want to keep? The
-     value must be a positive integer. This setting is only required if
-     =hourly_want=yes=.
+     The number of snapshots to keep for the =hourly= timeframe. The value must
+     be a positive integer. This setting is only required if =hourly_want=yes=.
 **** midnight_want
      Do you want to take a snapshot every night at 23:59? The value
      must be either =yes= or =no=. This setting is always required.
 **** midnight_keep
-     How many snapshots in the =midnight= timeframe do you want to keep? The
-     value must be a positive integer. This setting is only required if
+     The number of snapshots to keep for the =midnight= timeframe. The value
+     must be a positive integer. This setting is only required if
      =midnight_want=yes=.
 **** weekly_want
      Do you want to take a snapshot at 23:59 on one day of the week? The value
      must be either =yes= or =no=. This setting is always required.
 **** weekly_day
-     Which day of the week do you want the =weekly= snapshot? The value be any
-     of sunday, monday, tuesday, wednesday, thursday, friday, or saturday. This
-     setting is only required if =weekly_want=yes=.
+     The name of the day of the week to take the =weekly= snapshot. The value
+     be any of sunday, monday, tuesday, wednesday, thursday, friday, or
+     saturday. This setting is only required if =weekly_want=yes=.
 **** weekly_keep
-     How many snapshots in the =weekly= timeframe do you want to keep? The
-     value must be a positive integer. This setting is only required if
-     =weekly_want=yes=.
+     The number of snapshots to keep for the =weekly= timeframe. The value must
+     be a positive integer. This setting is only required if =weekly_want=yes=.
 **** monthly_want
      Do you want to take a snapshot at 00:00 on the first of every month? The
      value must be either =yes= or =no=. This setting is always required.
 **** monthly_keep
-     How many snapshots in the =monthly= timeframe do you want to keep? The
-     value must be a positive integer. This setting is only required if
+     The number of snapshots to keep for the =monthly= timeframe. The value
+     must be a positive integer. This setting is only required if
      =monthly_want=yes=.
-
 
 *** Backup Definitions
 A yabsm backup has the following form

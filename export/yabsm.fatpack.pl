@@ -8514,6 +8514,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $snap_name = current_time_snapstring();
   
+      make_path $snap_dir if not -d $snap_dir;
+  
       system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
   
       return;
@@ -8569,6 +8571,125 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   }
   
+  sub do_backup_bootstrap { # No test. Is not pure.
+  
+      # Determine if $backup is local or remote and dispatch the
+      # corresponding do_backup_bootstrap_* subroutine.
+  
+      my $config_ref = shift // confess missing_arg();
+      my $backup     = shift // confess missing_arg();
+  
+      if (is_local_backup($config_ref, $backup)) {
+  	do_backup_bootstrap_local($config_ref, $backup);
+      }
+  
+      elsif (is_remote_backup($config_ref, $backup)) {
+  	do_backup_bootstrap_ssh($config_ref, $backup);
+      }
+  
+      else {
+  	confess "yabsm: internal error: no such user defined backup '$backup'";
+      }
+  
+      return;
+  }
+  
+  sub do_backup_bootstrap_local { # No test. Is not pure.
+  
+      # Perform bootstrap phase of a btrfs incremental backup. To
+      # bootstrap a backup we create a new snapshot and place it in the
+      # backups backup bootstrap dir and then then btrfs send/receive
+      # the bootstrap snap.
+  
+      my $config_ref = shift // confess missing_arg();
+      my $backup     = shift // confess missing_arg();
+  
+      my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+  
+      # delete old bootstrap snap
+      if (-d $boot_snap_dir) {
+          system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
+      }
+      else {
+          make_path $boot_snap_dir;
+      }
+  
+      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+  
+      # if $backup_dir exists this cannot be the first time
+      # bootstrapping so we need to delete the old bootstrap snap.
+      if (-d $backup_dir) {
+          system "btrfs subvol delete $_" for grep { $_ =~ /BOOTSTRAP-day/ } glob "$backup_dir/*";
+      }
+      else {
+          make_path $backup_dir;
+      }
+  
+      my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
+  
+      my $subvol = $config_ref->{backups}{$backup}{subvol};
+  
+      my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+  
+      system("btrfs subvol snapshot -r $mountpoint $boot_snap");
+  
+      system("btrfs send $boot_snap | btrfs receive $backup_dir");
+  
+      return;
+  }
+  
+  sub do_backup_bootstrap_ssh { # No test. Is not pure.
+  
+      # Perform bootstrap phase of a btrfs incremental backup. To
+      # bootstrap a backup we create a new snapshot and place it in the
+      # subvol being snapped's backup bootstrap dir (for example
+      # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
+      # then btrfs send/receive the bootstrap snap over ssh.
+  
+      my $config_ref = shift // confess missing_arg();
+      my $backup     = shift // confess missing_arg();
+  
+      ### LOCAL ###
+  
+      my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+  
+      # if $boot_snap_dir exists this cannot be the first time bootstrapping
+      if (-d $boot_snap_dir) {
+          system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
+      }
+      else {
+          make_path $boot_snap_dir;
+      }
+  
+      my $subvol = $config_ref->{backups}{$backup}{subvol};
+  
+      my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+  
+      my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
+      
+      system("btrfs subvol snapshot -r $mountpoint $boot_snap");
+  
+      ### REMOTE ###
+      
+      # setup local bootstrap snap
+      my $ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
+  
+      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+  
+      # delete old remote bootstrap snap(s) if it exists
+      $ssh->system( "ls -d $backup_dir/* "
+                  . '| grep BOOTSTRAP-day '
+                  . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
+                  );
+  
+      # send the bootstrap backup to remote host
+      $ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
+  		, "sudo -n btrfs receive $backup_dir"
+  	        );
+  
+      return;
+  }
+  
   sub do_incremental_backup { # No test. Is not pure.
   
       # Determine if $backup is local or remote and dispatch the
@@ -8594,24 +8715,22 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   sub do_incremental_backup_local { # No test. Is not pure.
   
-      # Perform a single incremental btrfs backup of $backup, or in the
-      # case that the bootstrap process has not yet happened we call
-      # do_backup_bootstrap_local() and return. See btrfs documentation
-      # on incremental backups for more information.
+      # Perform a single incremental btrfs backup of $backup. This
+      # function will kill the program if the bootstrap phase has not
+      # yet been completed.
   
       my $config_ref = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
   
       if (not has_bootstrap($config_ref, $backup)) {
-          die "yabsm: internal error: backup '$backup' has not been bootstrapped";
+          confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
       }
   
       # bootstrap dir should have exactly one snap
-      my $boot_snap = [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
+      my $boot_snap =
+        [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-  
-      make_path $backup_dir if not -d $backup_dir;
   
       # we have not already bootstrapped
       # do incremental backup
@@ -8639,10 +8758,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   sub do_incremental_backup_ssh { # No test. Is not pure.
   
-      # Perform a single incremental btrfs backup of $backup over ssh,
-      # or in the case that the bootstrap process has not yet happened
-      # we call do_backup_bootstrap_ssh() and return. See btrfs
-      # documentation on incremental backups for more information.
+      # Perform a single incremental btrfs backup of $backup over ssh.
+      # This function will kill the program if the bootstrap phase has
+      # not yet been completed.
   
       my $config_ref = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
@@ -8684,122 +8802,6 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       delete_old_backups_ssh($config_ref, $ssh, $backup);
   
       return;
-  }
-  
-  sub do_backup_bootstrap { # No test. Is not pure.
-  
-      # Determine if $backup is local or remote and dispatch the
-      # corresponding do_backup_bootstrap* subroutine.
-  
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
-  
-      if (is_local_backup($config_ref, $backup)) {
-  	do_backup_bootstrap_local($config_ref, $backup);
-      }
-  
-      elsif (is_remote_backup($config_ref, $backup)) {
-  	do_backup_bootstrap_ssh($config_ref, $backup);
-      }
-  
-      else {
-  	confess "yabsm: internal error: no such user defined backup '$backup'";
-      }
-  
-      return;
-  }
-  
-  sub do_backup_bootstrap_local { # No test. Is not pure.
-  
-      # Perform bootstrap phase of a btrfs incremental backup. To
-      # bootstrap a backup we create a new snapshot and place it in the
-      # subvol being snapped's backup bootstrap dir (for example
-      # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
-      # then btrfs send/receive the bootstrap snap.
-  
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
-  
-      my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
-  
-      # delete old bootstrap snap
-      if (-d $boot_snap_dir) {
-          system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
-      }
-      else {
-          make_path $boot_snap_dir;
-      }
-  
-      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-  
-      # if $backup_dir exists this cannot be the first time
-      # bootstrapping so we need to delete the old bootstrap snap.
-      if (-d $backup_dir) {
-          system "btrfs subvol delete $_" for grep { $_ =~ /BOOT-day/ } glob "$backup_dir/*";
-      }
-      else {
-          make_path $backup_dir;
-      }
-  
-      my $boot_snap = "$boot_snap_dir/BOOT-" . current_time_snapstring();
-  
-      my $subvol = $config_ref->{backups}{$backup}{subvol};
-  
-      my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-  
-      system("btrfs subvol snapshot -r $mountpoint $boot_snap");
-  
-      system("btrfs send $boot_snap | btrfs receive $backup_dir");
-  }
-  
-  sub do_backup_bootstrap_ssh { # No test. Is not pure.
-  
-      # Perform bootstrap phase of a btrfs incremental backup. To
-      # bootstrap a backup we create a new snapshot and place it in the
-      # subvol being snapped's backup bootstrap dir (for example
-      # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
-      # then btrfs send/receive the bootstrap snap over ssh.
-  
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
-  
-      ### LOCAL ###
-  
-      my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
-  
-      # if $boot_snap_dir exists this cannot be the first time bootstrapping
-      if (-d $boot_snap_dir) {
-          system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
-      }
-      else {
-          make_path $boot_snap_dir;
-      }
-  
-      my $subvol = $config_ref->{backups}{$backup}{subvol};
-  
-      my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-  
-      my $boot_snap = "$boot_snap_dir/BOOT-" . current_time_snapstring();
-      
-      system("btrfs subvol snapshot -r $mountpoint $boot_snap");
-  
-      ### REMOTE ###
-      
-      # setup local bootstrap snap
-      my $ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
-  
-      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-  
-      # delete old remote bootstrap snap(s) if it exists
-      $ssh->system( "ls -d $backup_dir/* "
-                  . '| grep BOOT-day '
-                  . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
-                  );
-  
-      # send the bootstrap backup to remote host
-      $ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
-  		, "sudo -n btrfs receive $backup_dir"
-  	        );
   }
   
   sub delete_old_backups_local { # No test. Is not pure.
@@ -8988,13 +8990,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
           my $remote_host = $config_ref->{backups}{$backup}{host};
           my $ssh = shift // new_ssh_connection( $remote_host );
-          @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOT-day/ } $ssh->capture("ls $backup_dir") ]);
+          @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $ssh->capture("ls $backup_dir") ]);
   
       }
   
       if (is_local_backup($config_ref, $backup)) {
           my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-          @all_backups = sort_snaps([ grep { $_ !~ /BOOT-day/ } glob "$backup_dir/*" ]);
+          @all_backups = sort_snaps([ grep { $_ !~ /BOOTSTRAP-day/ } glob "$backup_dir/*" ]);
       }
   
       return wantarray ? @all_backups : \@all_backups;

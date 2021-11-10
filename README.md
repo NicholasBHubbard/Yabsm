@@ -15,7 +15,7 @@
 * Features
   + Organize snapshots into 5minute, hourly, midnight, weekly and monthly
     timeframe categories.
-  + Cycle out old snapshots on a per-timeframe BASES.
+  + Cycle out old snapshots on a per-timeframe basis.
   + Remote and local incremental backups.
   + Query snapshots and backups to quickly jump back to a previous machine state.
 

@@ -232,7 +232,7 @@ You can define as many backups as you want.
      integer. This setting is always required.
 **** timeframe
      The timeframe for performing backups. This value can be any of 5minute,
-     hourly, midnight, weekly, or monthly. These timeframes are the same as a
+     hourly, daily, weekly, or monthly. These timeframes are the same as a
      subvols timeframes. This setting is always required.
 **** time
      The time of day to perform the backup if the timeframe is one of =daily=,

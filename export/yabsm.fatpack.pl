@@ -8732,9 +8732,6 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
-      # we have not already bootstrapped
-      # do incremental backup
-  	
       my $subvol = $config_ref->{backups}{$backup}{subvol};
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
@@ -9194,6 +9191,28 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # input should have already been cleansed. 
       confess "yabsm: internal error: '$lit_time' is not a valid literal time";
+  }
+  
+  sub time_hour { # Has test. Is pure.
+  
+      # Takes a time of the form 'hh:mm' and returns the hour (hh).
+  
+      my $time = shift // Yabsm::Base::missing_arg();
+  
+      my ($hr, undef) = split ':', $time, 2;
+  
+      return $hr;
+  }
+  
+  sub time_minute { # Has test. Is pure.
+  
+      # Takes a time of the form 'hh:mm' and returns the minute (hh).
+  
+      my $time = shift // Yabsm::Base::missing_arg();
+  
+      my (undef, $min) = split ':', $time, 2;
+  
+      return $min;
   }
   
   sub relative_time_to_snapstring { # Has test. Is not pure.
@@ -9702,14 +9721,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       return $keyword_correct && $imm1_correct && $imm2_correct;
   }
   
-  sub all_timeframes { # TODO
+  sub all_timeframes { # Has test. Is pure.
   
       # Return an array of all yabsm timeframes.
   
-      return qw(5minute hourly midnight weekly monthly);
+      return qw(5minute hourly daily weekly monthly);
   }
   
-  sub is_timeframe { # TODO
+  sub is_timeframe { # Has test. Is pure.
   
       # true if $tf is a yabsm timeframe.
   
@@ -9869,32 +9888,36 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
   	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
-  	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
+  	my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
   	my $weekly_want   = $config_ref->{subvols}{$subvol}{weekly_want};
   	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
           
-          my $_5minute_cron = ( '*/5 * * * * root' # every 5 minutes
-  			    . " yabsm take-snap $subvol 5minute"
-  			    ) if $_5minute_want eq 'yes';
-          
-          my $hourly_cron   = ( '0 */1 * * * root' # beginning of every hour
-  			    . " yabsm take-snap $subvol hourly"
-  			    ) if $hourly_want eq 'yes';
-          
-          my $midnight_cron = ( '59 23 * * * root' # 11:59 every night
-                              . " yabsm take-snap $subvol midnight"
-  			    ) if $midnight_want eq 'yes';
+          if ($_5minute_want eq 'yes') {
+              push @crons, "*/5 * * * * root yabsm take-snap $subvol 5minute"
+          }
   
-          my $weekly_cron   = ( '59 23 * * '
-                              . day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day})
-                              . " root yabsm take-snap $subvol weekly"
-                              ) if $weekly_want eq 'yes';
+          if ($hourly_want eq 'yes') {
+              push @crons, "0 */1 * * * root yabsm take-snap $subvol hourly"
+          }
           
-          my $monthly_cron  = ( '0 0 1 * * root' # First day of every month
-  			    . " yabsm take-snap $subvol monthly"
-  			    ) if $monthly_want eq 'yes';
+          if ($daily_want eq 'yes') {
+              my $hr = time_hour($config_ref->{subvols}{$subvol}{daily_time});
+              my $min = time_minute($config_ref->{subvols}{$subvol}{daily_time});
+              push @crons, "$min $hr * * * root yabsm take-snap $subvol daily";
+          }
   
-          push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $weekly_cron, $monthly_cron);
+          if ($weekly_want eq 'yes') {
+              my $hr  = time_hour($config_ref->{subvols}{$subvol}{weekly_time});
+              my $min = time_minute($config_ref->{subvols}{$subvol}{weekly_time});
+              my $dow = day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day});
+              push @crons, "$min $hr * * $dow root yabsm take-snap $subvol weekly";
+          }
+  
+          if ($monthly_want eq 'yes') {
+              my $hr  = time_hour($config_ref->{subvols}{$subvol}{monthly_time});
+              my $min = time_minute($config_ref->{subvols}{$subvol}{monthly_time});
+              push @crons, "$min $hr 1 * * root yabsm take-snap $subvol monthly";
+          }
       }
   
       foreach my $backup (all_backups($config_ref)) {
@@ -9909,17 +9932,23 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   	    push @crons, "0 */1 * * * root yabsm incremental-backup $backup";
   	}
   
-  	elsif ($timeframe eq 'midnight') {
-  	    push @crons, "59 23 * * * root yabsm incremental-backup $backup";
+  	elsif ($timeframe eq 'daily') {
+              my $hr  = time_hour($config_ref->{backups}{$backup}{time});
+              my $min = time_minute($config_ref->{backups}{$backup}{time});
+  	    push @crons, "$min $hr * * * root yabsm incremental-backup $backup";
   	}
   
   	elsif ($timeframe eq 'weekly') {
-              my $dow_num = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
-  	    push @crons, "59 23 * * $dow_num root yabsm incremental-backup $backup";
+              my $hr  = time_hour($config_ref->{backups}{$backup}{time});
+              my $min = time_minute($config_ref->{backups}{$backup}{time});
+              my $dow = day_of_week_num($config_ref->{backups}{$backup}{day});
+  	    push @crons, "$min $hr * * $dow root yabsm incremental-backup $backup";
   	}
   
   	elsif ($timeframe eq 'monthly') {
-  	    push @crons, "0 0 1 * * root yabsm incremental-backup $backup";
+              my $hr  = time_hour($config_ref->{backups}{$backup}{time});
+              my $min = time_minute($config_ref->{backups}{$backup}{time});
+  	    push @crons, "$min $hr 1 * * root yabsm incremental-backup $backup";
   	}
   
   	else {
@@ -10536,6 +10565,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               , ssh_host     => qr/[-@.\/\w]+/
               , comment      => qr/#.*/
               , pos_int      => qr/[1-9]\d*/
+              , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
               );
   
                    ####################################
@@ -10642,6 +10672,10 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               $v = $self->maybe( sub { $self->token_kw( 'yes', 'no' ) } );
               $v // $self->fail( q(expected 'yes' or 'no') );
           }
+          elsif ($k =~ /_time$/) {
+              $v = $self->maybe_expect( $regex{time} );
+              $v // $self->fail(q(expected time in format 'hh:mm'));
+          }
           elsif ($k =~ /_keep$/) {
               $v = $self->maybe_expect( $regex{pos_int} );
               $v // $self->fail('expected positive integer');
@@ -10679,6 +10713,10 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           elsif ($k eq 'timeframe') {
               $v = $self->token_kw( Yabsm::Base::all_timeframes() );
           }
+          elsif ($k eq 'time') {
+              $v = $self->maybe_expect( $regex{time} );
+              $v // $self->fail(q(expected time in format 'hh:mm'));
+          }
           elsif ($k eq 'backup_dir') {
               $v = $self->maybe_expect( $regex{path} );
               $v // $self->fail('expected file path');
@@ -10696,7 +10734,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               $v = $self->maybe_expect( $regex{subject_name} );
               $v // $self->fail('expected alphanumeric sequence starting with a letter');
           }
-          elsif ($k eq 'weekly_day') {
+          elsif ($k eq 'day') {
               $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
           }
           else {
@@ -10722,7 +10760,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
       for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
   
           # base required settings
-          my @req = qw(mountpoint 5minute_want hourly_want midnight_want weekly_want monthly_want);
+          my @req = qw(mountpoint 5minute_want hourly_want daily_want weekly_want monthly_want);
   
           my @def = keys %{ $config_ref->{subvols}{$subvol} };
   
@@ -10739,14 +10777,14 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                   elsif ($tframe eq 'hourly') {
                       push @req, 'hourly_keep';
                   }
-                  elsif ($tframe eq 'midnight') {
-                      push @req, 'midnight_keep';
+                  elsif ($tframe eq 'daily') {
+                      push @req, 'daily_time', 'daily_keep';
                   }
                   elsif ($tframe eq 'weekly') {
-                      push @req, 'weekly_keep', 'weekly_day';
+                      push @req, 'weekly_time', 'weekly_day', 'weekly_keep';
                   }
                   elsif ($tframe eq 'monthly') {
-                      push @req, 'monthly_keep';
+                      push @req, 'monthly_time', 'monthly_keep';
                   }
                   else {
                       confess "yabsm: internal error: no such timeframe '$tframe'";
@@ -10796,7 +10834,11 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               }
   
               if ($tframe eq 'weekly') {
-                  push @req, 'weekly_day';
+                  push @req, 'time', 'day';
+              }
+  
+              if ($tframe eq 'daily' || $tframe eq 'monthly') {
+                  push @req, 'time';
               }
   
               if (my @missing = array_minus(@req, @def)) {
@@ -10831,11 +10873,11 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                    ####################################
   
   sub subvol_keywords {
-      return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep midnight_want midnight_keep weekly_want weekly_keep weekly_day monthly_want monthly_keep);
+      return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep daily_want daily_time daily_keep weekly_want weekly_time weekly_day weekly_keep monthly_want monthly_time monthly_keep);
   }
   
   sub backup_keywords {
-      return qw(subvol remote host keep backup_dir timeframe weekly_day);
+      return qw(subvol remote host keep backup_dir timeframe time day);
   }
   
   sub misc_keywords {
@@ -13962,7 +14004,7 @@ use v5.16.3;
 
 die "error: your perl version '$]' is less than 5.16.3" if $] < 5.016003;
 
-my $YABSM_VERSION = 2.1;
+my $YABSM_VERSION = 2.2;
 
 sub usage {
     print <<END_USAGE;

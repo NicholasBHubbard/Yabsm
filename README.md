@@ -17,7 +17,8 @@
     timeframe categories.
   + Cycle out old snapshots on a per-timeframe basis.
   + Remote and local incremental backups.
-  + Query snapshots and backups to quickly jump back to a previous state.
+  + Cycle out old backups
+  + Query language for locating snapshots and backups
 
 # Dependencies
 * Dependencies
@@ -227,7 +228,8 @@ You can define as many backups as you want.
      always required.
 **** host
      The hostname of a server for a remote backup. The value can be any
-     hostname that works with =ssh=. This setting is only required if
+     hostname that works with =ssh=. Note that the =ssh= connection will be
+     established as the root user. This setting is only required if
      =remote=yes=.
 **** backup_dir     
      The directory to place the backup snapshots. The value is taken literally
@@ -262,8 +264,8 @@ are found they are printed linewise sorted from newest to oldest.
     Assume that you have a =subvol= named "home".
 
     + yabsm find home back-20-minutes
-    + yabsm find home back-10-hours
-    + yabsm find home back-2-days
+    + yabsm find home b-10-hours
+    + yabsm find home b-2-days
     + yabsm find home 'between back-2-hours 12-25'
     + yabsm find home 2020-12-25-17-5
     + yabsm find home 12-25

@@ -7,7 +7,7 @@ yabsm_dir=/.snapshots/yabsm
 # This is a subvol definition with the maximum settings. There are no
 # other possible subvol settings than the ones specified here. The
 # name of this subvol is 'root'. A subvol name should match
-# /[a-zA-Z][-_0-9a-zA-Z]*/
+# /[a-zA-Z][-_0-9a-zA-Z]*/. Depending
 subvol root {
 
     # the mountpoint setting is the interface between a yabsm subvol and a
@@ -33,8 +33,11 @@ subvol root {
 } # closing brace
 
 # This is a minimal subvol definition. Comparing this subvol 
-# to the first subvol we can see that if 'TIMEFRAME_want=no
+# to the first subvol we can see that if 'TIMEFRAME_want=no'
 # then it is unnecessary to define TIMEFRAMEs other settings.
+# A subvol with all 'TIMEFRAME_want=no' settings is useful if
+# you do not want to take any local snapshots but still want
+# to backup the subvol to say a remote server.
 subvol home {
 
     mountpoint=/home
@@ -51,7 +54,7 @@ subvol home {
 }
 
 # Backup definition headers have the form 'backup NAME {'
-# A subvol name should match /[a-zA-Z][-_0-9a-zA-Z]*/
+# A backup name should match /[a-zA-Z][-_0-9a-zA-Z]*/
 backup homeBackup {
 
     # must be a defined subvol.
@@ -59,9 +62,9 @@ backup homeBackup {
 
     remote=yes
 
-    # because remote=yes we must define a 'host'. This host can be
-    # a 'Host' defined in ~/.ssh/config or a host with user@ip form.
-    host=user@192.168.1.12
+    # because remote=yes we must define a 'host'. This host can be a
+    # 'Host' defined in /root/.ssh/config or a host with user@ip form.
+    host=user@192.168.1.73
 
     # This directory is taken literally. If the backup is a remote backup
     # this directory will not be created automatically.

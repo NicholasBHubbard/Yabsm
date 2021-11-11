@@ -730,6 +730,15 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     confess "yabsm: internal error: '$lit_time' is not a valid literal time";
 }
 
+sub is_valid_time { # Has test. Is pure.
+
+    my $time = shift // Yabsm::Base::missing_arg();
+
+    2 == (my ($hr, $min) = split ':', $time) or return 0;
+
+    return $hr >= 0 && $hr <= 23 && $min >=0 && $min <= 59;
+}
+
 sub relative_time_to_snapstring { # Has test. Is not pure.
 
     # Resolve a relative time to a snapstring.

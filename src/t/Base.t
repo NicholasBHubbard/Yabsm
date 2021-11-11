@@ -997,6 +997,27 @@ sub test_is_remote_backup {
     ok ( $correct, 'is_remote_backup()' );
 }
 
+test_is_valid_time();
+sub test_is_valid_time{
+
+    my $t1 = Yabsm::Base::is_valid_time('0:0');
+    my $t2 = Yabsm::Base::is_valid_time('00:00');
+    my $t3 = Yabsm::Base::is_valid_time('23:59');
+    my $t4 = Yabsm::Base::is_valid_time('6:30');
+    my $t5 = Yabsm::Base::is_valid_time('12:3');
+
+    my $f1 = Yabsm::Base::is_valid_time('');
+    my $f2 = Yabsm::Base::is_valid_time(' ');
+    my $f3 = Yabsm::Base::is_valid_time('24:0');
+    my $f4 = Yabsm::Base::is_valid_time('0:60');
+    my $f5 = Yabsm::Base::is_valid_time('120:60');
+
+    my $trues = $t1 && $t2 && $t3 && $t4 && $t5;
+    my $falses = not( $f1 || $f2 || $f3 || $f4 || $f5);
+
+    ok ( $trues && $falses, 'is_valid_time()' );
+}
+
 test_is_snapstring();
 sub test_is_snapstring {
 

@@ -1,0 +1,25 @@
+#
+# This config shows we must specify the 'host' setting for a remote backup
+#
+
+yabsm_dir=/#always required
+
+# backup comes first
+backup homeBackup {
+    remote=yes
+    ### host=foohost # REQUIRED
+
+    subvol=home
+    backup_dir=/home
+    timeframe=5minute
+    keep=100
+}
+
+subvol home {
+    mountpoint=/home
+    5minute_want=no
+    hourly_want=no
+    daily_want=no
+    weekly_want=no
+    monthly_want=no
+}

@@ -12,7 +12,7 @@ define_backup homeBackup {
 
     subvol=home
     backup_dir=/
-    timeframe=hourly
+    timeframe=5minute
     keep=100
 }
 
@@ -20,7 +20,7 @@ define_subvol home {
     mountpoint=/home
     5minute_want=no
     hourly_want=no
-    midnight_want=no
+    daily_want=no
     weekly_want=no
     monthly_want=no
 }

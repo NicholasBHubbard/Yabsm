@@ -21,6 +21,8 @@ use Yabsm::Base;
 use Carp;
 use Array::Utils 'array_minus';
 
+use List::Util 1.33 'any';
+
 use Parser::MGC;
 use base 'Parser::MGC';
 
@@ -33,7 +35,7 @@ my %regex = ( path         => qr/\/[^#\s]*/
             , ssh_host     => qr/[-@.\/\w]+/
             , comment      => qr/#.*/
             , pos_int      => qr/[1-9]\d*/
-            , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
+            , time         => qr/([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
             );
 
                  ####################################
@@ -202,7 +204,7 @@ sub backup_def_p {
             $v = $self->maybe_expect( $regex{subject_name} );
             $v // $self->fail('expected alphanumeric sequence starting with a letter');
         }
-        elsif ($k eq 'day') {
+        elsif ($k eq 'weekly_day') {
             $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
         }
         else {
@@ -301,12 +303,8 @@ sub missing_backup_settings {
                 push @req, 'host';
             }
 
-            if ($tframe eq 'weekly') {
-                push @req, 'time', 'day';
-            }
-
-            if ($tframe eq 'daily' || $tframe eq 'monthly') {
-                push @req, 'time';
+            if (any { $tframe eq $_ } qw()) {
+                push @req, 'weekly_day';
             }
 
             if (my @missing = array_minus(@req, @def)) {
@@ -345,7 +343,7 @@ sub subvol_keywords {
 }
 
 sub backup_keywords {
-    return qw(subvol remote host keep backup_dir timeframe time day);
+    return qw(subvol remote host keep backup_dir timeframe time weekly_day);
 }
 
 sub misc_keywords {

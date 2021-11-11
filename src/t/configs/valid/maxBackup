@@ -1,15 +1,15 @@
 #
-# This config shows we can define a backup before the subvol it backs up
+# This config shows a backup with the max amount of settings
 #
 
 yabsm_dir=/
 
-# backup comes first
 backup homeBackup {
     subvol=home
     remote=no
     backup_dir=/home
-    timeframe=5minute
+    timeframe=daily
+    time=23:59
     keep=12
 }
 
@@ -21,4 +21,3 @@ subvol home {
     weekly_want=no
     monthly_want=no
 }
-

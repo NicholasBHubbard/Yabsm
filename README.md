@@ -13,7 +13,7 @@
 
 # Features
 * Features
-  + Organize snapshots into 5minute, hourly, midnight, weekly and monthly
+  + Organize snapshots into 5minute, hourly, daily, weekly and monthly
     timeframe categories.
   + Cycle out old snapshots on a per-timeframe basis.
   + Remote and local incremental backups.
@@ -85,10 +85,13 @@ For more information on how to create a configuration see the section below.
         hourly_want=yes
         hourly_keep=24
 
-        midnight_want=no
+        daily_want=yes
+        daily_time=23:59
+        daily_keep=30
 
         weekly_want=yes
         weekly_day=wednesday
+        weekly_time=00:00
         weekly_keep=12
 
         monthly_want=no
@@ -103,7 +106,9 @@ For more information on how to create a configuration see the section below.
 
         backup_dir=/backups/yabsm/desktopHomeBackup
 
-        timeframe=midnight
+        timeframe=daily
+
+        time=23:59
 
         keep=365
     }
@@ -152,13 +157,17 @@ You can define as many subvols as you want.
 **** hourly_keep
      The number of snapshots to keep for the =hourly= timeframe. The value must
      be a positive integer. This setting is only required if =hourly_want=yes=.
-**** midnight_want
-     Do you want to take a snapshot every night at 23:59? The value
+**** daily_want
+     Do you want to take a snapshot every day at a specified time? The value
      must be either =yes= or =no=. This setting is always required.
-**** midnight_keep
-     The number of snapshots to keep for the =midnight= timeframe. The value
+**** daily_time
+     The time of day to take the =daily= snapshot. This value is a 24 hour time
+     in the form =hh:mm=. A leading zero is required for single digit
+     values. This setting is only required if =daily_want=yes=.
+**** daily_keep
+     The number of snapshots to keep for the =daily= timeframe. The value
      must be a positive integer. This setting is only required if
-     =midnight_want=yes=.
+     =daily_want=yes=.
 **** weekly_want
      Do you want to take a snapshot at 23:59 on one day of the week? The value
      must be either =yes= or =no=. This setting is always required.
@@ -166,12 +175,20 @@ You can define as many subvols as you want.
      The name of the day of the week to take the =weekly= snapshot. The value
      be any of sunday, monday, tuesday, wednesday, thursday, friday, or
      saturday. This setting is only required if =weekly_want=yes=.
+**** weekly_time
+     The time of day to take the =weekly= snapshot. This value is a 24 hour
+     time in the form =hh:mm=. A leading zero is required for single digit
+     values. This setting is only required if =weekly_want=yes=.
 **** weekly_keep
      The number of snapshots to keep for the =weekly= timeframe. The value must
      be a positive integer. This setting is only required if =weekly_want=yes=.
 **** monthly_want
      Do you want to take a snapshot at 00:00 on the first of every month? The
      value must be either =yes= or =no=. This setting is always required.
+**** monthly_time
+     The time of day to take the =monthly= snapshot. This value is a 24 hour
+     time in the form =hh:mm=. A leading zero is required for single digit
+     values. This setting is only required if =monthly_want=yes=.
 **** monthly_keep
      The number of snapshots to keep for the =monthly= timeframe. The value
      must be a positive integer. This setting is only required if
@@ -217,10 +234,14 @@ You can define as many backups as you want.
      The timeframe for performing backups. This value can be any of 5minute,
      hourly, midnight, weekly, or monthly. These timeframes are the same as a
      subvols timeframes. This setting is always required.
-**** weekly_day
-     The day of the week to perform the backup? The value can be any of sunday,
-     monday, tuesday, wednesday, thursday, frieday, or saturday. This setting
-     is only required if =timeframe=weekly=.
+**** time
+     The time of day to perform the backup if the timeframe is one of =daily=,
+     =weekly=, or =monthly=. This value is a 24 hour time in the form
+     =hh:mm=. A leading zero is required for single digit values.
+**** day
+     The day of the week to perform the backup if the =timeframe=weekly=. The
+     value can be any of sunday, monday, tuesday, wednesday, thursday, friday,
+     or saturday.
 
 # Commands
 * Commands

@@ -13,13 +13,15 @@ subvol root {
     hourly_want=yes
     hourly_keep=24
 
-    midnight_want=no
+    daily_want=no
 
     weekly_want=yes
     weekly_keep=7
+    weekly_time=23:59
     weekly_day=tuesday
 
     monthly_want=yes
+    monthly_time=00:00
     monthly_keep=12
 }
 
@@ -31,8 +33,9 @@ subvol home {
 
     hourly_want=no
 
-    midnight_want=yes
-    midnight_keep=14
+    daily_want=yes
+    daily_time=12:30
+    daily_keep=14
 
     weekly_want=no
 
@@ -45,7 +48,8 @@ backup rootBackup {
     backup_dir=/
     keep=100
     timeframe=weekly
-    weekly_day=friday
+    time=23:59
+    day=friday
 }
 
 backup homeBackup {

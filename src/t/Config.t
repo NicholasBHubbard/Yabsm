@@ -34,7 +34,7 @@ for my $config_file (glob './configs/invalid/*') {
 
 print "\nTesting read_config() returns correct data structure\n";
 my $file_str = <<'EOF';
-yabsm_dir=/
+yabsm_dir=/.snapshots/yabsm
 
 subvol root {
     mountpoint=/
@@ -44,13 +44,15 @@ subvol root {
     hourly_want=yes
     hourly_keep=24
 
-    midnight_want=no
+    daily_want=no
 
     weekly_want=yes
-    weekly_keep=7
     weekly_day=tuesday
+    weekly_time=23:59
+    weekly_keep=7
 
     monthly_want=yes
+    monthly_time=12:30
     monthly_keep=12
 }
 
@@ -62,8 +64,9 @@ subvol home {
 
     hourly_want=no
 
-    midnight_want=yes
-    midnight_keep=14
+    daily_want=yes
+    daily_time=23:59
+    daily_keep=14
 
     weekly_want=no
 
@@ -76,7 +79,8 @@ backup rootBackup {
     backup_dir=/
     keep=100
     timeframe=weekly
-    weekly_day=friday
+    day=friday
+    time=23:59
 }
 
 backup homeBackup {
@@ -89,17 +93,19 @@ backup homeBackup {
 }
 EOF
 
-my %t_conf = ( misc    => { yabsm_dir => '/' } 
+my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' } 
 
              , subvols => { root => { mountpoint   => '/'
                                     , '5minute_want' => 'no'
                                     , hourly_want => 'yes'
                                     , hourly_keep => '24'
-                                    , midnight_want => 'no'
+                                    , daily_want => 'no'
                                     , weekly_want => 'yes'
-                                    , weekly_keep => '7'
                                     , weekly_day => 'tuesday'
+                                    , weekly_time => '23:59'
+                                    , weekly_keep => '7'
                                     , monthly_want => 'yes'
+                                    , monthly_time  => '12:30'
                                     , monthly_keep => '12'
                                     } 
 
@@ -107,20 +113,22 @@ my %t_conf = ( misc    => { yabsm_dir => '/' }
                                     , '5minute_want' => 'yes'
                                     , '5minute_keep' => '12'
                                     , hourly_want => 'no'
-                                    , midnight_want => 'yes'
-                                    , midnight_keep => '14'
+                                    , daily_want => 'yes'
+                                    , daily_time => '23:59'
+                                    , daily_keep => '14'
                                     , weekly_want => 'no'
                                     , monthly_want => 'no'
                                     } 
 
                           }
 
-             , backups => { rootBackup => { remote => 'no'
-                                          , subvol => 'root'
+             , backups => { rootBackup => { subvol => 'root'
+                                          , remote => 'no'
                                           , backup_dir => '/'
                                           , keep => '100'
                                           , timeframe => 'weekly'
-                                          , weekly_day => 'friday'
+                                          , day => 'friday'
+                                          , time => '23:59'
                                           }
 
                           , homeBackup => { remote => 'yes'

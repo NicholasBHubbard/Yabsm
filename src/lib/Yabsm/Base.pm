@@ -730,13 +730,26 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     confess "yabsm: internal error: '$lit_time' is not a valid literal time";
 }
 
-sub is_valid_time { # Has test. Is pure.
+sub time_hour { # Has test. Is pure.
+
+    # Takes a time of the form 'hh:mm' and returns the hour (hh).
 
     my $time = shift // Yabsm::Base::missing_arg();
 
-    2 == (my ($hr, $min) = split ':', $time) or return 0;
+    my ($hr, undef) = split ':', $time, 2;
 
-    return $hr >= 0 && $hr <= 23 && $min >=0 && $min <= 59;
+    return $hr;
+}
+
+sub time_minute { # Has test. Is pure.
+
+    # Takes a time of the form 'hh:mm' and returns the minute (hh).
+
+    my $time = shift // Yabsm::Base::missing_arg();
+
+    my (undef, $min) = split ':', $time, 2;
+
+    return $min;
 }
 
 sub relative_time_to_snapstring { # Has test. Is not pure.
@@ -1245,14 +1258,14 @@ sub is_between_query { # Has test. Is pure.
     return $keyword_correct && $imm1_correct && $imm2_correct;
 }
 
-sub all_timeframes { # TODO
+sub all_timeframes { # Has test. Is pure.
 
     # Return an array of all yabsm timeframes.
 
-    return qw(5minute hourly midnight weekly monthly);
+    return qw(5minute hourly daily weekly monthly);
 }
 
-sub is_timeframe { # TODO
+sub is_timeframe { # Has test. Is pure.
 
     # true if $tf is a yabsm timeframe.
 
@@ -1412,32 +1425,36 @@ sub generate_cron_strings { # No test. Is pure.
 
 	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
 	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
-	my $midnight_want = $config_ref->{subvols}{$subvol}{midnight_want};
+	my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
 	my $weekly_want   = $config_ref->{subvols}{$subvol}{weekly_want};
 	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
         
-        my $_5minute_cron = ( '*/5 * * * * root' # every 5 minutes
-			    . " yabsm take-snap $subvol 5minute"
-			    ) if $_5minute_want eq 'yes';
-        
-        my $hourly_cron   = ( '0 */1 * * * root' # beginning of every hour
-			    . " yabsm take-snap $subvol hourly"
-			    ) if $hourly_want eq 'yes';
-        
-        my $midnight_cron = ( '59 23 * * * root' # 11:59 every night
-                            . " yabsm take-snap $subvol midnight"
-			    ) if $midnight_want eq 'yes';
+        if ($_5minute_want eq 'yes') {
+            push @crons, "*/5 * * * * root yabsm take-snap $subvol 5minute"
+        }
 
-        my $weekly_cron   = ( '59 23 * * '
-                            . day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day})
-                            . " root yabsm take-snap $subvol weekly"
-                            ) if $weekly_want eq 'yes';
+        if ($hourly_want eq 'yes') {
+            push @crons, "0 */1 * * * root yabsm take-snap $subvol hourly"
+        }
         
-        my $monthly_cron  = ( '0 0 1 * * root' # First day of every month
-			    . " yabsm take-snap $subvol monthly"
-			    ) if $monthly_want eq 'yes';
+        if ($daily_want eq 'yes') {
+            my $hr = time_hour($config_ref->{subvols}{$subvol}{daily_time});
+            my $min = time_minute($config_ref->{subvols}{$subvol}{daily_time});
+            push @crons, "$min $hr * * * root yabsm take-snap $subvol daily";
+        }
 
-        push @crons, grep { defined } ($_5minute_cron, $hourly_cron, $midnight_cron, $weekly_cron, $monthly_cron);
+        if ($weekly_want eq 'yes') {
+            my $hr  = time_hour($config_ref->{subvols}{$subvol}{weekly_time});
+            my $min = time_minute($config_ref->{subvols}{$subvol}{weekly_time});
+            my $dow = day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day});
+            push @crons, "$min $hr * * $dow root yabsm take-snap $subvol weekly";
+        }
+
+        if ($monthly_want eq 'yes') {
+            my $hr  = time_hour($config_ref->{subvols}{$subvol}{monthly_time});
+            my $min = time_minute($config_ref->{subvols}{$subvol}{monthly_time});
+            push @crons, "$min $hr 1 * * root yabsm take-snap $subvol monthly";
+        }
     }
 
     foreach my $backup (all_backups($config_ref)) {
@@ -1452,17 +1469,23 @@ sub generate_cron_strings { # No test. Is pure.
 	    push @crons, "0 */1 * * * root yabsm incremental-backup $backup";
 	}
 
-	elsif ($timeframe eq 'midnight') {
-	    push @crons, "59 23 * * * root yabsm incremental-backup $backup";
+	elsif ($timeframe eq 'daily') {
+            my $hr  = time_hour($config_ref->{backups}{$backup}{time});
+            my $min = time_minute($config_ref->{backups}{$backup}{time});
+	    push @crons, "$min $hr * * * root yabsm incremental-backup $backup";
 	}
 
 	elsif ($timeframe eq 'weekly') {
-            my $dow_num = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
-	    push @crons, "59 23 * * $dow_num root yabsm incremental-backup $backup";
+            my $hr  = time_hour($config_ref->{backups}{$backup}{time});
+            my $min = time_minute($config_ref->{backups}{$backup}{time});
+            my $dow = day_of_week_num($config_ref->{backups}{$backup}{day});
+	    push @crons, "$min $hr * * $dow root yabsm incremental-backup $backup";
 	}
 
 	elsif ($timeframe eq 'monthly') {
-	    push @crons, "0 0 1 * * root yabsm incremental-backup $backup";
+            my $hr  = time_hour($config_ref->{backups}{$backup}{time});
+            my $min = time_minute($config_ref->{backups}{$backup}{time});
+	    push @crons, "$min $hr 1 * * root yabsm incremental-backup $backup";
 	}
 
 	else {

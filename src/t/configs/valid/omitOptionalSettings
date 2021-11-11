@@ -13,8 +13,8 @@ subvol home {
        hourly_want=no     # always required
        ###hourly_keep=100 # only required if hourly_want=no
 
-       midnight_want=no     # always required
-       ###midnight_keep=100 # only required if midnight_want=yes
+       daily_want=no     # always required
+       ###daily_keep=100 # only required if daily_want=yes
 
        weekly_want=no       # always required
        ###weekly_keep=100   # only required if weekly_want=yes
@@ -35,7 +35,5 @@ backup homeBackup {
 
        keep=100 # always required
 
-       timeframe=midnight # always required
-
-       ###weekly_day=monday # only required if timeframe=weekly
+       timeframe=5minute # always required
 }

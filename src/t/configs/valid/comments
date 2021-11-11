@@ -16,12 +16,15 @@ subvol home {#comment
        5minute_keep=100#comment
        hourly_want=yes#comment
        hourly_keep=100#comment
-       midnight_want=yes#comment
-       midnight_keep=100#comment
+       daily_want=yes#comment
+       daily_time=23:59#comment
+       daily_keep=100#comment
        weekly_want=yes#comment
        weekly_keep=100#comment
+       weekly_time=23:59#comment
        weekly_day=monday#comment
        monthly_want=yes#comment
+       monthly_time=23:59#comment
        monthly_keep=100#comment
 }#comment
 #comment
@@ -32,7 +35,8 @@ backup homeBackup {#comment
        host=foobar#comment
        backup_dir=/#comment
        timeframe=weekly#comment
-       weekly_day=monday#comment
+       day=monday#comment
+       time=23:59#comment
        keep=100#comment
 }#comment
 #comment

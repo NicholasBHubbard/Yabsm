@@ -1,6 +1,5 @@
 #
 # This config shows we cannot backup an undefined subvol
-# define backup block.
 #
 
 yabsm_dir=/#always required
@@ -9,6 +8,6 @@ backup someBackup {
     subvol=notASubvol
     remote=no
     backup_dir=/
-    timeframe=hourly
+    timeframe=5minute
     keep=100
 }

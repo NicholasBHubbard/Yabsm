@@ -1,15 +1,14 @@
 #
-# This config shows we can define a backup before the subvol it backs up
+# This config show we cannot leave out a TFRAME_time setting
 #
 
-yabsm_dir=/
-
-# backup comes first
 backup homeBackup {
+    timeframe=daily
+    ### time=23:59 # REQUIRED
+
     subvol=home
     remote=no
     backup_dir=/home
-    timeframe=5minute
     keep=12
 }
 

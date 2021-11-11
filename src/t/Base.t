@@ -51,15 +51,18 @@ sub gen_random_config {
 	my $hourly_want   = yes_or_no();
 	my $hourly_keep   = 1 + int(rand(1000));
 
-	my $midnight_want = yes_or_no();
-	my $midnight_keep = 1 + int(rand(1000));
+	my $daily_want = yes_or_no();
+	my $daily_time = rand_time();
+	my $daily_keep = 1 + int(rand(1000));
 
 	my $weekly_want = yes_or_no();
-	my $weekly_keep = 1 + int(rand(1000));
+	my $weekly_time = rand_time();
 	my $weekly_day  = rand_day_of_week();
+	my $weekly_keep = 1 + int(rand(1000));
 
-	my $monthly_want  = yes_or_no();
-	my $monthly_keep  = 1 + int(rand(1000));
+	my $monthly_want = yes_or_no();
+	my $monthly_time = rand_time();
+	my $monthly_keep = 1 + int(rand(1000));
 
 	# add entries to the config
 
@@ -71,14 +74,17 @@ sub gen_random_config {
 	$config{subvols}{$subvol}{hourly_want} = $hourly_want;
 	$config{subvols}{$subvol}{hourly_keep} = $hourly_keep;
 
-	$config{subvols}{$subvol}{midnight_want} = $midnight_want;
-	$config{subvols}{$subvol}{midnight_keep} = $midnight_keep;
+	$config{subvols}{$subvol}{daily_want} = $daily_want;
+	$config{subvols}{$subvol}{daily_time} = $daily_time;
+	$config{subvols}{$subvol}{daily_keep} = $daily_keep;
 
 	$config{subvols}{$subvol}{weekly_want} = $weekly_want;
+	$config{subvols}{$subvol}{weekly_time} = $weekly_time;
+	$config{subvols}{$subvol}{weekly_day}  = $weekly_day;
 	$config{subvols}{$subvol}{weekly_keep} = $weekly_keep;
-	$config{subvols}{$subvol}{weekly_day} = $weekly_day;
 
 	$config{subvols}{$subvol}{monthly_want} = $monthly_want;
+	$config{subvols}{$subvol}{monthly_time} = $monthly_time;
 	$config{subvols}{$subvol}{monthly_keep} = $monthly_keep;
     }
 
@@ -97,7 +103,13 @@ sub gen_random_config {
 	    $config{backups}{$backup}{host} = 'whatever';
 	}
 
-	$config{backups}{$backup}{timeframe} = rand_backup_timeframe();
+        my $timeframe = rand_timeframe();
+
+	$config{backups}{$backup}{timeframe} = $timeframe;
+
+        if (grep { $_ eq $timeframe } qw(daily weekly monthly)) {
+            $config{backups}{$backup}{timeframe} = rand_time();
+        }
 
 	$config{backups}{$backup}{keep} = 1 + int(rand(1000));
     }
@@ -115,16 +127,16 @@ sub gen_n_random_snap_paths {
     # chosen at random, and combined with a random snapsting to help
     # generate random snapshots.
     my @potential_paths = ( '/.snapshots/yabsm/root/daily/'
-			  , '/.snapshots/yabsm/root/midnight/'
+			  , '/.snapshots/yabsm/root/5minute/'
 			  , '/.snapshots/yabsm/root/monthly/'
 			  
 			  , '/.snapshots/yabsm/home/hourly/'
 			  , '/.snapshots/yabsm/home/daily/'
-			  , '/.snapshots/yabsm/home/midnight/'
+			  , '/.snapshots/yabsm/home/5minute/'
 			  , '/.snapshots/yabsm/home/monthly/'
 			  
 			  , '/.snapshots/yabsm/etc/hourly/'
-			  , '/.snapshots/yabsm/etc/midnight/'
+			  , '/.snapshots/yabsm/etc/5minute/'
 			  );
 
     my @snaps;
@@ -163,29 +175,40 @@ sub yes_or_no {
     else            { return 'no'  }
 }
 
-sub rand_backup_timeframe {
-
-    # randomly return a backup timeframe
-
-    my $rand = int(rand(4));
-
-    if    ($rand == 1) { return 'hourly'   }
-    elsif ($rand == 2) { return 'midnight' }
-    elsif ($rand == 3) { return 'weekly'   }
-    else               { return 'monthly'  }
-}
-
-sub rand_day_of_week {
+sub rand_timeframe {
 
     # randomly return a backup timeframe
 
     my $rand = int(rand(5));
 
-    if    ($rand == 1) { return '5minute'  }
-    elsif ($rand == 2) { return 'hourly'   }
-    elsif ($rand == 3) { return 'midnight' }
-    elsif ($rand == 4) { return 'weekly'   }
-    else               { return 'monthly'  }
+    if    ($rand == 0) { return '5minute' }
+    elsif ($rand == 1) { return 'hourly'  }
+    elsif ($rand == 2) { return 'daily'   }
+    elsif ($rand == 3) { return 'weekly'  }
+    else               { return 'monthly' }
+}
+
+sub rand_time {
+
+    my $hr = int(rand(23));
+    my $min = int(rand(59));
+
+    return "$hr:$min";
+}
+
+sub rand_day_of_week {
+
+    # randomly return a day of the week
+
+    my $rand = 1 + int(rand(7));
+
+    if    ($rand == 1) { return 'monday'    }
+    elsif ($rand == 2) { return 'tuesday'   }
+    elsif ($rand == 3) { return 'wednesday' }
+    elsif ($rand == 4) { return 'thursday'  }
+    elsif ($rand == 5) { return 'friday'    }
+    elsif ($rand == 6) { return 'saturday'  }
+    else               { return 'sunday'    }
 }
 
                  ####################################
@@ -195,11 +218,11 @@ sub rand_day_of_week {
 test_cmp_snaps();
 sub test_cmp_snaps {
     
-    my $oldest  = '/.snapshots/yabsm/home/midnight/day=2020_01_07,time=15:30';
+    my $oldest  = '/.snapshots/yabsm/home/5minute/day=2020_01_07,time=15:30';
 
     # same times but different paths
     my $middle1 = '/.snapshots/yabsm/root/daily/day=2020_02_07,time=15:30';
-    my $middle2 = '/.snapshots/yabsm/home/midnight/day=2020_02_07,time=15:30';
+    my $middle2 = '/.snapshots/yabsm/home/hourly/day=2020_02_07,time=15:30';
 
     my $newest  = '/.snapshots/yabsm/root/daily/day=2020_03_07,time=15:30';
 
@@ -997,25 +1020,30 @@ sub test_is_remote_backup {
     ok ( $correct, 'is_remote_backup()' );
 }
 
-test_is_valid_time();
-sub test_is_valid_time{
+test_time_hour();
+sub test_time_hour {
 
-    my $t1 = Yabsm::Base::is_valid_time('0:0');
-    my $t2 = Yabsm::Base::is_valid_time('00:00');
-    my $t3 = Yabsm::Base::is_valid_time('23:59');
-    my $t4 = Yabsm::Base::is_valid_time('6:30');
-    my $t5 = Yabsm::Base::is_valid_time('12:3');
+    my $t1 = '12' eq Yabsm::Base::time_hour('12:30');
+    my $t2 = '23' eq Yabsm::Base::time_hour('23:00');
+    my $t3 = '08' eq Yabsm::Base::time_hour('08:00');
+    my $t4 = '00' eq Yabsm::Base::time_hour('00:30');
 
-    my $f1 = Yabsm::Base::is_valid_time('');
-    my $f2 = Yabsm::Base::is_valid_time(' ');
-    my $f3 = Yabsm::Base::is_valid_time('24:0');
-    my $f4 = Yabsm::Base::is_valid_time('0:60');
-    my $f5 = Yabsm::Base::is_valid_time('120:60');
+    my $t = $t1 && $t2 && $t3 && $t4;
 
-    my $trues = $t1 && $t2 && $t3 && $t4 && $t5;
-    my $falses = not( $f1 || $f2 || $f3 || $f4 || $f5);
+    ok ( $t, 'time_hour' );
+}
 
-    ok ( $trues && $falses, 'is_valid_time()' );
+test_time_minute();
+sub test_time_minute {
+
+    my $t1 = '30' eq Yabsm::Base::time_minute('12:30');
+    my $t2 = '59' eq Yabsm::Base::time_minute('12:59');
+    my $t3 = '00' eq Yabsm::Base::time_minute('08:00');
+    my $t4 = '30' eq Yabsm::Base::time_minute('00:30');
+
+    my $t = $t1 && $t2 && $t3 && $t4;
+
+    ok ( $t, 'time_minute' );
 }
 
 test_is_snapstring();
@@ -1142,11 +1170,28 @@ sub test_day_of_week_num {
 test_all_timeframes();
 sub test_all_timeframes {
 
-    my @expected = qw(5minute hourly midnight weekly monthly);
+    my @expected = qw(5minute hourly daily weekly monthly);
 
     my @got = Yabsm::Base::all_timeframes();
 
     is_deeply ( \@got, \@expected, 'all_timeframes()' );
+}
+
+test_is_timeframe();
+sub test_is_timeframe {
+
+    my @tframes = qw(5minute hourly daily weekly monthly);
+
+    my $t = 1;
+    for my $tf (@tframes) {
+        $t = 0 unless Yabsm::Base::is_timeframe($tf);
+    }
+
+    $t = 0 if Yabsm::Base::is_timeframe('');
+    $t = 0 if Yabsm::Base::is_timeframe(' ');
+    $t = 0 if Yabsm::Base::is_timeframe('not_a_timeframe');
+
+    ok ( $t, 'is_timeframe()' );
 }
 
 test_is_subvol_timeframe();
@@ -1154,7 +1199,7 @@ sub test_is_subvol_timeframe {
 
     my $t1 = Yabsm::Base::is_timeframe('5minute');
     my $t2 = Yabsm::Base::is_timeframe('hourly');
-    my $t3 = Yabsm::Base::is_timeframe('midnight');
+    my $t3 = Yabsm::Base::is_timeframe('daily');
     my $t4 = Yabsm::Base::is_timeframe('weekly');
     my $t5 = Yabsm::Base::is_timeframe('monthly');
 
@@ -1166,9 +1211,10 @@ sub test_is_subvol_timeframe {
     my $f6 = Yabsm::Base::is_timeframe('hourly ');
     my $f7 = Yabsm::Base::is_timeframe(' hourly ');
     my $f8 = Yabsm::Base::is_timeframe('HOURLY');
+    my $f9 = Yabsm::Base::is_timeframe('midnight'); # used to be a timeframe
 
     my $trues = $t1 && $t2 && $t3 && $t4 && $t5;
-    my $falses = not($f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8);
+    my $falses = not($f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 || $f8 || $f9);
 
     ok ( $trues && $falses, 'is_timeframe()' );
 }

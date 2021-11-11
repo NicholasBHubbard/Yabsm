@@ -1,15 +1,14 @@
 #
-# This config shows we must use a valid day for a subvols 'weekly_day' setting
+# This config shows we cannot leave out a weekly_time setting for a subvol
 #
 
 yabsm_dir=/#always required
 
 subvol home {
-
     weekly_want=yes
-    weekly_day=notaday # NOT A WEEK DAY
-    weekly_time=23:59
-    weekly_keep=100
+    weekly_day=monday
+    weekly_keep=12
+    ### weekly_time=23:59 # REQUIRED
 
     mountpoint=/home
     5minute_want=no

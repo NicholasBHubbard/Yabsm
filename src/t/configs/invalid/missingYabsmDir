@@ -8,7 +8,7 @@ subvol home {
     mountpoint=/home
     5minute_want=no
     hourly_want=no
-    midnight_want=no
+    daily_want=no
     weekly_want=no
     monthly_want=no
 }

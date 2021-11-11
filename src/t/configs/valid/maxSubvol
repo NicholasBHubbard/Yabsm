@@ -1,0 +1,29 @@
+#
+# This config shows a subvol with the max amount of defined settings 
+#
+
+yabsm_dir=/#always_required
+
+subvol home {
+    mountpoint=/home
+
+    5minute_want=yes
+    5minute_keep=100
+
+    hourly_want=yes
+    hourly_keep=100
+
+    daily_want=yes
+    daily_keep=100
+    daily_time=03:40
+
+    weekly_want=yes
+    weekly_day=friday
+    weekly_keep=100
+    weekly_time=13:35
+
+    monthly_want=yes
+    monthly_time=03:04
+    monthly_keep=100
+}
+

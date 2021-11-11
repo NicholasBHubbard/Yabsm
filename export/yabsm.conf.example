@@ -1,64 +1,66 @@
-# 'yabsm_dir' is a required setting. The directory value is taken
-# literally so you almost certainly want this setting to end in
-# '/yabsm'. Yabsm will create this directory for you if it does
-# not exist.
+# This config specifies two subvols ('home' and 'root'), and one
+# backup ('rootBackup').
+
+# 'yabsm_dir' is a required setting that specifies the directory where
+# snapshots will be placed. This directory is also used as a working
+# directory for performing incremental backups. The directory value is
+# taken literally so you almost certainly want this setting to end in
+# '/yabsm'. Yabsm will create this directory for you if it does not
+# exist. It only makes sense for this directory to be part of a btrfs
+# filesystem.
 yabsm_dir=/.snapshots/yabsm
 
-# This is a subvol definition with the maximum settings. There are no
-# other possible subvol settings than the ones specified here. The
-# name of this subvol is 'root'. A subvol name should match
-# /[a-zA-Z][-_0-9a-zA-Z]*/. Depending
+# This subvol is named 'root' and is taking 5minute, hourly, and
+# weekly snapshots. These snapshots will be placed in
+# '/.snapshots/yabsm/root/{5minute,hourly,weekly}'.
 subvol root {
 
     # the mountpoint setting is the interface between a yabsm subvol and a
-    # btrfs subvolume. mountpoint is always required.
+    # btrfs subvolume.
     mountpoint=/
 
-    5minute_want=yes # take a snapshot every 5 minutes
+    5minute_want=yes # take a snapshot every 5 minutes?
     5minute_keep=24
 
     hourly_want=yes # take a snapshot at the beginning of every hour
     hourly_keep=36
 
-    midnight_want=yes # take a snapshot every night at 23:59
-    midnight_keep=21
+    midnight_want=no # take a snapshot every night at 23:59?
 
     weekly_want=yes # take a snapshot at 23:59 on one day of the week
-    weekly_day=sunday # can be any day of the week (all lowercase)
+    weekly_day=sunday # can be any day of the week (lowercase)
     weekly_keep=21
     
-    monthly_want=yes # take a snapshot at 00:00 on the first of every month
-    monthly_keep=12 
+    monthly_want=no # take a snapshot at 00:00 on the first of every month?
 
 } # closing brace
 
-# This is a minimal subvol definition. Comparing this subvol 
-# to the first subvol we can see that if 'TIMEFRAME_want=no'
-# then it is unnecessary to define TIMEFRAMEs other settings.
-# A subvol with all 'TIMEFRAME_want=no' settings is useful if
-# you do not want to take any local snapshots but still want
-# to backup the subvol to say a remote server.
+# We can define as many 'subvol's as we want. This subvol is taking
+# 5minute and midnight snapshots of the btrfs subvolume mounted at
+# /home.
 subvol home {
 
     mountpoint=/home
 
-    5minute_want=no 
+    5minute_want=yes 
+    5minute_keep=120 
 
     hourly_want=no
 
-    midnight_want=no
+    midnight_want=yes
+    midnight_keep=30
 
     weekly_want=no
 
     monthly_want=no
 }
 
-# Backup definition headers have the form 'backup NAME {'
-# A backup name should match /[a-zA-Z][-_0-9a-zA-Z]*/
-backup homeBackup {
+# This backup will take remote incremental backups of the 'root'
+# subvol.
+backup rootBackup {
 
     # must be a defined subvol.
-    subvol=home
+    subvol=root
 
     remote=yes
 
@@ -67,14 +69,11 @@ backup homeBackup {
     host=user@192.168.1.73
 
     # This directory is taken literally. If the backup is a remote backup
-    # this directory will not be created automatically.
-    backup_dir=/backups/yabsm/homeBackup
+    # this directory must already exist on the remote machine.
+    backup_dir=/backups/yabsm/rootBackup
 
-    # how often should a backup occur?
-    # can be any of 5minute, hourly, midnight, weekly, monthly
+    # Can be any of 5minute, hourly, midnight, weekly, monthly
     timeframe=midnight
 
-    # minimum is 1
     keep=60
-
-} # closing brace
+}

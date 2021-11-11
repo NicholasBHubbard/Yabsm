@@ -269,9 +269,6 @@ sub do_incremental_backup_local { # No test. Is not pure.
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    # we have not already bootstrapped
-    # do incremental backup
-	
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};

@@ -17,8 +17,7 @@ my $YABSM_VERSION = 2.2;
 
 sub usage {
     print <<END_USAGE;
-usage: yabsm [--help] [--version]
-             <command> [<args>]
+yabsm: usage: yabsm [--help] [--version] <command> <arg(s)>
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or

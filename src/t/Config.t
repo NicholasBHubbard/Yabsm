@@ -119,7 +119,6 @@ my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' }
                                     , weekly_want => 'no'
                                     , monthly_want => 'no'
                                     } 
-
                           }
 
              , backups => { rootBackup => { subvol => 'root'

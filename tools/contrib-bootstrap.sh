@@ -2,6 +2,8 @@
 
 # Bootstrap an environment for hacking on YABSM.
 
+set -e
+
 SCRIPT=${0##*/}
 
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)

@@ -43,11 +43,8 @@ PERL_EXECUTABLE="$PERL_BUILD_DIR/bin/perl"
 
 PERL_BUILD_COMMAND="curl -L https://raw.githubusercontent.com/tokuhirom/Perl-Build/master/perl-build | perl - 5.16.3 $PERL_BUILD_DIR"
 
-PLX_DIR="$YABSM_ROOT/.plx"
-PLX_EXECUTABLE="$PLX_DIR/plx"
-PLX_INSTALL_COMMAND="mkdir $PLX_DIR ; wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O $PLX_EXECUTABLE"
-
-YABSM_DEPENDENCIES='lib::relative@1.000 Array::Utils@0.5 App::FatPacker@0.10.8 Net::OpenSSH@0.80 Parser::MGC@0.19 Test::Exception@0.43'
+PLX_EXECUTABLE="$YABSM_ROOT/plx"
+PLX_INSTALL_COMMAND="wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O $PLX_EXECUTABLE"
 
 echo "$SCRIPT: Executing: $PERL_BUILD_COMMAND"
 eval "$PERL_BUILD_COMMAND"
@@ -57,6 +54,9 @@ eval "$PLX_INSTALL_COMMAND"
 
 chmod 0774 "$PLX_EXECUTABLE"
 
-$PLX_EXECUTABLE --config perl set "$PERL_EXECUTABLE" 
+$PLX_EXECUTABLE --init "$PERL_EXECUTABLE"
+mv "$PLX_EXECUTABLE" "$YABSM_ROOT/.plx"
+PLX_EXECUTABLE="$YABSM_ROOT/.plx/plx"
 
+YABSM_DEPENDENCIES='lib::relative@1.000 Array::Utils@0.5 App::FatPacker@0.10.8 Net::OpenSSH@0.80 Parser::MGC@0.19 Test::Exception@0.43'
 $PLX_EXECUTABLE --cpanm -Llocal "$YABSM_DEPENDENCIES"

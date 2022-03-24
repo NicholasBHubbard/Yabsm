@@ -59,4 +59,4 @@ mv "$PLX_EXECUTABLE" "$YABSM_ROOT/.plx"
 PLX_EXECUTABLE="$YABSM_ROOT/.plx/plx"
 
 YABSM_DEPENDENCIES='lib::relative@1.000 Array::Utils@0.5 App::FatPacker@0.10.8 Net::OpenSSH@0.80 Parser::MGC@0.19 Test::Exception@0.43'
-$PLX_EXECUTABLE --cpanm -Llocal "$YABSM_DEPENDENCIES"
+$PLX_EXECUTABLE --cpanm -L local -i "$YABSM_DEPENDENCIES"

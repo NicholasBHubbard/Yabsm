@@ -47,7 +47,10 @@ PLX_INSTALL_COMMAND="mkdir $PLX_DIR ; wget https://raw.githubusercontent.com/sha
 
 YABSM_DEPENDENCIES='lib::relative@1.000 Array::Utils@0.5 App::FatPacker@0.10.8 Net::OpenSSH@0.80 Parser::MGC@0.19 Test::Exception@0.43'
 
+echo "$SCRIPT: Executing: $PERL_BUILD_COMMAND"
 eval "$PERL_BUILD_COMMAND"
+
+echo "$SCRIPT: Executing: $PLX_INSTALL_COMMAND"
 eval "$PLX_INSTALL_COMMAND"
 
 chmod 0774 "$PLX_EXECUTABLE"

@@ -15,7 +15,7 @@ usage: $SCRIPT [OPTIONS]
 Options are:
   -h            Show this help message.
   -d directory  Install Perl v5.16.3 to DIRECTORY. By default installs to 
-                \$HOME/perl-5.16.3.
+                yabsm/perl-5.16.3.
 EOF
 )
 
@@ -38,7 +38,7 @@ while [ -n "$1" ]; do
   esac  
 done
 
-PERL_BUILD_DIR=${PERL_BUILD_DIR:-"$HOME/perl-5.16.3"}
+PERL_BUILD_DIR=${PERL_BUILD_DIR:-"$YABSM_ROOT/perl-5.16.3"}
 PERL_EXECUTABLE="$PERL_BUILD_DIR/bin/perl"
 
 PERL_BUILD_COMMAND="curl -L https://raw.githubusercontent.com/tokuhirom/Perl-Build/master/perl-build | perl - 5.16.3 $PERL_BUILD_DIR"

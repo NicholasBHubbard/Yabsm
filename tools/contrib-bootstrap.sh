@@ -50,6 +50,8 @@ YABSM_DEPENDENCIES='lib::relative@1.000 Array::Utils@0.5 App::FatPacker@0.10.8 N
 eval "$PERL_BUILD_COMMAND"
 eval "$PLX_INSTALL_COMMAND"
 
+chmod +x "$PLX_INSTALL_COMMAND"
+
 $PLX_EXECUTABLE --init "$PERL_EXECUTABLE" 
 
 $PLX_EXECUTABLE --cpanm -Llocal "$YABSM_DEPENDENCIES"

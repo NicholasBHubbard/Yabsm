@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# Use App::FatPacker to pack all of yabsm including its dependencies into one
+# script. The end user will be given only the fatpacked script.
+
+# Lets work from the yabsm root directory.
+YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
+cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
+
+SRC_DIR="$YABSM_ROOT"/src
+EXPORT_DIR="$YABSM_ROOT"/export
+FATPACK_EXECUTABLE="$YABSM_ROOT"/local/bin/fatpack
+
+"$YABSM_ROOT/.plx/plx" --perl "$FATPACK_EXECUTABLE" pack "$SRC_DIR"/yabsm.pl > "$EXPORT_DIR/yabsm.fatpack.pl"
+rm -rf "$SRC_DIR"/fatlib

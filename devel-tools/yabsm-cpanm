@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# Install modules from cpan using cpanm yabsms local lib using plx
+
+set -e
+
+SCRIPT=${0##*/}
+
+USAGE=$(cat <<EOF 
+usage: $SCRIPT [options] [modules]
+  -h  Show this help message.
+  -s  Prevent passing --force flag to cpanm.
+
+See \`plx --cpanm -L local --help\` for a synopsis on cpanm options.
+EOF
+)
+
+while [ -n "$1" ]; do
+  opt=$1
+  shift
+  case $opt in
+    -h)
+      echo "$USAGE"
+      exit 0
+      ;;
+    -s)
+      CPANM_FORCE_FLAG=no
+      ;;
+    *)
+      echo "$USAGE"
+      exit 1
+      ;;
+  esac
+done
+
+# Lets work from the yabsm root directory.
+YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
+cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
+
+# Generate the plx --cpanm command.
+
+if [ no == $CPANM_FORCE_FLAG ]; then # use --force flag by default.
+  CPANM_FORCE_FLAG=''
+else
+  CPANM_FORCE_FLAG='--force'
+fi
+
+CPANM_COMMAND="$YABSM_ROOT/.plx/plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $*"
+echo "$SCRIPT: executing: $CPANM_COMMAND"
+eval "$CPANM_COMMAND"

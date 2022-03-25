@@ -413,3 +413,11 @@ command without a password.
 #+END_SRC 
 
 Finally the remote backups =backup_dir= must already exist.
+
+* Contributing
+
+See CONTRIBUTING.
+
+* License
+
+MIT

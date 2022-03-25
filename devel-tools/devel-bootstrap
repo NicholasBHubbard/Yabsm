@@ -7,7 +7,6 @@ set -e
 SCRIPT=${0##*/}
 
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
-
 cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
 
 USAGE=$(cat <<EOF
@@ -58,8 +57,12 @@ $PLX_EXECUTABLE --init "$PERL_EXECUTABLE"
 mv "$PLX_EXECUTABLE" "$YABSM_ROOT/.plx"
 PLX_EXECUTABLE="$YABSM_ROOT/.plx/plx"
 
+sed -e 's/[\t ]//g;/^$/d' "$YABSM_ROOT/DEPENDENCIES" | while read -r dep; do
+  YABSM_DEPENDENCIES="$DEPENDENCIES $dep"
+done
+  
 YABSM_DEPENDENCIES='lib::relative@1.000 Array::Utils@0.5 App::FatPacker@0.10.8 Net::OpenSSH@0.80 Parser::MGC@0.19 Test::Exception@0.43'
-INSTALL_DEPENDENCIES_COMMAND="$PLX_EXECUTABLE --cpanm -L local -i $YABSM_DEPENDENCIES"
+INSTALL_DEPENDENCIES_COMMAND="$PLX_EXECUTABLE --cpanm --force -L local -i $YABSM_DEPENDENCIES"
 
 echo "$SCRIPT: Executing: $INSTALL_DEPENDENCIES_COMMAND"
 eval "$INSTALL_DEPENDENCIES_COMMAND"

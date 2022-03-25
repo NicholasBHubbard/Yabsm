@@ -25,7 +25,7 @@ EOF
 )
 
 while [ -n "$1" ]; do
-  opt="$1"
+  opt=$1
   shift
   case $opt in
     -h)

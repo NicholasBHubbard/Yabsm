@@ -52,6 +52,6 @@ else
   CPANM_FORCE_FLAG='--force'
 fi
 
-CPANM_COMMAND="$YABSM_ROOT/.plx/plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $MODULES"
+CPANM_COMMAND="PERL_CPANM_HOME=$YABSM_ROOT/.cpanm $YABSM_ROOT/.plx/plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $MODULES"
 echo "$SCRIPT: executing: $CPANM_COMMAND"
 eval "$CPANM_COMMAND"

@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 
-# Bootstrap an environment for hacking on YABSM.
+# Bootstrap an environment for hacking on YABSM. We are going to use Perl::Build
+# to compile Perl version 5.16.3 and set up App::plx to use the Perl we build.
+#
+# Once we have plx setup we are going to generate another script that can be
+# sourced to TODO
+#
+# Perl::Build - https://metacpan.org/pod/Perl::Build
+# App::plx    - https://metacpan.org/pod/App::plx
 
 set -e
 
 SCRIPT=${0##*/}
-
-YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
-cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
 
 USAGE=$(cat <<EOF
 usage: $SCRIPT [OPTIONS]
@@ -42,38 +46,43 @@ while [ -n "$1" ]; do
   esac  
 done
 
+# Lets work from the yabsm root directory.
+YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
+cd "$YABSM_ROOT" || (echo "$SCRIPT: could not cd to '$YABSM_ROOT'" >&2 && exit 1)
+
+# Build Perl v5.16.3 with Perl::Build.
 PERL_BUILD_DIR=${PERL_BUILD_DIR:-"$YABSM_ROOT/perl-5.16.3"}
 PERL_EXECUTABLE="$PERL_BUILD_DIR/bin/perl"
-
 PERL_BUILD_COMMAND="curl -L https://raw.githubusercontent.com/tokuhirom/Perl-Build/master/perl-build | perl - 5.16.3 $PERL_BUILD_DIR"
-
-PLX_EXECUTABLE="$YABSM_ROOT/plx"
-PLX_INSTALL_COMMAND="wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O $PLX_EXECUTABLE"
-
-echo "$SCRIPT: Executing: $PERL_BUILD_COMMAND"
+echo "$SCRIPT: executing: $PERL_BUILD_COMMAND"
 eval "$PERL_BUILD_COMMAND"
 
-echo "$SCRIPT: Executing: $PLX_INSTALL_COMMAND"
+# Bootstrap App::plx.
+#
+# The bootstrapped version of plx comes with a packed local::lib and a modified
+# --cpanm action that uses an inline App::cpanminus ... how convenient!
+PLX_EXECUTABLE="$YABSM_ROOT/plx"
+PLX_INSTALL_COMMAND="wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O $PLX_EXECUTABLE"
+echo "$SCRIPT: executing: $PLX_INSTALL_COMMAND"
 eval "$PLX_INSTALL_COMMAND"
-
 chmod 0774 "$PLX_EXECUTABLE"
-
 $PLX_EXECUTABLE --init "$PERL_EXECUTABLE"
 mv "$PLX_EXECUTABLE" "$YABSM_ROOT/.plx"
 PLX_EXECUTABLE="$YABSM_ROOT/.plx/plx"
 
+# All modules we use that aren't built into Perl v5.16.3 must be specified in
+# the $YABSM_ROOT/DEPENDENCIES file.
+#
+# We will use plx's cpanm to install all the dependencies to a local::lib in
+# $YABSM_ROOT/local.
 while read -r dep "$(sed -e 's/[\t ]//g;/^$/d' "$YABSM_ROOT/DEPENDENCIES")"; do
   YABSM_DEPENDENCIES="$YABSM_DEPENDENCIES $dep"
 done
-
-# use --force flag by default
-if [ no == $CPANM_FORCE_FLAG ]; then
+if [ no == $CPANM_FORCE_FLAG ]; then # use --force flag by default.
   CPANM_FORCE_FLAG=''
 else
   CPANM_FORCE_FLAG='--force'
 fi
-
 INSTALL_DEPENDENCIES_COMMAND="$PLX_EXECUTABLE --cpanm -L local $CPANM_FORCE_FLAG -i $YABSM_DEPENDENCIES"
-
-echo "$SCRIPT: Executing: $INSTALL_DEPENDENCIES_COMMAND"
+echo "$SCRIPT: executing: $INSTALL_DEPENDENCIES_COMMAND"
 eval "$INSTALL_DEPENDENCIES_COMMAND"

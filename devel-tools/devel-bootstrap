@@ -80,13 +80,14 @@ while read -r dep; do
   YABSM_DEPENDENCIES="$YABSM_DEPENDENCIES $dep"
 done <<< "$(sed -e '/(^$|#.*|[\t ])/d' "$YABSM_ROOT/DEPENDENCIES")"
 
+export PERL_CPANM_HOME="$YABSM_ROOT/.cpanm"
+
 if [ no == $CPANM_FORCE_FLAG ]; then # use --force flag by default.
   CPANM_FORCE_FLAG=''
 else
   CPANM_FORCE_FLAG='--force'
 fi
 
-export PERL_CPANM_HOME="$YABSM_ROOT/.cpanm"
 INSTALL_DEPENDENCIES_COMMAND="$PLX_EXECUTABLE --cpanm -L local -v $CPANM_FORCE_FLAG -i $YABSM_DEPENDENCIES"
 echo "$SCRIPT: executing: $INSTALL_DEPENDENCIES_COMMAND"
 eval "$INSTALL_DEPENDENCIES_COMMAND"

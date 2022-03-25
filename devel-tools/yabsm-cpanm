@@ -46,13 +46,14 @@ cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit
 
 # Generate the plx --cpanm command.
 
+export PERL_CPANM_HOME="$YABSM_ROOT/.cpanm"
+
 if [ no == $CPANM_FORCE_FLAG ]; then # use --force flag by default.
   CPANM_FORCE_FLAG=''
 else
   CPANM_FORCE_FLAG='--force'
 fi
 
-export PERL_CPANM_HOME="$YABSM_ROOT/.cpanm"
 CPANM_COMMAND="$YABSM_ROOT/.plx/plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $MODULES"
 echo "$SCRIPT: executing: $CPANM_COMMAND"
 eval "$CPANM_COMMAND"

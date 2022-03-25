@@ -7,9 +7,10 @@ set -e
 SCRIPT=${0##*/}
 
 USAGE=$(cat <<EOF 
-usage: $SCRIPT [options] [modules]
-  -h  Show this help message.
-  -s  Prevent passing --force flag to cpanm.
+usage: $SCRIPT [options] [<args>]
+  -h           Show this help message.
+  -i  modules  The modules to install.
+  -s           Prevent passing --force flag to cpanm.
 
 See \`plx --cpanm -L local --help\` for a synopsis on cpanm options.
 EOF
@@ -25,6 +26,12 @@ while [ -n "$1" ]; do
       ;;
     -s)
       CPANM_FORCE_FLAG=no
+      ;;
+    -i)
+      while [ -n "$1" ]; do
+        MODULES="$MODULES $1"
+        shift
+      done
       ;;
     *)
       echo "$USAGE"
@@ -45,6 +52,6 @@ else
   CPANM_FORCE_FLAG='--force'
 fi
 
-CPANM_COMMAND="$YABSM_ROOT/.plx/plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $*"
+CPANM_COMMAND="$YABSM_ROOT/.plx/plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $MODULES"
 echo "$SCRIPT: executing: $CPANM_COMMAND"
 eval "$CPANM_COMMAND"

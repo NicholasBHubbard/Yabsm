@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # Bootstrap an environment for hacking on YABSM. We are going to use Perl::Build
-# to compile Perl version 5.16.3 and set up App::plx to use the Perl we build.
+# to compile Perl version 5.16.3, set up App::plx to use the Perl we build, and
+# then use plx to install all our dependencies into a local::lib with cpanm.
 #
 # Once we have plx setup we are going to generate another script that can be
 # sourced to TODO

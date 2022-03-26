@@ -389,8 +389,8 @@ There are 7 different kinds of queries: =relative time=, =literal time=,
      "oldest". An =oldest= query matches the one snapshot that is the oldest.
 
 **** All Query
-     An =all= query is denoted by simply passing the constant string
-     "all". An =all= query matches every snapshot.
+     An =all= query is denoted by simply passing the constant string "all". An
+     =all= query matches every snapshot.
 
 # Remote-Backups
 * Remote Backups

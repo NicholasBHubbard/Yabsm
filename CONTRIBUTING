@@ -4,21 +4,30 @@
 
 * Setup
 
-To hack on YABSM you will need an [[https://metacpan.org/pod/App::plx][App::plx]] environment with a Perl v5.16.3
-interpreter. YABSM comes with a bash script =devel-tools/devel-bootstrap= that
-will automatically set up the proper environment.
+YABSM comes with a bash script =devel-tools/devel-init= that initializes a
+YABSM development environment. This script depends on you having [[https://metacpan.org/pod/App::cpanminus][App::cpanminus]]
+and [[https://metacpan.org/pod/App::plx][App::plx]] installed. Cpanminus is packaged under most GNU/Linux distributions
+under the either the name =cpanm= or =cpanminus=.
 
-After you bootstrap your yabsm environment you can use your Perl v5.16.3
-interpreter with =.plx/plx --perl ...=.
+Once you have cpanminus installed you can install plx with the command:
+#+BEGIN_SRC
+$ cpanm App::plx
+#+END_SRC
+Now you can execute the =devel-tools/devel-init= script. This script will
+install a Perl v5.16.3 interpreter into the root of the YABSM project directory
+and setup up a plx environment.
+
+After running =devel-tools/devel-init= you can can run and test the YABSM code
+with =plx --perl [<args>]=.
 
 * Deployment
 
-When a user installs YABSM only 2 files are installed onto their system. There
+When a user installs YABSM only 2 files are installed onto their system. These
 files are =export/yabsm.fatpack.pl= and =export/yabsm.conf.example=.
 
-All dependencies are packed into one script using [[https://metacpan.org/pod/App::FatPacker][App::FatPacker]]. YABSM provides
-a bash script =devel-tools/yabsm-fatpack= that will automatically fatpack YABSM
-into =export/yabsm.fatpack.pl=.
+YABSM and all of its dependencies are packed into one script using
+[[https://metacpan.org/pod/App::FatPacker][App::FatPacker]]. YABSM provides a bash script =devel-tools/yabsm-fatpack= that
+will automatically fatpack all of YABSM into =export/yabsm.fatpack.pl=.
 
 All dependencies must be specified in the DEPENDENCIES file at the root of the
 YABSM repository.

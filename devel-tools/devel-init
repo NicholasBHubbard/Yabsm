@@ -52,11 +52,6 @@ if [ ! -x "$(which cpanm)" ]; then
   exit 1
 fi
 
-if [ ! -x "$(which plx)" ]; then
-  echo "$SCRIPT: could not find plx executable in PATH"
-  exit 1
-fi
-   
 # Lets work from the yabsm root directory.
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 cd "$YABSM_ROOT" || (echo "$SCRIPT: could not cd to '$YABSM_ROOT'" >&2 && exit 1)
@@ -68,9 +63,11 @@ PERL_BUILD_COMMAND="curl -L https://raw.githubusercontent.com/tokuhirom/Perl-Bui
 echo "$SCRIPT: executing: $PERL_BUILD_COMMAND"
 eval "$PERL_BUILD_COMMAND"
 
-# Initialize our App::plx environment.
+# Install and initialize App::plx.
 
-plx --init "$PERL_EXECUTABLE"
+cpanm -L local -v -f -i App::plx
+PLX_EXECUTABLE="$YABSM_ROOT/local/bin/plx"
+$PLX_EXECUTABLE --init "$PERL_EXECUTABLE"
 
 # All modules we use that aren't built into Perl v5.16.3 must be specified in
 # the $YABSM_ROOT/DEPENDENCIES file.

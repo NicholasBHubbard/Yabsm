@@ -9,10 +9,8 @@ set -e
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
 
-SRC_DIR="$YABSM_ROOT"/src
-EXPORT_DIR="$YABSM_ROOT"/export
 FATPACK_EXECUTABLE="$YABSM_ROOT"/local/bin/fatpack
 
-"$YABSM_ROOT/.plx/plx" --perl "$FATPACK_EXECUTABLE" pack "$SRC_DIR"/yabsm.pl > "$EXPORT_DIR/yabsm.fatpack.pl"
+"$YABSM_ROOT/.plx/plx" --perl "$FATPACK_EXECUTABLE" pack "$YABSM_ROOT"/src/yabsm.pl > "$YABSM_ROOT/export/yabsm.fatpack.pl"
 
 rm -rf "$SRC_DIR"/fatlib

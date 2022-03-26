@@ -308,9 +308,10 @@ are found they are printed linewise sorted from newest to oldest.
     + yabsm find home back-20-minutes
     + yabsm find home b-10-hours
     + yabsm find home b-2-days
-    + yabsm find home 'between back-2-hours 12-25'
-    + yabsm find home 2020-12-25-17-5
+    + yabsm find home 'between back-2-hours 12:25'
+    + yabsm find home 2020-12-25-17:20
     + yabsm find home 12-25
+    + yabsm find home 10:30
     + yabsm find home 'after b-2-d'
     + yabsm find home 'before b-10-h'
     + yabsm find home newest
@@ -340,22 +341,26 @@ There are 7 different kinds of queries: =relative time=, =literal time=,
      A =literal time= query matches the one snapshot closest to the time denoted
      by the =literal time=.
 
-     There are 5 forms of =literal times=.
+     There are 7 forms of =literal times=.
 
-     + yr-mon-day-hr-min
+     + yr-mon-day-hr:min
      + yr-mon-day
      + mon-day
      + mon-day-hr
-     + mon-day-hr-min
+     + mon-day-hr:min
+     + day-hr:min
+     + hr:min
        
-     The first form =yr-mon-day-hr-min= is the base form that all the other
+     The first form =yr-mon-day-hr:min= is the base form that all the other
      forms are a shorthand for.
 
-     The shorthand rules are simple, if the =yr= field is omitted then the
-     current year is assumed. If either the =hr= or =min= field are omitted
-     then they are assumed to be zero. Therefore if the current year is 2020
-     then the literal time =12-25= is equivalent to =2020-12-25-0-0=.
-
+     The shorthand rules are simple, if the =yr=, =mon=, or =day= field is
+     omitted then the current year, month, or day is assumed.  If either the
+     =hr= or =min= field are omitted then they are assumed to be zero. Therefore
+     if the date is 2020/12/25 then the literal time =8:30= is equivalent to
+     =2020-12-25-8:30=, and the literal time =2020-12-25= is always equivalent
+     to =2020-12-25:0:0=.
+     
 **** Before Query     
      A =before= query takes either a =relative time= or a =literal time= as an
      argument and matches all the snapshots taken before (not inclusive) the

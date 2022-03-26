@@ -11,6 +11,6 @@ cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit
 
 FATPACK_EXECUTABLE="$YABSM_ROOT"/local/bin/fatpack
 
-"$YABSM_ROOT/.plx/plx" --perl "$FATPACK_EXECUTABLE" pack "$YABSM_ROOT"/src/yabsm.pl > "$YABSM_ROOT/export/yabsm.fatpack.pl"
-
-rm -rf "$SRC_DIR"/fatlib
+FATPACK_COMMAND="plx --perl $FATPACK_EXECUTABLE pack $YABSM_ROOT/src/yabsm.pl > $YABSM_ROOT/export/yabsm.fatpack.pl"
+echo "$SCRIPT: executing: $FATPACK_COMMAND"
+eval "$FATPACK_COMMAND"

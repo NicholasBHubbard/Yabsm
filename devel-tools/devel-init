@@ -47,6 +47,16 @@ while [ -n "$1" ]; do
   esac  
 done
 
+if [ ! -x "$(which cpanm)" ]; then
+  echo "$SCRIPT: could not find cpanm executable in PATH"
+  exit 1
+fi
+
+if [ ! -x "$(which plx)" ]; then
+  echo "$SCRIPT: could not find plx executable in PATH"
+  exit 1
+fi
+   
 # Lets work from the yabsm root directory.
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 cd "$YABSM_ROOT" || (echo "$SCRIPT: could not cd to '$YABSM_ROOT'" >&2 && exit 1)
@@ -58,18 +68,9 @@ PERL_BUILD_COMMAND="curl -L https://raw.githubusercontent.com/tokuhirom/Perl-Bui
 echo "$SCRIPT: executing: $PERL_BUILD_COMMAND"
 eval "$PERL_BUILD_COMMAND"
 
-# Bootstrap App::plx.
-#
-# The bootstrapped version of plx comes with a packed local::lib and a modified
-# --cpanm action that uses an inline App::cpanminus ... how convenient!
-PLX_EXECUTABLE="$YABSM_ROOT/plx"
-PLX_INSTALL_COMMAND="wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O $PLX_EXECUTABLE"
-echo "$SCRIPT: executing: $PLX_INSTALL_COMMAND"
-eval "$PLX_INSTALL_COMMAND"
-chmod 0554 "$PLX_EXECUTABLE"
-$PLX_EXECUTABLE --init "$PERL_EXECUTABLE"
-mv "$PLX_EXECUTABLE" "$YABSM_ROOT/.plx"
-PLX_EXECUTABLE="$YABSM_ROOT/.plx/plx"
+# Initialize our App::plx environment.
+
+plx --init "$PERL_EXECUTABLE"
 
 # All modules we use that aren't built into Perl v5.16.3 must be specified in
 # the $YABSM_ROOT/DEPENDENCIES file.
@@ -89,6 +90,6 @@ else
   CPANM_FORCE_FLAG='--force'
 fi
 
-INSTALL_DEPENDENCIES_COMMAND="$PLX_EXECUTABLE --cpanm -L local -v $CPANM_FORCE_FLAG -i $YABSM_DEPENDENCIES"
+INSTALL_DEPENDENCIES_COMMAND="plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $YABSM_DEPENDENCIES"
 echo "$SCRIPT: executing: $INSTALL_DEPENDENCIES_COMMAND"
 eval "$INSTALL_DEPENDENCIES_COMMAND"

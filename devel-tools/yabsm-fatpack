@@ -3,6 +3,8 @@
 # Use App::FatPacker to pack all of yabsm including its dependencies into one
 # script. The end user will be given only the fatpacked script.
 
+set -e
+
 # Lets work from the yabsm root directory.
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)

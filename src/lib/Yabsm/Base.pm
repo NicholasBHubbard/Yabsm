@@ -697,11 +697,13 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     my $lit_time = shift // confess missing_arg();
 
     # literal time forms
-    my $yr_mon_day_hr_min = qr/^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
+    my $yr_mon_day_hr_min = qr/^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
     my $yr_mon_day        = qr/^(\d{4})-(\d{1,2})-(\d{1,2})$/;
     my $mon_day           = qr/^(\d{1,2})-(\d{1,2})$/;
     my $mon_day_hr        = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
-    my $mon_day_hr_min    = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
+    my $mon_day_hr_min    = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
+    my $day_hr_min        = qr/^(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
+    my $hr_min            = qr/^(\d{1,2}):(\d{1,2})$/;
 
     if ($lit_time =~ $yr_mon_day_hr_min) {
 	return nums_to_snapstring($1, $2, $3, $4, $5);
@@ -724,6 +726,16 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     if ($lit_time =~ $mon_day_hr_min) {
 	my $t = localtime;
 	return nums_to_snapstring($t->year, $1, $2, $3, $4);
+    }
+
+    if ($lit_time =~ $day_hr_min) {
+        my $t = localtime;
+        return nums_to_snapstring($t->year, $t->mon, $1, $2, $3);
+    }
+    
+    if ($lit_time =~ $hr_min) {
+        my $t = localtime;
+        return nums_to_snapstring($t->year, $t->mon, $t->mday, $1, $2);
     }
 
     # input should have already been cleansed. 

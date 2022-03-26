@@ -345,41 +345,52 @@ test_literal_time_to_snapstring();
 sub test_literal_time_to_snapstring {
 
     my $t = localtime;
-    my $cur_yr = $t->year;
 
     # There are 5 different literal time forms
 
-    # yr-mon-day-hr-min
-    my $form1 = '2020-12-25-1-2';
-    my $sol1  = 'day=2020_12_25,time=01:02';
+    # yr-mon-day-hr:min
+    my $form1 = '2020-12-25-1:2';
+    my $sol1  = Yabsm::Base::nums_to_snapstring(2020, 12, 25, 1, 2);
     my $out1  = Yabsm::Base::literal_time_to_snapstring($form1);
     my $t1    = $out1 eq $sol1;
 
     # yr-mon-day
     my $form2 = '2023-12-25';
-    my $sol2  = 'day=2023_12_25,time=00:00';
+    my $sol2  = Yabsm::Base::nums_to_snapstring(2023, 12, 25, 0, 0);
     my $out2  = Yabsm::Base::literal_time_to_snapstring($form2);
     my $t2    = $out2 eq $sol2;
 
     # mon-day-hr
     my $form3 = '1-2-3';
-    my $sol3  = "day=${cur_yr}_01_02,time=03:00";
+    my $sol3  = Yabsm::Base::nums_to_snapstring($t->year, 1, 2, 3, 0);
     my $out3  = Yabsm::Base::literal_time_to_snapstring($form3);
     my $t3    = $out3 eq $sol3;
 
-    # mon-day-hr-min
-    my $form4 = '12-25-3-30';
-    my $sol4  = "day=${cur_yr}_12_25,time=03:30";
+    # mon-day-hr:min
+    my $form4 = '12-25-3:30';
+    my $sol4  = Yabsm::Base::nums_to_snapstring($t->year, 12, 25, 3, 30);
     my $out4  = Yabsm::Base::literal_time_to_snapstring($form4);
     my $t4    = $out4 eq $sol4;
     
     # mon-day
     my $form5 = '12-25';
-    my $sol5  = "day=${cur_yr}_12_25,time=00:00";
+    my $sol5  = Yabsm::Base::nums_to_snapstring($t->year, 12, 25, 0, 0);
     my $out5  = Yabsm::Base::literal_time_to_snapstring($form5);
     my $t5    = $out5 eq $sol5;
 
-    my $correct = $t1 && $t2 && $t3 && $t4 && $t5;
+    # day-hr:min
+    my $form6 = '31-14:40';
+    my $sol6  = Yabsm::Base::nums_to_snapstring($t->year, $t->mon, 31, 14, 40);
+    my $out6 = Yabsm::Base::literal_time_to_snapstring($form6);
+    my $t6 = $out6 eq $sol6;
+    
+    # hr:min
+    my $form7 = '8:10';
+    my $sol7  = Yabsm::Base::nums_to_snapstring($t->year, $t->mon, $t->mday, 8, 10);
+    my $out7 = Yabsm::Base::literal_time_to_snapstring($form7);
+    my $t7 = $out7 eq $sol7;
+
+    my $correct = $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7;
 
     ok ( $correct, 'literal_time_to_snapstring()' );
 }

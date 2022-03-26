@@ -474,7 +474,7 @@ sub test_snap_closest_to {
 
 
     # TEST 2
-
+    
     my $target2 = Yabsm::Base::n_units_ago_snapstring(36, 'hours');
 
     my $output2 = Yabsm::Base::snap_closest_to(\@all_snaps, $target2);
@@ -497,7 +497,14 @@ sub test_snap_closest_to {
 
     my $correct4 = $output4 eq $t3;
 
-    ok ( $correct1 && $correct2 && $correct3 && $correct4, 'snap_closest_to()' );
+    # TEST 5
+    my $target5 = Yabsm::Base::n_units_ago_snapstring(30, 'hours');
+
+    my $output5 = Yabsm::Base::snap_closest_to(\@all_snaps, $target5);
+
+    my $correct5 = $output5 eq $target5;  
+    
+    ok ( $correct1 && $correct2 && $correct3 && $correct4 && $correct5, 'snap_closest_to()' );
 }
 
 test_snaps_newer_than();

@@ -5,13 +5,16 @@
 
 set -e
 
-# Lets work from the yabsm root directory.
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
-cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
+SRC_DIR="$YABSM_ROOT"/src
+EXPORT_DIR="$YABSM_ROOT"/export
+
+# Lets work from the src directory.
+cd "$SRC_DIR" || (echo "error: could not cd to dir '$SRC_DIR'" >&2 && exit 1)
 
 FATPACK_EXECUTABLE="$YABSM_ROOT"/local/bin/fatpack
 PLX_EXECUTABLE="$YABSM_ROOT"/local/bin/plx
 
-FATPACK_COMMAND="$PLX_EXECUTABLE --perl -I $YABSM_ROOT/src/lib $FATPACK_EXECUTABLE pack $YABSM_ROOT/src/yabsm.pl > $YABSM_ROOT/export/yabsm.fatpack.pl"
+FATPACK_COMMAND="$PLX_EXECUTABLE --perl $FATPACK_EXECUTABLE pack $YABSM_ROOT/src/yabsm.pl > $EXPORT_DIR/yabsm.fatpack.pl"
 echo "$SCRIPT: executing: $FATPACK_COMMAND"
 eval "$FATPACK_COMMAND"

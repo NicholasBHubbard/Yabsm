@@ -45,11 +45,6 @@ while [ -n "$1" ]; do
   esac  
 done
 
-if [ ! -x "$(which cpanm)" ]; then
-  echo "$SCRIPT: could not find cpanm executable in PATH"
-  exit 1
-fi
-
 # Lets work from the yabsm root directory.
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 cd "$YABSM_ROOT" || (echo "$SCRIPT: could not cd to '$YABSM_ROOT'" >&2 && exit 1)

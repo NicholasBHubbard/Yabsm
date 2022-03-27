@@ -1,5 +1,5 @@
-perl-5.16.3
-.plx
-local
-.cpanm
-fatlib
+/perl-5.16.3
+/.plx
+/local
+/.cpanm
+/src/fatlib

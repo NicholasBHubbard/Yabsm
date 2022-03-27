@@ -8,7 +8,7 @@
 
 use strict;
 use warnings;
-use 5.010;
+use v5.16.3;
 
 use Test::More 'no_plan';
 use Test::Exception;
@@ -119,7 +119,6 @@ my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' }
                                     , weekly_want => 'no'
                                     , monthly_want => 'no'
                                     } 
-
                           }
 
              , backups => { rootBackup => { subvol => 'root'

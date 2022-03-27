@@ -58,9 +58,9 @@ eval "$PERL_BUILD_COMMAND"
 
 # Install and initialize App::plx.
 
-mkdir -p "$YABSM_ROOT/local/bin"
-wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O "$YABSM_ROOT/local/bin"
 PLX_EXECUTABLE="$YABSM_ROOT/local/bin/plx"
+mkdir -p "$YABSM_ROOT/local/bin"
+wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O "$PLX_EXECUTABLE"
 chmod 0555 "$PLX_EXECUTABLE"
 PLX_INIT_COMMAND="$PLX_EXECUTABLE --init $PERL_EXECUTABLE"
 echo "$SCRIPT: executing: $PLX_INIT_COMMAND"

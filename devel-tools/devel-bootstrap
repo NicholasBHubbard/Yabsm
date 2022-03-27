@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Initialize an environment for hacking on YABSM. We are going to use
+# Bootstrap an environment for hacking on YABSM. We are going to use
 # Perl::Build to compile Perl version 5.16.3, set up App::plx to use the Perl we
 # build, and then use plx to install all our dependencies into a local::lib with
 # cpanm.
@@ -65,9 +65,12 @@ eval "$PERL_BUILD_COMMAND"
 
 # Install and initialize App::plx.
 
-cpanm -L local -v -f -i App::plx
+mkdir -p "$YABSM_ROOT/local/bin"
+wget https://raw.githubusercontent.com/shadowcat-mst/plx/master/bin/plx-packed -O "$YABSM_ROOT/local/bin"
 PLX_EXECUTABLE="$YABSM_ROOT/local/bin/plx"
-$PLX_EXECUTABLE --init "$PERL_EXECUTABLE"
+PLX_INIT_COMMAND="$PLX_EXECUTABLE --init $PERL_EXECUTABLE"
+echo "$SCRIPT: executing: $PLX_INIT_COMMAND"
+eval "$PLX_INIT_COMMAND"
 
 # All modules we use that aren't built into Perl v5.16.3 must be specified in
 # the $YABSM_ROOT/DEPENDENCIES file.
@@ -77,7 +80,7 @@ $PLX_EXECUTABLE --init "$PERL_EXECUTABLE"
 
 while read -r dep; do 
   YABSM_DEPENDENCIES="$YABSM_DEPENDENCIES $dep"
-done <<< "$(sed -e '/(^$|#.*|[\t ])/d' "$YABSM_ROOT/DEPENDENCIES")"
+done <<< "$(sed -e '/^$|#.*|[\t ]+/d' "$YABSM_ROOT/DEPENDENCIES")"
 
 export PERL_CPANM_HOME="$YABSM_ROOT/.cpanm"
 
@@ -87,6 +90,6 @@ else
   CPANM_FORCE_FLAG='--force'
 fi
 
-INSTALL_DEPENDENCIES_COMMAND="plx --cpanm -L local -v $CPANM_FORCE_FLAG -i $YABSM_DEPENDENCIES"
+INSTALL_DEPENDENCIES_COMMAND="$PLX_EXECUTABLE --cpanm -L local -v $CPANM_FORCE_FLAG -i $YABSM_DEPENDENCIES"
 echo "$SCRIPT: executing: $INSTALL_DEPENDENCIES_COMMAND"
 eval "$INSTALL_DEPENDENCIES_COMMAND"

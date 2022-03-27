@@ -10,7 +10,8 @@ YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
 
 FATPACK_EXECUTABLE="$YABSM_ROOT"/local/bin/fatpack
+PLX_EXECUTABLE="$YABSM_ROOT"/local/bin/plx
 
-FATPACK_COMMAND="plx --perl $FATPACK_EXECUTABLE pack $YABSM_ROOT/src/yabsm.pl > $YABSM_ROOT/export/yabsm.fatpack.pl"
+FATPACK_COMMAND="plx --perl -I $YABSM_ROOT/src/lib $FATPACK_EXECUTABLE pack $YABSM_ROOT/src/yabsm.pl > $YABSM_ROOT/export/yabsm.fatpack.pl"
 echo "$SCRIPT: executing: $FATPACK_COMMAND"
 eval "$FATPACK_COMMAND"

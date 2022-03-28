@@ -7,7 +7,7 @@
 #  This is the toplevel script of yabsm. The actual program that is
 #  installed on the end users system is this script but fatpacked.
 
-our $VERSION = '2.2.2';
+our $VERSION = '2.2.3';
 
 use strict;
 use warnings;

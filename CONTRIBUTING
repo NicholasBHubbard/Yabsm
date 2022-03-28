@@ -4,21 +4,21 @@
 
 * Setup
 
-YABSM comes with a bash script =devel-tools/devel-init= that initializes a
-YABSM development environment. This script depends on you having [[https://metacpan.org/pod/App::cpanminus][App::cpanminus]]
-and [[https://metacpan.org/pod/App::plx][App::plx]] installed. Cpanminus is packaged under most GNU/Linux distributions
-under the either the name =cpanm= or =cpanminus=.
+YABSM comes with a bash script =devel-tools/devel-bootstrap= that initializes a
+YABSM development environment. This script will install a Perl v5.16.3
+interpreter into the root of the YABSM repository using [[https://metacpan.org/pod/Perl::Build][Perl::Build]] and then
+sets up an [[https://metacpan.org/pod/App::plx][App::plx]] environment around this new interpreter. Finally all the
+dependencies specified in /DEPENDENCIES are installed using [[https://metacpan.org/pod/App::cpanminus][App::cpanminus]].
 
-Once you have cpanminus installed you can install plx with the command:
-#+BEGIN_SRC
-$ cpanm App::plx
-#+END_SRC
-Now you can execute the =devel-tools/devel-init= script. This script will
-install a Perl v5.16.3 interpreter into the root of the YABSM project directory
-and setup up a plx environment.
+All of these steps are taken care of by =devel-tools/devel-bootstrap= so all you
+have to do is run the script.
 
-After running =devel-tools/devel-init= you can can run and test the YABSM code
-with =plx --perl [<args>]=.
+* Development
+
+To run YABSM code you must run perl through [[https://metacpan.org/pod/App::plx][App::plx]]. The
+=devel-tools/devel-bootstrap= script that you just ran installed the plx
+executable to =local/bin/plx=. To run YABSM code you must run perl through plx,
+for example to run the tests for YABSM base library you can run =local/bin/plx src/t/Base.t=.
 
 * Deployment
 
@@ -29,5 +29,5 @@ YABSM and all of its dependencies are packed into one script using
 [[https://metacpan.org/pod/App::FatPacker][App::FatPacker]]. YABSM provides a bash script =devel-tools/yabsm-fatpack= that
 will automatically fatpack all of YABSM into =export/yabsm.fatpack.pl=.
 
-All dependencies must be specified in the DEPENDENCIES file at the root of the
-YABSM repository.
+If you add any new dependencies to YABSM you must specify them in the
+DEPENDENCIES file.

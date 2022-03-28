@@ -19,6 +19,11 @@ use List::Util 'shuffle';
 use FindBin '$Bin';
 use lib "$Bin/../lib";
 
+# Change to directory of this test script.
+use Cwd 'chdir';
+use File::Basename;
+chdir dirname $0;
+
 # Module to test
 use Yabsm::Config;
 

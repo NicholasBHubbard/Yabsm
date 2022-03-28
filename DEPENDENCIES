@@ -1,7 +1,7 @@
 lib::relative@1.000
 Array::Utils@0.5
 List::Util@1.33
-Feature::Compat::Try@0.04 # Issues with fatpacking with version >0.04
+Feature::Compat::Try@0.04 # Issues with fatpacking if version >0.04.
 App::FatPacker@0.10.8
 Net::OpenSSH@0.80
 Parser::MGC@0.19

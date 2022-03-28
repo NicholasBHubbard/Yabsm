@@ -1196,7 +1196,7 @@ sub answer_query { # No test. Is not pure.
 sub is_valid_query { # Has test. Is pure.
 
     # True iff $query is a valid query. Used to validate 
-    # user input query for 'yabsm --find'.
+    # user input query for 'yabsm find'.
 
     my $query = shift // confess missing_arg();
 

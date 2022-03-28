@@ -12,9 +12,9 @@ use strict;
 use warnings;
 use v5.16.3;
 
-die "error: permission denied\n" if $<;
+die "yabsm: error: permission denied\n" if $<;
 
-die "error: your perl version '$]' is less than 5.16.3" if $] < 5.016003;
+die "yabsm: error: your perl version '$]' is less than 5.16.3" if $] < 5.016003;
 
 use FindBin '$Bin';
 use File::Copy 'copy';

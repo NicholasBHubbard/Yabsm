@@ -421,7 +421,7 @@ Finally the remote backups =backup_dir= must already exist.
 
 * Contributing
 
-See CONTRIBUTING.
+See [[./CONTRIBUTING][CONTRIBUTING]].
 
 * License
 

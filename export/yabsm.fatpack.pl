@@ -9160,11 +9160,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $lit_time = shift // confess missing_arg();
   
       # literal time forms
-      my $yr_mon_day_hr_min = qr/^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
+      my $yr_mon_day_hr_min = qr/^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
       my $yr_mon_day        = qr/^(\d{4})-(\d{1,2})-(\d{1,2})$/;
       my $mon_day           = qr/^(\d{1,2})-(\d{1,2})$/;
       my $mon_day_hr        = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
-      my $mon_day_hr_min    = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
+      my $mon_day_hr_min    = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
+      my $day_hr_min        = qr/^(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
+      my $hr_min            = qr/^(\d{1,2}):(\d{1,2})$/;
   
       if ($lit_time =~ $yr_mon_day_hr_min) {
   	return nums_to_snapstring($1, $2, $3, $4, $5);
@@ -9187,6 +9189,16 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if ($lit_time =~ $mon_day_hr_min) {
   	my $t = localtime;
   	return nums_to_snapstring($t->year, $1, $2, $3, $4);
+      }
+  
+      if ($lit_time =~ $day_hr_min) {
+          my $t = localtime;
+          return nums_to_snapstring($t->year, $t->mon, $1, $2, $3);
+      }
+      
+      if ($lit_time =~ $hr_min) {
+          my $t = localtime;
+          return nums_to_snapstring($t->year, $t->mon, $t->mday, $1, $2);
       }
   
       # input should have already been cleansed. 
@@ -11704,9 +11716,9 @@ $fatpacked{"x86_64-linux/Syntax/Keyword/Try.pm"} = '#line '.(1+__LINE__).' "'.__
   #  You may distribute under the terms of either the GNU General Public License
   #  or the Artistic License (the same terms as Perl itself)
   #
-  #  (C) Paul Evans, 2016-2021 -- leonerd@leonerd.org.uk
+  #  (C) Paul Evans, 2016-2022 -- leonerd@leonerd.org.uk
   
-  package Syntax::Keyword::Try 0.26;
+  package Syntax::Keyword::Try 0.27;
   
   use v5.14;
   use warnings;
@@ -11926,14 +11938,6 @@ $fatpacked{"x86_64-linux/Syntax/Keyword/Try.pm"} = '#line '.(1+__LINE__).' "'.__
   exception, this will be printed as a warning and discarded, leaving C<$@>
   containing the original exception, if one existed.
   
-  Note that the C<finally> syntax is not available when using this module via
-  L<Feature::Compat::Try>, as it is not expected that syntax will be added to
-  the core perl C<'try'> feature. This is because a more general-purpose ability
-  may be added instead, under the name C<'defer'>. If you wish to write code
-  that may more easily be forward-compatible with that feature instead, you
-  should consider using L<Syntax::Keyword::Defer> rather than using C<finally>
-  statements.
-  
   =head1 OTHER MODULES
   
   There are already quite a number of modules on CPAN that provide a
@@ -12083,8 +12087,9 @@ $fatpacked{"x86_64-linux/Syntax/Keyword/Try.pm"} = '#line '.(1+__LINE__).' "'.__
      $^H{"Syntax::Keyword::Try/try"}++ if delete $syms{try};
   
      # Largely for Feature::Compat::Try's benefit
-     $^H{"Syntax::Keyword::Try/no_finally"}++ if delete $syms{"-no_finally"};
-     $^H{"Syntax::Keyword::Try/require_var"}++ if delete $syms{"-require_var"};
+     $^H{"Syntax::Keyword::Try/no_finally"}++    if delete $syms{"-no_finally"};
+     $^H{"Syntax::Keyword::Try/require_catch"}++ if delete $syms{"-require_catch"};
+     $^H{"Syntax::Keyword::Try/require_var"}++   if delete $syms{"-require_var"};
   
      # stablised experiments
      delete $syms{":experimental($_)"} for qw( var );
@@ -12190,7 +12195,7 @@ $fatpacked{"x86_64-linux/Syntax/Keyword/Try/Deparse.pm"} = '#line '.(1+__LINE__)
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package Syntax::Keyword::Try::Deparse 0.26;
+  package Syntax::Keyword::Try::Deparse 0.27;
   
   use v5.14;
   use warnings;
@@ -12309,7 +12314,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix.pm"} = '#line '.(1+__LINE__).' "'.__FILE
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Infix 0.21;
+  package XS::Parse::Infix 0.22;
   
   use v5.14;
   use warnings;
@@ -12737,7 +12742,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder.pm"} = '#line '.(1+__LINE__).' "
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Infix::Builder 0.21;
+  package XS::Parse::Infix::Builder 0.22;
   
   use v5.14;
   use warnings;
@@ -12849,7 +12854,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder.pm"} = '#line '.(1+__LINE__).' "
 X86_64-LINUX_XS_PARSE_INFIX_BUILDER
 
 $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder_data.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_XS_PARSE_INFIX_BUILDER_DATA';
-  package XS::Parse::Infix::Builder_data 0.21;
+  package XS::Parse::Infix::Builder_data 0.22;
   
   use v5.14;
   use warnings;
@@ -12988,9 +12993,9 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   #  You may distribute under the terms of either the GNU General Public License
   #  or the Artistic License (the same terms as Perl itself)
   #
-  #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
+  #  (C) Paul Evans, 2021-2022 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Keyword 0.21;
+  package XS::Parse::Keyword 0.22;
   
   use v5.14;
   use warnings;
@@ -13381,6 +13386,20 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   
   A literal character (C<,>, C<:> or C<=>) is expected. No argument value is passed.
   
+  =head2 XPK_AUTOSEMI
+  
+  I<atomic, emits nothing.>
+  
+  A literal semicolon (C<;>) as a statement terminator is optionally expected.
+  If the next token is a closing brace to indicate the end of a block, then a
+  semicolon is not required. If anything else is encountered an error will be
+  raised.
+  
+  This piece type is the same as specifying the C<XPK_FLAG_AUTOSEMI>. It is
+  useful to put at the end of a sequence that forms part of a choice of syntax,
+  where some forms indicate a statement ending in a semicolon, whereas others
+  may end in a full block that does not need one.
+  
   =head2 XPK_INFIX_*
   
   I<atomic, can probe, emits infix.>
@@ -13581,7 +13600,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder.pm"} = '#line '.(1+__LINE__).'
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Keyword::Builder 0.21;
+  package XS::Parse::Keyword::Builder 0.22;
   
   use v5.14;
   use warnings;
@@ -13693,7 +13712,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder.pm"} = '#line '.(1+__LINE__).'
 X86_64-LINUX_XS_PARSE_KEYWORD_BUILDER
 
 $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_XS_PARSE_KEYWORD_BUILDER_DATA';
-  package XS::Parse::Keyword::Builder_data 0.21;
+  package XS::Parse::Keyword::Builder_data 0.22;
   
   use v5.14;
   use warnings;
@@ -13739,6 +13758,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
     /*                                    emits */
     XS_PARSE_KEYWORD_LITERALCHAR = 1,   /* nothing */
     XS_PARSE_KEYWORD_LITERALSTR,        /* nothing */
+    XS_PARSE_KEYWORD_AUTOSEMI,          /* nothing */
     XS_PARSE_KEYWORD_FAILURE = 0x0f,    /* nothing */
   
     XS_PARSE_KEYWORD_BLOCK = 0x10,      /* op */
@@ -13832,6 +13852,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   
   #define XPK_LITERAL(s) {.type = XS_PARSE_KEYWORD_LITERALSTR, .u.str = (const char *)s}
   #define XPK_STRING(s)  XPK_LITERAL(s)
+  #define XPK_AUTOSEMI   {.type = XS_PARSE_KEYWORD_AUTOSEMI}
   
   #define XPK_INFIX(select) {.type = XS_PARSE_KEYWORD_INFIX, .u.c = select}
   #define XPK_INFIX_RELATION       XPK_INFIX(XPI_SELECT_RELATION)
@@ -13998,18 +14019,17 @@ unshift @INC, bless \%fatpacked, $class;
 #  This is the toplevel script of yabsm. The actual program that is
 #  installed on the end users system is this script but fatpacked.
 
+our $VERSION = '2.2.1';
+
 use strict;
 use warnings;
 use v5.16.3;
 
 die "error: your perl version '$]' is less than 5.16.3" if $] < 5.016003;
 
-my $YABSM_VERSION = 2.2;
-
 sub usage {
     print <<END_USAGE;
-usage: yabsm [--help] [--version]
-             <command> [<args>]
+yabsm: usage: yabsm [--help] [--version] <command> <arg(s)>
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or
@@ -14115,7 +14135,7 @@ my $cmd = shift @ARGV || (usage() and exit 1);
 
 if ($cmd eq '--help' || $cmd eq '-h') { usage() and exit 0 }
 
-if ($cmd eq '--version') { say $YABSM_VERSION and exit 0 }
+if ($cmd eq '--version') { say $VERSION and exit 0 }
 
 my $full_cmd = unabbreviate($cmd);
 

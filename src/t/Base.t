@@ -743,24 +743,26 @@ test_is_literal_time();
 sub test_is_literal_time {
 
     # these should all be true
-    my $t0 = Yabsm::Base::is_literal_time('2020-12-25-15-05');
-    my $t1 = Yabsm::Base::is_literal_time('2020-12-25-5-3');
-    my $t2 = Yabsm::Base::is_literal_time('12-25-5-3');
-    my $t3 = Yabsm::Base::is_literal_time('12-25-3');
-    my $t4 = Yabsm::Base::is_literal_time('12-25');
-    my $t5 = Yabsm::Base::is_literal_time('1-2');
+    my $t0 = Yabsm::Base::is_literal_time('2020-12-25-14:30');
+    my $t1 = Yabsm::Base::is_literal_time('2020-12-4');
+    my $t2 = Yabsm::Base::is_literal_time('12-25');
+    my $t3 = Yabsm::Base::is_literal_time('12-25-10');
+    my $t4 = Yabsm::Base::is_literal_time('10-12:30');
+    my $t5 = Yabsm::Base::is_literal_time('12:30');
+    my $t6 = Yabsm::Base::is_literal_time('2-1-4:15');
 
     # these should all be false
     my $f0 = Yabsm::Base::is_literal_time('');
-    my $f1 = Yabsm::Base::is_literal_time(' 2020-12-25-15-30');
-    my $f2 = Yabsm::Base::is_literal_time('2020-12-25-5-3 ');
-    my $f3 = Yabsm::Base::is_literal_time('12');
-    my $f4 = Yabsm::Base::is_literal_time('20202-12-25-3-04');
-    my $f5 = Yabsm::Base::is_literal_time('20-12-25-12-30');
-    my $f6 = Yabsm::Base::is_literal_time('2020-123-25-12-30');
+    my $f1 = Yabsm::Base::is_literal_time('2020-12-25-15-30');
+    my $f2 = Yabsm::Base::is_literal_time(' 2020-12-25-15:30');
+    my $f3 = Yabsm::Base::is_literal_time('2020-12-25-5:3 ');
+    my $f4 = Yabsm::Base::is_literal_time('12');
+    my $f5 = Yabsm::Base::is_literal_time('20202-12-25-3:04');
+    my $f6 = Yabsm::Base::is_literal_time('20-12-25-12:30');
+    my $f7 = Yabsm::Base::is_literal_time('2020-123-25-12:30');
 
-    my $trues = $t0 && $t1 && $t2 && $t3 && $t4 && $t5;
-    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5);
+    my $trues = $t0 && $t1 && $t2 && $t3 && $t4 && $t5 && $t6;
+    my $falses = not ($f0 || $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7);
 
     ok ( $trues && $falses, 'is_literal_time()' );
 }
@@ -802,7 +804,7 @@ test_is_immediate();
 sub test_is_immediate {
 
     # these should all be true
-    my $t0 = Yabsm::Base::is_immediate('2020-12-25-08-30');
+    my $t0 = Yabsm::Base::is_immediate('2020-12-25-08:30');
     my $t1 = Yabsm::Base::is_immediate('b-45-m');
     my $t2 = Yabsm::Base::is_immediate('12-30');
     my $t3 = Yabsm::Base::is_immediate('back-12-days');

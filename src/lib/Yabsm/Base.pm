@@ -635,18 +635,22 @@ sub is_literal_time { # Has test. Is pure.
 
     my $lit_time = shift // confess missing_arg();
 
-    # yr-mon-day-hr-min
-    my $re1 = qr/^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$/;
+    # yr-mon-day-hr:min
+    my $re1 = qr/^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}:\d{1,2}$/;
     # yr-mon-day
     my $re2 = qr/^\d{4}-\d{1,2}-\d{1,2}$/;
     # mon-day
     my $re3 = qr/^\d{1,2}-\d{1,2}$/;
     # mon-day-hr
     my $re4 = qr/^\d{1,2}-\d{1,2}-\d{1,2}$/;
-    # mon-day-hr-min
-    my $re5 = qr/^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$/;
+    # mon-day-hr:min
+    my $re5 = qr/^\d{1,2}-\d{1,2}-\d{1,2}:\d{1,2}$/;
+    # day-hr:min
+    my $re6 = qr/^\d{1,2}-\d{1,2}:\d{1,2}$/;
+    # hr:min
+    my $re7 = qr/^\d{1,2}:\d{1,2}$/;
 
-    return $lit_time =~ /$re1|$re2|$re3|$re4|$re5/;
+    return $lit_time =~ /$re1|$re2|$re3|$re4|$re5|$re6|$re7/;
 }
 
 sub is_relative_time { # Has test. Is pure.

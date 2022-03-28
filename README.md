@@ -36,19 +36,19 @@ It is unlikely that you do not already have these installed.
 
 # Post-Installation
 * Post Installation
-By default yabsm only installs the =/etc/yabsm.conf.example= example
-configuration file. You will probably want to copy this file to
-=/etc/yabsm.conf= and then build your custom config based off the
-example.
+Yabsm installs an example configuration file =/etc/yabsm.conf.example= example
+configuration file. You will want to copy this file to =/etc/yabsm.conf= and
+then build your custom config based off the example.
 
 After you are finished creating your config you will need to write the proper
 yabsm cronjobs to your =/etc/crontab= file.
 #+BEGIN_SRC
 # yabsm update-crontab
 #+END_SRC
+If you want to install cronjobs to a file other than =/etc/crontab= you can
+redirect the output of =yabsm print-crons= to some other file.
 
 For more information on how to create a configuration see the section below.
-
 # Configuration
 * Configuration
   Yabsm is configured through the =/etc/yabsm.conf= file.

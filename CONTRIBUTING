@@ -30,4 +30,4 @@ YABSM and all of its dependencies are packed into one script using
 will automatically fatpack all of YABSM into =export/yabsm.fatpack.pl=.
 
 If you add any new dependencies to YABSM you must specify them in the
-DEPENDENCIES file.
+[[./DEPENDENCIES][DEPENDENCIES]] file.

@@ -1,4 +1,4 @@
-# -*- mode:org;mode:auto-fill;fill-column:79 -*-
+# -*- mode:org;mode:auto-fill;fill-column:80 -*-
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
 * Contents
@@ -36,9 +36,9 @@ It is unlikely that you do not already have these installed.
 
 # Post-Installation
 * Post Installation
-Yabsm installs an example configuration file =/etc/yabsm.conf.example= example
-configuration file. You will want to copy this file to =/etc/yabsm.conf= and
-then build your custom config based off the example.
+Yabsm installs an example configuration file to =/etc/yabsm.conf.example=. You
+will want to copy this file to =/etc/yabsm.conf= and then build your custom
+configuation based off the example.
 
 After you are finished creating your config you will need to write the proper
 yabsm cronjobs to your =/etc/crontab= file.

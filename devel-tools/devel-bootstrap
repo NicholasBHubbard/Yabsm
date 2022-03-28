@@ -74,7 +74,7 @@ eval "$PLX_INIT_COMMAND"
 
 while read -r dep; do 
   YABSM_DEPENDENCIES="$YABSM_DEPENDENCIES $dep"
-done <<< "$(sed -e '/^$|#.*|[\t ]+/d' "$YABSM_ROOT/DEPENDENCIES")"
+done <<< "$(sed -Ee '/^$|#.*|[\t ]+/d' "$YABSM_ROOT/DEPENDENCIES")"
 
 export PERL_CPANM_HOME="$YABSM_ROOT/.cpanm"
 

@@ -5,6 +5,8 @@
 
 set -e
 
+SCRIPT=${0##*/}
+
 YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
 SRC_DIR="$YABSM_ROOT"/src
 EXPORT_DIR="$YABSM_ROOT"/export

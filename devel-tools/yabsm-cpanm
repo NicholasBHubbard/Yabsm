@@ -1,61 +1,26 @@
-#!/usr/bin/env bash
+#!/usr/bin/env perl
 
-# Install modules from cpan using cpanm yabsms local lib using plx
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
 
-set -e
+#  Interface for using cpanminus with plx.
 
-SCRIPT=${0##*/}
+use strict;
+use warnings;
+use v5.16.3;
 
-USAGE=$(cat <<EOF 
-usage: $SCRIPT [options] [<args>]
-  -h           Show this help message.
-  -i  modules  The modules to install.
-  -s           Prevent passing --force flag to cpanm.
+use Cwd qw/abs_path/;
+use File::Basename qw/basename dirname/;
 
-See \`plx --cpanm -L local --help\` for a synopsis on cpanm options.
-EOF
-)
+my $SCRIPT_NAME = basename(__FILE__);
 
-while [ -n "$1" ]; do
-  opt=$1
-  shift
-  case $opt in
-    -h)
-      echo "$USAGE"
-      exit 0
-      ;;
-    -s)
-      CPANM_FORCE_FLAG=no
-      ;;
-    -i)
-      while [ -n "$1" ]; do
-        MODULES="$MODULES $1"
-        shift
-      done
-      ;;
-    *)
-      echo "$USAGE"
-      exit 1
-      ;;
-  esac
-done
+my $YABSM_ROOT = dirname(abs_path(__FILE__ . '/..'));
 
-# Lets work from the yabsm root directory.
-YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
-cd "$YABSM_ROOT" || (echo "error: could not cd to dir '$YABSM_ROOT'" >&2 && exit 1)
+my $plx = `which plx 2>/dev/null`
+       || ( -x "$YABSM_ROOT/local/bin/plx" && "$YABSM_ROOT/local/bin/plx" )
+       || die "$SCRIPT_NAME: could not find a plx executable\n";
 
-# Generate the plx --cpanm command.
+$plx =~ s/\s+//g;
 
-PLX_EXECUTABLE="$YABSM_ROOT"/local/bin/plx
-
-if [ no == $CPANM_FORCE_FLAG ]; then # use --force flag by default.
-  CPANM_FORCE_FLAG=''
-else
-  CPANM_FORCE_FLAG='--force'
-fi
-
-export PERL_CPANM_HOME="$YABSM_ROOT/.cpanm"
-
-CPANM_COMMAND="$PLX_EXECUTABLE --cpanm -L local -v $CPANM_FORCE_FLAG -i $MODULES"
-echo "$SCRIPT: executing: $CPANM_COMMAND"
-eval "$CPANM_COMMAND"
+system("cd $YABSM_ROOT ; PERL_CPANM_HOME=$YABSM_ROOT $plx --cpanm -Llocal @ARGV");

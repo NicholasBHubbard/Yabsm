@@ -1005,7 +1005,7 @@ sub snaps_between { # Has test. Is pure.
 	$older = $target_snap2;
     }
     else {
-	$newer = $target_snap2; 
+	$newer = $target_snap2;
 	$older = $target_snap1;
     }
 

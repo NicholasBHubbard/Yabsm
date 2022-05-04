@@ -1001,7 +1001,7 @@ sub snaps_between { # Has test. Is pure.
     my $newer;
 
     if (-1 == cmp_snaps($target_snap1, $target_snap2)) {
-	$newer = $target_snap1; 
+	$newer = $target_snap1;
 	$older = $target_snap2;
     }
     else {

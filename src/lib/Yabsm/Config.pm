@@ -16,6 +16,7 @@ use Exporter 'import';
 our @EXPORT_OK = qw( read_config );
 
 # located using lib::relative in yabsm.pl
+use lib::relative '..';
 use Yabsm::Base;
 
 use Carp;

@@ -38,7 +38,7 @@ my %regex = ( path         => qr/\/[^#\s]*/
             );
 
                  ####################################
-                 #         MAIN SUBROUTINE          #
+                 #          MAIN SUBROUTINE         #
                  ####################################
 
 sub read_config {

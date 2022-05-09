@@ -338,7 +338,7 @@ sub missing_misc_settings {
 }
 
                  ####################################
-                 #           KEYWORD ARRAYS         #
+                 #              KEYWORDS            #
                  ####################################
 
 sub subvol_keywords {

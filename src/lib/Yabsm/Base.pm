@@ -230,12 +230,18 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
 sub do_incremental_backup { # No test. Is not pure.
 
     # Determine if $backup is local or remote and dispatch the
-    # corresponding do_incremental_backup_* subroutine.
+    # corresponding do_incremental_backup_* subroutine. If $backup
+    # has not been bootstrapped then instead perform the bootstrap
+    # routine.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
-    if (is_local_backup($config_ref, $backup)) {
+    if (not has_bootstrap($config_ref, $backup)) {
+        do_backup_bootstrap($config_ref, $backup)
+    }
+    
+    elsif (is_local_backup($config_ref, $backup)) {
 	do_incremental_backup_local($config_ref, $backup);
     }
 

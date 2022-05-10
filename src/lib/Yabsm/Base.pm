@@ -87,7 +87,7 @@ sub delete_old_snapshots { # No test. Is not pure.
 	return;
     }
 
-    # We haven't reached the snapshot quota yet so we don't delete anything.
+    # We haven't reached the snapshot quota yet so don't delete anything.
     elsif ($num_snaps <= $num_to_keep) { return } 
 
     # User changed their settings to keep less snapshots than they

@@ -9,7 +9,7 @@
 #  The $config_ref variable that is passed all around this module is
 #  created by read_config() from the Yabsm::Config module. read_config()
 #  ensures that the config it produces is valid, so therefore functions
-#  in this library do need to worry about edge cases caused by an
+#  in this library do not need to worry about edge cases caused by an
 #  erroneus config.
 #
 #  All the subroutines are annoted to communicate if the subroutine

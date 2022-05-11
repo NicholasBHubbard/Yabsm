@@ -43,7 +43,7 @@ my %regex = ( path         => qr/\/[^#\s]*/
 
 sub read_config {
 
-    my $file = shift // '/etc/yabsm.conf';
+    my $file = shift // '/etc/yabsmd.conf';
 
     # see documentation of Parser::MGC to see what is going on here
     my $parser = __PACKAGE__->new( toplevel => 'p'

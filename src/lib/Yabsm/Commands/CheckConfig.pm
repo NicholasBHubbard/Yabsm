@@ -22,7 +22,7 @@ sub die_usage {
 
 sub main {
 
-    my $file = shift // '/etc/yabsm.conf';
+    my $file = shift // '/etc/yabsmd.conf';
 
     die_usage() if @_;
 

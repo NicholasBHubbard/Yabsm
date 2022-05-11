@@ -1,8 +1,29 @@
+# All dependencies must have the form Package::Name@Version as
+# this is the form that cpanminus uses to install specific
+# package versions. Dependencies will be installed in the order
+# they are specified in this file.
+
+# Put deps used by the yabsm program itself under "PROGRAM:",
+# deps needed for running yabsms tests go under "TESTING:", and
+# deps that are needed for the development of yabsm go under
+# "DEVEL:".
+
+# PROGRAM:
+
+Parser::MGC@0.19
+Feature::Compat::Try@0.04 # Issues with fatpacking if version >0.04.
+Try::Tiny@0.31
+Net::OpenSSH@0.80
+Schedule::Cron@1.01
+Sys::Prctl@1.02
 lib::relative@1.000
 Array::Utils@0.5
 List::Util@1.33
-App::FatPacker@0.10.8
-Net::OpenSSH@0.80
-Parser::MGC@0.19
+
+# TESTING:
+
 Test::Exception@0.43
-Feature::Compat::Try@0.04 # Issues with fatpacking if version >0.04.
+
+# DEVEL:
+
+App::FatPacker@0.10.8

@@ -19,16 +19,11 @@ yabsm: usage: yabsm [--help] [--version] <command> <arg(s)>
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or
-                                          subvol defined in /etc/yabsm.conf.
-
-  update-crontab, update                  Write cronjobs to /etc/crontab, based
-                                          off the settings specified in
-                                          /etc/yabsm.conf. This is a root only
-                                          command.
+                                          subvol defined in /etc/yabsmd.conf.
 
   check-config, c <?FILE>                 Check that FILE is a valid yabsm
                                           config file. If FILE is not specified
-                                          then check /etc/yabsm.conf. If errors
+                                          then check /etc/yabsmd.conf. If errors
                                           are present print their messages to
                                           stderr and exit with non zero status,
                                           else print 'all good'.
@@ -45,52 +40,28 @@ yabsm: usage: yabsm [--help] [--version] <command> <arg(s)>
                                           btrfs incremental backup process for
                                           BACKUP. This is a root only command.
 
-  print-crons, crons                      Print the cronjob strings that would
-                                          be written to /etc/crontab if the
-                                          update-crontab command were used.
-
   print-subvols, subvols                  Print the names of all the subvols
-                                          defined in /etc/yabsm.conf.
+                                          defined in /etc/yabsmd.conf.
 
   print-backups, backups                  Print the names of all the backups
-                                          defined in /etc/yabsm.conf.
-
-  take-snap SUBVOL TIMEFRAME              Take a single read-only snapshot of
-                                          SUBVOL and put it in the TIMEFRAME
-                                          directory. This command should only
-                                          be used manually for debugging
-                                          purposes. This is a root only command.
-
-  incremental-backup BACKUP               Perform a single incremental backup
-                                          of BACKUP. This command should only
-                                          be used manually for debugging
-                                          purposes. This is a root only command.
+                                          defined in /etc/yabsmd.conf.
 END_USAGE
 }
 
 use lib::relative 'lib';
 
 # Every command has their own module with a main() function
-use Yabsm::Commands::TakeSnap;
-use Yabsm::Commands::IncrementalBackup;
 use Yabsm::Commands::Find;
-use Yabsm::Commands::UpdateEtcCrontab;
 use Yabsm::Commands::CheckConfig;
 use Yabsm::Commands::TestRemoteBackupConfig;
-use Yabsm::Commands::BackupBootstrap;
-use Yabsm::Commands::PrintCrons;
 use Yabsm::Commands::PrintSubvols;
 use Yabsm::Commands::PrintBackups;
 
 # command dispatch table
 my %run_command =
-   ( 'take-snap'          => \&Yabsm::Commands::TakeSnap::main
-   , 'incremental-backup' => \&Yabsm::Commands::IncrementalBackup::main
-   , 'find'               => \&Yabsm::Commands::Find::main
-   , 'update-crontab'     => \&Yabsm::Commands::UpdateEtcCrontab::main
+   ( 'find'               => \&Yabsm::Commands::Find::main
    , 'check-config'       => \&Yabsm::Commands::CheckConfig::main
    , 'test-remote-config' => \&Yabsm::Commands::TestRemoteBackupConfig::main
-   , 'bootstrap-backup'   => \&Yabsm::Commands::BackupBootstrap::main
    , 'print-crons'        => \&Yabsm::Commands::PrintCrons::main
    , 'print-subvols'      => \&Yabsm::Commands::PrintSubvols::main
    , 'print-backups'      => \&Yabsm::Commands::PrintBackups::main
@@ -103,10 +74,8 @@ sub unabbreviate {
     my $cmd = shift // die;
 
     if    ($cmd eq 'f')         { return 'find'               }
-    elsif ($cmd eq 'update')    { return 'update-crontab'     }
     elsif ($cmd eq 'c')         { return 'check-config'       }
     elsif ($cmd eq 'tr')        { return 'test-remote-config' }
-    elsif ($cmd eq 'bootstrap') { return 'bootstrap-backup'   }
     elsif ($cmd eq 'crons')     { return 'print-crons'        }
     elsif ($cmd eq 'subvols')   { return 'print-subvols'      }
     elsif ($cmd eq 'backups')   { return 'print-backups'      }

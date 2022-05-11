@@ -14,7 +14,6 @@ use Cwd qw/abs_path/;
 use File::Basename qw/basename dirname/;
 
 my $script = basename(__FILE__);
-
 my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
 
 my $plx = `which plx 2>/dev/null`

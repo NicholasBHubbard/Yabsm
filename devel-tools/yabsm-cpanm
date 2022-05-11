@@ -13,14 +13,14 @@ use v5.16.3;
 use Cwd qw/abs_path/;
 use File::Basename qw/basename dirname/;
 
-my $SCRIPT_NAME = basename(__FILE__);
+my $script = basename(__FILE__);
 
-my $YABSM_ROOT = dirname(abs_path(__FILE__ . '/..'));
+my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
 
 my $plx = `which plx 2>/dev/null`
-       || ( -x "$YABSM_ROOT/local/bin/plx" && "$YABSM_ROOT/local/bin/plx" )
-       || die "$SCRIPT_NAME: could not find a plx executable\n";
+       || ( -x "$yabsm_root/local/bin/plx" && "$yabsm_root/local/bin/plx" )
+       || die "$script could not find a plx executable\n";
 
 $plx =~ s/\s+//g;
 
-system("cd $YABSM_ROOT ; PERL_CPANM_HOME=$YABSM_ROOT $plx --cpanm -Llocal @ARGV");
+system("cd $yabsm_root ; PERL_CPANM_HOME=$yabsm_root $plx --cpanm -Llocal @ARGV");

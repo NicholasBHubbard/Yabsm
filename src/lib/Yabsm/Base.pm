@@ -36,6 +36,20 @@ use Carp;
 use List::Util 1.33 qw(any);
 use File::Path qw(make_path); # make_path() behaves like 'mkdir --parents'
 
+sub do_snapshot { # No test. Is not pure.
+
+    # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
+    
+    my $config_ref = shift // confess missing_arg();
+    my $subvol     = shift // confess missing_arg();
+    my $timeframe  = shift // confess missing_arg();
+
+    take_new_snapshot($config_ref, $subvol, $timeframe);
+    delete_old_snapshots($config_ref);
+
+    return;
+}
+
 sub take_new_snapshot { # No test. Is not pure.
 
     # take a single $timeframe snapshot of $subvol. Used for yabsm's

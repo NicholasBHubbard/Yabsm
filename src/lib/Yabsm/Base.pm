@@ -102,7 +102,7 @@ sub delete_old_snapshots { # No test. Is not pure.
     }
 
     # We haven't reached the snapshot quota yet so don't delete anything.
-    elsif ($num_snaps <= $num_to_keep) { return } 
+    elsif ($num_snaps <= $num_to_keep) { return }
 
     # User changed their settings to keep less snapshots than they
     # were keeping prior. 
@@ -116,7 +116,7 @@ sub delete_old_snapshots { # No test. Is not pure.
 	    system("btrfs subvol delete $oldest_snap");
 
 	    $num_snaps--;
-	} 
+	}
 
 	return;
     }
@@ -1432,6 +1432,124 @@ sub is_remote_backup { # Has test. Is pure.
     else { return 0 }
 }
 
+sub schedule_snapshots { # No test. Is not pure.
+
+    #TODO
+    my $config_ref     = shift // confess missing_arg();
+    my $cron_scheduler = shift // confess missing_arg();
+
+    foreach my $subvol (Yabsm::Base::all_subvols($config_ref)) {
+        
+        my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
+        my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
+        my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
+        my $weekly_want   = $config_ref->{subvols}{$subvol}{weekly_want};
+        my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
+
+        if ($_5minute_want eq 'yes') {
+            $cron_scheduler->add_entry(
+                "*/5 * * * *",
+                sub { do_snapshot($config_ref, $subvol, '5minute') }
+            );
+        }
+
+        if ($hourly_want eq 'yes') {
+            $cron_scheduler->add_entry(
+                "0 */1 * * *",
+                sub { do_snapshot($config_ref, $subvol, 'hourly') }
+            );
+        }
+
+        if ($daily_want eq 'yes') {
+            my $time = $config_ref->{subvols}{$subvol}{daily_time};
+            my $hr   = time_hour($time);
+            my $min  = time_minute($time);
+            $cron_scheduler->add_entry(
+                "$min $hr * * *",
+                sub { do_snapshot($config_ref, $subvol, 'daily') }
+            );
+        }
+
+        if ($weekly_want eq 'yes') {
+            my $time = $config_ref->{subvols}{$subvol}{weekly_time};
+            my $hr   = time_hour($time);
+            my $min  = time_minute($time);
+            my $dow  = day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day});
+            $cron_scheduler->add_entry(
+                "$min $hr * * $dow",
+                sub { do_snapshot($config_ref, $subvol, 'weekly') }
+            );
+        }
+
+        if ($monthly_want eq 'yes') {
+            my $time = $config_ref->{subvols}{$subvol}{monthly_time};
+            my $hr   = time_hour($time);
+            my $min  = time_minute($time);
+            $cron_scheduler->add_entry(
+                "$min $hr 1 * *",
+                sub { do_snapshot($config_ref, $subvol, 'monthly') }
+            );
+        }
+    }
+}
+
+sub schedule_backups { # No test. Is not pure.
+
+    #TODO
+    my $config_ref     = shift // confess missing_arg();
+    my $cron_scheduler = shift // confess missing_arg();
+
+    foreach my $backup (Yabsm::Base::all_backups($config_ref)) {
+
+        my $timeframe = $config_ref->{backups}{$backup}{timeframe};
+
+        if ($timeframe eq '5minute') {
+            $cron_scheduler->add_entry(
+                "*/5 * * * *",
+                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+            );
+        }
+
+        elsif ($timeframe eq 'hourly') {
+            $cron_scheduler->add_entry(
+                "0 */1 * * *",
+                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+            );
+        }
+
+        elsif ($timeframe eq 'daily') {
+            my $time = $config_ref->{backups}{$backup}{time};
+            my $hr   = Yabsm::Base::time_hour($time);
+            my $min  = Yabsm::Base::time_minute($time);
+            $cron_scheduler->add_entry(
+                "$min $hr * * *",
+                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+            );
+        }
+
+        elsif ($timeframe eq 'weekly') {
+            my $time = $config_ref->{backups}{$backup}{time};
+            my $hr   = Yabsm::Base::time_hour($time);
+            my $min  = Yabsm::Base::time_minute($time);
+            my $dow  = Yabsm::Base::day_of_week_num($config_ref->{backups}{$backup}{day});
+            $cron_scheduler->add_entry(
+                "$min $hr * * $dow",
+                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+            );
+        }
+
+        elsif ($timeframe eq 'monthly') {
+            my $time = $config_ref->{backups}{$backup}{time};
+            my $hr   = Yabsm::Base::time_hour($time);
+            my $min  = Yabsm::Base::time_minute($time);
+            $cron_scheduler->add_entry(
+                "$min $hr 1 * *",
+                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+            );
+        }
+    }
+}
+
 sub is_local_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined local backup. A
@@ -1446,90 +1564,6 @@ sub is_local_backup { # Has test. Is pure.
     }
 
     else { return 0 }
-}
-
-sub generate_cron_strings { # No test. Is pure.
-
-    # Use the users config to generate all the cron strings for taking
-    # snapshots and performing backups.
-    
-    my $config_ref = shift // confess missing_arg();
-
-    my @crons = (); # return this
-
-    foreach my $subvol (all_subvols($config_ref)) {
-
-	my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
-	my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
-	my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
-	my $weekly_want   = $config_ref->{subvols}{$subvol}{weekly_want};
-	my $monthly_want  = $config_ref->{subvols}{$subvol}{monthly_want};
-        
-        if ($_5minute_want eq 'yes') {
-            push @crons, "*/5 * * * * root yabsm take-snap $subvol 5minute"
-        }
-
-        if ($hourly_want eq 'yes') {
-            push @crons, "0 */1 * * * root yabsm take-snap $subvol hourly"
-        }
-        
-        if ($daily_want eq 'yes') {
-            my $hr = time_hour($config_ref->{subvols}{$subvol}{daily_time});
-            my $min = time_minute($config_ref->{subvols}{$subvol}{daily_time});
-            push @crons, "$min $hr * * * root yabsm take-snap $subvol daily";
-        }
-
-        if ($weekly_want eq 'yes') {
-            my $hr  = time_hour($config_ref->{subvols}{$subvol}{weekly_time});
-            my $min = time_minute($config_ref->{subvols}{$subvol}{weekly_time});
-            my $dow = day_of_week_num($config_ref->{subvols}{$subvol}{weekly_day});
-            push @crons, "$min $hr * * $dow root yabsm take-snap $subvol weekly";
-        }
-
-        if ($monthly_want eq 'yes') {
-            my $hr  = time_hour($config_ref->{subvols}{$subvol}{monthly_time});
-            my $min = time_minute($config_ref->{subvols}{$subvol}{monthly_time});
-            push @crons, "$min $hr 1 * * root yabsm take-snap $subvol monthly";
-        }
-    }
-
-    foreach my $backup (all_backups($config_ref)) {
-
-	my $timeframe = $config_ref->{backups}{$backup}{timeframe};
-
-        if ($timeframe eq '5minute') {
-	    push @crons, "*/5 * * * * root yabsm incremental-backup $backup";
-        }
-
-	elsif ($timeframe eq 'hourly') {
-	    push @crons, "0 */1 * * * root yabsm incremental-backup $backup";
-	}
-
-	elsif ($timeframe eq 'daily') {
-            my $hr  = time_hour($config_ref->{backups}{$backup}{time});
-            my $min = time_minute($config_ref->{backups}{$backup}{time});
-	    push @crons, "$min $hr * * * root yabsm incremental-backup $backup";
-	}
-
-	elsif ($timeframe eq 'weekly') {
-            my $hr  = time_hour($config_ref->{backups}{$backup}{time});
-            my $min = time_minute($config_ref->{backups}{$backup}{time});
-            my $dow = day_of_week_num($config_ref->{backups}{$backup}{day});
-	    push @crons, "$min $hr * * $dow root yabsm incremental-backup $backup";
-	}
-
-	elsif ($timeframe eq 'monthly') {
-            my $hr  = time_hour($config_ref->{backups}{$backup}{time});
-            my $min = time_minute($config_ref->{backups}{$backup}{time});
-	    push @crons, "$min $hr 1 * * root yabsm incremental-backup $backup";
-	}
-
-	else {
-	    confess "yabsm: internal error: backup '$backup' has invalid timeframe '$timeframe'";
-	}
-    }
-
-    return wantarray ? @crons : \@crons;
 }
 
 sub new_ssh_connection { # No test. Is not pure.

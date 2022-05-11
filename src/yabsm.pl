@@ -15,7 +15,7 @@ use v5.16.3;
 
 sub usage {
     print <<END_USAGE;
-usage: yabsm [--help] [--version] <command> <arg(s)>
+Usage: yabsm [--help] [--version] <command> <arg(s)>
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or

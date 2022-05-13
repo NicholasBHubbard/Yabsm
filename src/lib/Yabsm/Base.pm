@@ -45,7 +45,7 @@ sub do_snapshot { # No test. Is not pure.
     my $timeframe  = shift // confess missing_arg();
 
     take_new_snapshot($config_ref, $subvol, $timeframe);
-    delete_old_snapshots($config_ref);
+    delete_old_snapshots($config_ref, $subvol, $timeframe);
 
     return;
 }

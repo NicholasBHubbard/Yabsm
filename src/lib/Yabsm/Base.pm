@@ -1434,7 +1434,9 @@ sub is_remote_backup { # Has test. Is pure.
 
 sub schedule_snapshots { # No test. Is not pure.
 
-    #TODO
+    # Schedule snapshots based off user configuration by adding
+    # them to $cron_scheduler object (see Schedule::Cron module).
+    
     my $config_ref     = shift // confess missing_arg();
     my $cron_scheduler = shift // confess missing_arg();
 
@@ -1495,7 +1497,9 @@ sub schedule_snapshots { # No test. Is not pure.
 
 sub schedule_backups { # No test. Is not pure.
 
-    #TODO
+    # Schedule backups based off user configuration by adding
+    # them to $cron_scheduler object (see Schedule::Cron module).
+    
     my $config_ref     = shift // confess missing_arg();
     my $cron_scheduler = shift // confess missing_arg();
 

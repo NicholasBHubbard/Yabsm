@@ -139,16 +139,15 @@ $fatpacked{"Feature/Compat/Try.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
   #  You may distribute under the terms of either the GNU General Public License
   #  or the Artistic License (the same terms as Perl itself)
   #
-  #  (C) Paul Evans, 2021-2022 -- leonerd@leonerd.org.uk
+  #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package Feature::Compat::Try 0.05;
+  package Feature::Compat::Try 0.04;
   
   use v5.14;
   use warnings;
   use feature ();
   
-  # Core's use feature 'try' only supports 'finally' since 5.35.8
-  use constant HAVE_FEATURE_TRY => $] >= 5.035008;
+  use constant HAVE_FEATURE_TRY => defined $feature::feature{try};
   
   =head1 NAME
   
@@ -172,11 +171,11 @@ $fatpacked{"Feature/Compat/Try.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
   
   =head1 DESCRIPTION
   
-  This module makes syntax support for C<try/catch> control flow easily
-  available.
+  This module is written in preparation for when perl will gain true native
+  syntax support for C<try/catch> control flow.
   
-  Perl added such syntax at version 5.34.0, and extended it to support optional
-  C<finally> blocks at 5.35.9, which is enabled by
+  Perl added such syntax in the development version 5.33.7, which is enabled
+  by
   
      use feature 'try';
   
@@ -202,8 +201,7 @@ $fatpacked{"Feature/Compat/Try.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
      ...
   
   A C<try> statement provides the main body of code that will be invoked, and
-  must be followed by a C<catch> statement. It may optionally be followed by
-  a C<finally> statement.
+  must be followed by a C<catch> statement.
   
   Execution of the C<try> statement itself begins from the block given to the
   statement and continues until either it throws an exception, or completes
@@ -254,26 +252,6 @@ $fatpacked{"Feature/Compat/Try.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
   loop control expressions (C<redo>, C<next> or C<last>) which also have their
   usual effect.
   
-  =head2 finally
-  
-     ...
-     finally {
-        STATEMENTS...
-     }
-  
-  A C<finally> statement provides an optional block of code to the preceding
-  C<try>/C<catch> pair which is executed afterwards, both in the case of a
-  normal execution or a thrown exception. This code block may be used to
-  provide whatever clean-up operations might be required by preceding code.
-  
-  Because it is executed during a stack cleanup operation, a C<finally {}> block
-  may not cause the containing function to return, or to alter the return value
-  of it. It also cannot see the containing function's C<@_> arguments array
-  (though as it is block scoped within the function, it will continue to share
-  any normal lexical variables declared up until that point). It is protected
-  from disturbing the value of C<$@>. If the C<finally {}> block code throws an
-  exception, this will be printed as a warning and discarded, leaving C<$@>
-  containing the original exception, if one existed.
   =cut
   
   sub import
@@ -285,8 +263,8 @@ $fatpacked{"Feature/Compat/Try.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
      }
      else {
         require Syntax::Keyword::Try;
-        Syntax::Keyword::Try->VERSION( '0.27' );
-        Syntax::Keyword::Try->import(qw( try -require_catch -require_var ));
+        Syntax::Keyword::Try->VERSION( '0.22' );
+        Syntax::Keyword::Try->import(qw( try -no_finally -require_var ));
      }
   }
   
@@ -313,25 +291,6 @@ $fatpacked{"Feature/Compat/Try.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
   fine here. But if you are using C<caller()> with calculated indexes to inspect
   the state of callers to your code and there may be C<try> frames in the way,
   you will need to somehow account for the difference in stack height.
-  
-  =item * C<B::Deparse>
-  
-  The core C<feature 'try'> is implemented by emitting real opcodes that
-  represent its behaviour, which is recognised by the version of L<B::Deparse>
-  that ships with core perl. As a result, any code using this implementation
-  will deparse currently with tools like C<perl -MO=Deparse ...>, or others
-  related to it such as coverage checkers.
-  
-  By comparison, since C<Syntax::Keyword::Try> uses C<OP_CUSTOM> it is not
-  recognised by C<B::Deparse> and so attempts to deparse this will result in
-  error messages like
-  
-     unexpected OP_CUSTOM (catch) at ...
-  
-  This is rather unavoidable due to the way that C<B::Deparse> is implemented
-  and does not easily support custom operators.
-  
-  See also L<https://rt.cpan.org/Ticket/Display.html?id=134812>.
   
   =back
   
@@ -13336,7 +13295,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $timeframe  = shift // confess missing_arg();
   
       take_new_snapshot($config_ref, $subvol, $timeframe);
-      delete_old_snapshots($config_ref);
+      delete_old_snapshots($config_ref, $subvol, $timeframe);
   
       return;
   }

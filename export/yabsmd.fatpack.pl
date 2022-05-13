@@ -8501,6 +8501,4793 @@ $fatpacked{"Parser/MGC/Examples/EvaluateExpression.pm"} = '#line '.(1+__LINE__).
    OUTPUT:   39
 PARSER_MGC_EXAMPLES_EVALUATEEXPRESSION
 
+$fatpacked{"Schedule/Cron.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'SCHEDULE_CRON';
+  #!/usr/bin/perl -w
+  
+  =head1 NAME
+  
+  Cron - cron-like scheduler for Perl subroutines
+  
+  =head1 SYNOPSIS
+  
+    use Schedule::Cron;
+  
+    # Subroutines to be called
+    sub dispatcher { 
+      print "ID:   ",shift,"\n"; 
+      print "Args: ","@_","\n";
+    }
+  
+    sub check_links { 
+      # do something... 
+    }
+  
+    # Create new object with default dispatcher
+    my $cron = new Schedule::Cron(\&dispatcher);
+  
+    # Load a crontab file
+    $cron->load_crontab("/var/spool/cron/perl");
+  
+    # Add dynamically  crontab entries
+    $cron->add_entry("3 4  * * *",ROTATE => "apache","sendmail");
+    $cron->add_entry("0 11 * * Mon-Fri",\&check_links);
+  
+    # Run scheduler 
+    $cron->run(detach=>1);
+                     
+  
+  =head1 DESCRIPTION
+  
+  This module provides a simple but complete cron like scheduler.  I.e this
+  module can be used for periodically executing Perl subroutines.  The dates and
+  parameters for the subroutines to be called are specified with a format known
+  as crontab entry (see L<"METHODS">, C<add_entry()> and L<crontab(5)>)
+  
+  The philosophy behind C<Schedule::Cron> is to call subroutines periodically
+  from within one single Perl program instead of letting C<cron> trigger several
+  (possibly different) Perl scripts. Everything under one roof.  Furthermore,
+  C<Schedule::Cron> provides mechanism to create crontab entries dynamically,
+  which isn't that easy with C<cron>.
+  
+  C<Schedule::Cron> knows about all extensions (well, at least all extensions I'm
+  aware of, i.e those of the so called "Vixie" cron) for crontab entries like
+  ranges including 'steps', specification of month and days of the week by name,
+  or coexistence of lists and ranges in the same field.  It even supports a bit
+  more (like lists and ranges with symbolic names).
+  
+  =head1 METHODS
+  
+  =over 4
+  
+  =cut
+  
+  #'
+  
+  package Schedule::Cron;
+  
+  use Time::ParseDate;
+  use Data::Dumper;
+  
+  use strict;
+  use vars qw($VERSION  $DEBUG);
+  use subs qw(dbg);
+  
+  my $HAS_POSIX;
+  
+  BEGIN {
+    eval { 
+      require POSIX;
+      import POSIX ":sys_wait_h";
+    };
+    $HAS_POSIX = $@ ? 0 : 1;
+  }
+  
+  
+  $VERSION = "1.01";
+  
+  our $DEBUG = 0;
+  my %STARTEDCHILD = ();
+  
+  my @WDAYS = qw(
+                   Sunday
+                   Monday
+                   Tuesday
+                   Wednesday
+                   Thursday
+                   Friday
+                   Saturday
+                   Sunday
+                  );
+  
+  my @ALPHACONV = (
+                   { },
+                   { },
+                   { },
+                   { qw(jan 1 feb 2 mar 3 apr 4 may 5 jun 6 jul 7 aug 8
+                        sep 9 oct 10 nov 11 dec 12) },
+                   { qw(sun 0 mon 1 tue 2 wed 3 thu 4 fri 5 sat 6)},
+                   {  }
+                  );
+  my @RANGES = ( 
+                [ 0,59 ],
+                [ 0,23 ],
+                [ 0,31 ],
+                [ 0,12 ],
+                [ 0,7  ],
+                [ 0,59 ]
+               );
+  
+  my @LOWMAP = ( 
+                {},
+                {},
+                { 0 => 1},
+                { 0 => 1},
+                { 7 => 0},
+                {},
+               );
+  
+  
+  # Currently, there are two ways for reaping. One, which only waits explicitely
+  # on PIDs it forked on its own, and one which waits on all PIDs (even on those
+  # it doesn't forked itself). The later has been proved to work on Win32 with
+  # the 64 threads limit (RT #56926), but not when one creates forks on ones
+  # one. The specific reaper works for RT #55741.
+  
+  # It tend to use the specific one, if it also resolves RT #56926. Both are left
+  # here for reference until a decision has been done for 1.01
+  
+  sub REAPER {
+      &_reaper_all();
+  }
+  
+  # Specific reaper
+  sub _reaper_specific {
+      local ($!,%!);
+      if ($HAS_POSIX)
+      {
+          foreach my $pid (keys %STARTEDCHILD) {
+              if ($STARTEDCHILD{$pid}) {
+                  my $res = $HAS_POSIX ? waitpid($pid, WNOHANG) : waitpid($pid,0);
+                  if ($res > 0) {
+                      # We reaped a truly running process
+                      $STARTEDCHILD{$pid} = 0;
+                      dbg "Reaped child $res" if $DEBUG;
+                  }
+              }
+          }
+      } 
+      else
+      {
+          my $waitedpid = 0;
+          while($waitedpid != -1) {
+              $waitedpid = wait;
+          }
+      }
+  }
+  
+  # Catch all reaper
+  sub _reaper_all {
+      local ($!,%!);
+      my $kid;
+      do 
+      {
+          # Only on POSIX systems the wait will return immediately 
+          # if there are no finished child processes. Simple 'wait'
+          # waits blocking on childs.
+          $kid = $HAS_POSIX ? waitpid(-1, WNOHANG) : wait;
+          print "Kid: $kid\n";
+          if ($kid != 0 && $kid != -1 && defined $STARTEDCHILD{$kid}) 
+          {
+              # We don't delete the hash entry here to avoid an issue
+              # when modifyinga global hash from multiple threads
+              $STARTEDCHILD{$kid} = 0;
+              dbg "Reaped child $kid" if $DEBUG;
+          }
+      } while ($kid != 0 && $kid != -1);
+  
+      # Note to myself: Is the %STARTEDCHILD hash really necessary if we use -1
+      # for waiting (i.e. for waiting on any child ?). In the current
+      # implementation, %STARTEDCHILD is not used at all. It would be only 
+      # needed if we iterate over it to wait on pids specifically.
+  }
+  
+  # Cleaning is done in extra method called from the main 
+  # process in order to avoid event handlers modifying this
+  # global hash which can lead to memory errors.
+  # See RT #55741 for more details on this.
+  # This method is called in strategic places.
+  sub _cleanup_process_list 
+  {
+      my ($self, $cfg) = @_;
+      
+      # Cleanup processes even on those systems, where the SIGCHLD is not 
+      # propagated. Only do this for POSIX, otherwise this call would block 
+      # until all child processes would have been finished.
+      # See RT #56926 for more details.
+  
+      # Do not cleanup if nofork because jobs that fork will do their own reaping.
+      &REAPER() if $HAS_POSIX && !$cfg->{nofork};
+  
+      # Delete entries from this global hash only from within the main
+      # thread/process. Hence, this method must not be called from within 
+      # a signalhandler    
+      for my $k (keys %STARTEDCHILD) 
+      {
+          delete $STARTEDCHILD{$k} unless $STARTEDCHILD{$k};
+      }
+  }
+  
+  =item $cron = new Schedule::Cron($dispatcher,[extra args])
+  
+  Creates a new C<Cron> object.  C<$dispatcher> is a reference to a subroutine,
+  which will be called by default.  C<$dispatcher> will be invoked with the
+  arguments parameter provided in the crontab entry if no other subroutine is
+  specified. This can be either a single argument containing the argument
+  parameter literally has string (default behavior) or a list of arguments when
+  using the C<eval> option described below.
+  
+  The date specifications must be either provided via a crontab like file or
+  added explicitly with C<add_entry()> (L<"add_entry">).
+  
+  I<extra_args> can be a hash or hash reference for additional arguments.  The
+  following parameters are recognized:
+  
+  =over
+  
+  =item file => <crontab>  
+  
+  
+  Load the crontab entries from <crontab>
+  
+  =item eval =>  1
+  
+  Eval the argument parameter in a crontab entry before calling the subroutine
+  (instead of literally calling the dispatcher with the argument parameter as
+  string)
+  
+  =item nofork => 1
+  
+  Don't fork when starting the scheduler. Instead, the jobs are executed within
+  current process. In your executed jobs, you have full access to the global
+  variables of your script and hence might influence other jobs running at a
+  different time. This behaviour is fundamentally different to the 'fork' mode,
+  where each jobs gets its own process and hence a B<copy> of the process space,
+  independent of each other job and the main process. This is due to the nature
+  of the  C<fork> system call. 
+  
+  =item nostatus =>  1
+  
+  Do not update status in $0.  Set this if you don't want ps to reveal the internals
+  of your application, including job argument lists.  Default is 0 (update status).
+  
+  =item skip => 1
+  
+  Skip any pending jobs whose time has passed. This option is only useful in
+  combination with C<nofork> where a job might block the execution of the
+  following jobs for quite some time. By default, any pending job is executed
+  even if its scheduled execution time has already passed. With this option set
+  to true all pending which would have been started in the meantime are skipped. 
+  
+  =item catch => 1
+  
+  Catch any exception raised by a job. This is especially useful in combination with
+  the C<nofork> option to avoid stopping the main process when a job raises an
+  exception (dies).
+  
+  =item after_job => \&after_sub
+  
+  Call a subroutine after a job has been run. The first argument is the return
+  value of the dispatched job, the reminding arguments are the arguments with
+  which the dispatched job has been called.
+  
+  Example:
+  
+     my $cron = new Schedule::Cron(..., after_job => sub {
+            my ($ret,@args) = @_;
+            print "Return value: ",$ret," - job arguments: (",join ":",@args,")\n";
+     });
+  
+  =item log => \&log_sub
+  
+  Install a logging subroutine. The given subroutine is called for several events
+  during the lifetime of a job. This method is called with two arguments: A log
+  level of 0 (info),1 (warning) or 2 (error) depending on the importance of the
+  message and the message itself.
+  
+  For example, you could use I<Log4perl> (L<http://log4perl.sf.net>) for logging
+  purposes for example like in the following code snippet:
+  
+     use Log::Log4perl;
+     use Log::Log4perl::Level;
+  
+     my $log_method = sub {
+        my ($level,$msg) = @_;
+        my $DBG_MAP = { 0 => $INFO, 1 => $WARN, 2 => $ERROR };
+  
+        my $logger = Log::Log4perl->get_logger("My::Package");
+        $logger->log($DBG_MAP->{$level},$msg);
+     }
+    
+     my $cron = new Schedule::Cron(.... , log => $log_method);
+  
+  =item loglevel => <-1,0,1,2>
+  
+  Restricts logging to the specified severity level or below.  Use 0 to have all
+  messages generated, 1 for only warnings and errors and 2 for errors only.
+  Default is 0 (all messages).  A loglevel of -1 (debug) will include job
+  argument lists (also in $0) in the job start message logged with a level of 0
+  or above. You may have security concerns with this. Unless you are debugging,
+  use 0 or higher. A value larger than 2 will disable logging completely.
+  
+  Although you can filter in your log routine, generating the messages can be
+  expensive, for example if you pass arguments pointing to large hashes.  Specifying
+  a loglevel avoids formatting data that your routine would discard.
+  
+  =item processprefix => <name>
+  
+  Cron::Schedule sets the process' name (i.e. C<$0>) to contain some informative
+  messages like when the next job executes or with which arguments a job is
+  called. By default, the prefix for this labels is C<Schedule::Cron>. With this
+  option you can set it to something different. You can e.g. use C<$0> to include
+  the original process name.  You can inhibit this with the C<nostatus> option, and
+  prevent the argument display by setting C<loglevel> to zero or higher.
+  
+  =item sleep => \&hook
+  
+  If specified, &hook will be called instead of sleep(), with the time to sleep
+  in seconds as first argument and the Schedule::Cron object as second.  This hook
+  allows you to use select() instead of sleep, so that you can handle IO, for
+  example job requests from a network connection.
+  
+  e.g.
+  
+    $cron->run( { sleep => \&sleep_hook, nofork => 1 } );
+  
+    sub sleep_hook {
+      my ($time, $cron) = @_;
+  
+      my ($rin, $win, $ein) = ('','','');
+      my ($rout, $wout, $eout);
+      vec($rin, fileno(STDIN), 1) = 1;
+      my ($nfound, $ttg) = select($rout=$rin, $wout=$win, $eout=$ein, $time);
+      if ($nfound) {
+  	   handle_io($rout, $wout, $eout);
+      }
+      return;
+  }
+  
+  =back
+  
+  =cut
+  
+  sub new 
+  {
+      my $class = shift;
+      my $dispatcher = shift || die "No dispatching sub provided";
+      die "Dispatcher not a ref to a subroutine" unless ref($dispatcher) eq "CODE";
+      my $cfg = ref($_[0]) eq "HASH" ? $_[0] : {  @_ };
+      $cfg->{processprefix} = "Schedule::Cron" unless $cfg->{processprefix};
+      my $self = { 
+                  cfg => $cfg,
+                  dispatcher => $dispatcher,
+                  queue => [ ],
+                  map => { }
+               };
+      bless $self,(ref($class) || $class);
+      
+      $self->load_crontab if $cfg->{file};
+      $self;
+  }
+  
+  =item $cron->load_crontab($file)
+  
+  =item $cron->load_crontab(file=>$file,[eval=>1])
+  
+  Loads and parses the crontab file C<$file>. The entries found in this file will
+  be B<added> to the current time table with C<$cron-E<gt>add_entry>.
+  
+  The format of the file consists of cron commands containing of lines with at
+  least 5 columns, whereas the first 5 columns specify the date.  The rest of the
+  line (i.e columns 6 and greater) contains the argument with which the
+  dispatcher subroutine will be called.  By default, the dispatcher will be
+  called with one single string argument containing the rest of the line
+  literally.  Alternatively, if you call this method with the optional argument
+  C<eval=E<gt>1> (you must then use the second format shown above), the rest of
+  the line will be evaled before used as argument for the dispatcher.
+  
+  For the format of the first 5 columns, please see L<"add_entry">.
+  
+  Blank lines and lines starting with a C<#> will be ignored. 
+  
+  There's no way to specify another subroutine within the crontab file.  All
+  calls will be made to the dispatcher provided at construction time.
+  
+  If    you   want    to    start   up    fresh,    you   should    call
+  C<$cron-E<gt>clean_timetable()> before.
+  
+  Example of a crontab fiqw(le:)
+  
+     # The following line runs on every Monday at 2:34 am
+     34 2 * * Mon  "make_stats"
+     # The next line should be best read in with an eval=>1 argument
+     *  * 1 1 *    { NEW_YEAR => '1',HEADACHE => 'on' }
+  
+  =cut
+  
+  #'
+  
+  sub load_crontab 
+  {
+    my $self = shift;
+    my $cfg = shift;
+  
+    if ($cfg) 
+    {
+        if (@_) 
+        {
+            $cfg = ref($cfg) eq "HASH" ? $cfg : { $cfg,@_ };
+        } 
+        elsif (!ref($cfg)) 
+        {
+            my $new_cfg = { };
+            $new_cfg->{file} = $cfg;
+            $cfg = $new_cfg;
+        }
+    }
+    
+    my $file = $cfg->{file} || $self->{cfg}->{file} || die "No filename provided";
+    my $eval = $cfg->{eval} || $self->{cfg}->{eval};
+    
+    open(F,$file) || die "Cannot open schedule $file : $!";
+    my $line = 0;
+    while (<F>) 
+    {
+        $line++;
+        # Strip off trailing comments and ignore empty 
+        # or pure comments lines:
+        s/#.*$//;
+        next if /^$/;
+        next if /^$/;
+        next if /^\s*#/;
+        chomp;
+        s/\s*(.*)\s*$/$1/;
+        my ($min,$hour,$dmon,$month,$dweek,$rest) = split (/\s+/,$_,6);
+        
+        my $time = [ $min,$hour,$dmon,$month,$dweek ];
+  
+        # Try to check, whether an optional 6th column specifying seconds 
+        # exists: 
+        my $args;
+        if ($rest)
+        {
+            my ($col6,$more_args) = split(/\s+/,$rest,2);
+            if ($col6 =~ /^[\d\-\*\,\/]+$/)
+            {
+                push @$time,$col6;
+                dbg "M: $more_args";
+                $args = $more_args;
+            }
+            else
+            {
+                $args = $rest;
+            }
+        }
+        $self->add_entry($time,{ 'args' => $args, 'eval' => $eval});
+    }
+    close F;
+  }
+  
+  =item $cron->add_entry($timespec,[arguments])
+  
+  Adds a new entry to the list of scheduled cron jobs.
+  
+  B<Time and Date specification>
+  
+  C<$timespec> is the specification of the scheduled time in crontab format
+  (L<crontab(5)>) which contains five mandatory time and date fields and an
+  optional 6th column. C<$timespec> can be either a plain string, which contains
+  a whitespace separated time and date specification.  Alternatively,
+  C<$timespec> can be a reference to an array containing the five elements for
+  the date fields.
+  
+  The time and date fields are (taken mostly from L<crontab(5)>, "Vixie" cron): 
+  
+     field          values
+     =====          ======
+     minute         0-59
+     hour           0-23
+     day of month   1-31 
+     month          1-12 (or as names)
+     day of week    0-7 (0 or 7 is Sunday, or as names)
+     seconds        0-59 (optional)
+  
+   A field may be an asterisk (*), which always stands for
+   ``first-last''.
+  
+   Ranges of numbers are  allowed.  Ranges are two numbers
+   separated  with  a  hyphen.   The  specified  range  is
+   inclusive.   For example, 8-11  for an  ``hours'' entry
+   specifies execution at hours 8, 9, 10 and 11.
+  
+   Lists  are allowed.   A list  is a  set of  numbers (or
+   ranges)  separated by  commas.   Examples: ``1,2,5,9'',
+   ``0-4,8-12''.
+  
+   Step  values can  be used  in conjunction  with ranges.
+   Following a range with ``/<number>'' specifies skips of
+   the  numbers value  through the  range.   For example,
+   ``0-23/2'' can  be used in  the hours field  to specify
+   command execution every  other hour (the alternative in
+   the V7 standard is ``0,2,4,6,8,10,12,14,16,18,20,22'').
+   Steps are  also permitted after an asterisk,  so if you
+   want to say ``every two hours'', just use ``*/2''.
+  
+   Names can also  be used for the ``month''  and ``day of
+   week''  fields.  Use  the  first three  letters of  the
+   particular day or month (case doesn't matter).
+  
+   Note: The day of a command's execution can be specified
+         by two fields  -- day of month, and  day of week.
+         If both fields are restricted (ie, aren't *), the
+         command will be run when either field matches the
+         current  time.  For  example, ``30  4 1,15  * 5''
+         would cause a command to be run at 4:30 am on the
+         1st and 15th of each month, plus every Friday
+  
+  Examples:
+  
+   "8  0 * * *"         ==> 8 minutes after midnight, every day
+   "5 11 * * Sat,Sun"   ==> at 11:05 on each Saturday and Sunday
+   "0-59/5 * * * *"     ==> every five minutes
+   "42 12 3 Feb Sat"    ==> at 12:42 on 3rd of February and on 
+                            each Saturday in February
+   "32 11 * * * 0-30/2" ==> 11:32:00, 11:32:02, ... 11:32:30 every 
+                            day
+  
+  In addition, ranges or lists of names are allowed. 
+  
+  An optional sixth column can be used to specify the seconds within the
+  minute. If not present, it is implicitely set to "0".
+  
+  B<Command specification>
+  
+  The subroutine to be executed when the the C<$timespec> matches can be
+  specified in several ways.
+  
+  First, if the optional C<arguments> are lacking, the default dispatching
+  subroutine provided at construction time will be called without arguments.
+  
+  If the second parameter to this method is a reference to a subroutine, this
+  subroutine will be used instead of the dispatcher.
+  
+  Any additional parameters will be given as arguments to the subroutine to be
+  executed.  You can also specify a reference to an array instead of a list of
+  parameters.
+  
+  You can also use a named parameter list provided as an hashref.  The named
+  parameters recognized are:
+  
+  =over
+  
+  =item subroutine      
+  
+  =item sub 
+  
+  Reference to subroutine to be executed
+  
+  =item arguments
+  
+  =item args
+  
+  Reference to array containing arguments to be use when calling the subroutine
+  
+  =item eval
+  
+  If true, use the evaled string provided with the C<arguments> parameter.  The
+  evaluation will take place immediately (not when the subroutine is going to be
+  called)
+  
+  =back
+  
+  Examples:
+  
+     $cron->add_entry("* * * * *");
+     $cron->add_entry("* * * * *","doit");
+     $cron->add_entry("* * * * *",\&dispatch,"first",2,"third");
+     $cron->add_entry("* * * * *",{'subroutine' => \&dispatch,
+                                   'arguments'  => [ "first",2,"third" ]});
+     $cron->add_entry("* * * * *",{'subroutine' => \&dispatch,
+                                   'arguments'  => '[ "first",2,"third" ]',
+                                   'eval'       => 1});
+  
+  =cut 
+  
+  sub add_entry 
+  { 
+      my $self = shift;
+      my $time = shift;
+      my $args = shift || []; 
+      my $dispatch;
+      
+      #  dbg "Args: ",Dumper($time,$args);
+      
+      if (ref($args) eq "HASH") 
+      {
+          my $cfg = $args;
+          $args = undef;
+          $dispatch = $cfg->{subroutine} || $cfg->{sub};
+          $args = $cfg->{arguments} || $cfg->{args} || [];
+          if ($cfg->{eval} && $cfg) 
+          {
+              die "You have to provide a simple scalar if using eval" if (ref($args));
+              my $orig_args = $args;
+              dbg "Evaled args ",Dumper($args) if $DEBUG;
+              $args = [ eval $args ];
+              die "Cannot evaluate args (\"$orig_args\")"
+                if $@;
+          }
+      } 
+      elsif (ref($args) eq "CODE") 
+      {
+          $dispatch = $args;
+          $args = shift || [];
+      }
+      if (ref($args) ne "ARRAY") 
+      {
+          $args = [ $args,@_ ];
+      }
+  
+      $dispatch ||= $self->{dispatcher};
+  
+  
+      my $time_array = ref($time) ? $time : [ split(/\s+/,$time) ];
+      die "Invalid number of columns in time entry (5 or 6)\n"
+        if ($#$time_array != 4 && $#$time_array !=5);
+      $time = join ' ',@$time_array;
+  
+      #  dbg "Adding ",Dumper($time);
+      push @{$self->{time_table}},
+      {
+       time => $time,
+       dispatcher => $dispatch,
+       args => $args
+      };
+      
+      $self->{entries_changed} = 1;
+      #  dbg "Added Args ",Dumper($self->{args});
+      
+      my $index = $#{$self->{time_table}};
+      my $id = $args->[0];
+      $self->{map}->{$id} = $index if $id;
+      
+      return $#{$self->{time_table}};
+  }
+  
+  =item @entries = $cron->list_entries()
+  
+  Return a list of cron entries. Each entry is a hash reference of the following
+  form:
+  
+    $entry = { 
+               time => $timespec,
+               dispatch => $dispatcher,
+               args => $args_ref
+             }
+  
+  Here C<$timespec> is the specified time in crontab format as provided to
+  C<add_entry>, C<$dispatcher> is a reference to the dispatcher for this entry
+  and C<$args_ref> is a reference to an array holding additional arguments (which
+  can be an empty array reference). For further explanation of this arguments
+  refer to the documentation of the method C<add_entry>.
+  
+  The order index of each entry can be used within C<update_entry>, C<get_entry>
+  and C<delete_entry>. But be aware, when you are deleting an entry, that you
+  have to refetch the list, since the order will have changed.
+  
+  Note that these entries are returned by value and were opbtained from the
+  internal list by a deep copy. I.e. you are free to modify it, but this won't
+  influence the original entries. Instead use C<update_entry> if you need to
+  modify an exisiting crontab entry.
+  
+  =cut
+  
+  sub list_entries
+  {
+      my ($self) = shift;
+      
+      my @ret;
+      foreach my $entry (@{$self->{time_table}})
+      {
+          # Deep copy $entry
+          push @ret,$self->_deep_copy_entry($entry);
+      }
+      return @ret;
+  }
+  
+  
+  =item $entry = $cron->get_entry($idx)
+  
+  Get a single entry. C<$entry> is either a hashref with the possible keys
+  C<time>, C<dispatch> and C<args> (see C<list_entries()>) or undef if no entry
+  with the given index C<$idx> exists.
+  
+  =cut
+  
+  sub get_entry
+  {
+      my ($self,$idx) = @_;
+  
+      my $entry = $self->{time_table}->[$idx];
+      if ($entry)
+      {
+          return $self->_deep_copy_entry($entry);
+      }
+      else
+      {
+          return undef;
+      }
+  }
+  
+  =item $cron->delete_entry($idx)
+  
+  Delete the entry at index C<$idx>. Returns the deleted entry on success,
+  C<undef> otherwise.
+  
+  =cut
+  
+  sub delete_entry
+  {
+      my ($self,$idx) = @_;
+  
+      if ($idx <= $#{$self->{time_table}})
+      {
+          $self->{entries_changed} = 1;
+  
+          # Remove entry from $self->{map} which 
+          # remembers the index in the timetable by name (==id)
+          # and update all larger indexes appropriately
+          # Fix for #54692
+          my $map = $self->{map};
+          foreach my $key (keys %{$map}) {
+              if ($map->{$key} > $idx) {
+                  $map->{$key}--;
+              } elsif ($map->{$key} == $idx) {
+                  delete $map->{$key};
+              }
+          }
+          return splice @{$self->{time_table}},$idx,1;
+      }
+      else
+      {
+          return undef;
+      }
+  }
+  
+  =item $cron->update_entry($idx,$entry)
+  
+  Updates the entry with index C<$idx>. C<$entry> is a hash ref as descibed in
+  C<list_entries()> and must contain at least a value C<$entry-E<gt>{time}>. If no
+  C<$entry-E<gt>{dispatcher}> is given, then the default dispatcher is used.  This
+  method returns the old entry on success, C<undef> otherwise.
+  
+  =cut 
+  
+  sub update_entry
+  {
+      my ($self,$idx,$entry) = @_;
+  
+      die "No update entry given" unless $entry;
+      die "No time specification given" unless $entry->{time};
+      
+      if ($idx <= $#{$self->{time_table}})
+      {
+          my $new_entry = $self->_deep_copy_entry($entry);
+          $new_entry->{dispatcher} = $self->{dispatcher} 
+            unless $new_entry->{dispatcher};
+          $new_entry->{args} = []
+            unless $new_entry->{args};
+          return splice @{$self->{time_table}},$idx,1,$new_entry;
+      }
+      else
+      {
+          return undef;
+      }
+  }
+  
+  =item $cron->run([options])
+  
+  This method starts the scheduler.
+  
+  When called without options, this method will never return and executes the
+  scheduled subroutine calls as needed.
+  
+  Alternatively, you can detach the main scheduler loop from the current process
+  (daemon mode). In this case, the pid of the forked scheduler process will be
+  returned.
+  
+  The C<options> parameter specifies the running mode of C<Schedule::Cron>.  It
+  can be either a plain list which will be interpreted as a hash or it can be a
+  reference to a hash. The following named parameters (keys of the provided hash)
+  are recognized:
+  
+  =over
+  
+  =item detach    
+  
+  If set to a true value the scheduler process is detached from the current
+  process (UNIX only).
+  
+  =item pid_file  
+  
+  If running in daemon mode, name the optional file, in which the process id of
+  the scheduler process should be written. By default, no PID File will be
+  created.
+  
+  =item nofork, skip, catch, log, loglevel, nostatus, sleep
+  
+  See C<new()> for a description of these configuration parameters, which can be
+  provided here as well. Note, that the options given here overrides those of the
+  constructor.
+  
+  =back
+  
+  
+  Examples:
+  
+     # Start  scheduler, detach  from current  process and
+     # write  the  PID  of  the forked  scheduler  to  the
+     # specified file
+     $cron->run(detach=>1,pid_file=>"/var/run/scheduler.pid");
+  
+     # Start scheduler and wait forever.
+     $cron->run();
+  
+  =cut
+  
+  sub run 
+  { 
+      my $self = shift;
+      my $cfg = ref($_[0]) eq "HASH" ? $_[0] : {  @_ };
+      $cfg = { %{$self->{cfg}}, %$cfg }; # Merge in global config;
+  
+      my $log = $cfg->{log};
+      my $loglevel = $cfg->{loglevel};
+      $loglevel = 0 unless defined $loglevel;
+      my $sleeper = $cfg->{sleep};
+  
+      $self->_rebuild_queue;
+      delete $self->{entries_changed};
+      die "Nothing in schedule queue" unless @{$self->{queue}};
+      
+      # Install reaper now.
+      unless ($cfg->{nofork}) {
+          my $old_child_handler = $SIG{'CHLD'};
+          $SIG{'CHLD'} = sub {
+              &REAPER();
+              if ($old_child_handler && ref $old_child_handler eq 'CODE')
+              {
+                  &$old_child_handler();
+              }
+          };
+      }
+      
+      my $mainloop = sub { 
+        MAIN:
+          while (42)          
+          {
+              unless (@{$self->{queue}}) # Queue length
+              { 
+                  # Last job deleted itself, or we were run with no entries.
+                  # We can't return, so throw an exception - perhaps somone will catch.
+                  die "No more jobs to run\n";
+              }
+              my ($index,$time) = @{shift @{$self->{queue}}};
+              my $now = time;
+              my $sleep = 0;
+              if ($time < $now)
+              {
+                  if ($cfg->{skip})
+                  {
+                      $log->(0,"Schedule::Cron - Skipping job $index")
+                        if $log && $loglevel <= 0;
+                      $self->_update_queue($index);
+                      next;
+                  }
+                  # At least a safety airbag
+                  $sleep = 1;
+              }
+              else
+              {
+                  $sleep = $time - $now;
+              }
+              $0 = $self->_get_process_prefix()." MainLoop - next: ".scalar(localtime($time)) unless $cfg->{nostatus};
+              if (!$time) {
+                  die "Internal: No time found, self: ",$self->{queue},"\n" unless $time;
+              }
+  
+              dbg "R: sleep = $sleep | ",scalar(localtime($time))," (",scalar(localtime($now)),")" if $DEBUG;
+  
+              while ($sleep > 0) 
+              {
+                  if ($sleeper) 
+                  {
+                      $sleeper->($sleep,$self);
+                      if ($self->{entries_changed})
+                      {
+                          $self->_rebuild_queue;
+                          delete $self->{entries_changed};
+                          redo MAIN;
+                      }
+                  } else {
+                      sleep($sleep);
+                  }
+                  $sleep = $time - time;
+              }
+  
+              $self->_execute($index,$cfg);
+              $self->_cleanup_process_list($cfg);
+  
+              if ($self->{entries_changed}) {
+                 dbg "rebuilding queue" if $DEBUG;
+                 $self->_rebuild_queue;
+                 delete $self->{entries_changed};
+              } else {
+                 $self->_update_queue($index);
+              }
+          } 
+      };
+  
+      if ($cfg->{detach}) 
+      {
+          defined(my $pid = fork) or die "Can't fork: $!";
+          if ($pid) 
+          {
+              # Parent:
+              if ($cfg->{pid_file}) 
+              {
+                  if (open(P,">".$cfg->{pid_file})) 
+                  {
+                      print P $pid,"\n";
+                      close P;
+                  } 
+                  else 
+                  {
+                      warn "Warning: Cannot open ",$cfg->{pid_file}," : $!\n";
+                  }
+                  
+              }
+              return $pid;
+          } 
+          else 
+          {
+              # Child:
+              # Try to detach from terminal:
+              chdir '/';
+              open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
+              open STDOUT, '>/dev/null' or die "Can't write to /dev/null: $!";
+              
+              eval { require POSIX; };
+              if ($@) 
+              {
+                  #      if (1) {
+                  if (open(T,"/dev/tty")) 
+                  {
+                      dbg "No setsid found, trying ioctl() (Error: $@)";
+                      eval { require 'ioctl.ph'; };
+                      if ($@) 
+                      {
+                          eval { require 'sys/ioctl.ph'; };
+                          if ($@) 
+                          {
+                              die "No 'ioctl.ph'. Probably you have to run h2ph (Error: $@)";
+                          }
+                      }
+                      my $notty = &TIOCNOTTY;
+                      die "No TIOCNOTTY !" if $@ || !$notty;
+                      ioctl(T,$notty,0) || die "Cannot issue ioctl(..,TIOCNOTTY) : $!";
+                      close(T);
+                  };
+              } 
+              else 
+              {
+                  &POSIX::setsid() || die "Can't start a new session: $!";
+              }
+              open STDERR, '>&STDOUT' or die "Can't dup stdout: $!";
+              
+              $0 = $self->_get_process_prefix()." MainLoop" unless $cfg->{nostatus};
+              &$mainloop();
+          }
+      } 
+      else 
+      {
+          &$mainloop(); 
+      }
+  }
+  
+  
+  =item $cron->clean_timetable()
+  
+  Remove all scheduled entries
+  
+  =cut
+  
+  sub clean_timetable 
+  { 
+      my $self = shift;
+      $self->{entries_changed} = 1;
+      $self->{time_table} = [];
+  }
+  
+  
+  =item $cron->check_entry($id)
+  
+  Check, whether the given ID is already registered in the timetable. 
+  A ID is the first argument in the argument parameter of the 
+  a crontab entry.
+  
+  Returns (one of) the index in the  timetable (can be 0, too) if the ID
+  could be found or C<undef> otherwise.
+  
+  Example:
+  
+     $cron->add_entry("* * * * *","ROTATE");
+     .
+     .
+     defined($cron->check_entry("ROTATE")) || die "No ROTATE entry !"
+  
+  =cut 
+  
+  sub check_entry 
+  { 
+      my $self = shift;
+      my $id = shift;
+      return $self->{map}->{$id};
+  }
+  
+  
+  =item $cron->get_next_execution_time($cron_entry,[$ref_time])
+  
+  Well, this is mostly an internal method, but it might be useful on 
+  its own. 
+  
+  The purpose of this method is to calculate the next execution time
+  from a specified crontab entry
+  
+  Parameters:
+  
+  =over
+  
+  =item $cron_entry  
+  
+  The crontab entry as specified in L<"add_entry">
+  
+  =item $ref_time    
+  
+  The reference time for which the next time should be searched which matches
+  C<$cron_entry>. By default, take the current time
+  
+  =back
+  
+  This method returns the number of epoch-seconds of the next matched 
+  date for C<$cron_entry>.
+  
+  Since I suspect, that this calculation of the next execution time might
+  fail in some circumstances (bugs are lurking everywhere ;-) an
+  additional interactive method C<bug()> is provided for checking
+  crontab entries against your expected output. Refer to the
+  top-level README for additional usage information for this method.
+  
+  =cut
+  
+  sub get_next_execution_time 
+  { 
+    my $self = shift;
+    my $cron_entry = shift;
+    my $time = shift;
+    
+    $cron_entry = [ split /\s+/,$cron_entry ] unless ref($cron_entry);
+  
+    # Expand and check entry:
+    # =======================
+    die "Exactly 5 or 6 columns has to be specified for a crontab entry ! (not ",
+      scalar(@$cron_entry),")"
+        if ($#$cron_entry != 4 && $#$cron_entry != 5);
+    
+    my @expanded;
+    my $w;
+    
+    for my $i (0..$#$cron_entry) 
+    {
+        my @e = split /,/,$cron_entry->[$i];
+        my @res;
+        my $t;
+        while (defined($t = shift @e)) {
+            # Subst "*/5" -> "0-59/5"
+            $t =~ s|^\*(/.+)$|$RANGES[$i][0]."-".$RANGES[$i][1].$1|e; 
+            
+            if ($t =~ m|^([^-]+)-([^-/]+)(/(.*))?$|) 
+            {
+                my ($low,$high,$step) = ($1,$2,$4);
+                $step = 1 unless $step;
+                if ($low !~ /^(\d+)/) 
+                {
+                    $low = $ALPHACONV[$i]{lc $low};
+                }
+                if ($high !~ /^(\d+)/) 
+                {
+                    $high = $ALPHACONV[$i]{lc $high};
+                }
+                if (! defined($low) || !defined($high) ||  $low > $high || $step !~ /^\d+$/) 
+                {
+                    die "Invalid cronentry '",$cron_entry->[$i],"'";
+                }
+                my $j;
+                for ($j = $low; $j <= $high; $j += $step) 
+                {
+                    push @e,$j;
+                }
+            } 
+            else 
+            {
+                $t = $ALPHACONV[$i]{lc $t} if $t !~ /^(\d+|\*)$/;
+                $t = $LOWMAP[$i]{$t} if exists($LOWMAP[$i]{$t});
+                
+                die "Invalid cronentry '",$cron_entry->[$i],"'" 
+                  if (!defined($t) || ($t ne '*' && ($t < $RANGES[$i][0] || $t > $RANGES[$i][1])));
+                push @res,$t;
+            }
+        }
+        push @expanded, ($#res == 0 && $res[0] eq '*') ? [ "*" ] : [ sort {$a <=> $b} @res];
+    }
+    
+    # Check for strange bug
+    $self->_verify_expanded_cron_entry($cron_entry,\@expanded);
+  
+    # Calculating time:
+    # =================
+    my $now = $time || time;
+  
+    if ($expanded[2]->[0] ne '*' && $expanded[4]->[0] ne '*') 
+    {
+        # Special check for which time is lower (Month-day or Week-day spec):
+        my @bak = @{$expanded[4]};
+        $expanded[4] = [ '*' ];
+        my $t1 = $self->_calc_time($now,\@expanded);
+        $expanded[4] = \@bak;
+        $expanded[2] = [ '*' ];
+        my $t2 = $self->_calc_time($now,\@expanded);
+        dbg "MDay : ",scalar(localtime($t1))," -- WDay : ",scalar(localtime($t2)) if $DEBUG;
+        return $t1 < $t2 ? $t1 : $t2;
+    } 
+    else 
+    {
+        # No conflicts possible:
+        return $self->_calc_time($now,\@expanded);
+    }
+  }
+  
+  # ==================================================
+  # PRIVATE METHODS:
+  # ==================================================
+  
+  # Build up executing queue and delete any
+  # existing entries
+  sub _rebuild_queue 
+  { 
+      my $self = shift;
+      $self->{queue} = [ ];
+      #  dbg "TT: ",$#{$self->{time_table}};
+      for my $id (0..$#{$self->{time_table}}) 
+      {
+          $self->_update_queue($id);
+      }
+  }
+  
+  # deeply copy an entry in the time table
+  sub _deep_copy_entry
+  {
+      my ($self,$entry) = @_;
+  
+      my $args = [ @{$entry->{args}} ];
+      my $copied_entry = { %$entry };
+      $copied_entry->{args} = $args;
+      return $copied_entry;
+  }
+  
+  # Execute a subroutine whose time has come
+  sub _execute 
+  { 
+    my $self = shift;
+    my $index = shift;
+    my $cfg = shift || $self->{cfg};
+    my $entry = $self->get_entry($index) 
+      || die "Internal: No entry with index $index found in ",Dumper([$self->list_entries()]);
+  
+    my $pid;
+  
+  
+    my $log = $cfg->{log};
+    my $loglevel = $cfg->{loglevel} || 0;
+  
+    unless ($cfg->{nofork})
+    {
+        if ($pid = fork)
+        {
+            # Parent
+            $log->(0,"Schedule::Cron - Forking child PID $pid") if $log && $loglevel <= 0;
+            # Register PID
+            $STARTEDCHILD{$pid} = 1;
+            return;
+        } 
+    }
+    
+    # Child
+    my $dispatch = $entry->{dispatcher};
+    die "No subroutine provided with $dispatch" 
+      unless ref($dispatch) eq "CODE";
+    my $args = $entry->{args};
+    
+    my @args = ();
+    if (defined($args) && defined($args->[0])) 
+    {
+        push @args,@$args;
+    }
+  
+  
+    if ($log && $loglevel <= 0 || !$cfg->{nofork} && !$cfg->{nostatus}) {
+        my $args_label = (@args && $loglevel <= -1) ? " with (".join(",",$self->_format_args(@args)).")" : "";
+        $0 = $self->_get_process_prefix()." Dispatched job $index$args_label"
+          unless $cfg->{nofork} || $cfg->{nostatus};
+        $log->(0,"Schedule::Cron - Starting job $index$args_label")
+          if $log && $loglevel <= 0;
+    }
+    my $dispatch_result;
+    if ($cfg->{catch})
+    {
+        # Evaluate dispatcher
+        eval
+        {
+            $dispatch_result = &$dispatch(@args);
+        };
+        if ($@)
+        {
+            $log->(2,"Schedule::Cron - Error within job $index: $@")
+              if $log && $loglevel <= 2;
+        }
+    }
+    else
+    {
+        # Let dispatcher die if needed.
+        $dispatch_result = &$dispatch(@args);
+    }
+    
+    if($cfg->{after_job}) {
+        my $job = $cfg->{after_job};
+        if (ref($job) eq "CODE") {
+            eval
+            {
+                &$job($dispatch_result,@args);
+            };
+            if ($@)
+            {
+                $log->(2,"Schedule::Cron - Error while calling after_job callback with retval = $dispatch_result: $@")
+                  if $log && $loglevel <= 2;
+            }
+        } else {
+            $log->(2,"Schedule::Cron - Invalid after_job callback, it's not a code ref (but ",$job,")")
+              if $log && $loglevel <= 2;
+        }
+    }
+  
+    $log->(0,"Schedule::Cron - Finished job $index") if $log && $loglevel <= 0;
+    exit unless $cfg->{nofork};
+  }
+  
+  # Udate the scheduler queue with a new entry
+  sub _update_queue 
+  { 
+      my $self = shift;
+      my $index = shift;
+      my $entry = $self->get_entry($index);
+      
+      my $new_time = $self->get_next_execution_time($entry->{time});
+      # Check, whether next execution time is *smaller* than the current time.
+      # This can happen during DST backflip:
+      my $now = time;
+      if ($new_time <= $now) {
+          dbg "Adjusting time calculation because of DST back flip (new_time - now = ",$new_time - $now,")" if $DEBUG;
+          # We are adding hours as long as our target time is in the future
+          while ($new_time <= $now) {
+              $new_time += 3600;
+          }
+      }
+  
+      dbg "Updating Queue: ",scalar(localtime($new_time)) if $DEBUG;
+      $self->{queue} = [ sort { $a->[1] <=> $b->[1] } @{$self->{queue}},[$index,$new_time] ];
+      #  dbg "Queue now: ",Dumper($self->{queue});
+  }
+  
+  
+  # The heart of the module.
+  # calulate the next concrete date
+  # for execution from a crontab entry
+  sub _calc_time 
+  { 
+      my $self = shift;
+      my $now = shift;
+      my $expanded = shift;
+  
+      my $offset = ($expanded->[5] ? 1 : 60);
+      my ($now_sec,$now_min,$now_hour,$now_mday,$now_mon,$now_wday,$now_year) = 
+        (localtime($now+$offset))[0,1,2,3,4,6,5];
+      $now_mon++; 
+      $now_year += 1900;
+  
+      # Notes on variables set:
+      # $now_... : the current date, fixed at call time
+      # $dest_...: date used for backtracking. At the end, it contains
+      #            the desired lowest matching date
+  
+      my ($dest_mon,$dest_mday,$dest_wday,$dest_hour,$dest_min,$dest_sec,$dest_year) = 
+        ($now_mon,$now_mday,$now_wday,$now_hour,$now_min,$now_sec,$now_year);
+  
+      # dbg Dumper($expanded);
+  
+      # Airbag...
+      while ($dest_year <= $now_year + 1) 
+      { 
+          dbg "Parsing $dest_hour:$dest_min:$dest_sec $dest_year/$dest_mon/$dest_mday" if $DEBUG;
+          
+          # Check month:
+          if ($expanded->[3]->[0] ne '*') 
+          {
+              unless (defined ($dest_mon = $self->_get_nearest($dest_mon,$expanded->[3]))) 
+              {
+                  $dest_mon = $expanded->[3]->[0];
+                  $dest_year++;
+              } 
+          } 
+    
+          # Check for day of month:
+          if ($expanded->[2]->[0] ne '*') 
+          {           
+              if ($dest_mon != $now_mon) 
+              {      
+                  $dest_mday = $expanded->[2]->[0];
+              } 
+              else 
+              {
+                  unless (defined ($dest_mday = $self->_get_nearest($dest_mday,$expanded->[2]))) 
+                  {
+                      # Next day matched is within the next month. ==> redo it
+                      $dest_mday = $expanded->[2]->[0];
+                      $dest_mon++;
+                      if ($dest_mon > 12) 
+                      {
+                          $dest_mon = 1;
+                          $dest_year++;
+                      }
+                      dbg "Backtrack mday: $dest_mday/$dest_mon/$dest_year" if $DEBUG;
+                      next;
+                  }
+              }
+          } 
+          else 
+          {
+              $dest_mday = ($dest_mon == $now_mon ? $dest_mday : 1);
+          }
+    
+          # Check for day of week:
+          if ($expanded->[4]->[0] ne '*') 
+          {
+              $dest_wday = $self->_get_nearest($dest_wday,$expanded->[4]);
+              $dest_wday = $expanded->[4]->[0] unless $dest_wday;
+      
+              my ($mon,$mday,$year);
+              #      dbg "M: $dest_mon MD: $dest_mday WD: $dest_wday Y:$dest_year";
+              $dest_mday = 1 if $dest_mon != $now_mon;
+              my $t = parsedate(sprintf("%4.4d/%2.2d/%2.2d",$dest_year,$dest_mon,$dest_mday));
+              ($mon,$mday,$year) =  
+                (localtime(parsedate("$WDAYS[$dest_wday]",PREFER_FUTURE=>1,NOW=>$t-1)))[4,3,5]; 
+              $mon++;
+              $year += 1900;
+              
+              dbg "Calculated $mday/$mon/$year for weekday ",$WDAYS[$dest_wday] if $DEBUG;
+              if ($mon != $dest_mon || $year != $dest_year) {
+                  dbg "backtracking" if $DEBUG;
+                  $dest_mon = $mon;
+                  $dest_year = $year;
+                  $dest_mday = 1;
+                  $dest_wday = (localtime(parsedate(sprintf("%4.4d/%2.2d/%2.2d",
+                                                            $dest_year,$dest_mon,$dest_mday))))[6];
+                  next;
+              }
+              
+              $dest_mday = $mday;
+          } 
+          else 
+          {
+              unless ($dest_mday) 
+              {
+                  $dest_mday = ($dest_mon == $now_mon ? $dest_mday : 1);
+              }
+          }
+  
+    
+          # Check for hour
+          if ($expanded->[1]->[0] ne '*') 
+          {
+              if ($dest_mday != $now_mday || $dest_mon != $now_mon || $dest_year != $now_year) 
+              {
+                  $dest_hour = $expanded->[1]->[0];
+              } 
+              else 
+              {
+                  #dbg "Checking for next hour $dest_hour";
+                  unless (defined ($dest_hour = $self->_get_nearest($dest_hour,$expanded->[1]))) 
+                  {
+                      # Hour to match is at the next day ==> redo it
+                      $dest_hour = $expanded->[1]->[0];
+                      my $t = parsedate(sprintf("%2.2d:%2.2d:%2.2d %4.4d/%2.2d/%2.2d",
+                                                $dest_hour,$dest_min,$dest_sec,$dest_year,$dest_mon,$dest_mday));
+                      ($dest_mday,$dest_mon,$dest_year,$dest_wday) = 
+                        (localtime(parsedate("+ 1 day",NOW=>$t)))[3,4,5,6];
+                      $dest_mon++; 
+                      $dest_year += 1900;
+                      next; 
+                  }
+              }
+          } 
+          else 
+          {
+              $dest_hour = ($dest_mday == $now_mday ? $dest_hour : 0);
+          }
+          # Check for minute
+          if ($expanded->[0]->[0] ne '*') 
+          {
+              if ($dest_hour != $now_hour || $dest_mday != $now_mday || $dest_mon != $dest_mon || $dest_year != $now_year) 
+              {
+                  $dest_min = $expanded->[0]->[0];
+              } 
+              else 
+              {
+                  unless (defined ($dest_min = $self->_get_nearest($dest_min,$expanded->[0]))) 
+                  {
+                      # Minute to match is at the next hour ==> redo it
+                      $dest_min = $expanded->[0]->[0];
+                      my $t = parsedate(sprintf("%2.2d:%2.2d:%2.2d %4.4d/%2.2d/%2.2d",
+                                                $dest_hour,$dest_min,$dest_sec,$dest_year,$dest_mon,$dest_mday));
+                      ($dest_hour,$dest_mday,$dest_mon,$dest_year,$dest_wday) = 
+                        (localtime(parsedate(" + 1 hour",NOW=>$t)))  [2,3,4,5,6];
+                      $dest_mon++;
+                      $dest_year += 1900;
+                      next;
+                  }
+              }
+          } 
+          else 
+          {
+              if ($dest_hour != $now_hour ||
+                  $dest_mday != $now_mday ||
+                  $dest_year != $now_year) {
+                  $dest_min = 0;
+              } 
+          }
+          # Check for seconds
+          if ($expanded->[5])
+          {
+              if ($expanded->[5]->[0] ne '*')
+              {
+                  if ($dest_min != $now_min) 
+                  {
+                      $dest_sec = $expanded->[5]->[0];
+                  } 
+                  else 
+                  {
+                      unless (defined ($dest_sec = $self->_get_nearest($dest_sec,$expanded->[5]))) 
+                      {
+                          # Second to match is at the next minute ==> redo it
+                          $dest_sec = $expanded->[5]->[0];
+                          my $t = parsedate(sprintf("%2.2d:%2.2d:%2.2d %4.4d/%2.2d/%2.2d",
+                                                    $dest_hour,$dest_min,$dest_sec,
+                                                    $dest_year,$dest_mon,$dest_mday));
+                          ($dest_min,$dest_hour,$dest_mday,$dest_mon,$dest_year,$dest_wday) = 
+                            (localtime(parsedate(" + 1 minute",NOW=>$t)))  [1,2,3,4,5,6];
+                          $dest_mon++;
+                          $dest_year += 1900;
+                          next;
+                      }
+                  }
+              } 
+              else 
+              {
+                  $dest_sec = ($dest_min == $now_min ? $dest_sec : 0);
+              }
+          }
+          else
+          {
+              $dest_sec = 0;
+          }
+          
+          # We did it !!
+          my $date = sprintf("%2.2d:%2.2d:%2.2d %4.4d/%2.2d/%2.2d",
+                             $dest_hour,$dest_min,$dest_sec,$dest_year,$dest_mon,$dest_mday);
+          dbg "Next execution time: $date ",$WDAYS[$dest_wday] if $DEBUG;
+          my $result = parsedate($date, VALIDATE => 1);
+          # Check for a valid date
+          if ($result)
+          {
+              # Valid date... return it!
+              return $result;
+          }
+          else
+          {
+              # Invalid date i.e. (02/30/2008). Retry it with another, possibly
+              # valid date            
+              my $t = parsedate($date); # print scalar(localtime($t)),"\n";
+              ($dest_hour,$dest_mday,$dest_mon,$dest_year,$dest_wday) =
+                (localtime(parsedate(" + 1 second",NOW=>$t)))  [2,3,4,5,6];
+              $dest_mon++;
+              $dest_year += 1900;
+              next;
+          }
+      }
+  
+      # Die with an error because we couldnt find a next execution entry
+      my $dumper = new Data::Dumper($expanded);
+      $dumper->Terse(1);
+      $dumper->Indent(0);
+  
+      die "No suitable next execution time found for ",$dumper->Dump(),", now == ",scalar(localtime($now)),"\n";
+  }
+  
+  # get next entry in list or 
+  # undef if is the highest entry found
+  sub _get_nearest 
+  { 
+    my $self = shift;
+    my $x = shift;
+    my $to_check = shift;
+    foreach my $i (0 .. $#$to_check) 
+    {
+        if ($$to_check[$i] >= $x) 
+        {
+            return $$to_check[$i] ;
+        }
+    }
+    return undef;
+  }
+  
+  
+  # prepare a list of object for pretty printing e.g. in the process list
+  sub _format_args {
+      my $self = shift;
+      my @args = @_;
+      my $dumper = new Data::Dumper(\@args);
+      $dumper->Terse(1);
+      $dumper->Maxdepth(2);
+      $dumper->Indent(0);
+      return $dumper->Dump();
+  }
+  
+  # get the prefix to use when setting $0
+  sub _get_process_prefix { 
+      my $self = shift;
+      my $prefix = $self->{cfg}->{processprefix} || "Schedule::Cron";
+      return $prefix;
+  }
+  
+  # our very own debugging routine
+  # ('guess everybody has its own style ;-)
+  # Callers check $DEBUG on the critical path to save the computes
+  # used to produce expensive arguments.  Omitting those would be
+  # functionally correct, but rather wasteful.
+  sub dbg  
+  {
+    if ($DEBUG) 
+    {
+        my $args = join('',@_) || "";
+        my $caller = (caller(1))[0];
+        my $line = (caller(0))[2];
+        $caller ||= $0;
+        if (length $caller > 22) 
+        {
+            $caller = substr($caller,0,10)."..".substr($caller,-10,10);
+        }
+        print STDERR sprintf ("%02d:%02d:%02d [%22.22s %4.4s]  %s\n",
+                              (localtime)[2,1,0],$caller,$line,$args);
+    }
+  }
+  
+  # Helper method for reporting bugs concerning calculation
+  # of execution bug:
+  *bug = \&report_exectime_bug;   # Shortcut
+  sub report_exectime_bug 
+  {
+    my $self = shift;
+    my $endless = shift;
+    my $time = time;
+    my $inp;
+    my $now = $self->_time_as_string($time);
+    my $email;
+  
+    do 
+    {
+        while (1) 
+        {
+            $inp = $self->_get_input("Reference time\n(default: $now)  : ");
+            if ($inp) 
+            {
+                parsedate($inp) || (print "Couldn't parse \"$inp\"\n",next);
+                $now = $inp;
+            }
+            last;
+        }
+        my $now_time = parsedate($now);
+      
+        my ($next_time,$next);
+        my @entries;
+        while (1) 
+        {
+            $inp = $self->_get_input("Crontab time (5 columns)            : ");
+            @entries = split (/\s+/,$inp);
+            if (@entries != 5) 
+            {
+                print "Invalid crontab entry \"$inp\"\n";
+                next;
+            }
+            eval 
+            { 
+                local $SIG{ALRM} = sub {  die "TIMEOUT" };
+                alarm(60);
+                $next_time = Schedule::Cron->get_next_execution_time(\@entries,$now_time);
+                alarm(0);
+            };
+            if ($@) 
+            {
+                alarm(0);
+                if ($@ eq "TIMEOUT") 
+                {
+                    $next_time = -1;
+                } else 
+                {
+                    print "Invalid crontab entry \"$inp\" ($@)\n";
+                    next;
+                }
+            }
+          
+            if ($next_time > 0) 
+            {
+                $next = $self->_time_as_string($next_time);
+            } else 
+            {
+                $next = "Run into infinite loop !!";
+            }
+            last;
+        }
+      
+        my ($expected,$expected_time);
+        while (1) 
+        {
+            $inp = $self->_get_input("Expected time                       : ");
+            unless ($expected_time = parsedate($inp)) 
+            {
+                print "Couldn't parse \"$inp\"\n";
+                next;
+            } 
+            $expected = $self->_time_as_string($expected_time);
+            last;
+        }
+      
+        # Print out bug report:
+        if ($expected eq $next) 
+        {
+            print "\nHmm, seems that everything's ok, or ?\n\n";
+            print "Calculated time: ",$next,"\n";
+            print "Expected time  : ",$expected,"\n";
+        } else 
+        {
+            print <<EOT;
+  Congratulation, you hit a bug. 
+  
+  EOT
+            $email = $self->_get_input("Your E-Mail Address (if available)  : ") 
+              unless defined($email);
+            $email = "" unless defined($email);
+        
+            print "\n","=" x 80,"\n";
+            print <<EOT;
+  Please report the following lines
+  to roland\@cpan.org
+  
+  EOT
+            print "# ","-" x 78,"\n";
+            print "Reftime: ",$now,"\n";
+            print "# Reported by : ",$email,"\n" if $email;
+            printf "%8s %8s %8s %8s %8s         %s\n",@entries,$expected;
+            print "# Calculated  : \n";
+            printf "# %8s %8s %8s %8s %8s         %s\n",@entries,$next;
+            unless ($endless) 
+            {
+                require Config;
+                my $vers = `uname -r 2>/dev/null` || $Config::Config{'osvers'} ;
+                chomp $vers;
+                my $osname = `uname -s 2>/dev/null` || $Config::Config{'osname'};
+                chomp $osname;
+                print "# OS: $osname ($vers)\n";
+                print "# Perl-Version: $]\n";
+                print "# Time::ParseDate-Version: ",$Time::ParseDate::VERSION,"\n";
+            }
+            print "# ","-" x 78,"\n";
+        }
+      
+        print "\n","=" x 80,"\n";
+    } while ($endless);
+  }
+  
+  my ($input_initialized,$term);
+  sub _get_input 
+  { 
+    my $self = shift;
+    my $prompt = shift;
+    use vars qw($term);
+  
+    unless (defined($input_initialized)) 
+    {
+        eval { require Term::ReadLine; };
+      
+        $input_initialized = $@ ? 0 : 1;
+        if ($input_initialized) 
+        {
+            $term = new Term::ReadLine;
+            $term->ornaments(0);
+        }
+    }
+    
+    unless ($input_initialized) 
+    {
+        print $prompt;
+        my $inp = <STDIN>;
+        chomp $inp;
+        return $inp;
+    } 
+    else 
+    {
+        chomp $prompt;
+        my @prompt = split /\n/s,$prompt;
+        if ($#prompt > 0)
+        {
+            print join "\n",@prompt[0..$#prompt-1],"\n";
+        }
+        my $inp = $term->readline($prompt[$#prompt]);
+        return $inp;
+    }
+  }
+  
+  sub _time_as_string 
+  { 
+    my $self = shift;
+    my $time = shift; 
+  
+    my ($min,$hour,$mday,$month,$year,$wday) = (localtime($time))[1..6];
+    $month++;
+    $year += 1900;
+    $wday = $WDAYS[$wday];
+    return sprintf("%2.2d:%2.2d %2.2d/%2.2d/%4.4d %s",
+                   $hour,$min,$mday,$month,$year,$wday);
+  }
+  
+  
+  # As reported by RT Ticket #24712 sometimes, 
+  # the expanded version of the cron entry is flaky.
+  # However, this occurs only very rarely and randomly. 
+  # So, we need to provide good diagnostics when this 
+  # happens
+  sub _verify_expanded_cron_entry {
+      my $self = shift;
+      my $original = shift;
+      my $entry = shift;
+      die "Internal: Not an array ref. Orig: ",Dumper($original), ", expanded: ",Dumper($entry)," (self = ",Dumper($self),")"
+        unless ref($entry) eq "ARRAY";
+      
+      for my $i (0 .. $#{$entry}) {
+          die "Internal: Part $i of entry is not an array ref. Original: ",
+            Dumper($original),", expanded: ",Dumper($entry)," (self=",Dumper($self),")",
+              unless ref($entry->[$i]) eq "ARRAY";
+      }    
+  }
+  
+  =back
+  
+  =head1 DST ISSUES
+  
+  Daylight saving occurs typically twice a year: In the first switch, one hour is
+  skipped. Any job which which triggers in this skipped hour will be fired in the
+  next hour. So, when the DST switch goes from 2:00 to 3:00 a job which is
+  scheduled for 2:43 will be executed at 3:43.
+  
+  For the reverse backwards switch later in the year, the behaviour is
+  undefined. Two possible behaviours can occur: For jobs triggered in short
+  intervals, where the next execution time would fire in the extra hour as well,
+  the job could be executed again or skipped in this extra hour. Currently,
+  running C<Schedule::Cron> in C<MET> would skip the extra job, in C<PST8PDT> it
+  would execute a second time. The reason is the way how L<Time::ParseDate>
+  calculates epoch times for dates given like C<02:50:00 2009/10/25>. Should it
+  return the seconds since 1970 for this time happening 'first', or for this time
+  in the extra hour ? As it turns out, L<Time::ParseDate> returns the epoch time
+  of the first occurence for C<PST8PDT> and for C<MET> it returns the second
+  occurence. Unfortunately, there is no way to specify I<which> entry
+  L<Time::ParseDate> should pick (until now). Of course, after all, this is
+  obviously not L<Time::ParseDate>'s fault, since a simple date specification
+  within the DST backswitch period B<is> ambigious. However, it would be nice if
+  the parsing behaviour of L<Time::ParseDate> would be consistent across time
+  zones (a ticket has be raised for fixing this). Then L<Schedule::Cron>'s
+  behaviour within a DST backward switch would be consistent as well.
+  
+  Since changing the internal algorithm which worked now for over ten years would
+  be too risky and I don't see any simple solution for this right now, it is
+  likely that this I<undefined> behaviour will exist for some time. Maybe some
+  hero is coming along and will fix this, but this is probably not me ;-)
+  
+  Sorry for that.
+  
+  =head1 LICENSE
+  
+  Copyright 1999-2011 Roland Huss.
+  
+  This library is free software; you can redistribute it and/or
+  modify it under the same terms as Perl itself.
+  
+  =head1 AUTHOR
+  
+  ... roland
+  
+  =cut
+  
+  1;
+  
+  
+  
+  
+SCHEDULE_CRON
+
+$fatpacked{"Time/CTime.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'TIME_CTIME';
+  package Time::CTime;
+  
+  
+  require 5.000;
+  
+  use Time::Timezone;
+  use Time::CTime;
+  require Exporter;
+  @ISA = qw(Exporter);
+  @EXPORT = qw(ctime asctime strftime);
+  @EXPORT_OK = qw(asctime_n ctime_n @DoW @MoY @DayOfWeek @MonthOfYear);
+  
+  use strict;
+  
+  # constants
+  use vars qw(@DoW @DayOfWeek @MoY @MonthOfYear %strftime_conversion $VERSION);
+  use vars qw($template $sec $min $hour $mday $mon $year $wday $yday $isdst);
+  
+  $VERSION = 2011.0505;
+  
+  CONFIG: {
+      @DoW = 	   qw(Sun Mon Tue Wed Thu Fri Sat);
+      @DayOfWeek =   qw(Sunday Monday Tuesday Wednesday Thursday Friday Saturday);
+      @MoY = 	   qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+      @MonthOfYear = qw(January February March April May June 
+  		      July August September October November December);
+    
+      %strftime_conversion = (
+  	'%',	sub { '%' },
+  	'a',	sub { $DoW[$wday] },
+  	'A',	sub { $DayOfWeek[$wday] },
+  	'b',	sub { $MoY[$mon] },
+  	'B',	sub { $MonthOfYear[$mon] },
+  	'c',	sub { asctime_n($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst, "") },
+  	'd',	sub { sprintf("%02d", $mday); },
+  	'D',	sub { sprintf("%02d/%02d/%02d", $mon+1, $mday, $year%100) },
+  	'e',	sub { sprintf("%2d", $mday); },
+  	'f',	sub { fracprintf ("%3.3f", $sec); },
+  	'F',	sub { fracprintf ("%6.6f", $sec); },
+  	'h',	sub { $MoY[$mon] },
+  	'H',	sub { sprintf("%02d", $hour) },
+  	'I',	sub { sprintf("%02d", $hour % 12 || 12) },
+  	'j',	sub { sprintf("%03d", $yday + 1) },
+  	'k',	sub { sprintf("%2d", $hour); },
+  	'l',	sub { sprintf("%2d", $hour % 12 || 12) },
+  	'm',	sub { sprintf("%02d", $mon+1); },
+  	'M',	sub { sprintf("%02d", $min) },
+  	'n',	sub { "\n" },
+  	'o',	sub { sprintf("%d%s", $mday, (($mday < 20 && $mday > 3) ? 'th' : ($mday%10 == 1 ? "st" : ($mday%10 == 2 ? "nd" : ($mday%10 == 3 ? "rd" : "th"))))) },
+  	'p',	sub { $hour > 11 ? "PM" : "AM" },
+  	'r',	sub { sprintf("%02d:%02d:%02d %s", $hour % 12 || 12, $min, $sec, $hour > 11 ? 'PM' : 'AM') },
+  	'R',	sub { sprintf("%02d:%02d", $hour, $min) },
+  	'S',	sub { sprintf("%02d", $sec) },
+  	't',	sub { "\t" },
+  	'T',	sub { sprintf("%02d:%02d:%02d", $hour, $min, $sec) },
+  	'U',	sub { wkyr(0, $wday, $yday) },
+  	'v',	sub { sprintf("%2d-%s-%4d", $mday, $MoY[$mon], $year+1900) },
+  	'w',	sub { $wday },
+  	'W',	sub { wkyr(1, $wday, $yday) },
+  	'y',	sub { sprintf("%02d",$year%100) },
+  	'Y',	sub { $year + 1900 },
+  	'x',	sub { sprintf("%02d/%02d/%02d", $mon + 1, $mday, $year%100) },
+  	'X',	sub { sprintf("%02d:%02d:%02d", $hour, $min, $sec) },
+  	'Z',	sub { &tz2zone(undef,undef,$isdst) }
+  	# z sprintf("%+03d%02d", $offset / 3600, ($offset % 3600)/60);
+      );
+  
+  
+  }
+  
+  sub fracprintf {
+      my($t,$s) = @_;
+      my($p) = sprintf($t, $s-int($s));
+      $p=~s/^0+//;
+      $p;
+  }
+  
+  sub asctime_n {
+      my($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst, $TZname) = @_;
+      ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst, $TZname) = localtime($sec) unless defined $min;
+      $year += 1900;
+      $TZname .= ' ' 
+  	if $TZname;
+      sprintf("%s %s %2d %2d:%02d:%02d %s%4d",
+  	  $DoW[$wday], $MoY[$mon], $mday, $hour, $min, $sec, $TZname, $year);
+  }
+  
+  sub asctime
+  {
+      return asctime_n(@_)."\n";
+  }
+  
+  # is this formula right?
+  sub wkyr {
+      my($wstart, $wday, $yday) = @_;
+      $wday = ($wday + 7 - $wstart) % 7;
+      return int(($yday - $wday + 13) / 7 - 1);
+  }
+  
+  # ctime($time)
+  
+  sub ctime {
+      my($time) = @_;
+      asctime(localtime($time), &tz2zone(undef,$time));
+  }
+  
+  sub ctime_n {
+      my($time) = @_;
+      asctime_n(localtime($time), &tz2zone(undef,$time));
+  }
+  
+  # strftime($template, @time_struct)
+  #
+  # Does not support locales
+  
+  sub strftime {			
+      local ($template, $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = @_;
+  
+      undef $@;
+      $template =~ s/%([%aAbBcdDefFhHIjklmMnopQrRStTUvwWxXyYZ])/&{$Time::CTime::strftime_conversion{$1}}()/egs;
+      die $@ if $@;
+      return $template;
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Time::CTime -- format times ala POSIX asctime
+  
+  =head1 SYNOPSIS
+  
+  	use Time::CTime
+   	print ctime(time);
+  	print asctime(localtime(time));
+  	print strftime(template, localtime(time)); 
+  
+  =head2 strftime conversions
+  
+  	%%	PERCENT
+  	%a	day of the week abbr
+  	%A	day of the week
+  	%b	month abbr
+  	%B 	month
+  	%c 	ctime format: Sat Nov 19 21:05:57 1994
+  	%d 	DD
+  	%D 	MM/DD/YY
+  	%e 	numeric day of the month
+  	%f 	floating point seconds (milliseconds): .314
+  	%F 	floating point seconds (microseconds): .314159
+  	%h 	month abbr
+  	%H 	hour, 24 hour clock, leading 0's)
+  	%I 	hour, 12 hour clock, leading 0's)
+  	%j 	day of the year
+  	%k 	hour
+  	%l 	hour, 12 hour clock
+  	%m 	month number, starting with 1, leading 0's
+  	%M 	minute, leading 0's
+  	%n 	NEWLINE
+  	%o	ornate day of month -- "1st", "2nd", "25th", etc.
+  	%p 	AM or PM 
+  	%r 	time format: 09:05:57 PM
+  	%R 	time format: 21:05
+  	%S 	seconds, leading 0's
+  	%t 	TAB
+  	%T 	time format: 21:05:57
+  	%U 	week number, Sunday as first day of week
+  	%v	DD-Mon-Year
+  	%w 	day of the week, numerically, Sunday == 0
+  	%W 	week number, Monday as first day of week
+  	%x 	date format: 11/19/94
+  	%X 	time format: 21:05:57
+  	%y	year (2 digits)
+  	%Y	year (4 digits)
+  	%Z 	timezone in ascii. eg: PST
+  
+  =head1 DESCRIPTION
+  
+  This module provides routines to format dates.  They correspond 
+  to the libc routines.  &strftime() supports a pretty good set of
+  conversions -- more than most C libraries.
+   
+  strftime supports a pretty good set of conversions.  
+  
+  The POSIX module has very similar functionality.  You should consider
+  using it instead if you do not have allergic reactions to system 
+  libraries.
+  
+  =head1 GENESIS
+  
+  Written by David Muir Sharnoff <muir@idiom.org>.
+  
+  The starting point for this package was a posting by 
+  Paul Foley <paul@ascent.com> 
+  
+  =head1 LICENSE
+  
+  Copyright (C) 1996-2010 David Muir Sharnoff.  
+  Copyright (C) 2011 Google, Inc.  
+  License hereby
+  granted for anyone to use, modify or redistribute this module at
+  their own risk.  Please feed useful changes back to cpan@dave.sharnoff.org.
+  
+TIME_CTIME
+
+$fatpacked{"Time/DaysInMonth.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'TIME_DAYSINMONTH';
+  package Time::DaysInMonth;
+  
+  use Carp;
+  
+  require 5.000;
+  
+  @ISA = qw(Exporter);
+  @EXPORT = qw(days_in is_leap);
+  @EXPORT_OK = qw(%mltable);
+  
+  use strict;
+  
+  use vars qw($VERSION %mltable);
+  
+  $VERSION = 99.1117;
+  
+  CONFIG:	{
+  	%mltable = qw(
+  		 1	31
+  		 3	31
+  		 4	30
+  		 5	31
+  		 6	30
+  		 7	31
+  		 8	31
+  		 9	30
+  		10	31
+  		11	30
+  		12	31);
+  }
+  
+  sub days_in
+  {
+  	# Month is 1..12
+  	my ($year, $month) = @_;
+  	return $mltable{$month+0} unless $month == 2;
+  	return 28 unless &is_leap($year);
+  	return 29;
+  }
+  
+  sub is_leap
+  {
+  	my ($year) = @_;
+  	return 0 unless $year % 4 == 0;
+  	return 1 unless $year % 100 == 0;
+  	return 0 unless $year % 400 == 0;
+  	return 1;
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Time::DaysInMonth -- simply report the number of days in a month
+  
+  =head1 SYNOPSIS
+  
+  	use Time::DaysInMonth;
+  	$days = days_in($year, $month_1_to_12);
+  	$leapyear = is_leap($year);
+  
+  =head1 DESCRIPTION
+  
+  DaysInMonth is simply a package to report the number of days in
+  a month.  That's all it does.  Really!
+  
+  =head1 AUTHOR
+  
+  David Muir Sharnoff <muir@idiom.org>
+  
+  =head1 BUGS
+  
+  This only deals with the "modern" calendar.  Look elsewhere for 
+  historical time and date support.
+  
+  =head1 LICENSE
+  
+  Copyright (C) 1996-1999 David Muir Sharnoff.  License hereby
+  granted for anyone to use, modify or redistribute this module at
+  their own risk.  Please feed useful changes back to muir@idiom.org.
+  
+TIME_DAYSINMONTH
+
+$fatpacked{"Time/JulianDay.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'TIME_JULIANDAY';
+  package Time::JulianDay;
+  
+  require 5.000;
+  
+  use Carp;
+  use Time::Timezone;
+  
+  @ISA = qw(Exporter);
+  @EXPORT = qw(julian_day inverse_julian_day day_of_week 
+  	jd_secondsgm jd_secondslocal 
+  	jd_timegm jd_timelocal 
+  	gm_julian_day local_julian_day 
+  	);
+  @EXPORT_OK = qw($brit_jd);
+  
+  use strict;
+  use integer;
+  
+  # constants
+  use vars qw($brit_jd $jd_epoch $jd_epoch_remainder $VERSION);
+  
+  $VERSION = 2011.0505;
+  
+  # calculate the julian day, given $year, $month and $day
+  sub julian_day
+  {
+      my($year, $month, $day) = @_;
+      my($tmp);
+  
+      use Carp;
+  #    confess() unless defined $day;
+  
+      $tmp = $day - 32075
+        + 1461 * ( $year + 4800 - ( 14 - $month ) / 12 )/4
+        + 367 * ( $month - 2 + ( ( 14 - $month ) / 12 ) * 12 ) / 12
+        - 3 * ( ( $year + 4900 - ( 14 - $month ) / 12 ) / 100 ) / 4
+        ;
+  
+      return($tmp);
+  
+  }
+  
+  sub gm_julian_day
+  {
+      my($secs) = @_;
+      my($sec, $min, $hour, $mon, $year, $day, $month);
+      ($sec, $min, $hour, $day, $mon, $year) = gmtime($secs);
+      $month = $mon + 1;
+      $year += 1900;
+      return julian_day($year, $month, $day)
+  }
+  
+  sub local_julian_day
+  {
+      my($secs) = @_;
+      my($sec, $min, $hour, $mon, $year, $day, $month);
+      ($sec, $min, $hour, $day, $mon, $year) = localtime($secs);
+      $month = $mon + 1;
+      $year += 1900;
+      return julian_day($year, $month, $day)
+  }
+  
+  sub day_of_week
+  {
+  	my ($jd) = @_;
+          return (($jd + 1) % 7);       # calculate weekday (0=Sun,6=Sat)
+  }
+  
+  
+  # The following defines the first day that the Gregorian calendar was used
+  # in the British Empire (Sep 14, 1752).  The previous day was Sep 2, 1752
+  # by the Julian Calendar.  The year began at March 25th before this date.
+  
+  $brit_jd = 2361222;
+  
+  # Usage:  ($year,$month,$day) = &inverse_julian_day($julian_day)
+  sub inverse_julian_day
+  {
+          my($jd) = @_;
+          my($jdate_tmp);
+          my($m,$d,$y);
+  
+          carp("warning: julian date $jd pre-dates British use of Gregorian calendar\n")
+                  if ($jd < $brit_jd);
+  
+          $jdate_tmp = $jd - 1721119;
+          $y = (4 * $jdate_tmp - 1)/146097;
+          $jdate_tmp = 4 * $jdate_tmp - 1 - 146097 * $y;
+          $d = $jdate_tmp/4;
+          $jdate_tmp = (4 * $d + 3)/1461;
+          $d = 4 * $d + 3 - 1461 * $jdate_tmp;
+          $d = ($d + 4)/4;
+          $m = (5 * $d - 3)/153;
+          $d = 5 * $d - 3 - 153 * $m;
+          $d = ($d + 5) / 5;
+          $y = 100 * $y + $jdate_tmp;
+          if($m < 10) {
+                  $m += 3;
+          } else {
+                  $m -= 9;
+                  ++$y;
+          }
+          return ($y, $m, $d);
+  }
+  
+  {
+  	my($sec, $min, $hour, $day, $mon, $year) = gmtime(0);
+  	$year += 1900;
+  	if ($year == 1970 && $mon == 0 && $day == 1) {
+  		# standard unix time format
+  		$jd_epoch = 2440588;
+  	} else {
+  		$jd_epoch = julian_day($year, $mon+1, $day);
+  	}
+  	$jd_epoch_remainder = $hour*3600 + $min*60 + $sec;
+  }
+  
+  sub jd_secondsgm
+  {
+  	my($jd, $hr, $min, $sec) = @_;
+  
+  	my($r) =  (($jd - $jd_epoch) * 86400 
+  		+ $hr * 3600 + $min * 60 
+  		- $jd_epoch_remainder);
+  
+  	no integer;
+  	return ($r + $sec);
+  	use integer;
+  }
+  
+  sub jd_secondslocal
+  {
+  	my($jd, $hr, $min, $sec) = @_;
+  	my $jds = jd_secondsgm($jd, $hr, $min, $sec);
+  	return $jds - tz_local_offset($jds);
+  }
+  
+  # this uses a 0-11 month to correctly reverse localtime()
+  sub jd_timelocal
+  {
+  	my ($sec,$min,$hours,$mday,$mon,$year) = @_;
+  	$year += 1900 unless $year > 1000;
+  	my $jd = julian_day($year, $mon+1, $mday);
+  	my $jds = jd_secondsgm($jd, $hours, $min, $sec);
+  	return $jds - tz_local_offset($jds);
+  }
+  
+  # this uses a 0-11 month to correctly reverse gmtime()
+  sub jd_timegm
+  {
+  	my ($sec,$min,$hours,$mday,$mon,$year) = @_;
+  	$year += 1900 unless $year > 1000;
+  	my $jd = julian_day($year, $mon+1, $mday);
+  	return jd_secondsgm($jd, $hours, $min, $sec);
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Time::JulianDay -- Julian calendar manipulations
+  
+  =head1 SYNOPSIS
+  
+  	use Time::JulianDay
+  
+  	$jd = julian_day($year, $month_1_to_12, $day)
+  	$jd = local_julian_day($seconds_since_1970);
+  	$jd = gm_julian_day($seconds_since_1970);
+  	($year, $month_1_to_12, $day) = inverse_julian_day($jd)
+  	$dow = day_of_week($jd) 
+  
+  	print (Sun,Mon,Tue,Wed,Thu,Fri,Sat)[$dow];
+  
+  	$seconds_since_jan_1_1970 = jd_secondslocal($jd, $hour, $min, $sec)
+  	$seconds_since_jan_1_1970 = jd_secondsgm($jd, $hour, $min, $sec)
+  	$seconds_since_jan_1_1970 = jd_timelocal($sec,$min,$hours,$mday,$month_0_to_11,$year)
+  	$seconds_since_jan_1_1970 = jd_timegm($sec,$min,$hours,$mday,$month_0_to_11,$year)
+  
+  =head1 DESCRIPTION
+  
+  JulianDay is a package that manipulates dates as number of days since 
+  some time a long time ago.  It's easy to add and subtract time
+  using julian days...  
+  
+  The day_of_week returned by day_of_week() is 0 for Sunday, and 6 for
+  Saturday and everything else is in between.
+  
+  =head1 ERRATA
+  
+  Time::JulianDay is not a correct implementation.  There are two
+  problems.  The first problem is that Time::JulianDay only works
+  with integers.  Julian Day can be fractional to represent time
+  within a day.  If you call inverse_julian_day() with a non-integer
+  time, it will often give you an incorrect result.
+  
+  The second problem is that Julian Days start at noon rather than
+  midnight.  The julian_day() function returns results that are too
+  large by 0.5.
+  
+  What to do about these problems is currently open for debate.  I'm
+  tempted to leave the current functions alone and add a second set
+  with more accurate behavior.
+  
+  There is another implementation in Astro::Time that may be more accurate.
+  
+  =head1 GENESIS
+  
+  Written by David Muir Sharnoff <cpan@dave.sharnoff.org> with help from
+  previous work by 
+  Kurt Jaeger aka PI <zrzr0111@helpdesk.rus.uni-stuttgart.de>
+   	based on postings from: Ian Miller <ian_m@cix.compulink.co.uk>;
+  Gary Puckering <garyp%cognos.uucp@uunet.uu.net>
+  	based on Collected Algorithms of the ACM ?;
+  and the unknown-to-me author of Time::Local.
+  
+  =head1 LICENSE
+  
+  Copyright (C) 1996-1999 David Muir Sharnoff.  License hereby
+  granted for anyone to use, modify or redistribute this module at
+  their own risk.  Please feed useful changes back to cpan@dave.sharnoff.org.
+  
+TIME_JULIANDAY
+
+$fatpacked{"Time/ParseDate.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'TIME_PARSEDATE';
+  package Time::ParseDate;
+  
+  require 5.000;
+  
+  use Carp;
+  use Time::Timezone;
+  use Time::JulianDay;
+  require Exporter;
+  @ISA = qw(Exporter);
+  @EXPORT = qw(parsedate);
+  @EXPORT_OK = qw(pd_raw %mtable %umult %wdays);
+  
+  use strict;
+  #use diagnostics;
+  
+  # constants
+  use vars qw(%mtable %umult %wdays $VERSION);
+  
+  $VERSION = 2015.1030;
+  
+  # globals
+  use vars qw($debug); 
+  
+  # dynamically-scoped
+  use vars qw($parse);
+  
+  my %mtable;
+  my %umult;
+  my %wdays;
+  my $y2k;
+  
+  CONFIG:	{
+  
+  	%mtable = qw(
+  		Jan 1	Jan. 1	January 1
+  		Feb 2	Feb. 2	February 2
+  		Mar 3	Mar. 3	March 3
+  		Apr 4	Apr. 4	April 4
+  		May 5 
+  		Jun 6	Jun. 6	June 6 
+  		Jul 7	Jul. 7	July 7 
+  		Aug 8	Aug. 8	August 8 
+  		Sep 9	Sep. 9	September 9 Sept 9
+  		Oct 10	Oct. 10	October 10 
+  		Nov 11	Nov. 11	November 11 
+  		Dec 12	Dec. 12	December 12 );
+  	%umult = qw(
+  		sec 1 second 1
+  		min 60 minute 60
+  		hour 3600
+  		day 86400
+  		week 604800 
+  		fortnight 1209600);
+  	%wdays = qw(
+  		sun 0 sunday 0
+  		mon 1 monday 1
+  		tue 2 tuesday 2
+  		wed 3 wednesday 3
+  		thu 4 thursday 4
+  		fri 5 friday 5
+  		sat 6 saturday 6
+  		);
+  
+  	$y2k = 946684800; # turn of the century
+  }
+  
+  my $break = qr{(?:\s+|\Z|\b(?![-:.,/]\d))};
+  
+  sub parsedate
+  {
+  	my ($t, %options) = @_;
+  
+  	my ($y, $m, $d);	# year, month - 1..12, day
+  	my ($H, $M, $S);	# hour, minute, second
+  	my $tz;		 	# timezone
+  	my $tzo;		# timezone offset
+  	my ($rd, $rs);		# relative days, relative seconds
+  
+  	my $rel; 		# time&|date is relative
+  
+  	my $isspec;
+  	my $now = defined($options{NOW}) ? $options{NOW} : time;
+  	my $passes = 0;
+  	my $uk = defined($options{UK}) ? $options{UK} : 0;
+  
+  	local $parse = '';  # will be dynamically scoped.
+  
+  	if ($t =~ s#^   ([ \d]\d) 
+  			/ (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)
+  			/ (\d\d\d\d)
+  			: (\d\d)
+  			: (\d\d)
+  			: (\d\d)
+  			(?:
+  			 [ ]
+  			 ([-+] \d\d\d\d)
+  			  (?: \("?(?:(?:[A-Z]{1,4}[TCW56])|IDLE)\))?
+  			 )?
+  			 $break
+  			##xi) { #"emacs
+  		# [ \d]/Mon/yyyy:hh:mm:ss [-+]\d\d\d\d
+  		# This is the format for www server logging.
+  
+  		($d, $m, $y, $H, $M, $S, $tzo) = ($1, $mtable{"\u\L$2"}, $3, $4, $5, $6, $7 ? &mkoff($7) : ($tzo || undef));
+  		$parse .= " ".__LINE__ if $debug;
+  	} elsif ($t =~ s#^(\d\d)/(\d\d)/(\d\d)\.(\d\d)\:(\d\d)($break)##) {
+  		# yy/mm/dd.hh:mm
+  		# I support this format because it's used by wbak/rbak
+  		# on Apollo Domain OS.  Silly, but historical.
+  
+  		($y, $m, $d, $H, $M, $S) = ($1, $2, $3, $4, $5, 0);
+  		$parse .= " ".__LINE__ if $debug;
+  	} else {
+  		while(1) {
+  			if (! defined $m and ! defined $rd and ! defined $y
+  				and ! ($passes == 0 and $options{'TIMEFIRST'}))
+  			{
+  				# no month defined.
+  				if (&parse_date_only(\$t, \$y, \$m, \$d, $uk)) {
+  					$parse .= " ".__LINE__ if $debug;
+  					next;
+  				}
+  			}
+  			if (! defined $H and ! defined $rs) {
+  				if (&parse_time_only(\$t, \$H, \$M, \$S, 
+  					\$tz, %options)) 
+  				{
+  					$parse .= " ".__LINE__ if $debug;
+  					next;
+  				}
+  			}
+  			next if $passes == 0 and $options{'TIMEFIRST'};
+  			if (! defined $y) {
+  				if (&parse_year_only(\$t, \$y, $now, %options)) {
+  					$parse .= " ".__LINE__ if $debug;
+  					next;
+  				}
+  			}
+  			if (! defined $tz and ! defined $tzo and ! defined $rs 
+  				and (defined $m or defined $H)) 
+  			{
+  				if (&parse_tz_only(\$t, \$tz, \$tzo)) {
+  					$parse .= " ".__LINE__ if $debug;
+  					next;
+  				}
+  			}
+  			if (! defined $H and ! defined $rs) {
+  				if (&parse_time_offset(\$t, \$rs, %options)) {
+  					$rel = 1;
+  					$parse .= " ".__LINE__ if $debug;
+  					next;
+  				}
+  			}
+  			if (! defined $m and ! defined $rd and ! defined $y) {
+  				if (&parse_date_offset(\$t, $now, \$y, 
+  					\$m, \$d, \$rd, \$rs, %options)) 
+  				{
+  					$rel = 1;
+  					$parse .= " ".__LINE__ if $debug;
+  					next;
+  				}
+  			}
+  			if (defined $M or defined $rd) {
+  				if ($t =~ s/^\s*(?:at|\@|\+)($break)//x) {
+  					$rel = 1;
+  					$parse .= " ".__LINE__ if $debug;
+  					next;
+  				}
+  			}
+  			last;
+  		} continue {
+  			$passes++;
+  			&debug_display($tz, $tzo, $H, $M, $S, $m, $d, $y, $rs, $rd, $rel, $passes, $parse, $t) if $debug;
+  
+  		}
+  
+  		if ($passes == 0) {
+  			print "nothing matched\n" if $debug;
+  			return (undef, "no match on time/date") 
+  				if wantarray();
+  			return undef;
+  		}
+  	}
+  
+  	&debug_display($tz, $tzo, $H, $M, $S, $m, $d, $y, $rs, $rd, $rel, $passes, $parse, $t) if $debug;
+  
+  	$t =~ s/^\s+//;
+  
+  	if ($t ne '') {
+  		# we didn't manage to eat the string
+  		print "NOT WHOLE\n" if $debug;
+  		if ($options{WHOLE}) {
+  			return (undef, "characters left over after parse")
+  				if wantarray();
+  			return undef 
+  		}
+  	}
+  
+  	# define a date if there isn't one already
+  
+  	if (! defined $y and ! defined $m and ! defined $rd) {
+  		print "no date defined, trying to find one." if $debug;
+  		if (defined $rs or defined $H) {
+  			# we do have a time.
+  			if ($options{DATE_REQUIRED}) {
+  				return (undef, "no date specified")
+  					if wantarray();
+  				return undef;
+  			}
+  			if (defined $rs) {
+  				print "simple offset: $rs\n" if $debug;
+  				my $rv = $now + $rs;
+  				return ($rv, $t) if wantarray();
+  				return $rv;
+  			}
+  			$rd = 0;
+  		} else {
+  			print "no time either!\n" if $debug;
+  			return (undef, "no time specified")
+  				if wantarray();
+  			return undef;
+  		}
+  	}
+  
+  	if ($options{TIME_REQUIRED} && ! defined($rs) 
+  		&& ! defined($H) && ! defined($rd))
+  	{
+  		return (undef, "no time found")
+  			if wantarray();
+  		return undef;
+  	}
+  
+  	my $secs;
+  	my $jd;
+  
+  	if (defined $rd) {
+  		if (defined $rs || ! (defined($H) || defined($M) || defined($S))) {
+  			print "fully relative\n" if $debug;
+  			my ($j, $in, $it);
+  			my $definedrs = defined($rs) ? $rs : 0;
+  			my ($isdst_now, $isdst_then);
+  			my $r = $now + $rd * 86400 + $definedrs;
+  			#
+  			# It's possible that there was a timezone shift 
+  			# during the time specified.  If so, keep the
+  			# hours the "same".
+  			#
+  			$isdst_now = (localtime($r))[8];
+  			$isdst_then = (localtime($now))[8];
+  			if (($isdst_now == $isdst_then) || $options{GMT})
+  			{
+  				return ($r, $t) if wantarray();
+  				return $r 
+  			}
+  				
+  			print "localtime changed DST during time period!\n" if $debug;
+  		}
+  
+  		print "relative date\n" if $debug;
+  		$jd = $options{GMT}
+  			? gm_julian_day($now)
+  			: local_julian_day($now);
+  		print "jd($now) = $jd\n" if $debug;
+  		$jd += $rd;
+  	} else {
+  		unless (defined $y) {
+  			if ($options{PREFER_PAST}) {
+  				my ($day, $mon011);
+  				($day, $mon011, $y) = (&righttime($now))[3,4,5];
+  
+  				print "calc year -past $day-$d $mon011-$m $y\n" if $debug;
+  				$y -= 1 if ($mon011+1 < $m) || 
+  					(($mon011+1 == $m) && ($day < $d));
+  			} elsif ($options{PREFER_FUTURE}) {
+  				print "calc year -future\n" if $debug;
+  				my ($day, $mon011);
+  				($day, $mon011, $y) = (&righttime($now))[3,4,5];
+  				$y += 1 if ($mon011 >= $m) || 
+  					(($mon011+1 == $m) && ($day > $d));
+  			} else {
+  				print "calc year -this\n" if $debug;
+  				$y = (localtime($now))[5];
+  			}
+  			$y += 1900;
+  		}
+  
+  		$y = expand_two_digit_year($y, $now, %options)
+  			if $y < 100;
+  
+  		if ($options{VALIDATE}) {
+  			require Time::DaysInMonth;
+  			my $dim = Time::DaysInMonth::days_in($y, $m);
+  			if ($y < 1000 or $m < 1 or $d < 1 
+  				or $y > 9999 or $m > 12 or $d > $dim)
+  			{
+  				return (undef, "illegal YMD: $y, $m, $d")
+  					if wantarray();
+  				return undef;
+  			}
+  		}
+  		$jd = julian_day($y, $m, $d);
+  		print "jd($y, $m, $d) = $jd\n" if $debug;
+  	}
+  
+  	# put time into HMS
+  
+  	if (! defined($H)) {
+  		if (defined($rd) || defined($rs)) {
+  			($S, $M, $H) = &righttime($now, %options);
+  			print "HMS set to $H $M $S\n" if $debug;
+  		} 
+  	}
+  
+  	my $carry;
+  
+  	print "before ", (defined($rs) ? "$rs" : ""),
+  		    " $jd $H $M $S\n" 
+  		if $debug;
+  	#
+  	# add in relative seconds.  Do it this way because we want to
+  	# preserve the localtime across DST changes.
+  	#
+  
+  	$S = 0 unless $S; # -w
+  	$M = 0 unless $M; # -w
+  	$H = 0 unless $H; # -w
+  
+  	if ($options{VALIDATE} and
+  		($S < 0 or $M < 0 or $H < 0 or $S > 59 or $M > 59 or $H > 23)) 
+  	{
+  		return (undef, "illegal HMS: $H, $M, $S") if wantarray();
+  		return undef;
+  	}
+  
+  	$S += $rs if defined $rs;
+  	$carry = int($S / 60) - ($S < 0 && $S % 60 && 1);
+  	$S -= $carry * 60;
+  	$M += $carry;
+  	$carry = int($M / 60) - ($M < 0 && $M % 60 && 1);
+  	$M %= 60;
+  	$H += $carry;
+  	$carry = int($H / 24) - ($H < 0 && $H % 24 && 1);
+  	$H %= 24;
+  	$jd += $carry;
+  
+  	print "after rs  $jd $H $M $S\n" if $debug;
+  
+  	$secs = jd_secondsgm($jd, $H, $M, $S);
+  	print "jd_secondsgm($jd, $H, $M, $S) = $secs\n" if $debug;
+  
+  	# 
+  	# If we see something link 3pm CST then and we want to end
+  	# up with a GMT seconds, then we convert the 3pm to GMT and
+  	# subtract in the offset for CST.  We subtract because we
+  	# are converting from CST to GMT.
+  	#
+  	my $tzadj;
+  	if ($tz) {
+  		$tzadj = tz_offset($tz, $secs);
+  		if (defined $tzadj) {
+  			print "adjusting secs for $tz: $tzadj\n" if $debug;
+  			$tzadj = tz_offset($tz, $secs-$tzadj);
+  			$secs -= $tzadj;
+  		} else {
+  			print "unknown timezone: $tz\n" if $debug;
+  			undef $secs;
+  			undef $t;
+  		}
+  	} elsif (defined $tzo) {
+  		print "adjusting time for offset: $tzo\n" if $debug;
+  		$secs -= $tzo;
+  	} else {
+  		unless ($options{GMT}) {
+  			if ($options{ZONE}) {
+  				$tzadj = tz_offset($options{ZONE}, $secs) || 0;
+  				$tzadj = tz_offset($options{ZONE}, $secs-$tzadj);
+  				unless (defined($tzadj)) {
+  					return (undef, "could not convert '$options{ZONE}' to time offset")
+  						if wantarray();
+  					return undef;
+  				}
+  				print "adjusting secs for $options{ZONE}: $tzadj\n" if $debug;
+  				$secs -= $tzadj;
+  			} else {
+  				$tzadj = tz_local_offset($secs);
+  				print "adjusting secs for local offset: $tzadj\n" if $debug;
+  				# 
+  				# Just in case we are very close to a time
+  				# change...
+  				#
+  				$tzadj = tz_local_offset($secs-$tzadj);
+  				$secs -= $tzadj;
+  			}
+  		}
+  	}
+  
+  	print "returning $secs.\n" if $debug;
+  
+  	return ($secs, $t) if wantarray();
+  	return $secs;
+  }
+  
+  
+  sub mkoff
+  {
+  	my($offset) = @_;
+  
+  	if (defined $offset and $offset =~ s#^([-+])(\d\d):?(\d\d)$##) {
+  		return ($1 eq '+' ? 
+  			  3600 * $2  + 60 * $3
+  			: -3600 * $2 + -60 * $3 );
+  	}
+  	return undef;
+  }
+  
+  sub parse_tz_only
+  {
+  	my($tr, $tz, $tzo) = @_;
+  
+  	$$tr =~ s#^\s+##;
+  	my $o;
+  
+  	if ($$tr =~ s#^
+  			([-+]\d\d:?\d\d)
+  			\s+
+  			\(
+  				"?
+  				(?:
+  					(?:
+  						[A-Z]{1,4}[TCW56]
+  					)
+  					|
+  					IDLE
+  				)
+  			\)
+  			$break
+  			##x) { #"emacs
+  		$$tzo = &mkoff($1);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^GMT\s*([-+]\d{1,2})($break)##x) {
+  		$o = $1;
+  		if ($o < 24 and $o !~ /^0/) {
+  			# probably hours.
+  			printf "adjusted at %d. ($o 00)\n", __LINE__ if $debug;
+  			$o = "${o}00";
+  		}
+  		$o =~ s/\b(\d\d\d)/0$1/;
+  		$$tzo = &mkoff($o);
+  		printf "matched at %d. ($$tzo, $o)\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?:GMT\s*)?([-+]\d\d:?\d\d)($break)##x) {
+  		$o = $1;
+  		$$tzo = &mkoff($o);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^"?((?:[A-Z]{1,4}[TCW56])|IDLE)$break##x) { #"
+  		$$tz = $1;
+  		$$tz .= " DST" 
+  			if $$tz eq 'MET' && $$tr =~ s#^DST$break##x;
+  		printf "matched at %d: '$$tz'.\n", __LINE__ if $debug;
+  		return 1;
+  	}
+  	return 0;
+  }
+  
+  sub parse_date_only
+  {
+  	my ($tr, $yr, $mr, $dr, $uk) = @_;
+  
+  	$$tr =~ s#^\s+##;
+  
+  	if ($$tr =~ s#^(\d\d\d\d)([-./])(\d\d?)\2(\d\d?)(T|$break)##) {
+  		# yyyy/mm/dd
+  
+  		($$yr, $$mr, $$dr) = ($1, $3, $4);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(\d\d?)([-./])(\d\d?)\2(\d\d\d\d?)($break)##) {
+  		# mm/dd/yyyy - is this safe?  No.
+  		# -- or dd/mm/yyyy! If $1>12, then it's unambiguous.
+  		# Otherwise check option UK for UK style date.
+  		if ($uk || $1>12) {
+  		  ($$yr, $$mr, $$dr) = ($4, $3, $1);
+  		} else {
+  		  ($$yr, $$mr, $$dr) = ($4, $1, $3);
+  		}
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(\d\d\d\d)/(\d\d?)$break##x) {
+  		# yyyy/mm
+  
+  		($$yr, $$mr, $$dr) = ($1, $2, 1);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(?:
+  				(?:Mon|Monday|Tue|Tuesday|Wed|Wednesday|
+  					Thu|Thursday|Fri|Friday|
+  					Sat|Saturday|Sun|Sunday),?
+  				\s+
+  			)?
+  			(\d\d?)
+  			(\s+ | - | \. | /)
+  			(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?
+  			(?:
+  				\2
+  				(\d\d (?:\d\d)? )
+  			)?
+  			$break
+  			##) {
+  		# [Dow,] dd Mon [yy[yy]]
+  		($$yr, $$mr, $$dr) = ($4, $mtable{"\u\L$3"}, $1);
+  
+  		printf "%d: %s - %s - %s\n", __LINE__, $1, $2, $3 if $debug;
+  		print "y undef\n" if ($debug && ! defined($$yr));
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(?:
+  				(?:Mon|Monday|Tue|Tuesday|Wed|Wednesday|
+  					Thu|Thursday|Fri|Friday|
+  					Sat|Saturday|Sun|Sunday),?
+  				\s+
+  			)?
+  			(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?
+  			((\s)+ | - | \. | /)
+  				
+  			(\d\d?)
+  			,?
+  			(?:
+  				(?: \2|\3+)
+  				(\d\d (?: \d\d)?)
+  			)?
+  			$break
+  			##) {
+  		# [Dow,] Mon dd [yyyy]
+  		# [Dow,] Mon d, [yy]
+  		($$yr, $$mr, $$dr) = ($5, $mtable{"\u\L$1"}, $4);
+  		printf "%d: %s - %s - %s\n", __LINE__, $1, $2, $4 if $debug;
+  		print "y undef\n" if ($debug && ! defined($$yr));
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(January|Jan\.?|February|Feb\.?|March|Mar\.?|April|Apr\.?|May|
+  			    June|Jun\.?|July|Jul\.?|August|Aug\.?|September|Sep\.?|
+  			    October|Oct\.?|November|Nov\.?|December|Dec\.?)
+  			\s+
+  			(\d+)
+  			(?:st|nd|rd|th)?
+  			\,?
+  			(?: 
+  				\s+
+  				(?:
+  					(\d\d\d\d)
+  					|(?:\' (\d\d))
+  				)
+  			)?
+  			$break
+  			##) {
+  		# Month day{st,nd,rd,th}, 'yy
+  		# Month day{st,nd,rd,th}, year
+  		# Month day, year
+  		# Mon. day, year
+  		($$yr, $$mr, $$dr) = ($3 || $4, $mtable{"\u\L$1"}, $2);
+  		printf "%d: %s - %s - %s - %s\n", __LINE__, $1, $2, $3, $4 if $debug;
+  		print "y undef\n" if ($debug && ! defined($$yr));
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(\d\d?)([-/.])(\d\d?)\2(\d\d?)($break)##x) {
+  		if ($1 > 31 || (!$uk && $1 > 12 && $4 < 32)) {
+  			# yy/mm/dd
+  			($$yr, $$mr, $$dr) = ($1, $3, $4);
+  		} elsif ($1 > 12 || $uk) {
+  			# dd/mm/yy
+  			($$yr, $$mr, $$dr) = ($4, $3, $1);
+  		} else {
+  			# mm/dd/yy
+  			($$yr, $$mr, $$dr) = ($4, $1, $3);
+  		}
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(\d\d?)/(\d\d?)($break)##x) {
+  		if ($1 > 31 || (!$uk && $1 > 12)) {
+  			# yy/mm
+  			($$yr, $$mr, $$dr) = ($1, $2, 1);
+  		} elsif ($2 > 31 || ($uk && $2 > 12)) {
+  			# mm/yy
+  			($$yr, $$mr, $$dr) = ($2, $1, 1);
+  		} elsif ($1 > 12 || $uk) {
+  			# dd/mm
+  			($$mr, $$dr) = ($2, $1);
+  		} else {
+  			# mm/dd
+  			($$mr, $$dr) = ($1, $2);
+  		}
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(\d\d)(\d\d)(\d\d)($break)##x) {
+  		if ($1 > 31 || (!$uk && $1 > 12)) {
+  			# YYMMDD
+  			($$yr, $$mr, $$dr) = ($1, $2, $3);
+  		} elsif ($1 > 12 || $uk) {
+  			# DDMMYY
+  			($$yr, $$mr, $$dr) = ($3, $2, $1);
+  		} else {
+  			# MMDDYY
+  			($$yr, $$mr, $$dr) = ($3, $1, $2);
+  		}
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(\d{1,2})
+  			(\s+ | - | \. | /)
+  			(January|Jan\.?|February|Feb\.?|March|Mar\.?|April|Apr\.?|May|
+  			    June|Jun\.?|July|Jul\.?|August|Aug\.?|September|Sep\.?|
+  			    October|Oct\.?|November|Nov\.?|December|Dec\.?)
+  			(?:
+  				\2
+  				(
+  					\d\d
+  					(?:\d\d)?
+  				)
+  			)
+  			$break
+  			##) {
+  		# dd Month [yr]
+  		($$yr, $$mr, $$dr) = ($4, $mtable{"\u\L$3"}, $1);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(\d+)
+  			(?:st|nd|rd|th)?
+  			\s+
+  			(January|Jan\.?|February|Feb\.?|March|Mar\.?|April|Apr\.?|May|
+  			    June|Jun\.?|July|Jul\.?|August|Aug\.?|September|Sep\.?|
+  			    October|Oct\.?|November|Nov\.?|December|Dec\.?)
+  			(?: 
+  				\,?
+  				\s+
+  				(\d\d\d\d)
+  			)?
+  			$break
+  			##) {
+  		# day{st,nd,rd,th}, Month year
+  		($$yr, $$mr, $$dr) = ($3, $mtable{"\u\L$2"}, $1);
+  		printf "%d: %s - %s - %s - %s\n", __LINE__, $1, $2, $3, $4 if $debug;
+  		print "y undef\n" if ($debug && ! defined($$yr));
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	}
+  	return 0;
+  }
+  
+  sub parse_time_only
+  {
+  	my ($tr, $hr, $mr, $sr, $tzr, %options) = @_;
+  
+  	$$tr =~ s#^\s+##;
+  
+  	if ($$tr =~ s!^(?x)
+  			(?:
+  				(?:
+  					([012]\d)		(?# $1)
+  					(?:
+  						([0-5]\d) 	(?# $2)
+  						(?:
+  						    ([0-5]\d)	(?# $3)
+  						)?
+  					)
+  					\s*
+  					([apAP][mM])?  		(?# $4)
+  				) | (?:
+  					(\d{1,2}) 		(?# $5)
+  					(?:
+  						\:
+  						(\d\d)		(?# $6)
+  						(?:
+  							\:
+  							(\d\d)	(?# $7)
+  								(
+  									(?# don't barf on database sub-second timings)
+  									[:.,]
+  									\d+
+  								)?	(?# $8)
+  						)?
+  					)
+  					\s*
+  					([apAP][mM])?		(?# $9)
+  				) | (?:
+  					(\d{1,2})		(?# $10)
+  					([apAP][mM])		(?# ${11})
+  				)
+  			)
+  			(?:
+  				\s+
+  				"?
+  				(				(?# ${12})
+  					(?: [A-Z]{1,4}[TCW56] )
+  					|
+  					IDLE
+  				)	
+  			)?
+  			$break
+  			!!) { #"emacs
+  		# HH[[:]MM[:SS]]meridian [zone] 
+  		my $ampm;
+  		$$hr = $1 || $5 || $10 || 0; # 10 is undef, but 5 is defined..
+  		$$mr = $2 || $6 || 0;
+  		$$sr = $3 || $7 || 0;
+  		if (defined($8) && exists($options{SUBSECOND}) && $options{SUBSECOND}) {
+  			my($frac) = $8;
+  			substr($frac,0,1) = '.';
+  			$$sr += $frac;
+  		}
+  		print "S = $$sr\n" if $debug;
+  		$ampm = $4 || $9 || $11 || '';
+  		$$tzr = $12;
+  		$$hr += 12 if $ampm and "\U$ampm" eq "PM" && $$hr != 12;
+  		$$hr = 0 if $$hr == 12 && "\U$ampm" eq "AM";
+  		printf "matched at %d, rem = %s.\n", __LINE__, $$tr if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^noon$break##ix) {
+  		# noon
+  		($$hr, $$mr, $$sr) = (12, 0, 0);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^midnight$break##ix) {
+  		# midnight
+  		($$hr, $$mr, $$sr) = (0, 0, 0);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	}
+  	return 0;
+  }
+  
+  sub parse_time_offset
+  {
+  	my ($tr, $rsr, %options) = @_;
+  
+  	$$tr =~ s/^\s+//;
+  
+  	return 0 if $options{NO_RELATIVE};
+  
+  	if ($$tr =~ s{^(?xi)					
+  			(?:
+  				(-)				(?# 1)
+  				|
+  				[+]
+  			)?
+  			\s*
+  			(?:
+  				(\d+(?:\.\d+)?) 		(?# 2)
+  				| 		
+  				(?:(\d+)\s+(\d+)/(\d+))		(?# 3 4/5)
+  			)
+  			\s*
+  			(sec|second|min|minute|hour)s?		(?# 6)
+  			(
+  				\s+
+  				ago				(?# 7)
+  			)?
+  			$break
+  			}{}) {
+  		# count units
+  		$$rsr = 0 unless defined $$rsr;
+  		return 0 if defined($5) && $5 == 0;
+  		my $num = defined($2)
+  			? $2
+  			: $3 + $4/$5;
+  		$num = -$num if $1;
+  		$$rsr += $umult{"\L$6"} * $num;
+  
+  		$$rsr = -$$rsr if $7 ||
+  			$$tr =~ /\b(day|mon|month|year)s?\s*ago\b/;
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} 
+  	return 0;
+  }
+  
+  #
+  # What to you do with a date that has a two-digit year?
+  # There's not much that can be done except make a guess.
+  #
+  # Some example situations to handle:
+  #
+  #	now		year 
+  #
+  #	1999		01
+  #	1999		71
+  #	2010		71
+  #	2110		09
+  #
+  
+  sub expand_two_digit_year
+  {
+  	my ($yr, $now, %options) = @_;
+  
+  	return $yr if $yr > 100;
+  
+  	my ($y) = (&righttime($now, %options))[5];
+  	$y += 1900;
+  	my $century = int($y / 100) * 100;
+  	my $within = $y % 100;
+  
+  	my $r = $yr + $century;
+  
+  	if ($options{PREFER_PAST}) {
+  		if ($yr > $within) {
+  			$r = $yr + $century - 100;
+  		}
+  	} elsif ($options{PREFER_FUTURE}) {
+  		# being strict here would be silly
+  		if ($yr < $within-20) {
+  			# it's 2019 and the date is '08'
+  			$r = $yr + $century + 100;
+  		}
+  	} elsif ($options{UNAMBIGUOUS}) {
+  		# we really shouldn't guess
+  		return undef;
+  	} else {
+  		# prefer the current century in most cases
+  
+  		if ($within > 80 && $within - $yr > 60) {
+  			$r = $yr + $century + 100;
+  		}
+  
+  		if ($within < 30 && $yr - $within > 59) {
+  			$r = $yr + $century - 100;
+  		}
+  	}
+  	print "two digit year '$yr' expanded into $r\n" if $debug;
+  	return $r;
+  }
+  
+  
+  sub calc 
+  {
+  	my ($rsr, $yr, $mr, $dr, $rdr, $now, $units, $count, %options) = @_;
+  
+  	confess unless $units;
+  	$units = "\L$units";
+  	print "calc based on $units\n" if $debug;
+  
+  	if ($units eq 'day') {
+  		$$rdr = $count;
+  	} elsif ($units eq 'week') {
+  		$$rdr = $count * 7;
+  	} elsif ($umult{$units}) {
+  		$$rsr = $count * $umult{$units};
+  	} elsif ($units eq 'mon' || $units eq 'month') {
+  		($$yr, $$mr, $$dr) = &monthoff($now, $count, %options);
+  		$$rsr = 0 unless $$rsr;
+  	} elsif ($units eq 'year') {
+  		($$yr, $$mr, $$dr) = &monthoff($now, $count * 12, %options);
+  		$$rsr = 0 unless $$rsr;
+  	} else {
+  		carp "interal error";
+  	}
+  	print "calced rsr $$rsr rdr $$rdr, yr $$yr mr $$mr dr $$dr.\n" if $debug;
+  }
+  
+  sub monthoff
+  {
+  	my ($now, $months, %options) = @_;
+  
+  	# months are 0..11
+  	my ($d, $m11, $y) = (&righttime($now, %options)) [ 3,4,5 ] ;
+  
+  	$y += 1900;
+  
+  	print "m11 = $m11 + $months, y = $y\n" if $debug;
+  
+  	$m11 += $months;
+  
+  	print "m11 = $m11, y = $y\n" if $debug;
+  	if ($m11 > 11 || $m11 < 0) {
+  		$y -= 1 if $m11 < 0 && ($m11 % 12 != 0);
+  		$y += int($m11/12);
+  
+  		# this is required to work around a bug in perl 5.003
+  		no integer;
+  		$m11 %= 12;
+  	}
+  	print "m11 = $m11, y = $y\n" if $debug;
+  
+  	# 
+  	# What is "1 month from January 31st?"  
+  	# I think the answer is February 28th most years.
+  	#
+  	# Similarly, what is one year from February 29th, 1980?
+  	# I think it's February 28th, 1981.
+  	#
+  	# If you disagree, change the following code.
+  	#
+  	if ($d > 30 or ($d > 28 && $m11 == 1)) {
+  		require Time::DaysInMonth;
+  		my $dim = Time::DaysInMonth::days_in($y, $m11+1);
+  		print "dim($y,$m11+1)= $dim\n" if $debug;
+  		$d = $dim if $d > $dim;
+  	}
+  	return ($y, $m11+1, $d);
+  }
+  
+  sub righttime
+  {
+  	my ($time, %options) = @_;
+  	if ($options{GMT}) {
+  		return gmtime($time);
+  	} else {
+  		return localtime($time);
+  	}
+  }
+  
+  sub parse_year_only
+  {
+  	my ($tr, $yr, $now, %options) = @_;
+  
+  	$$tr =~ s#^\s+##;
+  
+  	if ($$tr =~ s#^(\d\d\d\d)$break##) {
+  		$$yr = $1;
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#\'(\d\d)$break##) {
+  		$$yr = expand_two_digit_year($1, $now, %options);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	}
+  	return 0;
+  }
+  
+  sub parse_date_offset
+  {
+  	my ($tr, $now, $yr, $mr, $dr, $rdr, $rsr, %options) = @_;
+  
+  	return 0 if $options{NO_RELATIVE};
+  
+  	# now - current seconds_since_epoch
+  	# yr - year return
+  	# mr - month return
+  	# dr - day return
+  	# rdr - relative day return
+  	# rsr - relative second return
+  
+  	my $j;
+  	my $wday = (&righttime($now, %options))[6];
+  
+  	$$tr =~ s#^\s+##;
+  
+  	if ($$tr =~ s#^(?xi)
+  			\s*
+  			(\d+)
+  			\s*
+  			(day|week|month|year)s?
+  			(
+  				\s+
+  				ago
+  			)?
+  			$break
+  			##) {
+  		my $amt = $1 + 0;
+  		my $units = $2;
+  		$amt = -$amt if $3 ||
+  			$$tr =~ m#\b(sec|second|min|minute|hour)s?\s*ago\b#;
+  		&calc($rsr, $yr, $mr, $dr, $rdr, $now, $units, 
+  			$amt, %options);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(?:
+  				(?:
+  					now
+  					\s+
+  				)?
+  				(\+ | \-)
+  				\s*
+  			)?
+  			(\d+)
+  			\s*
+  			(day|week|month|year)s?
+  			$break
+  			##) {
+  		my $one = $1 || '';
+  		my $two = $2 || '';
+  		my $amt = "$one$two"+0;
+  		&calc($rsr, $yr, $mr, $dr, $rdr, $now, $3, 
+  			$amt, %options);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday
+  				|Wednesday|Thursday|Friday|Saturday|Sunday)
+  			\s+
+  			after
+  			\s+
+  			next
+  			$break
+  			##) {
+  		# Dow "after next"
+  		$$rdr = $wdays{"\L$1"} - $wday + ( $wdays{"\L$1"} > $wday ? 7 : 14);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday
+  				|Wednesday|Thursday|Friday|Saturday|Sunday)
+  			\s+
+  			before
+  			\s+
+  			last
+  			$break
+  			##) {
+  		# Dow "before last"
+  		$$rdr = $wdays{"\L$1"} - $wday - ( $wdays{"\L$1"} < $wday ? 7 : 14);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			next\s+
+  			(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday
+  				|Wednesday|Thursday|Friday|Saturday|Sunday)
+  			$break
+  			##) {
+  		# "next" Dow
+  		$$rdr = $wdays{"\L$1"} - $wday 
+  				+ ( $wdays{"\L$1"} > $wday ? 0 : 7);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^(?xi)
+  			last\s+
+  			(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday
+  				|Wednesday|Thursday|Friday|Saturday|Sunday)
+  			$break##) {
+  		# "last" Dow
+  		printf "c %d - %d + ( %d < %d ? 0 : -7 \n", $wdays{"\L$1"},  $wday,  $wdays{"\L$1"}, $wday if $debug;
+  		$$rdr = $wdays{"\L$1"} - $wday + ( $wdays{"\L$1"} < $wday ? 0 : -7);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($options{PREFER_PAST} and $$tr =~ s#^(?xi)
+  			(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday
+  				|Wednesday|Thursday|Friday|Saturday|Sunday)
+  			$break##) {
+  		# Dow
+  		printf "c %d - %d + ( %d < %d ? 0 : -7 \n", $wdays{"\L$1"},  $wday,  $wdays{"\L$1"}, $wday if $debug;
+  		$$rdr = $wdays{"\L$1"} - $wday + ( $wdays{"\L$1"} < $wday ? 0 : -7);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($options{PREFER_FUTURE} and $$tr =~ s#^(?xi)
+  			(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday
+  				|Wednesday|Thursday|Friday|Saturday|Sunday)
+  			$break
+  			##) {
+  		# Dow
+  		$$rdr = $wdays{"\L$1"} - $wday 
+  				+ ( $wdays{"\L$1"} > $wday ? 0 : 7);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^today$break##xi) {
+  		# today
+  		$$rdr = 0;
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^tomorrow$break##xi) {
+  		$$rdr = 1;
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^yesterday$break##xi) {
+  		$$rdr = -1;
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^last\s+(week|month|year)$break##xi) {
+  		&calc($rsr, $yr, $mr, $dr, $rdr, $now, $1, -1, %options);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^next\s+(week|month|year)$break##xi) {
+  		&calc($rsr, $yr, $mr, $dr, $rdr, $now, $1, 1, %options);
+  		printf "matched at %d.\n", __LINE__ if $debug;
+  		return 1;
+  	} elsif ($$tr =~ s#^now $break##x) {
+  		$$rdr = 0;
+  		return 1;
+  	}
+  	return 0;
+  }
+  
+  sub debug_display
+  {
+  	my ($tz, $tzo, $H, $M, $S, $m, $d, $y, $rs, $rd, $rel, $passes, $parse, $t) = @_;
+  	print "---------<<\n";
+  	print defined($tz) ? "tz: $tz.\n" : "no tz\n";
+  	print defined($tzo) ? "tzo: $tzo.\n" : "no tzo\n";
+  	print "HMS: ";
+  	print defined($H) ? "$H, " : "no H, ";
+  	print defined($M) ? "$M, " : "no M, ";
+  	print defined($S) ? "$S\n" : "no S.\n";
+  	print "mdy: ";
+  	print defined($m) ? "$m, " : "no m, ";
+  	print defined($d) ? "$d, " : "no d, ";
+  	print defined($y) ? "$y\n" : "no y.\n";
+  	print defined($rs) ? "rs: $rs.\n" : "no rs\n";
+  	print defined($rd) ? "rd: $rd.\n" : "no rd\n";
+  	print $rel ? "relative\n" : "not relative\n";
+  	print "passes: $passes\n";
+  	print "parse:$parse\n";
+  	print "t: $t.\n";
+  	print "--------->>\n";
+  }
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Time::ParseDate -- date parsing both relative and absolute
+  
+  =head1 SYNOPSIS
+  
+  	use Time::ParseDate;
+  	$seconds_since_jan1_1970 = parsedate("12/11/94 2pm", NO_RELATIVE => 1)
+  	$seconds_since_jan1_1970 = parsedate("12/11/94 2pm", %options)
+  
+  =head1 OPTIONS
+  
+  Date parsing can also use options.  The options are as follows:
+  
+  	FUZZY	-> it's okay not to parse the entire date string
+  	NOW	-> the "current" time for relative times (defaults to time())
+  	ZONE	-> local timezone (defaults to $ENV{TZ})
+  	WHOLE	-> the whole input string must be parsed
+  	GMT	-> input time is assumed to be GMT, not localtime
+  	UK	-> prefer UK style dates (dd/mm over mm/dd)
+  	DATE_REQUIRED -> do not default the date
+  	TIME_REQUIRED -> do not default the time
+  	NO_RELATIVE -> input time is not relative to NOW
+  	TIMEFIRST -> try parsing time before date [not default]
+  	PREFER_PAST -> when year or day of week is ambiguous, assume past
+  	PREFER_FUTURE -> when year or day of week is ambiguous, assume future
+  	SUBSECOND -> parse fraction seconds
+  	VALIDATE -> only accept normal values for HHMMSS, YYMMDD.  Otherwise
+  		days like -1 might give the last day of the previous month.
+  
+  =head1 DATE FORMATS RECOGNIZED
+  
+  =head2 Absolute date formats
+  
+  	Dow, dd Mon yy
+  	Dow, dd Mon yyyy
+  	Dow, dd Mon
+  	dd Mon yy
+  	dd Mon yyyy
+  	Month day{st,nd,rd,th}, year
+  	Month day{st,nd,rd,th}
+  	Mon dd yyyy
+  	yyyy/mm/dd
+  	yyyy-mm-dd	(usually the best date specification syntax)
+  	yyyy/mm
+  	mm/dd/yy
+  	mm/dd/yyyy
+  	mm/yy
+  	yy/mm      (only if year > 12, or > 31 if UK)
+  	yy/mm/dd   (only if year > 12 and day < 32, or year > 31 if UK)
+  	dd/mm/yy   (only if UK, or an invalid mm/dd/yy or yy/mm/dd)
+  	dd/mm/yyyy (only if UK, or an invalid mm/dd/yyyy)
+  	dd/mm      (only if UK, or an invalid mm/dd)
+  
+  =head2 Relative date formats:
+  
+  	count "days"
+  	count "weeks"
+  	count "months"
+  	count "years"
+  	Dow "after next"
+  	Dow "before last"
+  	Dow 			(requires PREFER_PAST or PREFER_FUTURE)
+  	"next" Dow
+  	"tomorrow"
+  	"today"
+  	"yesterday"
+  	"last" dow
+  	"last week"
+  	"now"
+  	"now" "+" count units
+  	"now" "-" count units
+  	"+" count units		
+  	"-" count units
+  	count units "ago"
+  
+  =head2 Absolute time formats:
+  
+  	hh:mm:ss[.ddd] 
+  	hh:mm 
+  	hh:mm[AP]M
+  	hh[AP]M
+  	hhmmss[[AP]M] 
+  	"noon"
+  	"midnight"
+  
+  =head2 Relative time formats:
+  
+  	count "minutes"		(count can be franctional "1.5" or "1 1/2")
+  	count "seconds"
+  	count "hours"
+  	"+" count units
+  	"+" count
+  	"-" count units
+  	"-" count
+  	count units "ago"
+  
+  =head2 Timezone formats:
+  
+  	[+-]dddd
+  	GMT[+-]d+
+  	[+-]dddd (TZN)
+  	TZN
+  
+  =head2 Special formats:
+  
+  	[ d]d/Mon/yyyy:hh:mm:ss [[+-]dddd]
+  	yy/mm/dd.hh:mm
+  
+  =head1 DESCRIPTION
+  
+  This module recognizes the above date/time formats.   Usually a
+  date and a time are specified.  There are numerous options for 
+  controlling what is recognized and what is not.
+  
+  The return code is always the time in seconds since January 1st, 1970
+  or undef if it was unable to parse the time.
+  
+  If a timezone is specified it must be after the time.  Year specifications
+  can be tacked onto the end of absolute times.
+  
+  If C<parsedate()> is called from array context, then it will return two
+  elements.  On successful parses, it will return the seconds and what 
+  remains of its input string.  On unsuccessful parses, it will return
+  C<undef> and an error string.
+  
+  =head1 EXAMPLES
+  
+  	$seconds = parsedate("Mon Jan  2 04:24:27 1995");
+  	$seconds = parsedate("Tue Apr 4 00:22:12 PDT 1995");
+  	$seconds = parsedate("04.04.95 00:22", ZONE => PDT);
+  	$seconds = parsedate("Jan 1 1999 11:23:34.578", SUBSECOND => 1);
+  	$seconds = parsedate("122212 950404", ZONE => PDT, TIMEFIRST => 1);
+  	$seconds = parsedate("+3 secs", NOW => 796978800);
+  	$seconds = parsedate("2 months", NOW => 796720932);
+  	$seconds = parsedate("last Tuesday");
+  	$seconds = parsedate("Sunday before last");
+  
+  	($seconds, $remaining) = parsedate("today is the day");
+  	($seconds, $error) = parsedate("today is", WHOLE=>1);
+  
+  =head1 LICENSE
+  
+  Copyright (C) 1996-2010 David Muir Sharnoff.  
+  Copyright (C) 2011 Google, Inc.  
+  License hereby
+  granted for anyone to use, modify or redistribute this module at
+  their own risk.  Please feed useful changes back to cpan@dave.sharnoff.org.
+  
+TIME_PARSEDATE
+
+$fatpacked{"Time/Timezone.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'TIME_TIMEZONE';
+  package Time::Timezone;
+  
+  require 5.002;
+  
+  require Exporter;
+  @ISA = qw(Exporter);
+  @EXPORT = qw(tz2zone tz_local_offset tz_offset tz_name);
+  @EXPORT_OK = qw();
+  
+  use Carp;
+  use strict;
+  
+  # Parts stolen from code by Paul Foley <paul@ascent.com>
+  
+  use vars qw($VERSION);
+  
+  $VERSION = 2015.0925;
+  
+  sub tz2zone
+  {
+  	my($TZ, $time, $isdst) = @_;
+  
+  	use vars qw(%tzn_cache);
+  
+  	$TZ = defined($ENV{'TZ'}) ? ( $ENV{'TZ'} ? $ENV{'TZ'} : 'GMT' ) : ''
+  	    unless $TZ;
+  
+  	# Hack to deal with 'PST8PDT' format of TZ
+  	# Note that this can't deal with all the esoteric forms, but it
+  	# does recognize the most common: [:]STDoff[DST[off][,rule]]
+  
+  	if (! defined $isdst) {
+  		my $j;
+  		$time = time() unless defined $time;
+  		($j, $j, $j, $j, $j, $j, $j, $j, $isdst) = localtime($time);
+  	}
+  
+  	if (defined $tzn_cache{$TZ}->[$isdst]) {
+  		return $tzn_cache{$TZ}->[$isdst];
+  	}
+        
+  	if ($TZ =~ /^
+  		    ( [^:\d+\-,] {3,} )
+  		    ( [+-] ?
+  		      \d {1,2}
+  		      ( : \d {1,2} ) {0,2} 
+  		    )
+  		    ( [^\d+\-,] {3,} )?
+  		    /x
+  	    ) {
+  		$TZ = $isdst ? $4 : $1;
+  		$tzn_cache{$TZ} = [ $1, $4 ];
+  	} else {
+  		$tzn_cache{$TZ} = [ $TZ, $TZ ];
+  	}
+  	return $TZ;
+  }
+  
+  sub tz_local_offset
+  {
+  	my ($time) = @_;
+  
+  	$time = time() unless defined $time;
+  
+      return &calc_off($time);
+  }
+  
+  sub calc_off
+  {
+  	my ($time) = @_;
+  
+  	my (@l) = localtime($time);
+  	my (@g) = gmtime($time);
+  
+  	my $off;
+  
+  	$off =	   $l[0] - $g[0]
+  		+ ($l[1] - $g[1]) * 60
+  		+ ($l[2] - $g[2]) * 3600;
+  
+  	# subscript 7 is yday.
+  
+  	if ($l[7] == $g[7]) {
+  		# done
+  	} elsif ($l[7] == $g[7] + 1) {
+  		$off += 86400;
+  	} elsif ($l[7] == $g[7] - 1) {
+  		$off -= 86400;
+  	} elsif ($l[7] < $g[7]) {
+  		# crossed over a year boundary!
+  		# localtime is beginning of year, gmt is end
+  		# therefore local is ahead
+  		$off += 86400;
+  	} else {
+  		$off -= 86400;
+  	}
+  
+  	return $off;
+  }
+  
+  # constants
+  # The rest of the file originally comes from Graham Barr <bodg@tiuk.ti.com> 
+  #
+  # Some references:
+  #  http://www.weltzeituhr.com/laender/zeitzonen_e.shtml
+  #  http://www.worldtimezone.com/wtz-names/timezonenames.html
+  #  http://www.timegenie.com/timezones.php
+  
+  CONFIG: {
+  	use vars qw(%dstZone %zoneOff %dstZoneOff %Zone);
+  
+  	%dstZone = (
+  	    "brst" =>	-2*3600,	 # Brazil Summer Time (East Daylight)
+  	    "adt"  =>	-3*3600,	 # Atlantic Daylight   
+  	    "edt"  =>	-4*3600,	 # Eastern Daylight
+  	    "cdt"  =>	-5*3600,	 # Central Daylight
+  	    "mdt"  =>	-6*3600,	 # Mountain Daylight
+  	    "pdt"  =>	-7*3600,	 # Pacific Daylight
+  	    "ydt"  =>	-8*3600,	 # Yukon Daylight
+  	    "hdt"  =>	-9*3600,	 # Hawaii Daylight
+  	    "bst"  =>	+1*3600,	 # British Summer   
+  	    "mest" =>	+2*3600,	 # Middle European Summer   
+  	    "met dst" => +2*3600,	 # Middle European Summer   
+  	    "sst"  =>	+2*3600,	 # Swedish Summer
+  	    "fst"  =>	+2*3600,	 # French Summer
+  	    "eest" =>	+3*3600,	 # Eastern European Summer
+  	    "cest" =>	+2*3600,	 # Central European Daylight
+  	    "wadt" =>	+8*3600,	 # West Australian Daylight
+  	    "kdt"  =>  +10*3600,	 # Korean Daylight
+  	#   "cadt" =>  +10*3600+1800,	 # Central Australian Daylight
+  	    "eadt" =>  +11*3600,	 # Eastern Australian Daylight
+  	    "nzdt" =>  +13*3600,	 # New Zealand Daylight	  
+  	);
+  
+  	# not included due to ambiguity:
+  	#	IST     Indian Standard Time            +5.5
+  	#		Ireland Standard Time           0
+  	#		Israel Standard Time            +2
+  	#	IDT     Ireland Daylight Time           +1
+  	#		Israel Daylight Time            +3
+  	#	AMST    Amazon Standard Time /          -3
+  	#		Armenia Standard Time           +8
+  	#	BST	Brazil Standard			-3
+  
+  	%Zone = (
+  	    "gmt"	=>   0,		 # Greenwich Mean
+  	    "ut"	=>   0,		 # Universal (Coordinated)
+  	    "utc"	=>   0,
+  	    "wet"	=>   0,		 # Western European
+  	    "wat"	=>  -1*3600,	 # West Africa
+  	    "azost"	=>  -1*3600,	 # Azores Standard Time
+  	    "cvt"	=>  -1*3600,	 # Cape Verde Time
+  	    "at"	=>  -2*3600,	 # Azores
+  	    "fnt"	=>  -2*3600,	 # Brazil Time (Extreme East - Fernando Noronha)
+  	    "ndt" 	=>  -2*3600-1800,# Newfoundland Daylight   
+  	    "art"	=>  -3*3600,	 # Argentina Time
+  	# For completeness.  BST is also British Summer, and GST is also Guam Standard.
+  	#   "gst"	=>  -3*3600,	 # Greenland Standard
+  	    "nft"	=>  -3*3600-1800,# Newfoundland
+  	#   "nst"	=>  -3*3600-1800,# Newfoundland Standard
+  	    "mnt"	=>  -4*3600,	 # Brazil Time (West Standard - Manaus)
+  	    "ewt"	=>  -4*3600,	 # U.S. Eastern War Time
+  	    "ast"	=>  -4*3600,	 # Atlantic Standard
+  	    "bot"	=>  -4*3600,	 # Bolivia Time
+  	    "vet"	=>  -4*3600,	 # Venezuela Time
+  	    "est"	=>  -5*3600,	 # Eastern Standard
+  	    "cot"	=>  -5*3600,	 # Colombia Time
+  	    "act"	=>  -5*3600,	 # Brazil Time (Extreme West - Acre)
+  	    "pet"	=>  -5*3600,	 # Peru Time
+  	    "cst"	=>  -6*3600,	 # Central Standard
+  	    "cest"	=>  +2*3600,	 # Central European Summer
+  	    "mst"	=>  -7*3600,	 # Mountain Standard
+  	    "pst"	=>  -8*3600,	 # Pacific Standard
+  	    "yst"	=>  -9*3600,	 # Yukon Standard
+  	    "hst"	=> -10*3600,	 # Hawaii Standard
+  	    "cat"	=> -10*3600,	 # Central Alaska
+  	    "ahst"	=> -10*3600,	 # Alaska-Hawaii Standard
+  	    "taht"	=> -10*3600,	 # Tahiti Time
+  	    "nt"	=> -11*3600,	 # Nome
+  	    "idlw"	=> -12*3600,	 # International Date Line West
+  	    "cet"	=>  +1*3600,	 # Central European
+  	    "mez"	=>  +1*3600,	 # Central European (German)
+  	    "met"	=>  +1*3600,	 # Middle European
+  	    "mewt"	=>  +1*3600,	 # Middle European Winter
+  	    "swt"	=>  +1*3600,	 # Swedish Winter
+  	    "set"	=>  +1*3600,	 # Seychelles
+  	    "fwt"	=>  +1*3600,	 # French Winter
+  	    "west"	=>  +1*3600,	 # Western Europe Summer Time
+  	    "eet"	=>  +2*3600,	 # Eastern Europe, USSR Zone 1
+  	    "ukr"	=>  +2*3600,	 # Ukraine
+  	    "sast"	=>  +2*3600,	 # South Africa Standard Time
+  	    "bt"	=>  +3*3600,	 # Baghdad, USSR Zone 2
+  	    "eat"	=>  +3*3600,	 # East Africa Time
+  	#   "it"	=>  +3*3600+1800,# Iran
+  	    "irst"	=>  +3*3600+1800,# Iran Standard Time
+  	    "zp4"	=>  +4*3600,	 # USSR Zone 3
+  	    "msd"	=>  +4*3600,	 # Moscow Daylight Time
+  	    "sct"	=>  +4*3600,	 # Seychelles Time
+  	    "zp5"	=>  +5*3600,	 # USSR Zone 4
+  	    "azst"	=>  +5*3600,	 # Azerbaijan Summer Time
+  	    "mvt"	=>  +5*3600,	 # Maldives Time
+  	    "uzt"	=>  +5*3600,	 # Uzbekistan Time
+  	    "ist"	=>  +5*3600+1800,# Indian Standard
+  	    "zp6"	=>  +6*3600,	 # USSR Zone 5
+  	    "lkt"	=>  +6*3600,	 # Sri Lanka Time
+  	    "pkst"	=>  +6*3600,	 # Pakistan Summer Time
+  	    "yekst"	=>  +6*3600,	 # Yekaterinburg Summer Time
+  	# For completeness.  NST is also Newfoundland Stanard, and SST is also Swedish Summer.
+  	#   "nst"	=>  +6*3600+1800,# North Sumatra
+  	#   "sst"	=>  +7*3600,	 # South Sumatra, USSR Zone 6
+  	    "wast"	=>  +7*3600,	 # West Australian Standard
+  	    "ict"	=>  +7*3600,	 # Indochina Time
+  	    "wit"	=>  +7*3600,	 # Western Indonesia Time
+  	#   "jt"	=>  +7*3600+1800,# Java (3pm in Cronusland!)
+  	    "cct"	=>  +8*3600,	 # China Coast, USSR Zone 7
+  	    "wst"	=>  +8*3600,	 # West Australian Standard
+  	    "hkt"	=>  +8*3600,	 # Hong Kong
+  	    "bnt"	=>  +8*3600,	 # Brunei Darussalam Time
+  	    "cit"	=>  +8*3600,	 # Central Indonesia Time
+  	    "myt"	=>  +8*3600,	 # Malaysia Time
+  	    "pht"	=>  +8*3600,	 # Philippines Time
+  	    "sgt"	=>  +8*3600,	 # Singapore Time
+  	    "jst"	=>  +9*3600,	 # Japan Standard, USSR Zone 8
+  	    "kst"	=>  +9*3600,	 # Korean Standard
+  	#   "cast"	=>  +9*3600+1800,# Central Australian Standard
+  	    "east"	=> +10*3600,	 # Eastern Australian Standard
+  	    "gst"	=> +10*3600,	 # Guam Standard, USSR Zone 9
+  	    "nct"	=> +11*3600,	 # New Caledonia Time
+  	    "nzt"	=> +12*3600,	 # New Zealand
+  	    "nzst"	=> +12*3600,	 # New Zealand Standard
+  	    "fjt"	=> +12*3600,	 # Fiji Time
+  	    "idle"	=> +12*3600,	 # International Date Line East
+  	);
+  
+  	%zoneOff = reverse(%Zone);
+  	%dstZoneOff = reverse(%dstZone);
+  
+  	# Preferences
+  
+  	$zoneOff{0}	  = 'gmt';
+  	$dstZoneOff{3600} = 'bst';
+  
+  }
+  
+  sub tz_offset
+  {
+  	my ($zone, $time) = @_;
+  
+  	return &tz_local_offset() unless($zone);
+  
+  	$time = time() unless defined $time;
+  	my(@l) = localtime($time);
+  	my $dst = $l[8];
+  
+  	$zone = lc $zone;
+  
+  	if ($zone =~ /^([\-\+]\d{3,4})$/) {
+  		my $sign = $1 < 0 ? -1 : 1 ;
+  		my $v = abs(0 + $1);
+  		return $sign * 60 * (int($v / 100) * 60 + ($v % 100));
+  	} elsif (exists $dstZone{$zone} && ($dst || !exists $Zone{$zone})) {
+  		return $dstZone{$zone};
+  	} elsif(exists $Zone{$zone}) {
+  		return $Zone{$zone};
+  	}
+  	undef;
+  }
+  
+  sub tz_name
+  {
+  	my ($off, $time) = @_;
+  
+  	$time = time() unless defined $time;
+  	my(@l) = localtime($time);
+  	my $dst = $l[8];
+  
+  	if (exists $dstZoneOff{$off} && ($dst || !exists $zoneOff{$off})) {
+  		return $dstZoneOff{$off};
+  	} elsif (exists $zoneOff{$off}) {
+  		return $zoneOff{$off};
+  	}
+  	sprintf("%+05d", int($off / 60) * 100 + $off % 60);
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Time::Timezone -- miscellaneous timezone manipulations routines
+  
+  =head1 SYNOPSIS
+  
+  	use Time::Timezone;
+  	print tz2zone();
+  	print tz2zone($ENV{'TZ'});
+  	print tz2zone($ENV{'TZ'}, time());
+  	print tz2zone($ENV{'TZ'}, undef, $isdst);
+  	$offset = tz_local_offset();
+  	$offset = tz_offset($TZ);
+  
+  =head1 DESCRIPTION
+  
+  This is a collection of miscellaneous timezone manipulation routines.
+  
+  C<tz2zone()> parses the TZ environment variable and returns a timezone
+  string suitable for inclusion in L<date>-like output.  It optionally takes
+  a timezone string, a time, and a is-dst flag.
+  
+  C<tz_local_offset()> determines the offset from GMT time in seconds.  It
+  only does the calculation once.
+  
+  C<tz_offset()> determines the offset from GMT in seconds of a specified
+  timezone.  
+  
+  C<tz_name()> determines the name of the timezone based on its offset
+  
+  =head1 AUTHORS
+  
+  Graham Barr <bodg@tiuk.ti.com>
+  David Muir Sharnoff <muir@idiom.org>
+  Paul Foley <paul@ascent.com>
+  
+  =head1 LICENSE
+  
+  David Muir Sharnoff disclaims any copyright and puts his contribution
+  to this module in the public domain.
+  
+TIME_TIMEZONE
+
+$fatpacked{"Try/Tiny.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'TRY_TINY';
+  package Try::Tiny; # git description: v0.30-11-g1b81d0a
+  use 5.006;
+  # ABSTRACT: Minimal try/catch with proper preservation of $@
+  
+  our $VERSION = '0.31';
+  
+  use strict;
+  use warnings;
+  
+  use Exporter 5.57 'import';
+  our @EXPORT = our @EXPORT_OK = qw(try catch finally);
+  
+  use Carp;
+  $Carp::Internal{+__PACKAGE__}++;
+  
+  BEGIN {
+    my $su = $INC{'Sub/Util.pm'} && defined &Sub::Util::set_subname;
+    my $sn = $INC{'Sub/Name.pm'} && eval { Sub::Name->VERSION(0.08) };
+    unless ($su || $sn) {
+      $su = eval { require Sub::Util; } && defined &Sub::Util::set_subname;
+      unless ($su) {
+        $sn = eval { require Sub::Name; Sub::Name->VERSION(0.08) };
+      }
+    }
+  
+    *_subname = $su ? \&Sub::Util::set_subname
+              : $sn ? \&Sub::Name::subname
+              : sub { $_[1] };
+    *_HAS_SUBNAME = ($su || $sn) ? sub(){1} : sub(){0};
+  }
+  
+  my %_finally_guards;
+  
+  # Need to prototype as @ not $$ because of the way Perl evaluates the prototype.
+  # Keeping it at $$ means you only ever get 1 sub because we need to eval in a list
+  # context & not a scalar one
+  
+  sub try (&;@) {
+    my ( $try, @code_refs ) = @_;
+  
+    # we need to save this here, the eval block will be in scalar context due
+    # to $failed
+    my $wantarray = wantarray;
+  
+    # work around perl bug by explicitly initializing these, due to the likelyhood
+    # this will be used in global destruction (perl rt#119311)
+    my ( $catch, @finally ) = ();
+  
+    # find labeled blocks in the argument list.
+    # catch and finally tag the blocks by blessing a scalar reference to them.
+    foreach my $code_ref (@code_refs) {
+  
+      if ( ref($code_ref) eq 'Try::Tiny::Catch' ) {
+        croak 'A try() may not be followed by multiple catch() blocks'
+          if $catch;
+        $catch = ${$code_ref};
+      } elsif ( ref($code_ref) eq 'Try::Tiny::Finally' ) {
+        push @finally, ${$code_ref};
+      } else {
+        croak(
+          'try() encountered an unexpected argument ('
+        . ( defined $code_ref ? $code_ref : 'undef' )
+        . ') - perhaps a missing semi-colon before or'
+        );
+      }
+    }
+  
+    # FIXME consider using local $SIG{__DIE__} to accumulate all errors. It's
+    # not perfect, but we could provide a list of additional errors for
+    # $catch->();
+  
+    # name the blocks if we have Sub::Name installed
+    _subname(caller().'::try {...} ' => $try)
+      if _HAS_SUBNAME;
+  
+    # set up scope guards to invoke the finally blocks at the end.
+    # this should really be a function scope lexical variable instead of
+    # file scope + local but that causes issues with perls < 5.20 due to
+    # perl rt#119311
+    local $_finally_guards{guards} = [
+      map Try::Tiny::ScopeGuard->_new($_),
+      @finally
+    ];
+  
+    # save the value of $@ so we can set $@ back to it in the beginning of the eval
+    # and restore $@ after the eval finishes
+    my $prev_error = $@;
+  
+    my ( @ret, $error );
+  
+    # failed will be true if the eval dies, because 1 will not be returned
+    # from the eval body
+    my $failed = not eval {
+      $@ = $prev_error;
+  
+      # evaluate the try block in the correct context
+      if ( $wantarray ) {
+        @ret = $try->();
+      } elsif ( defined $wantarray ) {
+        $ret[0] = $try->();
+      } else {
+        $try->();
+      };
+  
+      return 1; # properly set $failed to false
+    };
+  
+    # preserve the current error and reset the original value of $@
+    $error = $@;
+    $@ = $prev_error;
+  
+    # at this point $failed contains a true value if the eval died, even if some
+    # destructor overwrote $@ as the eval was unwinding.
+    if ( $failed ) {
+      # pass $error to the finally blocks
+      push @$_, $error for @{$_finally_guards{guards}};
+  
+      # if we got an error, invoke the catch block.
+      if ( $catch ) {
+        # This works like given($error), but is backwards compatible and
+        # sets $_ in the dynamic scope for the body of C<$catch>
+        for ($error) {
+          return $catch->($error);
+        }
+  
+        # in case when() was used without an explicit return, the C<for>
+        # loop will be aborted and there's no useful return value
+      }
+  
+      return;
+    } else {
+      # no failure, $@ is back to what it was, everything is fine
+      return $wantarray ? @ret : $ret[0];
+    }
+  }
+  
+  sub catch (&;@) {
+    my ( $block, @rest ) = @_;
+  
+    croak 'Useless bare catch()' unless wantarray;
+  
+    _subname(caller().'::catch {...} ' => $block)
+      if _HAS_SUBNAME;
+    return (
+      bless(\$block, 'Try::Tiny::Catch'),
+      @rest,
+    );
+  }
+  
+  sub finally (&;@) {
+    my ( $block, @rest ) = @_;
+  
+    croak 'Useless bare finally()' unless wantarray;
+  
+    _subname(caller().'::finally {...} ' => $block)
+      if _HAS_SUBNAME;
+    return (
+      bless(\$block, 'Try::Tiny::Finally'),
+      @rest,
+    );
+  }
+  
+  {
+    package # hide from PAUSE
+      Try::Tiny::ScopeGuard;
+  
+    use constant UNSTABLE_DOLLARAT => ("$]" < '5.013002') ? 1 : 0;
+  
+    sub _new {
+      shift;
+      bless [ @_ ];
+    }
+  
+    sub DESTROY {
+      my ($code, @args) = @{ $_[0] };
+  
+      local $@ if UNSTABLE_DOLLARAT;
+      eval {
+        $code->(@args);
+        1;
+      } or do {
+        warn
+          "Execution of finally() block $code resulted in an exception, which "
+        . '*CAN NOT BE PROPAGATED* due to fundamental limitations of Perl. '
+        . 'Your program will continue as if this event never took place. '
+        . "Original exception text follows:\n\n"
+        . (defined $@ ? $@ : '$@ left undefined...')
+        . "\n"
+        ;
+      }
+    }
+  }
+  
+  __PACKAGE__
+  
+  __END__
+  
+  =pod
+  
+  =encoding UTF-8
+  
+  =head1 NAME
+  
+  Try::Tiny - Minimal try/catch with proper preservation of $@
+  
+  =head1 VERSION
+  
+  version 0.31
+  
+  =head1 SYNOPSIS
+  
+  You can use Try::Tiny's C<try> and C<catch> to expect and handle exceptional
+  conditions, avoiding quirks in Perl and common mistakes:
+  
+    # handle errors with a catch handler
+    try {
+      die "foo";
+    } catch {
+      warn "caught error: $_"; # not $@
+    };
+  
+  You can also use it like a standalone C<eval> to catch and ignore any error
+  conditions.  Obviously, this is an extreme measure not to be undertaken
+  lightly:
+  
+    # just silence errors
+    try {
+      die "foo";
+    };
+  
+  =head1 DESCRIPTION
+  
+  This module provides bare bones C<try>/C<catch>/C<finally> statements that are designed to
+  minimize common mistakes with eval blocks, and NOTHING else.
+  
+  This is unlike L<TryCatch> which provides a nice syntax and avoids adding
+  another call stack layer, and supports calling C<return> from the C<try> block to
+  return from the parent subroutine. These extra features come at a cost of a few
+  dependencies, namely L<Devel::Declare> and L<Scope::Upper> which are
+  occasionally problematic, and the additional catch filtering uses L<Moose>
+  type constraints which may not be desirable either.
+  
+  The main focus of this module is to provide simple and reliable error handling
+  for those having a hard time installing L<TryCatch>, but who still want to
+  write correct C<eval> blocks without 5 lines of boilerplate each time.
+  
+  It's designed to work as correctly as possible in light of the various
+  pathological edge cases (see L</BACKGROUND>) and to be compatible with any style
+  of error values (simple strings, references, objects, overloaded objects, etc).
+  
+  If the C<try> block dies, it returns the value of the last statement executed in
+  the C<catch> block, if there is one. Otherwise, it returns C<undef> in scalar
+  context or the empty list in list context. The following examples all
+  assign C<"bar"> to C<$x>:
+  
+    my $x = try { die "foo" } catch { "bar" };
+    my $x = try { die "foo" } || "bar";
+    my $x = (try { die "foo" }) // "bar";
+  
+    my $x = eval { die "foo" } || "bar";
+  
+  You can add C<finally> blocks, yielding the following:
+  
+    my $x;
+    try { die 'foo' } finally { $x = 'bar' };
+    try { die 'foo' } catch { warn "Got a die: $_" } finally { $x = 'bar' };
+  
+  C<finally> blocks are always executed making them suitable for cleanup code
+  which cannot be handled using local.  You can add as many C<finally> blocks to a
+  given C<try> block as you like.
+  
+  Note that adding a C<finally> block without a preceding C<catch> block
+  suppresses any errors. This behaviour is consistent with using a standalone
+  C<eval>, but it is not consistent with C<try>/C<finally> patterns found in
+  other programming languages, such as Java, Python, Javascript or C#. If you
+  learned the C<try>/C<finally> pattern from one of these languages, watch out for
+  this.
+  
+  =head1 EXPORTS
+  
+  All functions are exported by default using L<Exporter>.
+  
+  If you need to rename the C<try>, C<catch> or C<finally> keyword consider using
+  L<Sub::Import> to get L<Sub::Exporter>'s flexibility.
+  
+  =over 4
+  
+  =item try (&;@)
+  
+  Takes one mandatory C<try> subroutine, an optional C<catch> subroutine and C<finally>
+  subroutine.
+  
+  The mandatory subroutine is evaluated in the context of an C<eval> block.
+  
+  If no error occurred the value from the first block is returned, preserving
+  list/scalar context.
+  
+  If there was an error and the second subroutine was given it will be invoked
+  with the error in C<$_> (localized) and as that block's first and only
+  argument.
+  
+  C<$@> does B<not> contain the error. Inside the C<catch> block it has the same
+  value it had before the C<try> block was executed.
+  
+  Note that the error may be false, but if that happens the C<catch> block will
+  still be invoked.
+  
+  Once all execution is finished then the C<finally> block, if given, will execute.
+  
+  =item catch (&;@)
+  
+  Intended to be used in the second argument position of C<try>.
+  
+  Returns a reference to the subroutine it was given but blessed as
+  C<Try::Tiny::Catch> which allows try to decode correctly what to do
+  with this code reference.
+  
+    catch { ... }
+  
+  Inside the C<catch> block the caught error is stored in C<$_>, while previous
+  value of C<$@> is still available for use.  This value may or may not be
+  meaningful depending on what happened before the C<try>, but it might be a good
+  idea to preserve it in an error stack.
+  
+  For code that captures C<$@> when throwing new errors (i.e.
+  L<Class::Throwable>), you'll need to do:
+  
+    local $@ = $_;
+  
+  =item finally (&;@)
+  
+    try     { ... }
+    catch   { ... }
+    finally { ... };
+  
+  Or
+  
+    try     { ... }
+    finally { ... };
+  
+  Or even
+  
+    try     { ... }
+    finally { ... }
+    catch   { ... };
+  
+  Intended to be the second or third element of C<try>. C<finally> blocks are always
+  executed in the event of a successful C<try> or if C<catch> is run. This allows
+  you to locate cleanup code which cannot be done via C<local()> e.g. closing a file
+  handle.
+  
+  When invoked, the C<finally> block is passed the error that was caught.  If no
+  error was caught, it is passed nothing.  (Note that the C<finally> block does not
+  localize C<$_> with the error, since unlike in a C<catch> block, there is no way
+  to know if C<$_ == undef> implies that there were no errors.) In other words,
+  the following code does just what you would expect:
+  
+    try {
+      die_sometimes();
+    } catch {
+      # ...code run in case of error
+    } finally {
+      if (@_) {
+        print "The try block died with: @_\n";
+      } else {
+        print "The try block ran without error.\n";
+      }
+    };
+  
+  B<You must always do your own error handling in the C<finally> block>. C<Try::Tiny> will
+  not do anything about handling possible errors coming from code located in these
+  blocks.
+  
+  Furthermore B<exceptions in C<finally> blocks are not trappable and are unable
+  to influence the execution of your program>. This is due to limitation of
+  C<DESTROY>-based scope guards, which C<finally> is implemented on top of. This
+  may change in a future version of Try::Tiny.
+  
+  In the same way C<catch()> blesses the code reference this subroutine does the same
+  except it bless them as C<Try::Tiny::Finally>.
+  
+  =back
+  
+  =head1 BACKGROUND
+  
+  There are a number of issues with C<eval>.
+  
+  =head2 Clobbering $@
+  
+  When you run an C<eval> block and it succeeds, C<$@> will be cleared, potentially
+  clobbering an error that is currently being caught.
+  
+  This causes action at a distance, clearing previous errors your caller may have
+  not yet handled.
+  
+  C<$@> must be properly localized before invoking C<eval> in order to avoid this
+  issue.
+  
+  More specifically,
+  L<before Perl version 5.14.0|perl5140delta/"Exception Handling">
+  C<$@> was clobbered at the beginning of the C<eval>, which
+  also made it impossible to capture the previous error before you die (for
+  instance when making exception objects with error stacks).
+  
+  For this reason C<try> will actually set C<$@> to its previous value (the one
+  available before entering the C<try> block) in the beginning of the C<eval>
+  block.
+  
+  =head2 Localizing $@ silently masks errors
+  
+  Inside an C<eval> block, C<die> behaves sort of like:
+  
+    sub die {
+      $@ = $_[0];
+      return_undef_from_eval();
+    }
+  
+  This means that if you were polite and localized C<$@> you can't die in that
+  scope, or your error will be discarded (printing "Something's wrong" instead).
+  
+  The workaround is very ugly:
+  
+    my $error = do {
+      local $@;
+      eval { ... };
+      $@;
+    };
+  
+    ...
+    die $error;
+  
+  =head2 $@ might not be a true value
+  
+  This code is wrong:
+  
+    if ( $@ ) {
+      ...
+    }
+  
+  because due to the previous caveats it may have been unset.
+  
+  C<$@> could also be an overloaded error object that evaluates to false, but
+  that's asking for trouble anyway.
+  
+  The classic failure mode (fixed in L<Perl 5.14.0|perl5140delta/"Exception Handling">) is:
+  
+    sub Object::DESTROY {
+      eval { ... }
+    }
+  
+    eval {
+      my $obj = Object->new;
+  
+      die "foo";
+    };
+  
+    if ( $@ ) {
+  
+    }
+  
+  In this case since C<Object::DESTROY> is not localizing C<$@> but still uses
+  C<eval>, it will set C<$@> to C<"">.
+  
+  The destructor is called when the stack is unwound, after C<die> sets C<$@> to
+  C<"foo at Foo.pm line 42\n">, so by the time C<if ( $@ )> is evaluated it has
+  been cleared by C<eval> in the destructor.
+  
+  The workaround for this is even uglier than the previous ones. Even though we
+  can't save the value of C<$@> from code that doesn't localize, we can at least
+  be sure the C<eval> was aborted due to an error:
+  
+    my $failed = not eval {
+      ...
+  
+      return 1;
+    };
+  
+  This is because an C<eval> that caught a C<die> will always return a false
+  value.
+  
+  =head1 ALTERNATE SYNTAX
+  
+  Using Perl 5.10 you can use L<perlsyn/"Switch statements"> (but please don't,
+  because that syntax has since been deprecated because there was too much
+  unexpected magical behaviour).
+  
+  =for stopwords topicalizer
+  
+  The C<catch> block is invoked in a topicalizer context (like a C<given> block),
+  but note that you can't return a useful value from C<catch> using the C<when>
+  blocks without an explicit C<return>.
+  
+  This is somewhat similar to Perl 6's C<CATCH> blocks. You can use it to
+  concisely match errors:
+  
+    try {
+      require Foo;
+    } catch {
+      when (/^Can't locate .*?\.pm in \@INC/) { } # ignore
+      default { die $_ }
+    };
+  
+  =head1 CAVEATS
+  
+  =over 4
+  
+  =item *
+  
+  C<@_> is not available within the C<try> block, so you need to copy your
+  argument list. In case you want to work with argument values directly via C<@_>
+  aliasing (i.e. allow C<$_[1] = "foo">), you need to pass C<@_> by reference:
+  
+    sub foo {
+      my ( $self, @args ) = @_;
+      try { $self->bar(@args) }
+    }
+  
+  or
+  
+    sub bar_in_place {
+      my $self = shift;
+      my $args = \@_;
+      try { $_ = $self->bar($_) for @$args }
+    }
+  
+  =item *
+  
+  C<return> returns from the C<try> block, not from the parent sub (note that
+  this is also how C<eval> works, but not how L<TryCatch> works):
+  
+    sub parent_sub {
+      try {
+        die;
+      }
+      catch {
+        return;
+      };
+  
+      say "this text WILL be displayed, even though an exception is thrown";
+    }
+  
+  Instead, you should capture the return value:
+  
+    sub parent_sub {
+      my $success = try {
+        die;
+        1;
+      };
+      return unless $success;
+  
+      say "This text WILL NEVER appear!";
+    }
+    # OR
+    sub parent_sub_with_catch {
+      my $success = try {
+        die;
+        1;
+      }
+      catch {
+        # do something with $_
+        return undef; #see note
+      };
+      return unless $success;
+  
+      say "This text WILL NEVER appear!";
+    }
+  
+  Note that if you have a C<catch> block, it must return C<undef> for this to work,
+  since if a C<catch> block exists, its return value is returned in place of C<undef>
+  when an exception is thrown.
+  
+  =item *
+  
+  C<try> introduces another caller stack frame. L<Sub::Uplevel> is not used. L<Carp>
+  will not report this when using full stack traces, though, because
+  C<%Carp::Internal> is used. This lack of magic is considered a feature.
+  
+  =for stopwords unhygienically
+  
+  =item *
+  
+  The value of C<$_> in the C<catch> block is not guaranteed to be the value of
+  the exception thrown (C<$@>) in the C<try> block.  There is no safe way to
+  ensure this, since C<eval> may be used unhygienically in destructors.  The only
+  guarantee is that the C<catch> will be called if an exception is thrown.
+  
+  =item *
+  
+  The return value of the C<catch> block is not ignored, so if testing the result
+  of the expression for truth on success, be sure to return a false value from
+  the C<catch> block:
+  
+    my $obj = try {
+      MightFail->new;
+    } catch {
+      ...
+  
+      return; # avoid returning a true value;
+    };
+  
+    return unless $obj;
+  
+  =item *
+  
+  C<$SIG{__DIE__}> is still in effect.
+  
+  Though it can be argued that C<$SIG{__DIE__}> should be disabled inside of
+  C<eval> blocks, since it isn't people have grown to rely on it. Therefore in
+  the interests of compatibility, C<try> does not disable C<$SIG{__DIE__}> for
+  the scope of the error throwing code.
+  
+  =item *
+  
+  Lexical C<$_> may override the one set by C<catch>.
+  
+  For example Perl 5.10's C<given> form uses a lexical C<$_>, creating some
+  confusing behavior:
+  
+    given ($foo) {
+      when (...) {
+        try {
+          ...
+        } catch {
+          warn $_; # will print $foo, not the error
+          warn $_[0]; # instead, get the error like this
+        }
+      }
+    }
+  
+  Note that this behavior was changed once again in
+  L<Perl5 version 18|https://metacpan.org/module/perldelta#given-now-aliases-the-global-_>.
+  However, since the entirety of lexical C<$_> is now L<considered experimental
+  |https://metacpan.org/module/perldelta#Lexical-_-is-now-experimental>, it
+  is unclear whether the new version 18 behavior is final.
+  
+  =back
+  
+  =head1 SEE ALSO
+  
+  =over 4
+  
+  =item L<Syntax::Keyword::Try>
+  
+  Only available on perls >= 5.14, with a slightly different syntax (e.g. no trailing C<;> because
+  it's actually a keyword, not a sub, but this means you can C<return> and C<next> within it). Use
+  L<Feature::Compat::Try> to automatically switch to the native C<try> syntax in newer perls (when
+  available). See also L<Try Catch Exception Handling|perlsyn/Try-Catch-Exception-Handling>.
+  
+  =item L<TryCatch>
+  
+  Much more feature complete, more convenient semantics, but at the cost of
+  implementation complexity.
+  
+  =item L<autodie>
+  
+  Automatic error throwing for builtin functions and more. Also designed to
+  work well with C<given>/C<when>.
+  
+  =item L<Throwable>
+  
+  A lightweight role for rolling your own exception classes.
+  
+  =item L<Error>
+  
+  Exception object implementation with a C<try> statement. Does not localize
+  C<$@>.
+  
+  =item L<Exception::Class::TryCatch>
+  
+  Provides a C<catch> statement, but properly calling C<eval> is your
+  responsibility.
+  
+  The C<try> keyword pushes C<$@> onto an error stack, avoiding some of the
+  issues with C<$@>, but you still need to localize to prevent clobbering.
+  
+  =back
+  
+  =head1 LIGHTNING TALK
+  
+  I gave a lightning talk about this module, you can see the slides (Firefox
+  only):
+  
+  L<http://web.archive.org/web/20100628040134/http://nothingmuch.woobling.org/talks/takahashi.xul>
+  
+  Or read the source:
+  
+  L<http://web.archive.org/web/20100305133605/http://nothingmuch.woobling.org/talks/yapc_asia_2009/try_tiny.yml>
+  
+  =head1 SUPPORT
+  
+  Bugs may be submitted through L<the RT bug tracker|https://rt.cpan.org/Public/Dist/Display.html?Name=Try-Tiny>
+  (or L<bug-Try-Tiny@rt.cpan.org|mailto:bug-Try-Tiny@rt.cpan.org>).
+  
+  =head1 AUTHORS
+  
+  =over 4
+  
+  =item *
+  
+  יובל קוג'מן (Yuval Kogman) <nothingmuch@woobling.org>
+  
+  =item *
+  
+  Jesse Luehrs <doy@tozt.net>
+  
+  =back
+  
+  =head1 CONTRIBUTORS
+  
+  =for stopwords Karen Etheridge Peter Rabbitson Ricardo Signes Mark Fowler Graham Knop Aristotle Pagaltzis Dagfinn Ilmari Mannsåker Lukas Mai Alex anaxagoras Andrew Yates awalker chromatic cm-perl David Lowe Glenn Hans Dieter Pearcey Jens Berthold Jonathan Yu Marc Mims Stosberg Pali Paul Howarth Rudolf Leermakers
+  
+  =over 4
+  
+  =item *
+  
+  Karen Etheridge <ether@cpan.org>
+  
+  =item *
+  
+  Peter Rabbitson <ribasushi@cpan.org>
+  
+  =item *
+  
+  Ricardo Signes <rjbs@cpan.org>
+  
+  =item *
+  
+  Mark Fowler <mark@twoshortplanks.com>
+  
+  =item *
+  
+  Graham Knop <haarg@haarg.org>
+  
+  =item *
+  
+  Aristotle Pagaltzis <pagaltzis@gmx.de>
+  
+  =item *
+  
+  Dagfinn Ilmari Mannsåker <ilmari@ilmari.org>
+  
+  =item *
+  
+  Lukas Mai <l.mai@web.de>
+  
+  =item *
+  
+  Alex <alex@koban.(none)>
+  
+  =item *
+  
+  anaxagoras <walkeraj@gmail.com>
+  
+  =item *
+  
+  Andrew Yates <ayates@haddock.local>
+  
+  =item *
+  
+  awalker <awalker@sourcefire.com>
+  
+  =item *
+  
+  chromatic <chromatic@wgz.org>
+  
+  =item *
+  
+  cm-perl <cm-perl@users.noreply.github.com>
+  
+  =item *
+  
+  David Lowe <davidl@lokku.com>
+  
+  =item *
+  
+  Glenn Fowler <cebjyre@cpan.org>
+  
+  =item *
+  
+  Hans Dieter Pearcey <hdp@weftsoar.net>
+  
+  =item *
+  
+  Jens Berthold <jens@jebecs.de>
+  
+  =item *
+  
+  Jonathan Yu <JAWNSY@cpan.org>
+  
+  =item *
+  
+  Marc Mims <marc@questright.com>
+  
+  =item *
+  
+  Mark Stosberg <mark@stosberg.com>
+  
+  =item *
+  
+  Pali <pali@cpan.org>
+  
+  =item *
+  
+  Paul Howarth <paul@city-fan.org>
+  
+  =item *
+  
+  Rudolf Leermakers <rudolf@hatsuseno.org>
+  
+  =back
+  
+  =head1 COPYRIGHT AND LICENCE
+  
+  This software is Copyright (c) 2009 by יובל קוג'מן (Yuval Kogman).
+  
+  This is free software, licensed under:
+  
+    The MIT (X11) License
+  
+  =cut
+TRY_TINY
+
 $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_BASE';
   #  Author:  Nicholas Hubbard
   #  WWW:     https://github.com/NicholasBHubbard/yabsm
@@ -13851,104 +18638,80 @@ unshift @INC, bless \%fatpacked, $class;
   } # END OF FATPACK CODE
 
 
-#  Author:  Nicholas Hubbard
-#  WWW:     https://github.com/NicholasBHubbard/yabsm
-#  License: MIT
-
-#  This is the toplevel script of yabsm. The actual program that is
-#  installed on the end users system is this script but fatpacked.
-
-our $VERSION = '3.1.0';
-
 use strict;
 use warnings;
 use v5.16.3;
 
-sub usage {
-    print <<END_USAGE;
-Usage: yabsm [--help] [--version] <command> <arg(s)>
-
-  find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
-                                          QUERY. SUBJECT must be a backup or
-                                          subvol defined in /etc/yabsmd.conf.
-
-  check-config, c <?FILE>                 Check that FILE is a valid yabsm
-                                          config file. If FILE is not specified
-                                          then check /etc/yabsmd.conf. If errors
-                                          are present print their messages to
-                                          stderr and exit with non zero status,
-                                          else print 'all good'.
-
-  test-remote-config, tr <BACKUP>         Test that the remote BACKUP has been
-                                          properly configured. For BACKUP to be
-                                          properly configured yabsm should be
-                                          able to connect to the remote host and
-                                          use the btrfs command with sudo
-                                          without having to enter any passwords.
-                                          This is a root only command.
-
-  bootstrap-backup, bootstrap <BACKUP>    Perform the boostrap phase of the
-                                          btrfs incremental backup process for
-                                          BACKUP. This is a root only command.
-
-  print-subvols, subvols                  Print the names of all the subvols
-                                          defined in /etc/yabsmd.conf.
-
-  print-backups, backups                  Print the names of all the backups
-                                          defined in /etc/yabsmd.conf.
-END_USAGE
-}
+use Carp;
+use File::Path;
+use Try::Tiny;
+use Schedule::Cron;
 
 use lib::relative 'lib';
 
-# Every command has their own module with a main() function
-use Yabsm::Commands::Find;
-use Yabsm::Commands::CheckConfig;
-use Yabsm::Commands::TestRemoteBackupConfig;
-use Yabsm::Commands::PrintSubvols;
-use Yabsm::Commands::PrintBackups;
+use Yabsm::Base;
+use Yabsm::Config;
 
-# command dispatch table
-my %run_command =
-   ( 'find'               => \&Yabsm::Commands::Find::main
-   , 'check-config'       => \&Yabsm::Commands::CheckConfig::main
-   , 'test-remote-config' => \&Yabsm::Commands::TestRemoteBackupConfig::main
-   , 'print-crons'        => \&Yabsm::Commands::PrintCrons::main
-   , 'print-subvols'      => \&Yabsm::Commands::PrintSubvols::main
-   , 'print-backups'      => \&Yabsm::Commands::PrintBackups::main
-   );
+die "yabsm: error: permission denied\n" if $<;
 
-sub unabbreviate {
+my $usage = "usage: yabsmd <start|stop|restart>\n";
 
-    # provide the user with command abbreviations
+my $resource_dir = '/run/yabsmd';
+my $pid_file     = "$resource_dir/yabsmd.pid";
+my $socket_path  = "$resource_dir/yabsmd.socket";
 
-    my $cmd = shift // die;
+my $log_dir      = '/var/log/yabsmd';
+my $std_log      = "$log_dir/yabsmd-std.log";
+my $err_log      = "$log_dir/yabsmd-err.log";
 
-    if    ($cmd eq 'f')         { return 'find'               }
-    elsif ($cmd eq 'c')         { return 'check-config'       }
-    elsif ($cmd eq 'tr')        { return 'test-remote-config' }
-    elsif ($cmd eq 'crons')     { return 'print-crons'        }
-    elsif ($cmd eq 'subvols')   { return 'print-subvols'      }
-    elsif ($cmd eq 'backups')   { return 'print-backups'      }
-    else                        { return $cmd                 }
+#open STDOUT, '>>', $std_log;
+#open STDERR, '>>', $err_log;
+
+$SIG{INT}  = \&yabsmd_stop;
+$SIG{TERM} = \&yabsmd_stop;
+$SIG{HUP}  = \&yabsmd_restart;
+
+# Main
+
+die $usage unless $#ARGV == 0 && $ARGV[0] =~ /^(start|stop|restart)$/;
+
+$ARGV[0] eq 'start'   && yabsmd_start();
+$ARGV[0] eq 'stop'    && yabsmd_stop();
+$ARGV[0] eq 'restart' && yabsmd_restart();
+
+# Implementation
+
+sub cron_dispatcher {
+  say "ID:   ", shift;
+  say "Args: ", "@_";
 }
 
-                 ####################################
-                 #               MAIN               #
-                 ####################################
+sub yabsmd_start {
 
-my $cmd = shift @ARGV || (usage() and exit 1);
+    # Program will die with relevant error messages if config is invalid.
+    my $config_ref = Yabsm::Config::read_config();
 
-if ($cmd eq '--help' || $cmd eq '-h') { usage() and exit 0 }
+    rmtree $resource_dir if -d $resource_dir;
+    mkdir $resource_dir;
 
-if ($cmd eq '--version') { say $VERSION and exit 0 }
+    open my $fh, '>', $pid_file or die "yabsmd: error: failed to open file '$pid_file'\n";
+    say $fh $$;
+    close $fh;
+    chmod 0644, $pid_file;
 
-my $full_cmd = unabbreviate($cmd);
+    my $cron_scheduler = new Schedule::Cron(\&cron_dispatcher);
 
-if (not exists $run_command{ $full_cmd} ) {
-    die "yabsm: error: no such command '$cmd'\n";
+    Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
+    Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
+
+    $cron_scheduler->run();
 }
 
-$run_command{ $full_cmd }->(@ARGV);
+sub yabsmd_stop {
 
-exit 0; # all good
+    rmtree $resource_dir if -d $resource_dir;
+
+    exit 0;
+}
+
+sub yabsmd_restart { yabsmd_stop() ; yabsmd_start() }

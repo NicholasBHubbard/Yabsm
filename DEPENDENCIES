@@ -11,7 +11,6 @@
 # PROGRAM:
 
 Parser::MGC@0.19
-Feature::Compat::Try@0.04 # Issues with fatpacking if version >0.04.
 Try::Tiny@0.31
 Net::OpenSSH@0.80
 Schedule::Cron@1.01
@@ -19,6 +18,7 @@ Sys::Prctl@1.02
 lib::relative@1.000
 Array::Utils@0.5
 List::Util@1.33
+Feature::Compat::Try@0.04 # Issues with fatpacking if version >0.04.
 
 # TESTING:
 

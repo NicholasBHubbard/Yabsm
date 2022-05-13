@@ -1,22 +1,31 @@
-#!/usr/bin/env bash
+#!/usr/bin/env perl
 
 # Use App::FatPacker to pack all of yabsm including its dependencies into one
 # script. The end user will be given only the fatpacked script.
 
-set -e
+use strict;
+use warnings;
+use v5.16.3;
 
-SCRIPT=${0##*/}
+use Cwd qw/abs_path/;
+use File::Basename qw/basename dirname/;
 
-YABSM_ROOT=$(realpath "$(dirname "$(readlink -f "$0")")"/..)
-SRC_DIR="$YABSM_ROOT"/src
-EXPORT_DIR="$YABSM_ROOT"/export
+my $script = basename(__FILE__);
+my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
 
-# Lets work from the src directory.
-cd "$SRC_DIR" || (echo "error: could not cd to dir '$SRC_DIR'" >&2 && exit 1)
+chdir "$yabsm_root/src";
 
-FATPACK_EXECUTABLE="$YABSM_ROOT"/local/bin/fatpack
-PLX_EXECUTABLE="$YABSM_ROOT"/local/bin/plx
+my $plx = "$yabsm_root/local/bin/plx" if -x "$yabsm_root/local/bin/plx";
+$plx = `sh -c 'command -v plx'` if `sh -c 'command -v plx'`;
+chomp $plx;
 
-FATPACK_COMMAND="$PLX_EXECUTABLE --perl $FATPACK_EXECUTABLE pack $YABSM_ROOT/src/yabsm.pl > $EXPORT_DIR/yabsm.fatpack.pl"
-echo "$SCRIPT: executing: $FATPACK_COMMAND"
-eval "$FATPACK_COMMAND"
+my $fatpack = "$yabsm_root/local/bin/fatpack";
+
+my $fatpack_yabsm_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsm.pl > $yabsm_root/export/yabsm.fatpack.pl";
+my $fatpack_yabsmd_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsmd.pl > $yabsm_root/export/yabsmd.fatpack.pl";
+
+say "$script: executing: $fatpack_yabsm_cmd";
+0 == system($fatpack_yabsm_cmd) || die "$script: error: could not fatpack $yabsm_root/src/yabsm.pl";
+
+say "$script: executing: $fatpack_yabsmd_cmd";
+0 == system($fatpack_yabsmd_cmd) || die "$script: error: could not fatpack $yabsm_root/src/yabsmd.pl";

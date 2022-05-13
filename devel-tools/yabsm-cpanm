@@ -18,7 +18,7 @@ my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
 
 my $plx = `which plx 2>/dev/null`
        || ( -x "$yabsm_root/local/bin/plx" && "$yabsm_root/local/bin/plx" )
-       || die "$script could not find a plx executable\n";
+       || die "$script: error: could not find a plx executable";
 
 $plx =~ s/\s+//g;
 

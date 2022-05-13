@@ -16,10 +16,10 @@ use File::Basename qw/basename dirname/;
 my $script = basename(__FILE__);
 my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
 
-my $plx = `which plx 2>/dev/null`
+my $plx = `sh -c 'command -v plx'`
        || ( -x "$yabsm_root/local/bin/plx" && "$yabsm_root/local/bin/plx" )
        || die "$script: error: could not find a plx executable";
 
-$plx =~ s/\s+//g;
+chomp $plx;
 
 system("cd $yabsm_root ; PERL_CPANM_HOME=$yabsm_root $plx --cpanm -Llocal @ARGV");

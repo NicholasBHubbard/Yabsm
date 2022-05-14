@@ -1,5 +1,13 @@
 #!/usr/bin/env perl
 
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
+
+#  This is the yabsm daemon that takes snapshots and performs
+#  backups at scheduled times based off the /etc/yabsmd.conf
+#  configuration file.
+
 use strict;
 use warnings;
 use v5.16.3;
@@ -61,7 +69,7 @@ sub yabsmd_start {
     close $fh;
     chmod 0644, $pid_file;
 
-    my $cron_scheduler = new Schedule::Cron(\&cron_dispatcher);
+    my $cron_scheduler = Schedule::Cron->new(\&cron_dispatcher);
 
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);

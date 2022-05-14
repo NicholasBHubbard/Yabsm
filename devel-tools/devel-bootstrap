@@ -21,6 +21,8 @@ use autodie;
 my $script = basename(__FILE__);
 my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
 
+chdir $yabsm_root;
+
 my $usage = <<'END_USAGE';
 Usage: devel-bootstrap [arguments]
 

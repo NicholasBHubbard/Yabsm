@@ -15,7 +15,9 @@ my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
 
 chdir "$yabsm_root/src";
 
-my $plx = "$yabsm_root/local/bin/plx" if -x "$yabsm_root/local/bin/plx";
+my $plx = '';
+# Default to system plx
+$plx = "$yabsm_root/local/bin/plx" if -x "$yabsm_root/local/bin/plx";
 $plx = `sh -c 'command -v plx'` if `sh -c 'command -v plx'`;
 chomp $plx;
 

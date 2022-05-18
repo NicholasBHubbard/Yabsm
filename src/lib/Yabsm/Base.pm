@@ -189,7 +189,7 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     return;
 }
 
-sub do_backup_bootstrap_ssh { # No test. Is not pure.
+sub do_backup_bootstrap_ssh{ # No test. Is not pure.
 
     # Perform bootstrap phase of a btrfs incremental backup. To
     # bootstrap a backup we create a new snapshot and place it in the
@@ -241,10 +241,10 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
     return;
 }
 
-sub do_incremental_backup { # No test. Is not pure.
+sub do_backup { # No test. Is not pure.
 
     # Determine if $backup is local or remote and dispatch the
-    # corresponding do_incremental_backup_* subroutine. If $backup
+    # corresponding do_backup_* subroutine. If $backup
     # has not been bootstrapped then instead perform the bootstrap
     # routine.
 
@@ -256,11 +256,11 @@ sub do_incremental_backup { # No test. Is not pure.
     }
     
     elsif (is_local_backup($config_ref, $backup)) {
-	do_incremental_backup_local($config_ref, $backup);
+	do_backup_local($config_ref, $backup);
     }
 
     elsif (is_remote_backup($config_ref, $backup)) {
-	do_incremental_backup_ssh($config_ref, $backup);
+	do_backup_ssh($config_ref, $backup);
     }
 
     else {
@@ -270,7 +270,7 @@ sub do_incremental_backup { # No test. Is not pure.
     return;
 }
 
-sub do_incremental_backup_local { # No test. Is not pure.
+sub do_backup_local { # No test. Is not pure.
 
     # Perform a single incremental btrfs backup of $backup. This
     # function will kill the program if the bootstrap phase has not
@@ -310,7 +310,7 @@ sub do_incremental_backup_local { # No test. Is not pure.
     return;
 }
 
-sub do_incremental_backup_ssh { # No test. Is not pure.
+sub do_backup_ssh { # No test. Is not pure.
 
     # Perform a single incremental btrfs backup of $backup over ssh.
     # This function will kill the program if the bootstrap phase has
@@ -1511,14 +1511,14 @@ sub schedule_backups { # No test. Is not pure.
         if ($timeframe eq '5minute') {
             $cron_scheduler->add_entry(
                 "*/5 * * * *",
-                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                sub { Yabsm::Base::do_backup($config_ref, $backup) }
             );
         }
 
         elsif ($timeframe eq 'hourly') {
             $cron_scheduler->add_entry(
                 "0 */1 * * *",
-                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                sub { Yabsm::Base::do_backup($config_ref, $backup) }
             );
         }
 
@@ -1528,7 +1528,7 @@ sub schedule_backups { # No test. Is not pure.
             my $min  = Yabsm::Base::time_minute($time);
             $cron_scheduler->add_entry(
                 "$min $hr * * *",
-                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                sub { Yabsm::Base::do_backup($config_ref, $backup) }
             );
         }
 
@@ -1539,7 +1539,7 @@ sub schedule_backups { # No test. Is not pure.
             my $dow  = Yabsm::Base::day_of_week_num($config_ref->{backups}{$backup}{day});
             $cron_scheduler->add_entry(
                 "$min $hr * * $dow",
-                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                sub { Yabsm::Base::do_backup($config_ref, $backup) }
             );
         }
 
@@ -1549,7 +1549,7 @@ sub schedule_backups { # No test. Is not pure.
             my $min  = Yabsm::Base::time_minute($time);
             $cron_scheduler->add_entry(
                 "$min $hr 1 * *",
-                sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                sub { Yabsm::Base::do_backup($config_ref, $backup) }
             );
         }
     }

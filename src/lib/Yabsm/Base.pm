@@ -223,18 +223,18 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
     ### REMOTE ###
     
     # setup local bootstrap snap
-    my $ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
+    my $server_ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
     # delete old remote bootstrap snap(s) if it exists
-    $ssh->system( "ls -d $backup_dir/* "
+    $server_ssh->system( "ls -d $backup_dir/* "
                 . '| grep BOOTSTRAP-day '
                 . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
                 );
 
     # send the bootstrap backup to remote host
-    $ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
+    $server_ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
 		, "sudo -n btrfs receive $backup_dir"
 	        );
 
@@ -335,25 +335,26 @@ sub do_incremental_backup_ssh { # No test. Is not pure.
     
     my $remote_host = $config_ref->{backups}{$backup}{host};
 
-    my $ssh = new_ssh_connection($remote_host);
+    my $server_ssh = new_ssh_connection($remote_host);
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     
     my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-
+    
     make_path $tmp_dir if not -d $tmp_dir;
 
-    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+    my $snapshot = "$tmp_dir/" . current_time_snapstring();
 	
-    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    # main
+    
+    system("btrfs subvol snapshot -r $mountpoint $snapshot");
 	
-    # send an incremental backup over ssh
-    $ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]}
-		                , "sudo -n btrfs receive $remote_backup_dir");
+    $server_ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $snapshot"]}
+                        , "sudo -n btrfs receive $remote_backup_dir");
 	
-    system("btrfs subvol delete $tmp_snap");
+    system("btrfs subvol delete $snapshot");
 	
-    delete_old_backups_ssh($config_ref, $ssh, $backup);
+    delete_old_backups_ssh($config_ref, $server_ssh, $backup);
 
     return;
 }
@@ -412,17 +413,17 @@ sub delete_old_backups_local { # No test. Is not pure.
 sub delete_old_backups_ssh { # No test. Is not pure.
 
     # Delete old backup snapshot(s) at the remote host connected to by
-    # $ssh. We know how many backups to keep based off $backup's $keep
+    # $server_ssh. We know how many backups to keep based off $backup's $keep
     # setting defined in the users config. This function should be
     # called directly after do_backup_ssh().
 
     my $config_ref = shift // confess missing_arg();
-    my $ssh        = shift // confess missing_arg();
+    my $server_ssh = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
 
-    my @existing_backups = all_backup_snaps($config_ref, $backup, $ssh);
+    my @existing_backups = all_backup_snaps($config_ref, $backup, $server_ssh);
 
     my $num_backups = scalar @existing_backups;
 
@@ -436,7 +437,7 @@ sub delete_old_backups_ssh { # No test. Is not pure.
 	# because they are sorted newest to oldest.
 	my $oldest_backup = pop @existing_backups;
 
-	$ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+	$server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
 
 	return;
     }
@@ -453,7 +454,7 @@ sub delete_old_backups_ssh { # No test. Is not pure.
 	    # note that pop mutates existing_snaps
 	    my $oldest_backup = pop @existing_backups;
             
-	    $ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+	    $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
 
 	    $num_backups--;
 	} 
@@ -543,8 +544,8 @@ sub all_backup_snaps { # No test. Is not pure.
     if (is_remote_backup($config_ref, $backup)) {
         my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
         my $remote_host = $config_ref->{backups}{$backup}{host};
-        my $ssh = shift // new_ssh_connection( $remote_host );
-        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $ssh->capture("ls $backup_dir") ]);
+        my $server_ssh = shift // new_ssh_connection( $remote_host );
+        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $server_ssh->capture("ls $backup_dir") ]);
 
     }
 
@@ -1577,16 +1578,16 @@ sub new_ssh_connection { # No test. Is not pure.
 
     my $remote_host = shift // confess missing_arg();
 
-    my $ssh = Net::OpenSSH->new( $remote_host,
+    my $server_ssh = Net::OpenSSH->new( $remote_host,
 			       , batch_mode => 1 # Don't try asking for password
 			       , timeout => 30   # timeout after 30 seconds
 			       , kill_ssh_on_timeout => 1
 			       );
 
-    $ssh->error and
-      die 'yabsm: ssh error: could not establish passwordless SSH connection: ' . $ssh->error . "\n";
+    $server_ssh->error and
+      die 'yabsm: ssh error: could not establish passwordless SSH connection: ' . $server_ssh->error . "\n";
     
-    return $ssh;
+    return $server_ssh;
 }
 
 sub is_day_of_week { # Has test. Is pure.

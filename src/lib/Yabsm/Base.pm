@@ -1590,25 +1590,6 @@ sub new_ssh_connection { # No test. Is not pure.
     return $server_ssh;
 }
 
-sub is_day_of_week { # Has test. Is pure.
-
-    # Return 1 iff $dow is a valid day of week string. A day of week
-    # can either be the full name of the day or just the first 3
-    # letters and must be all lowercase letters.
-
-    my $dow = shift // confess missing_arg();
-
-    my $mon = 'monday';
-    my $tue = 'tuesday';
-    my $wed = 'wednesday';
-    my $thu = 'thursday';
-    my $fri = 'friday';
-    my $sat = 'saturday';
-    my $sun = 'sunday';
-
-    return $dow =~ /^($mon|$tue|$wed|$thu|$fri|$sat|$sun)$/i;
-}
-
 sub day_of_week_num { # Has test. Is pure.
 
     # Take day of week string ($dow) and return the cooresponding

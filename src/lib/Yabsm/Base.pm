@@ -1593,19 +1593,19 @@ sub new_ssh_connection { # No test. Is not pure.
 sub day_of_week_num { # Has test. Is pure.
 
     # Take day of week string ($dow) and return the cooresponding
-    # number in the week. We consider monday the first day because
-    # cronjobs do, and this function is used to generate cron
+    # number of the week. Cron considers monday the first day of
+    # the week, and this function is used to generate cron
     # strings. We expect $dow to have already been cleansed.
 
     my $dow = shift // confess missing_arg();
 
-    if    ($dow eq 'monday')    { return 1 }
-    elsif ($dow eq 'tuesday')   { return 2 }
-    elsif ($dow eq 'wednesday') { return 3 }
-    elsif ($dow eq 'thursday')  { return 4 }
-    elsif ($dow eq 'friday')    { return 5 }
-    elsif ($dow eq 'saturday')  { return 6 }
-    elsif ($dow eq 'sunday')    { return 7 }
+    if    ($dow =~ /^monday$/i)    { return 1 }
+    elsif ($dow =~ /^tuesday$/i)   { return 2 }
+    elsif ($dow =~ /^wednesday$/i) { return 3 }
+    elsif ($dow =~ /^thursday$/i)  { return 4 }
+    elsif ($dow =~ /^friday$/i)    { return 5 }
+    elsif ($dow =~ /^saturday$/i)  { return 6 }
+    elsif ($dow =~ /^sunday$/i)    { return 7 }
     else {
         confess "yabsm: internal error: no such day of week '$dow'";
     }

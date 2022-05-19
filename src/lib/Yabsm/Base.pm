@@ -1606,7 +1606,7 @@ sub is_day_of_week { # Has test. Is pure.
     my $sat = 'saturday';
     my $sun = 'sunday';
 
-    return $dow =~ /^($mon|$tue|$wed|$thu|$fri|$sat|$sun)$/;
+    return $dow =~ /^($mon|$tue|$wed|$thu|$fri|$sat|$sun)$/i;
 }
 
 sub day_of_week_num { # Has test. Is pure.

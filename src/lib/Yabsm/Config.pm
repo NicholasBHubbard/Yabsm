@@ -238,7 +238,7 @@ sub missing_subvol_settings {
             push @err_msgs, "yabsm: config error: subvol '$subvol' missing required setting '$_'" for @missing;
         }
 
-        else { # the base required settings are defined
+        else { # the minimal required settings are all defined.
 
             for my $tframe (Yabsm::Base::subvols_timeframes($config_ref, $subvol)) {
                 if ($tframe eq '5minute') {

@@ -228,7 +228,8 @@ sub missing_subvol_settings {
 
     for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
 
-        # base required settings
+        # No matter what these settings are required. More required
+        # settings will be added based on the values of these settings.
         my @req = qw(mountpoint 5minute_want hourly_want daily_want weekly_want monthly_want);
 
         my @def = keys %{ $config_ref->{subvols}{$subvol} };

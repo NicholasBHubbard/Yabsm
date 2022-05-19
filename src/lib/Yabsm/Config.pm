@@ -269,7 +269,7 @@ sub missing_subvol_settings {
         }
     }
 
-    return @err_msgs;
+    return wantarray ? @err_msgs : \@err_msgs;
 }
 
 sub missing_backup_settings {
@@ -317,7 +317,7 @@ sub missing_backup_settings {
         }
     }
 
-    return @err_msgs;
+    return wantarray ? @err_msgs : \@err_msgs;
 }
 
 sub missing_misc_settings {
@@ -335,7 +335,7 @@ sub missing_misc_settings {
 
     push @err_msgs, "yabsm: config error: missing misc setting '$_'" for @missing;
 
-    return @err_msgs;
+    return wantarray ? @err_msgs : \@err_msgs;
 }
 
                  ####################################

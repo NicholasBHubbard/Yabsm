@@ -1437,11 +1437,11 @@ sub schedule_snapshots { # No test. Is not pure.
 
     # Schedule snapshots based off user configuration by adding
     # them to $cron_scheduler object (see Schedule::Cron module).
-    
+        
     my $config_ref     = shift // confess missing_arg();
     my $cron_scheduler = shift // confess missing_arg();
 
-    foreach my $subvol (Yabsm::Base::all_subvols($config_ref)) {
+    foreach my $subvol (all_subvols($config_ref)) {
         
         my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
         my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
@@ -1579,10 +1579,10 @@ sub new_ssh_connection { # No test. Is not pure.
     my $remote_host = shift // confess missing_arg();
 
     my $server_ssh = Net::OpenSSH->new( $remote_host,
-			       , batch_mode => 1 # Don't try asking for password
-			       , timeout => 30   # timeout after 30 seconds
-			       , kill_ssh_on_timeout => 1
-			       );
+                                      , batch_mode => 1 # Don't try asking for password
+			              , timeout => 5    # Minutes
+			              , kill_ssh_on_timeout => 1
+			              );
 
     $server_ssh->error and
       die "yabsm: ssh error: could not establish SSH connection to '$remote_host' " . $server_ssh->error . "\n";

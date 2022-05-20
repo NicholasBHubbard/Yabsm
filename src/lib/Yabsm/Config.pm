@@ -34,6 +34,7 @@ my %regex = ( path         => qr/\/[^#\s]*/
             , ssh_host     => qr/[-@.\/\w]+/
             , comment      => qr/#.*/
             , pos_int      => qr/[1-9]\d*/
+            , month_day    => qr/[1-31]/
             , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
             );
 
@@ -152,6 +153,10 @@ sub subvol_def_p {
         elsif ($k eq 'weekly_day') {
             $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
         }
+        elsif ($k eq 'monthly_day') {
+            $v = $self->maybe_expect( $regex{month_day} );
+            $v // $self->fail('expected integer in range 1-31');
+        } 
         else {
             confess "yabsm: internal error: no such subvol setting '$k'";
         }
@@ -203,8 +208,12 @@ sub backup_def_p {
             $v = $self->maybe_expect( $regex{subject_name} );
             $v // $self->fail('expected alphanumeric sequence starting with a letter');
         }
-        elsif ($k eq 'day') {
+        elsif ($k eq 'weekly_day') {
             $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
+        }
+        elsif ($k eq 'monthly_day') {
+            $v = $self->maybe_expect( $regex{month_day} );
+            $v // $self->fail('expected integer in range 1-31');
         }
         else {
             confess "yabsm: internal error: no such backup setting '$k'";
@@ -254,7 +263,7 @@ sub missing_subvol_settings {
                     push @req, 'weekly_time', 'weekly_day', 'weekly_keep';
                 }
                 elsif ($tframe eq 'monthly') {
-                    push @req, 'monthly_time', 'monthly_keep';
+                    push @req, 'monthly_time', 'monthly_day', 'monthly_keep';
                 }
                 else {
                     confess "yabsm: internal error: no such timeframe '$tframe'";
@@ -302,13 +311,15 @@ sub missing_backup_settings {
             if ($remote eq 'yes') {
                 push @req, 'host';
             }
-
-            if ($tframe eq 'weekly') {
-                push @req, 'time', 'day';
-            }
-
+            
             if ($tframe eq 'daily' || $tframe eq 'monthly') {
                 push @req, 'time';
+            }
+            elsif ($tframe eq 'weekly') {
+                push @req, 'time', 'weekly_day';
+            }
+            elsif ($tframe eq 'monthly') {
+                push @req, 'time', 'monthly_day';
             }
 
             if (my @missing = array_minus(@req, @def)) {
@@ -343,14 +354,16 @@ sub missing_misc_settings {
                  ####################################
 
 sub subvol_keywords {
-    return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep daily_want daily_time daily_keep weekly_want weekly_time weekly_day weekly_keep monthly_want monthly_time monthly_keep);
+    return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep daily_want daily_time daily_keep weekly_want weekly_time weekly_day weekly_keep monthly_want monthly_time monthly_day monthly_keep);
 }
 
 sub backup_keywords {
-    return qw(subvol remote host keep backup_dir timeframe time day);
+    return qw(subvol remote host keep backup_dir timeframe time weekly_day monthly_day);
 }
 
 sub misc_keywords {
+    # This is set up so in the future it is easy to add
+    # new settings as misc settings.
     return qw(yabsm_dir);
 }
 

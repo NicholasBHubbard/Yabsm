@@ -8652,7 +8652,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       return;
   }
   
-  sub do_backup_bootstrap_ssh { # No test. Is not pure.
+  sub do_backup_bootstrap_ssh{ # No test. Is not pure.
   
       # Perform bootstrap phase of a btrfs incremental backup. To
       # bootstrap a backup we create a new snapshot and place it in the
@@ -8686,28 +8686,28 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       ### REMOTE ###
       
       # setup local bootstrap snap
-      my $ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
+      my $server_ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
       # delete old remote bootstrap snap(s) if it exists
-      $ssh->system( "ls -d $backup_dir/* "
+      $server_ssh->system( "ls -d $backup_dir/* "
                   . '| grep BOOTSTRAP-day '
                   . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
                   );
   
       # send the bootstrap backup to remote host
-      $ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
+      $server_ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
   		, "sudo -n btrfs receive $backup_dir"
   	        );
   
       return;
   }
   
-  sub do_incremental_backup { # No test. Is not pure.
+  sub do_backup { # No test. Is not pure.
   
       # Determine if $backup is local or remote and dispatch the
-      # corresponding do_incremental_backup_* subroutine. If $backup
+      # corresponding do_backup_* subroutine. If $backup
       # has not been bootstrapped then instead perform the bootstrap
       # routine.
   
@@ -8719,11 +8719,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
       
       elsif (is_local_backup($config_ref, $backup)) {
-  	do_incremental_backup_local($config_ref, $backup);
+  	do_backup_local($config_ref, $backup);
       }
   
       elsif (is_remote_backup($config_ref, $backup)) {
-  	do_incremental_backup_ssh($config_ref, $backup);
+  	do_backup_ssh($config_ref, $backup);
       }
   
       else {
@@ -8733,7 +8733,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       return;
   }
   
-  sub do_incremental_backup_local { # No test. Is not pure.
+  sub do_backup_local { # No test. Is not pure.
   
       # Perform a single incremental btrfs backup of $backup. This
       # function will kill the program if the bootstrap phase has not
@@ -8773,7 +8773,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       return;
   }
   
-  sub do_incremental_backup_ssh { # No test. Is not pure.
+  sub do_backup_ssh { # No test. Is not pure.
   
       # Perform a single incremental btrfs backup of $backup over ssh.
       # This function will kill the program if the bootstrap phase has
@@ -8786,11 +8786,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
       }
   
-      # bootstrap dir should have exactly one snap
+      # bootstrap snapshot dir should have exactly one snapshot.
       my $boot_snap =
         [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
-  
-      # do incremental backup
   
       my $subvol = $config_ref->{backups}{$backup}{subvol};
   
@@ -8798,25 +8796,26 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       
       my $remote_host = $config_ref->{backups}{$backup}{host};
   
-      my $ssh = new_ssh_connection($remote_host);
+      my $server_ssh = new_ssh_connection($remote_host);
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+  
+      my $local_yabsm_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
       
-      my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
+      make_path $local_yabsm_dir if not -d $local_yabsm_dir;
   
-      make_path $tmp_dir if not -d $tmp_dir;
-  
-      my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+      my $snapshot = "$local_yabsm_dir/" . current_time_snapstring();
   	
-      system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+      # main
+      
+      system("btrfs subvol snapshot -r $mountpoint $snapshot");
   	
-      # send an incremental backup over ssh
-      $ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]}
-  		                , "sudo -n btrfs receive $remote_backup_dir");
+      $server_ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $snapshot"]}
+                          , "sudo -n btrfs receive $remote_backup_dir");
   	
-      system("btrfs subvol delete $tmp_snap");
+      system("btrfs subvol delete $snapshot");
   	
-      delete_old_backups_ssh($config_ref, $ssh, $backup);
+      delete_old_backups_ssh($config_ref, $server_ssh, $backup);
   
       return;
   }
@@ -8875,17 +8874,17 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   sub delete_old_backups_ssh { # No test. Is not pure.
   
       # Delete old backup snapshot(s) at the remote host connected to by
-      # $ssh. We know how many backups to keep based off $backup's $keep
+      # $server_ssh. We know how many backups to keep based off $backup's $keep
       # setting defined in the users config. This function should be
       # called directly after do_backup_ssh().
   
       my $config_ref = shift // confess missing_arg();
-      my $ssh        = shift // confess missing_arg();
+      my $server_ssh = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
   
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
   
-      my @existing_backups = all_backup_snaps($config_ref, $backup, $ssh);
+      my @existing_backups = all_backup_snaps($config_ref, $backup, $server_ssh);
   
       my $num_backups = scalar @existing_backups;
   
@@ -8899,7 +8898,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   	# because they are sorted newest to oldest.
   	my $oldest_backup = pop @existing_backups;
   
-  	$ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+  	$server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
   
   	return;
       }
@@ -8916,7 +8915,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   	    # note that pop mutates existing_snaps
   	    my $oldest_backup = pop @existing_backups;
               
-  	    $ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+  	    $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
   
   	    $num_backups--;
   	} 
@@ -9006,8 +9005,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if (is_remote_backup($config_ref, $backup)) {
           my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
           my $remote_host = $config_ref->{backups}{$backup}{host};
-          my $ssh = shift // new_ssh_connection( $remote_host );
-          @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $ssh->capture("ls $backup_dir") ]);
+          my $server_ssh = shift // new_ssh_connection( $remote_host );
+          @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $server_ssh->capture("ls $backup_dir") ]);
   
       }
   
@@ -9233,7 +9232,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Takes a time of the form 'hh:mm' and returns the hour (hh).
   
-      my $time = shift // Yabsm::Base::missing_arg();
+      my $time = shift // missing_arg();
   
       my ($hr, undef) = split ':', $time, 2;
   
@@ -9244,7 +9243,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Takes a time of the form 'hh:mm' and returns the minute (hh).
   
-      my $time = shift // Yabsm::Base::missing_arg();
+      my $time = shift // missing_arg();
   
       my (undef, $min) = split ':', $time, 2;
   
@@ -9897,11 +9896,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   sub schedule_snapshots { # No test. Is not pure.
   
-      #TODO
+      # Schedule snapshots based off user configuration by adding
+      # them to $cron_scheduler object (see Schedule::Cron module).
+          
       my $config_ref     = shift // confess missing_arg();
       my $cron_scheduler = shift // confess missing_arg();
   
-      foreach my $subvol (Yabsm::Base::all_subvols($config_ref)) {
+      foreach my $subvol (all_subvols($config_ref)) {
           
           my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
           my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
@@ -9948,8 +9949,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
               my $time = $config_ref->{subvols}{$subvol}{monthly_time};
               my $hr   = time_hour($time);
               my $min  = time_minute($time);
+              my $day  = $config_ref->{subvols}{$subvol}{monthly_day};
               $cron_scheduler->add_entry(
-                  "$min $hr 1 * *",
+                  "$min $hr $day * *",
                   sub { do_snapshot($config_ref, $subvol, 'monthly') }
               );
           }
@@ -9958,56 +9960,59 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   sub schedule_backups { # No test. Is not pure.
   
-      #TODO
+      # Schedule backups based off user configuration by adding
+      # them to $cron_scheduler object (see Schedule::Cron module).
+      
       my $config_ref     = shift // confess missing_arg();
       my $cron_scheduler = shift // confess missing_arg();
   
-      foreach my $backup (Yabsm::Base::all_backups($config_ref)) {
+      foreach my $backup (all_backups($config_ref)) {
   
           my $timeframe = $config_ref->{backups}{$backup}{timeframe};
   
           if ($timeframe eq '5minute') {
               $cron_scheduler->add_entry(
                   "*/5 * * * *",
-                  sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                  sub { do_backup($config_ref, $backup) }
               );
           }
   
           elsif ($timeframe eq 'hourly') {
               $cron_scheduler->add_entry(
                   "0 */1 * * *",
-                  sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                  sub { do_backup($config_ref, $backup) }
               );
           }
   
           elsif ($timeframe eq 'daily') {
               my $time = $config_ref->{backups}{$backup}{time};
-              my $hr   = Yabsm::Base::time_hour($time);
-              my $min  = Yabsm::Base::time_minute($time);
+              my $hr   = time_hour($time);
+              my $min  = time_minute($time);
               $cron_scheduler->add_entry(
                   "$min $hr * * *",
-                  sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                  sub { do_backup($config_ref, $backup) }
               );
           }
   
           elsif ($timeframe eq 'weekly') {
               my $time = $config_ref->{backups}{$backup}{time};
-              my $hr   = Yabsm::Base::time_hour($time);
-              my $min  = Yabsm::Base::time_minute($time);
-              my $dow  = Yabsm::Base::day_of_week_num($config_ref->{backups}{$backup}{day});
+              my $hr   = time_hour($time);
+              my $min  = time_minute($time);
+              my $dow  = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
               $cron_scheduler->add_entry(
                   "$min $hr * * $dow",
-                  sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                  sub { do_backup($config_ref, $backup) }
               );
           }
   
           elsif ($timeframe eq 'monthly') {
               my $time = $config_ref->{backups}{$backup}{time};
-              my $hr   = Yabsm::Base::time_hour($time);
-              my $min  = Yabsm::Base::time_minute($time);
+              my $hr   = time_hour($time);
+              my $min  = time_minute($time);
+              my $day  = $config_ref->{backups}{$backup}{monthly_day};
               $cron_scheduler->add_entry(
-                  "$min $hr 1 * *",
-                  sub { Yabsm::Base::do_incremental_backup($config_ref, $backup) }
+                  "$min $hr $day * *",
+                  sub { do_backup($config_ref, $backup) }
               );
           }
       }
@@ -10016,8 +10021,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   sub is_local_backup { # Has test. Is pure.
   
       # Return 1 iff $backup is the name of a defined local backup. A
-      # local backup is one in which the backups 'remote' field is set
-      # to 'no'.
+      # local backup is a backup whos 'remote' field is set # to 'no'.
   
       my $config_ref = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
@@ -10025,7 +10029,6 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if (is_backup($config_ref, $backup)) {
   	return $config_ref->{backups}{$backup}{remote} eq 'no';
       }
-  
       else { return 0 }
   }
   
@@ -10036,53 +10039,34 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $remote_host = shift // confess missing_arg();
   
-      my $ssh = Net::OpenSSH->new( $remote_host,
-  			       , batch_mode => 1 # Don't try asking for password
-  			       , timeout => 30   # timeout after 30 seconds
-  			       , kill_ssh_on_timeout => 1
-  			       );
+      my $server_ssh = Net::OpenSSH->new( $remote_host,
+                                        , batch_mode => 1 # Don't try asking for password
+  			              , timeout => 5    # Minutes
+  			              , kill_ssh_on_timeout => 1
+  			              );
   
-      $ssh->error and
-        die 'yabsm: ssh error: could not establish passwordless SSH connection: ' . $ssh->error . "\n";
+      $server_ssh->error and
+        die "yabsm: ssh error: could not establish ssh connection to '$remote_host' " . $server_ssh->error . "\n";
       
-      return $ssh;
-  }
-  
-  sub is_day_of_week { # Has test. Is pure.
-  
-      # Return 1 iff $dow is a valid day of week string. A day of week
-      # can either be the full name of the day or just the first 3
-      # letters and must be all lowercase letters.
-  
-      my $dow = shift // confess missing_arg();
-  
-      my $mon = 'monday';
-      my $tue = 'tuesday';
-      my $wed = 'wednesday';
-      my $thu = 'thursday';
-      my $fri = 'friday';
-      my $sat = 'saturday';
-      my $sun = 'sunday';
-  
-      return $dow =~ /^($mon|$tue|$wed|$thu|$fri|$sat|$sun)$/;
+      return $server_ssh;
   }
   
   sub day_of_week_num { # Has test. Is pure.
   
       # Take day of week string ($dow) and return the cooresponding
-      # number in the week. We consider monday the first day because
-      # cronjobs do, and this function is used to generate cron
-      # strings. We expect $dow to have already been cleansed.
+      # number of the week. Cron considers monday the first day of
+      # the week, and this function is used to generate cron
+      # strings. Exit program if $dow is not a valid day of week.
   
       my $dow = shift // confess missing_arg();
   
-      if    ($dow eq 'monday')    { return 1 }
-      elsif ($dow eq 'tuesday')   { return 2 }
-      elsif ($dow eq 'wednesday') { return 3 }
-      elsif ($dow eq 'thursday')  { return 4 }
-      elsif ($dow eq 'friday')    { return 5 }
-      elsif ($dow eq 'saturday')  { return 6 }
-      elsif ($dow eq 'sunday')    { return 7 }
+      if    ($dow =~ /^monday$/i)    { return 1 }
+      elsif ($dow =~ /^tuesday$/i)   { return 2 }
+      elsif ($dow =~ /^wednesday$/i) { return 3 }
+      elsif ($dow =~ /^thursday$/i)  { return 4 }
+      elsif ($dow =~ /^friday$/i)    { return 5 }
+      elsif ($dow =~ /^saturday$/i)  { return 6 }
+      elsif ($dow =~ /^sunday$/i)    { return 7 }
       else {
           confess "yabsm: internal error: no such day of week '$dow'";
       }
@@ -10375,6 +10359,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               , ssh_host     => qr/[-@.\/\w]+/
               , comment      => qr/#.*/
               , pos_int      => qr/[1-9]\d*/
+              , month_day    => qr/[1-31]/
               , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
               );
   
@@ -10493,6 +10478,10 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           elsif ($k eq 'weekly_day') {
               $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
           }
+          elsif ($k eq 'monthly_day') {
+              $v = $self->maybe_expect( $regex{month_day} );
+              $v // $self->fail('expected integer in range 1-31');
+          } 
           else {
               confess "yabsm: internal error: no such subvol setting '$k'";
           }
@@ -10544,8 +10533,12 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               $v = $self->maybe_expect( $regex{subject_name} );
               $v // $self->fail('expected alphanumeric sequence starting with a letter');
           }
-          elsif ($k eq 'day') {
+          elsif ($k eq 'weekly_day') {
               $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
+          }
+          elsif ($k eq 'monthly_day') {
+              $v = $self->maybe_expect( $regex{month_day} );
+              $v // $self->fail('expected integer in range 1-31');
           }
           else {
               confess "yabsm: internal error: no such backup setting '$k'";
@@ -10569,7 +10562,8 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
       for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
   
-          # base required settings
+          # No matter what these settings are required. More required
+          # settings will be added based on the values of these settings.
           my @req = qw(mountpoint 5minute_want hourly_want daily_want weekly_want monthly_want);
   
           my @def = keys %{ $config_ref->{subvols}{$subvol} };
@@ -10578,7 +10572,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               push @err_msgs, "yabsm: config error: subvol '$subvol' missing required setting '$_'" for @missing;
           }
   
-          else { # the base required settings are defined
+          else { # the minimal required settings are all defined.
   
               for my $tframe (Yabsm::Base::subvols_timeframes($config_ref, $subvol)) {
                   if ($tframe eq '5minute') {
@@ -10594,7 +10588,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                       push @req, 'weekly_time', 'weekly_day', 'weekly_keep';
                   }
                   elsif ($tframe eq 'monthly') {
-                      push @req, 'monthly_time', 'monthly_keep';
+                      push @req, 'monthly_time', 'monthly_day', 'monthly_keep';
                   }
                   else {
                       confess "yabsm: internal error: no such timeframe '$tframe'";
@@ -10609,7 +10603,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           }
       }
   
-      return @err_msgs;
+      return wantarray ? @err_msgs : \@err_msgs;
   }
   
   sub missing_backup_settings {
@@ -10642,13 +10636,15 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               if ($remote eq 'yes') {
                   push @req, 'host';
               }
-  
-              if ($tframe eq 'weekly') {
-                  push @req, 'time', 'day';
-              }
-  
+              
               if ($tframe eq 'daily' || $tframe eq 'monthly') {
                   push @req, 'time';
+              }
+              elsif ($tframe eq 'weekly') {
+                  push @req, 'time', 'weekly_day';
+              }
+              elsif ($tframe eq 'monthly') {
+                  push @req, 'time', 'monthly_day';
               }
   
               if (my @missing = array_minus(@req, @def)) {
@@ -10657,7 +10653,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           }
       }
   
-      return @err_msgs;
+      return wantarray ? @err_msgs : \@err_msgs;
   }
   
   sub missing_misc_settings {
@@ -10675,7 +10671,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
       push @err_msgs, "yabsm: config error: missing misc setting '$_'" for @missing;
   
-      return @err_msgs;
+      return wantarray ? @err_msgs : \@err_msgs;
   }
   
                    ####################################
@@ -10683,14 +10679,16 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                    ####################################
   
   sub subvol_keywords {
-      return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep daily_want daily_time daily_keep weekly_want weekly_time weekly_day weekly_keep monthly_want monthly_time monthly_keep);
+      return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep daily_want daily_time daily_keep weekly_want weekly_time weekly_day weekly_keep monthly_want monthly_time monthly_day monthly_keep);
   }
   
   sub backup_keywords {
-      return qw(subvol remote host keep backup_dir timeframe time day);
+      return qw(subvol remote host keep backup_dir timeframe time weekly_day monthly_day);
   }
   
   sub misc_keywords {
+      # This is set up so in the future it is easy to add
+      # new settings as misc settings.
       return qw(yabsm_dir);
   }
   

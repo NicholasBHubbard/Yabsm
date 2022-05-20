@@ -1558,8 +1558,7 @@ sub schedule_backups { # No test. Is not pure.
 sub is_local_backup { # Has test. Is pure.
 
     # Return 1 iff $backup is the name of a defined local backup. A
-    # local backup is one in which the backups 'remote' field is set
-    # to 'no'.
+    # local backup is a backup whos 'remote' field is set # to 'no'.
 
     my $config_ref = shift // confess missing_arg();
     my $backup     = shift // confess missing_arg();
@@ -1567,7 +1566,6 @@ sub is_local_backup { # Has test. Is pure.
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'no';
     }
-
     else { return 0 }
 }
 
@@ -1595,7 +1593,7 @@ sub day_of_week_num { # Has test. Is pure.
     # Take day of week string ($dow) and return the cooresponding
     # number of the week. Cron considers monday the first day of
     # the week, and this function is used to generate cron
-    # strings. We expect $dow to have already been cleansed.
+    # strings. Exit program if $dow is not a valid day of week.
 
     my $dow = shift // confess missing_arg();
 

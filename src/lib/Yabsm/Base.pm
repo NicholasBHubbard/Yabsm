@@ -323,11 +323,9 @@ sub do_backup_ssh { # No test. Is not pure.
         confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
-    # bootstrap dir should have exactly one snap
+    # bootstrap snapshot dir should have exactly one snapshot.
     my $boot_snap =
       [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
-
-    # do incremental backup
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 

@@ -336,12 +336,12 @@ sub do_backup_ssh { # No test. Is not pure.
     my $server_ssh = new_ssh_connection($remote_host);
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-    
-    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-    
-    make_path $tmp_dir if not -d $tmp_dir;
 
-    my $snapshot = "$tmp_dir/" . current_time_snapstring();
+    my $local_yabsm_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
+    
+    make_path $local_yabsm_dir if not -d $local_yabsm_dir;
+
+    my $snapshot = "$local_yabsm_dir/" . current_time_snapstring();
 	
     # main
     

@@ -769,7 +769,7 @@ sub time_hour { # Has test. Is pure.
 
     # Takes a time of the form 'hh:mm' and returns the hour (hh).
 
-    my $time = shift // Yabsm::Base::missing_arg();
+    my $time = shift // missing_arg();
 
     my ($hr, undef) = split ':', $time, 2;
 
@@ -780,7 +780,7 @@ sub time_minute { # Has test. Is pure.
 
     # Takes a time of the form 'hh:mm' and returns the minute (hh).
 
-    my $time = shift // Yabsm::Base::missing_arg();
+    my $time = shift // missing_arg();
 
     my (undef, $min) = split ':', $time, 2;
 
@@ -1486,8 +1486,9 @@ sub schedule_snapshots { # No test. Is not pure.
             my $time = $config_ref->{subvols}{$subvol}{monthly_time};
             my $hr   = time_hour($time);
             my $min  = time_minute($time);
+            my $day  = $config_ref->{subvols}{$subvol}{monthly_day};
             $cron_scheduler->add_entry(
-                "$min $hr 1 * *",
+                "$min $hr $day * *",
                 sub { do_snapshot($config_ref, $subvol, 'monthly') }
             );
         }
@@ -1502,52 +1503,53 @@ sub schedule_backups { # No test. Is not pure.
     my $config_ref     = shift // confess missing_arg();
     my $cron_scheduler = shift // confess missing_arg();
 
-    foreach my $backup (Yabsm::Base::all_backups($config_ref)) {
+    foreach my $backup (all_backups($config_ref)) {
 
         my $timeframe = $config_ref->{backups}{$backup}{timeframe};
 
         if ($timeframe eq '5minute') {
             $cron_scheduler->add_entry(
                 "*/5 * * * *",
-                sub { Yabsm::Base::do_backup($config_ref, $backup) }
+                sub { do_backup($config_ref, $backup) }
             );
         }
 
         elsif ($timeframe eq 'hourly') {
             $cron_scheduler->add_entry(
                 "0 */1 * * *",
-                sub { Yabsm::Base::do_backup($config_ref, $backup) }
+                sub { do_backup($config_ref, $backup) }
             );
         }
 
         elsif ($timeframe eq 'daily') {
             my $time = $config_ref->{backups}{$backup}{time};
-            my $hr   = Yabsm::Base::time_hour($time);
-            my $min  = Yabsm::Base::time_minute($time);
+            my $hr   = time_hour($time);
+            my $min  = time_minute($time);
             $cron_scheduler->add_entry(
                 "$min $hr * * *",
-                sub { Yabsm::Base::do_backup($config_ref, $backup) }
+                sub { do_backup($config_ref, $backup) }
             );
         }
 
         elsif ($timeframe eq 'weekly') {
             my $time = $config_ref->{backups}{$backup}{time};
-            my $hr   = Yabsm::Base::time_hour($time);
-            my $min  = Yabsm::Base::time_minute($time);
-            my $dow  = Yabsm::Base::day_of_week_num($config_ref->{backups}{$backup}{day});
+            my $hr   = time_hour($time);
+            my $min  = time_minute($time);
+            my $dow  = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
             $cron_scheduler->add_entry(
                 "$min $hr * * $dow",
-                sub { Yabsm::Base::do_backup($config_ref, $backup) }
+                sub { do_backup($config_ref, $backup) }
             );
         }
 
         elsif ($timeframe eq 'monthly') {
             my $time = $config_ref->{backups}{$backup}{time};
-            my $hr   = Yabsm::Base::time_hour($time);
-            my $min  = Yabsm::Base::time_minute($time);
+            my $hr   = time_hour($time);
+            my $min  = time_minute($time);
+            my $day  = $config_ref->{backups}{$backup}{monthly_day};
             $cron_scheduler->add_entry(
-                "$min $hr 1 * *",
-                sub { Yabsm::Base::do_backup($config_ref, $backup) }
+                "$min $hr $day * *",
+                sub { do_backup($config_ref, $backup) }
             );
         }
     }

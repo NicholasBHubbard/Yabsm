@@ -1583,7 +1583,7 @@ sub new_ssh_connection { # No test. Is not pure.
 			              );
 
     $server_ssh->error and
-      die "yabsm: ssh error: could not establish SSH connection to '$remote_host' " . $server_ssh->error . "\n";
+      die "yabsm: ssh error: could not establish ssh connection to '$remote_host' " . $server_ssh->error . "\n";
     
     return $server_ssh;
 }

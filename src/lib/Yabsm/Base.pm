@@ -1597,13 +1597,15 @@ sub day_of_week_num { # Has test. Is pure.
 
     my $dow = shift // confess missing_arg();
 
-    if    ($dow =~ /^monday$/i)    { return 1 }
-    elsif ($dow =~ /^tuesday$/i)   { return 2 }
-    elsif ($dow =~ /^wednesday$/i) { return 3 }
-    elsif ($dow =~ /^thursday$/i)  { return 4 }
-    elsif ($dow =~ /^friday$/i)    { return 5 }
-    elsif ($dow =~ /^saturday$/i)  { return 6 }
-    elsif ($dow =~ /^sunday$/i)    { return 7 }
+    $dow = lc $dow;
+
+    if    ($dow =~ /^monday$/)    { return 1 }
+    elsif ($dow =~ /^tuesday$/)   { return 2 }
+    elsif ($dow =~ /^wednesday$/) { return 3 }
+    elsif ($dow =~ /^thursday$/)  { return 4 }
+    elsif ($dow =~ /^friday$/)    { return 5 }
+    elsif ($dow =~ /^saturday$/)  { return 6 }
+    elsif ($dow =~ /^sunday$/)    { return 7 }
     else {
         confess "yabsm: internal error: no such day of week '$dow'";
     }

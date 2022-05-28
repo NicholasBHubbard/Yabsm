@@ -43,11 +43,12 @@ $SIG{HUP}  = \&yabsmd_restart;
 
 # Main
 
-die $usage unless $#ARGV == 0 && $ARGV[0] =~ /^(start|stop|restart)$/;
+die $usage unless $#ARGV == 0 && $ARGV[0] =~ /^(start|stop|restart|status)$/;
 
 $ARGV[0] eq 'start'   && yabsmd_start();
 $ARGV[0] eq 'stop'    && yabsmd_stop();
 $ARGV[0] eq 'restart' && yabsmd_restart();
+$ARGV[0] eq 'status'  && yabsmd_status();
 
 # Implementation
 

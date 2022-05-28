@@ -69,6 +69,8 @@ sub yabsmd_start {
     close $fh;
     chmod 0644, $pid_file;
 
+    # Shedule::Cron takes care of the entire underlying mechanism for
+    # running a cron daemon.
     my $cron_scheduler = Schedule::Cron->new(\&cron_dispatcher);
 
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);

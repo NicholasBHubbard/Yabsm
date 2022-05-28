@@ -58,6 +58,8 @@ sub cron_dispatcher {
 
 sub yabsmd_start {
 
+    say "starting yabsmd ...";
+    
     # Program will die with relevant error messages if config is invalid.
     my $config_ref = Yabsm::Config::read_config();
 
@@ -80,10 +82,27 @@ sub yabsmd_start {
 }
 
 sub yabsmd_stop {
-
+    say "stopping yabsmd ...";
     rmtree $resource_dir if -d $resource_dir;
-
     exit 0;
 }
 
-sub yabsmd_restart { yabsmd_stop() ; yabsmd_start() }
+sub yabsmd_restart {
+    say "restarting yabsmd ...";
+    yabsmd_stop();
+    yabsmd_start();
+}
+
+sub yabsmd_status {
+    if (-d $resource_dir) {
+        open my $fh, '<', $pid_file or die "yabsmd: error: failed to open file '$pid_file'\n";
+        my $pid = <$fh>;
+        close $fh;
+        say "yabsmd is running as pid $pid";
+        exit 0;
+    }
+    else {
+        say "yabsmd is not running";
+        exit 1;
+    }
+}

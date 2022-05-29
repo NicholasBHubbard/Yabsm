@@ -48,10 +48,6 @@ $ARGV[0] eq 'status'  && yabsmd_status();
 
 # Implementation
 
-sub default_cron_dispatcher {
-    confess "yabsmd: internal error: default cron dispatcher invoked";
-}
-
 sub yabsmd_start {
 
     say "starting yabsmd ...";
@@ -99,7 +95,9 @@ sub yabsmd_start {
 
     # Shedule::Cron takes care of the entire underlying mechanism for
     # running a cron daemon.
-    my $cron_scheduler = Schedule::Cron->new(\&default_cron_dispatcher);
+    my $cron_scheduler = Schedule::Cron->new(
+        sub { confess "yabsmd: internal error: default cron dispatcher invoked" }
+    );
 
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);

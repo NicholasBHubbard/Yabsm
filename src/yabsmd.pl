@@ -24,7 +24,7 @@ use Yabsm::Config;
 
 die "yabsm: error: permission denied\n" if $<;
 
-my $usage = "usage: yabsmd <start|stop|restart>\n";
+my $usage = "usage: yabsmd <start|stop|restart|status>\n";
 
 my $resource_dir = '/run/yabsmd';
 my $pid_file     = "$resource_dir/yabsmd.pid";
@@ -56,7 +56,7 @@ sub yabsmd_start {
     $SIG{HUP}  = \&yabsmd_restart;
     
     # Every signal that has a default disposition of Core or Term
-    # should will exit gracefully.
+    # will exit gracefully.
     $SIG{ABRT}   = \&yabsmd_stop;
     $SIG{ALRM}   = \&yabsmd_stop;
     $SIG{BUS}    = \&yabsmd_stop;

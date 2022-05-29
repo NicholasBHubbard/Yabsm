@@ -88,11 +88,6 @@ sub yabsmd_start {
     rmtree $resource_dir if -d $resource_dir;
     mkdir $resource_dir;
 
-    open my $fh, '>', $pid_file or die "yabsmd: error: failed to open file '$pid_file'\n";
-    say $fh $$;
-    close $fh;
-    chmod 0644, $pid_file;
-
     # Shedule::Cron takes care of the entire underlying mechanism for
     # running a cron daemon.
     my $cron_scheduler = Schedule::Cron->new(
@@ -102,7 +97,7 @@ sub yabsmd_start {
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
 
-    $cron_scheduler->run();
+    $cron_scheduler->run(detatch=>1,pid_file=>$pid_file);
 }
 
 sub yabsmd_stop {

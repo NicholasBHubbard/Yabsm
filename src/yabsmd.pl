@@ -81,12 +81,14 @@ sub main {
     # running a cron daemon.
     my $cron_scheduler = Schedule::Cron->new(
         sub { confess "yabsmd: internal error: default cron dispatcher invoked" }
+        , processprefix => 'yabsmd'
+
     );
 
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
     
-    $cron_scheduler->run(detach => 1, pid_file => $yabsmd_pid_file);
+    $cron_scheduler->run(detach => 1 , pid_file => $yabsmd_pid_file);
 }
 
 main();

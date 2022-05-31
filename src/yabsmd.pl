@@ -50,13 +50,11 @@ sub main {
     $SIG{ABRT}   = \&cleanup_and_exit;
     $SIG{ALRM}   = \&cleanup_and_exit;
     $SIG{BUS}    = \&cleanup_and_exit;
-    $SIG{EMT}    = \&cleanup_and_exit;
     $SIG{FPE}    = \&cleanup_and_exit;
     $SIG{ILL}    = \&cleanup_and_exit;
     $SIG{INT}    = \&cleanup_and_exit;
     $SIG{IO}     = \&cleanup_and_exit;
     $SIG{KILL}   = \&cleanup_and_exit;
-    $SIG{LOST}   = \&cleanup_and_exit;
     $SIG{PIPE}   = \&cleanup_and_exit;
     $SIG{PROF}   = \&cleanup_and_exit;
     $SIG{PWR}    = \&cleanup_and_exit;

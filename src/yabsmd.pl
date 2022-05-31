@@ -14,7 +14,6 @@ use v5.16.3;
 
 use Carp;
 use File::Path;
-use Try::Tiny;
 use Schedule::Cron;
 
 use lib::relative 'lib';
@@ -22,71 +21,59 @@ use lib::relative 'lib';
 use Yabsm::Base;
 use Yabsm::Config;
 
-die "yabsm: error: permission denied\n" if $<;
+die "yabsmd: error: permission denied\n" if $<;
 
-my $usage = "usage: yabsmd <start|stop|restart|status>\n";
+my $yabsmd_pid_file = '/run/yabsmd.pid';
 
-my $resource_dir = '/run/yabsmd';
-my $pid_file     = "$resource_dir/yabsmd.pid";
-my $socket_path  = "$resource_dir/yabsmd.socket";
+sub cleanup_and_exit {
+    if (-r $yabsmd_pid_file) {
+        open my $fh, '<', $yabsmd_pid_file;
+        my $yabsmd_pid = <$fh>;
+        close $fh;
+        unlink $yabsmd_pid_file;
+        kill 'KILL', $yabsmd_pid;
+    }
+    else {
+        confess "yabsmd: internal error: cannot read $yabsmd_pid_file";
+    }
+}
 
-my $log_dir      = '/var/log/yabsmd';
-my $std_log      = "$log_dir/yabsmd-std.log";
-my $err_log      = "$log_dir/yabsmd-err.log";
-
-open STDOUT, '>>', $std_log;
-open STDERR, '>>', $err_log;
-
-# Main
-
-die $usage unless $#ARGV == 0 && $ARGV[0] =~ /^(start|stop|restart|status)$/;
-
-$ARGV[0] eq 'start'   && yabsmd_start();
-$ARGV[0] eq 'stop'    && yabsmd_stop();
-$ARGV[0] eq 'restart' && yabsmd_restart();
-$ARGV[0] eq 'status'  && yabsmd_status();
-
-# Implementation
-
-sub yabsmd_start {
+sub main {
 
     say "starting yabsmd ...";
-
-    # It is customary for daemons to restart on SIGHUP.
-    $SIG{HUP}  = \&yabsmd_restart;
     
-    # Every signal that has a default disposition of Core or Term
-    # will exit gracefully.
-    $SIG{ABRT}   = \&yabsmd_stop;
-    $SIG{ALRM}   = \&yabsmd_stop;
-    $SIG{BUS}    = \&yabsmd_stop;
-    $SIG{EMT}    = \&yabsmd_stop;
-    $SIG{FPE}    = \&yabsmd_stop;
-    $SIG{ILL}    = \&yabsmd_stop;
-    $SIG{INT}    = \&yabsmd_stop;
-    $SIG{IO}     = \&yabsmd_stop;
-    $SIG{KILL}   = \&yabsmd_stop;
-    $SIG{LOST}   = \&yabsmd_stop;
-    $SIG{PIPE}   = \&yabsmd_stop;
-    $SIG{PROF}   = \&yabsmd_stop;
-    $SIG{PWR}    = \&yabsmd_stop;
-    $SIG{QUIT}   = \&yabsmd_stop;
-    $SIG{SEGV}   = \&yabsmd_stop;
-    $SIG{STKFLT} = \&yabsmd_stop;
-    $SIG{SYS}    = \&yabsmd_stop;
-    $SIG{TERM}   = \&yabsmd_stop;
-    $SIG{TRAP}   = \&yabsmd_stop;
-    $SIG{USR1}   = \&yabsmd_stop;
-    $SIG{USR2}   = \&yabsmd_stop;
-    $SIG{VTALRM} = \&yabsmd_stop;
-    $SIG{XCPU}   = \&yabsmd_stop;
-    $SIG{XFSZ}   = \&yabsmd_stop;
+    # Daemons ignore SIGHUP.
+    $SIG{HUP}    = 'IGNORE';
+    
+    # Yabsmd will exit gracefully on any signal that has a
+    # default disposition of core dump or terminate.
+    $SIG{ABRT}   = \&cleanup_and_exit;
+    $SIG{ALRM}   = \&cleanup_and_exit;
+    $SIG{BUS}    = \&cleanup_and_exit;
+    $SIG{EMT}    = \&cleanup_and_exit;
+    $SIG{FPE}    = \&cleanup_and_exit;
+    $SIG{ILL}    = \&cleanup_and_exit;
+    $SIG{INT}    = \&cleanup_and_exit;
+    $SIG{IO}     = \&cleanup_and_exit;
+    $SIG{KILL}   = \&cleanup_and_exit;
+    $SIG{LOST}   = \&cleanup_and_exit;
+    $SIG{PIPE}   = \&cleanup_and_exit;
+    $SIG{PROF}   = \&cleanup_and_exit;
+    $SIG{PWR}    = \&cleanup_and_exit;
+    $SIG{QUIT}   = \&cleanup_and_exit;
+    $SIG{SEGV}   = \&cleanup_and_exit;
+    $SIG{STKFLT} = \&cleanup_and_exit;
+    $SIG{SYS}    = \&cleanup_and_exit;
+    $SIG{TERM}   = \&cleanup_and_exit;
+    $SIG{TRAP}   = \&cleanup_and_exit;
+    $SIG{USR1}   = \&cleanup_and_exit;
+    $SIG{USR2}   = \&cleanup_and_exit;
+    $SIG{VTALRM} = \&cleanup_and_exit;
+    $SIG{XCPU}   = \&cleanup_and_exit;
+    $SIG{XFSZ}   = \&cleanup_and_exit;
     
     # Program will die with relevant error messages if config is invalid.
     my $config_ref = Yabsm::Config::read_config();
-
-    rmtree $resource_dir if -d $resource_dir;
-    mkdir $resource_dir;
 
     # Shedule::Cron takes care of the entire underlying mechanism for
     # running a cron daemon.
@@ -96,32 +83,10 @@ sub yabsmd_start {
 
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
+    
+    $cron_scheduler->run(detatch => 1, pid_file => $yabsmd_pid_file);
 
-    $cron_scheduler->run(detatch=>1,pid_file=>$pid_file);
-}
-
-sub yabsmd_stop {
-    say "stopping yabsmd ...";
-    rmtree $resource_dir if -d $resource_dir;
     exit 0;
 }
 
-sub yabsmd_restart {
-    say "restarting yabsmd ...";
-    yabsmd_stop();
-    yabsmd_start();
-}
-
-sub yabsmd_status {
-    if (-d $resource_dir) {
-        open my $fh, '<', $pid_file or die "yabsmd: error: failed to open file '$pid_file'\n";
-        my $pid = <$fh>;
-        close $fh;
-        say "yabsmd is running as pid $pid";
-        exit 0;
-    }
-    else {
-        say "yabsmd is not running";
-        exit 1;
-    }
-}
+main();

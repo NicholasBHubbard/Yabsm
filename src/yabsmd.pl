@@ -41,6 +41,10 @@ sub cleanup_and_exit {
 sub main {
 
     say "starting yabsmd ...";
+
+    if (-f $yabsmd_pid_file) {
+        die "yabsmd: error: there is already a running instance of yabsmd"
+    }
     
     # Daemons ignore SIGHUP.
     $SIG{HUP}    = 'IGNORE';
@@ -83,8 +87,6 @@ sub main {
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
     
     $cron_scheduler->run(detach => 1, pid_file => $yabsmd_pid_file);
-
-    exit 0;
 }
 
 main();

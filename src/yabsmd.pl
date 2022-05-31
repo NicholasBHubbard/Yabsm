@@ -40,12 +40,10 @@ sub cleanup_and_exit {
 
 sub main {
 
-    say "starting yabsmd ...";
-
     if (-f $yabsmd_pid_file) {
         die "yabsmd: error: there is already a running instance of yabsmd\n"
     }
-    
+
     # Daemons ignore SIGHUP.
     $SIG{HUP}    = 'IGNORE';
     

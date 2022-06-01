@@ -39,7 +39,7 @@ sub cleanup_and_exit {
 }
 
 sub main {
-    
+
     # pid file is used as a lock to ensure theres only
     # one running instance of yabsmd.
     if (-f $yabsmd_pid_file) {
@@ -48,9 +48,9 @@ sub main {
 
     # Daemons ignore SIGHUP.
     $SIG{HUP}    = 'IGNORE';
-    
+
     # Yabsmd will exit gracefully on any signal that has a
-    # default disposition of core dump or terminate.
+    # default disposition to core dump or terminate.
     $SIG{ABRT}   = \&cleanup_and_exit;
     $SIG{ALRM}   = \&cleanup_and_exit;
     $SIG{BUS}    = \&cleanup_and_exit;
@@ -73,7 +73,7 @@ sub main {
     $SIG{VTALRM} = \&cleanup_and_exit;
     $SIG{XCPU}   = \&cleanup_and_exit;
     $SIG{XFSZ}   = \&cleanup_and_exit;
-    
+
     # Program will die with relevant error messages if config is invalid.
     my $config_ref = Yabsm::Config::read_config();
 
@@ -86,7 +86,7 @@ sub main {
 
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
-    
+
     $cron_scheduler->run(detach => 1, pid_file => $yabsmd_pid_file);
 }
 

@@ -39,10 +39,10 @@ sub cleanup_and_exit {
 }
 
 sub main {
-
+    
+    # pid file is used as a lock to ensure theres only
+    # one running instance of yabsmd.
     if (-f $yabsmd_pid_file) {
-        # pid file is used as a lock to ensure theres only
-        # one running instance of yabsmd.
         die "yabsmd: error: there is already a running instance of yabsmd\n"
     }
 
@@ -82,7 +82,6 @@ sub main {
     my $cron_scheduler = Schedule::Cron->new(
         sub { confess "yabsmd: internal error: default cron dispatcher invoked" }
         , processprefix => 'yabsmd'
-
     );
 
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);

@@ -9,7 +9,7 @@ backup homeBackup {
     remote=no
     backup_dir=/home
     timeframe=daily
-    time=23:59
+    daily_time=23:59
     keep=12
 }
 

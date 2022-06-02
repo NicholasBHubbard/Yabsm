@@ -11,6 +11,7 @@ subvol home {
        monthly_keep=100
        5minute_want=yes
        daily_keep=100
+       monthly_day=14
        daily_time=23:59
        monthly_want=yes
        weekly_keep=100
@@ -24,7 +25,6 @@ yabsm_dir=/
 
 backup homeBackup {
        timeframe=5minute
-       day=monday
        host=foobar
        backup_dir=/
        keep=100

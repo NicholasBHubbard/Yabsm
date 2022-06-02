@@ -1522,7 +1522,7 @@ sub schedule_backups { # No test. Is not pure.
         }
 
         elsif ($timeframe eq 'daily') {
-            my $time = $config_ref->{backups}{$backup}{time};
+            my $time = $config_ref->{backups}{$backup}{daily_time};
             my $hr   = time_hour($time);
             my $min  = time_minute($time);
             $cron_scheduler->add_entry(
@@ -1532,7 +1532,7 @@ sub schedule_backups { # No test. Is not pure.
         }
 
         elsif ($timeframe eq 'weekly') {
-            my $time = $config_ref->{backups}{$backup}{time};
+            my $time = $config_ref->{backups}{$backup}{weekly_time};
             my $hr   = time_hour($time);
             my $min  = time_minute($time);
             my $dow  = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
@@ -1543,7 +1543,7 @@ sub schedule_backups { # No test. Is not pure.
         }
 
         elsif ($timeframe eq 'monthly') {
-            my $time = $config_ref->{backups}{$backup}{time};
+            my $time = $config_ref->{backups}{$backup}{monthly_time};
             my $hr   = time_hour($time);
             my $min  = time_minute($time);
             my $day  = $config_ref->{backups}{$backup}{monthly_day};

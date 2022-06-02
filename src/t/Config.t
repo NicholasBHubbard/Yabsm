@@ -57,6 +57,7 @@ subvol root {
     weekly_keep=7
 
     monthly_want=yes
+    monthly_day=30
     monthly_time=12:30
     monthly_keep=12
 }
@@ -84,8 +85,8 @@ backup rootBackup {
     backup_dir=/
     keep=100
     timeframe=weekly
-    day=friday
-    time=23:59
+    weekly_day=friday
+    weekly_time=23:59
 }
 
 backup homeBackup {
@@ -100,47 +101,48 @@ EOF
 
 my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' } 
 
-             , subvols => { root => { mountpoint   => '/'
+             , subvols => { root => { mountpoint     => '/'
                                     , '5minute_want' => 'no'
-                                    , hourly_want => 'yes'
-                                    , hourly_keep => '24'
-                                    , daily_want => 'no'
-                                    , weekly_want => 'yes'
-                                    , weekly_day => 'tuesday'
-                                    , weekly_time => '23:59'
-                                    , weekly_keep => '7'
-                                    , monthly_want => 'yes'
-                                    , monthly_time  => '12:30'
-                                    , monthly_keep => '12'
+                                    , hourly_want    => 'yes'
+                                    , hourly_keep    => '24'
+                                    , daily_want     => 'no'
+                                    , weekly_want    => 'yes'
+                                    , weekly_day     => 'tuesday'
+                                    , weekly_time    => '23:59'
+                                    , weekly_keep    => '7'
+                                    , monthly_want   => 'yes'
+                                    , monthly_time   => '12:30'
+                                    , monthly_day    => '30'
+                                    , monthly_keep   => '12'
                                     } 
 
-                          , home => { mountpoint   => '/home'
+                          , home => { mountpoint     => '/home'
                                     , '5minute_want' => 'yes'
                                     , '5minute_keep' => '12'
-                                    , hourly_want => 'no'
-                                    , daily_want => 'yes'
-                                    , daily_time => '23:59'
-                                    , daily_keep => '14'
-                                    , weekly_want => 'no'
-                                    , monthly_want => 'no'
+                                    , hourly_want    => 'no'
+                                    , daily_want     => 'yes'
+                                    , daily_time     => '23:59'
+                                    , daily_keep     => '14'
+                                    , weekly_want    => 'no'
+                                    , monthly_want   => 'no'
                                     } 
                           }
 
-             , backups => { rootBackup => { subvol => 'root'
-                                          , remote => 'no'
-                                          , backup_dir => '/'
-                                          , keep => '100'
-                                          , timeframe => 'weekly'
-                                          , day => 'friday'
-                                          , time => '23:59'
+             , backups => { rootBackup => { subvol      => 'root'
+                                          , remote      => 'no'
+                                          , backup_dir  => '/'
+                                          , keep        => '100'
+                                          , timeframe   => 'weekly'
+                                          , weekly_day  => 'friday'
+                                          , weekly_time => '23:59'
                                           }
 
-                          , homeBackup => { remote => 'yes'
-                                          , host => 'foohost'
-                                          , subvol => 'home'
+                          , homeBackup => { remote     => 'yes'
+                                          , host       => 'foohost'
+                                          , subvol     => 'home'
                                           , backup_dir => '/home'
-                                          , timeframe => 'hourly'
-                                          , keep => '12'
+                                          , timeframe  => 'hourly'
+                                          , keep       => '12'
                                           }
                           }
              );

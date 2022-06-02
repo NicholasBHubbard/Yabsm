@@ -22,6 +22,7 @@ subvol root {
 
     monthly_want=yes
     monthly_time=00:00
+    monthly_day=1
     monthly_keep=12
 }
 
@@ -48,8 +49,8 @@ backup rootBackup {
     backup_dir=/
     keep=100
     timeframe=weekly
-    time=23:59
-    day=friday
+    weekly_time=23:59
+    weekly_day=friday
 }
 
 backup homeBackup {

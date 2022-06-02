@@ -22,7 +22,8 @@ subvol home {
        weekly_day=monday        
   
        monthly_want=yes     
-       monthly_time=23:59          
+       monthly_time=23:59   
+       monthly_day=12        
        monthly_keep=1       
 }       
     
@@ -32,8 +33,8 @@ backup homeBackup {
        host=foobar      
        backup_dir=/       
        timeframe=weekly      
-       time=23:59      
-       day=monday     
+       weekly_time=23:59      
+       weekly_day=monday     
        keep=1    
 }      
        

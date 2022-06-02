@@ -34,7 +34,7 @@ my %regex = ( path         => qr/\/[^#\s]*/
             , ssh_host     => qr/[-@.\/\w]+/
             , comment      => qr/#.*/
             , pos_int      => qr/[1-9]\d*/
-            , month_day    => qr/[1-31]/
+            , month_day    => qr/3[01]|[12][0-9]|[1-9]/ # 1-31
             , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
             );
 
@@ -187,7 +187,7 @@ sub backup_def_p {
         elsif ($k eq 'timeframe') {
             $v = $self->token_kw( Yabsm::Base::all_timeframes() );
         }
-        elsif ($k eq 'time') {
+        elsif ($k =~ /(daily|weekly|monthly)_time$/) {
             $v = $self->maybe_expect( $regex{time} );
             $v // $self->fail(q(expected time in format 'hh:mm'));
         }
@@ -312,14 +312,14 @@ sub missing_backup_settings {
                 push @req, 'host';
             }
             
-            if ($tframe eq 'daily' || $tframe eq 'monthly') {
-                push @req, 'time';
+            if ($tframe eq 'daily') {
+                push @req, 'daily_time';
             }
             elsif ($tframe eq 'weekly') {
-                push @req, 'time', 'weekly_day';
+                push @req, 'weekly_time', 'weekly_day';
             }
             elsif ($tframe eq 'monthly') {
-                push @req, 'time', 'monthly_day';
+                push @req, 'monthly_time', 'monthly_day';
             }
 
             if (my @missing = array_minus(@req, @def)) {
@@ -358,7 +358,7 @@ sub subvol_keywords {
 }
 
 sub backup_keywords {
-    return qw(subvol remote host keep backup_dir timeframe time weekly_day monthly_day);
+    return qw(subvol remote host keep backup_dir timeframe daily_time weekly_time monthly_time weekly_day monthly_day);
 }
 
 sub misc_keywords {

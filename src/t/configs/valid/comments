@@ -25,6 +25,7 @@ subvol home {#comment
        weekly_day=monday#comment
        monthly_want=yes#comment
        monthly_time=23:59#comment
+       monthly_day=31
        monthly_keep=100#comment
 }#comment
 #comment
@@ -35,8 +36,8 @@ backup homeBackup {#comment
        host=foobar#comment
        backup_dir=/#comment
        timeframe=weekly#comment
-       day=monday#comment
-       time=23:59#comment
+       weekly_day=monday#comment
+       weekly_time=23:59#comment
        keep=100#comment
 }#comment
 #comment

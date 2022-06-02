@@ -72,6 +72,8 @@ sub cleanup_and_exit {
 
 sub yabsmd_start {
 
+    die "yabsmd: error: permission denied\n" if $<;
+    
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {
         die "yabsmd: error: yabsmd is already running as pid $yabsmd_pid\n"
@@ -124,6 +126,9 @@ sub yabsmd_start {
 }
 
 sub yabsmd_stop {
+
+    die "yabsmd: error: permission denied\n" if $<;
+    
     if (my $pid = yabsmd_pid()) {
         say "Stopping yabsmd process running as pid $pid";
         kill 'TERM', $pid;
@@ -134,8 +139,13 @@ sub yabsmd_stop {
 }
 
 sub yabsmd_restart {
+    
+    die "yabsmd: error: permission denied\n" if $<;
+    
     yabsmd_stop();
+    
     sleep 1;
+    
     yabsmd_start();
 }
 

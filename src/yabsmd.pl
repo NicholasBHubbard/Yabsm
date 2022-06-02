@@ -21,29 +21,56 @@ use lib::relative 'lib';
 use Yabsm::Base;
 use Yabsm::Config;
 
-die "yabsmd: error: permission denied\n" if $<;
-
+my $usage = "usage: yabsmd <start|stop|restart|status>\n";
 my $yabsmd_pid_file = '/run/yabsmd.pid';
+  
+main(@ARGV);
+
+sub main {
+    my $cmd = shift or die $usage;
+    
+    shift and die $usage;
+
+    if    ($cmd eq 'start')   { yabsmd_start()   }
+    elsif ($cmd eq 'stop')    { yabsmd_stop()    }
+    elsif ($cmd eq 'restart') { yabsmd_restart() }
+    elsif ($cmd eq 'status')  { yabsmd_status()  }
+    else                      { die $usage       }
+}
+
+sub yabsmd_pid {
+
+    # If there is a running instance of yabsmd return its pid
+    # otherwise return 0.
+
+    my $pid_file_pid;
+    if (open my $fh, '<', $yabsmd_pid_file) {
+        $pid_file_pid = <$fh>;
+        close $fh;
+    }
+
+    my $pgrep_pid = `pgrep -u root ^yabsmd`;
+    
+    my $is_running = $pid_file_pid && $pgrep_pid && $pid_file_pid eq $pgrep_pid;
+
+    return $is_running ? $pgrep_pid : 0;
+}
 
 sub cleanup_and_exit {
-    if (-r $yabsmd_pid_file) {
-        open my $fh, '<', $yabsmd_pid_file;
-        my $yabsmd_pid = <$fh>;
-        close $fh;
+    if (my $yabsmd_pid = yabsmd_pid()) {
         unlink $yabsmd_pid_file;
         kill 'KILL', $yabsmd_pid;
     }
     else {
-        confess "yabsmd: internal error: cannot read $yabsmd_pid_file";
+        confess "yabsmd: internal error: can not find a running instance of yabsmd";
     }
 }
 
-sub main {
-
-    # pid file is used as a lock to ensure theres only
-    # one running instance of yabsmd.
-    if (-f $yabsmd_pid_file) {
-        die "yabsmd: error: there is already a running instance of yabsmd\n"
+sub yabsmd_start {
+    
+    # There can only ever be one running instance of yabsmd.
+    if (my $yabsmd_pid = yabsmd_pid()) {
+        die "yabsmd: error: yabsmd is already running as pid $yabsmd_pid\n"
     }
 
     # Daemons ignore SIGHUP.
@@ -87,7 +114,32 @@ sub main {
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
 
-    $cron_scheduler->run(detach => 1, pid_file => $yabsmd_pid_file);
+    my $pid = $cron_scheduler->run(detach => 1, pid_file => $yabsmd_pid_file);
+
+    say "yabsmd started as pid $pid";
 }
 
-main();
+sub yabsmd_stop {
+    if (my $pid = yabsmd_pid()) {
+        say "Stopping yabsmd process running as pid $pid";
+        kill 'TERM', $pid;
+    }
+    else {
+        say STDERR "no running instance of yabsmd";
+    }
+}
+
+sub yabsmd_restart {
+    yabsmd_stop();
+    sleep 1;
+    yabsmd_start();
+}
+
+sub yabsmd_status {
+    if (my $pid = yabsmd_pid()) {
+        say "yabsmd is running as pid $pid";
+    }
+    else {
+        say STDERR "no running instance of yabsmd";
+    }
+}

@@ -64,6 +64,7 @@ sub cleanup_and_exit {
         unlink $yabsmd_pid_file;
         kill 'KILL', $yabsmd_pid;
     }
+    
     else {
         confess "yabsmd: internal error: can not find a running instance of yabsmd";
     }

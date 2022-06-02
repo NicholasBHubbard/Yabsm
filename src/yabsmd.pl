@@ -71,7 +71,7 @@ sub cleanup_and_exit {
 }
 
 sub yabsmd_start {
-    
+
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {
         die "yabsmd: error: yabsmd is already running as pid $yabsmd_pid\n"

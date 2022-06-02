@@ -78,8 +78,8 @@ sub yabsmd_start {
         die "yabsmd: error: yabsmd is already running as pid $yabsmd_pid\n"
     }
 
-    # Daemons ignore SIGHUP.
-    $SIG{HUP}    = 'IGNORE';
+    # Daemons should restart on a SIGHUP.
+    $SIG{HUP}    = \&yabsmd_restart;
 
     # Yabsmd will exit gracefully on any signal that has a
     # default disposition to core dump or terminate.

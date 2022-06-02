@@ -57,6 +57,9 @@ sub yabsmd_pid {
 }
 
 sub cleanup_and_exit {
+
+    # Used as signal handler for default terminating signals. 
+    
     if (my $yabsmd_pid = yabsmd_pid()) {
         unlink $yabsmd_pid_file;
         kill 'KILL', $yabsmd_pid;

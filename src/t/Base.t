@@ -1137,40 +1137,6 @@ sub test_local_yabsm_dir {
     ok ( $correct1 && $correct2 && $correct3, 'local_yabsm_dir()' );
 }
 
-test_is_day_of_week();
-sub test_is_day_of_week {
-
-    my $t1 = Yabsm::Base::is_day_of_week('monday');
-    my $t2 = Yabsm::Base::is_day_of_week('tuesday');
-    my $t3 = Yabsm::Base::is_day_of_week('wednesday');
-    my $t4 = Yabsm::Base::is_day_of_week('thursday');
-    my $t5 = Yabsm::Base::is_day_of_week('friday');
-    my $t6 = Yabsm::Base::is_day_of_week('saturday');
-    my $t7 = Yabsm::Base::is_day_of_week('sunday');
-
-    my $f1  = Yabsm::Base::is_day_of_week('mon');
-    my $f2  = Yabsm::Base::is_day_of_week('tue');
-    my $f3  = Yabsm::Base::is_day_of_week('wed');
-    my $f4  = Yabsm::Base::is_day_of_week('thu');
-    my $f5  = Yabsm::Base::is_day_of_week('fri');
-    my $f6  = Yabsm::Base::is_day_of_week('sat');
-    my $f7  = Yabsm::Base::is_day_of_week('MONDAY');
-    my $f8  = Yabsm::Base::is_day_of_week('Monday');
-    my $f9  = Yabsm::Base::is_day_of_week('mOnday');
-    my $f10 = Yabsm::Base::is_day_of_week('moNday');
-    my $f11 = Yabsm::Base::is_day_of_week(' monday');
-    my $f12 = Yabsm::Base::is_day_of_week('monday ');
-    my $f13 = Yabsm::Base::is_day_of_week(' monday ');
-    my $f14 = Yabsm::Base::is_day_of_week('mondays');
-
-    my $trues =  $t1 && $t2 && $t3 && $t4 && $t5 && $t6 && $t7;
-
-    my $falses = not( $f1 || $f2 || $f3 || $f4 || $f5 || $f6 || $f7 ||
-                      $f8 || $f9 || $f10 || $f11 || $f12 || $f13 || $f14);
-
-    ok ( $trues && $falses, 'is_day_of_week()' );
-}
-
 test_day_of_week_num();
 sub test_day_of_week_num {
 

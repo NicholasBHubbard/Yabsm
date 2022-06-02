@@ -22,7 +22,6 @@ use Yabsm::Base;
 use Yabsm::Config;
 
 my $usage = "usage: yabsmd <start|stop|restart|status>\n";
-my $yabsmd_pid_file = '/run/yabsmd.pid';
   
 main(@ARGV);
 
@@ -44,7 +43,7 @@ sub yabsmd_pid {
     # otherwise return 0.
 
     my $pid_file_pid;
-    if (open my $fh, '<', $yabsmd_pid_file) {
+    if (open my $fh, '<', '/run/yabsmd.pid') {
         chomp($pid_file_pid = <$fh>);
         close $fh;
     }
@@ -61,7 +60,7 @@ sub cleanup_and_exit {
     # Used as signal handler for default terminating signals. 
     
     if (my $yabsmd_pid = yabsmd_pid()) {
-        unlink $yabsmd_pid_file;
+        unlink '/run/yabsmd.pid';
         kill 'KILL', $yabsmd_pid;
     }
     
@@ -120,7 +119,7 @@ sub yabsmd_start {
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
 
-    my $pid = $cron_scheduler->run(detach => 1, pid_file => $yabsmd_pid_file);
+    my $pid = $cron_scheduler->run(detach => 1, pid_file => '/run/yabsmd.pid');
 
     say "yabsmd started as pid $pid";
 }

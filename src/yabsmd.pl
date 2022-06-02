@@ -45,12 +45,12 @@ sub yabsmd_pid {
 
     my $pid_file_pid;
     if (open my $fh, '<', $yabsmd_pid_file) {
-        $pid_file_pid = <$fh>;
+        chomp($pid_file_pid = <$fh>);
         close $fh;
     }
 
-    my $pgrep_pid = `pgrep -u root ^yabsmd`;
-    
+    my $pgrep_pid = `pgrep ^yabsmd | tr -d '\n'`;
+
     my $is_running = $pid_file_pid && $pgrep_pid && $pid_file_pid eq $pgrep_pid;
 
     return $is_running ? $pgrep_pid : 0;

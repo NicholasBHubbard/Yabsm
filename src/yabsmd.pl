@@ -75,14 +75,14 @@ sub yabsmd_start {
     
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {
-        die "yabsmd: error: yabsmd is already running as pid $yabsmd_pid\n"
+        die "yabsmd: error: yabsmd tried to start when there is already a running as pid $yabsmd_pid\n";
     }
 
     # Daemons should restart on a SIGHUP.
     $SIG{HUP}    = \&yabsmd_restart;
 
     # Yabsmd will exit gracefully on any signal that has a
-    # default disposition to core dump or terminate.
+    # default action of terminate or dump.
     $SIG{ABRT}   = \&cleanup_and_exit;
     $SIG{ALRM}   = \&cleanup_and_exit;
     $SIG{BUS}    = \&cleanup_and_exit;
@@ -116,6 +116,7 @@ sub yabsmd_start {
         , processprefix => 'yabsmd'
     );
 
+    # Schedule the snapshots and backups based off the users config.
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
 

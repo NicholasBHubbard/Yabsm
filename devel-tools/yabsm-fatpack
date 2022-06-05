@@ -1,7 +1,8 @@
 #!/usr/bin/env perl
 
 # Use App::FatPacker to pack all of yabsm including its dependencies into one
-# script. The end user will be given only the fatpacked script.
+# script. The end user will be given only the fatpacked script that is stripped
+# of comments and pod by Perl::Tidy.
 
 use strict;
 use warnings;
@@ -23,11 +24,26 @@ chomp $plx;
 
 my $fatpack = "$yabsm_root/local/bin/fatpack";
 
-my $fatpack_yabsm_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsm.pl > $yabsm_root/export/yabsm.fatpack.pl";
-my $fatpack_yabsmd_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsmd.pl > $yabsm_root/export/yabsmd.fatpack.pl";
+my $yabsm_fatpacked = "$yabsm_root/export/yabsm.fatpack.pl";
+my $yabsmd_fatpacked = "$yabsm_root/export/yabsmd.fatpack.pl";
+
+my $fatpack_yabsm_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsm.pl > $yabsm_fatpacked";
+my $fatpack_yabsmd_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsmd.pl > $yabsmd_fatpacked";
 
 say "$script: executing: $fatpack_yabsm_cmd";
-0 == system($fatpack_yabsm_cmd) || die "$script: error: could not fatpack $yabsm_root/src/yabsm.pl";
+0 == system($fatpack_yabsm_cmd) or die "$script: error: could not fatpack $yabsm_root/src/yabsm.pl";
 
 say "$script: executing: $fatpack_yabsmd_cmd";
-0 == system($fatpack_yabsmd_cmd) || die "$script: error: could not fatpack $yabsm_root/src/yabsmd.pl";
+0 == system($fatpack_yabsmd_cmd) or die "$script: error: could not fatpack $yabsm_root/src/yabsmd.pl";
+
+my $perltidy = "$yabsm_root/local/bin/perltidy";
+my $strip_yabsm_cmd = "$perltidy --delete-pod --delete-block-comments --delete-side-comments $yabsm_fatpacked";
+my $strip_yabsmd_cmd = "$perltidy --delete-pod --delete-block-comments --delete-side-comments $yabsmd_fatpacked";
+
+say "$script: executing: $strip_yabsm_cmd";
+0 == system($fatpack_yabsm_cmd) or die "$script: error: could not strip $yabsm_fatpacked";
+
+say "$script: executing: $strip_yabsmd_cmd";
+0 == system($fatpack_yabsmd_cmd) or die "$script: error: could not strip $yabsmd_fatpacked";
+
+say 'all good';

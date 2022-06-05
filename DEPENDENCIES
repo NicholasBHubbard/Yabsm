@@ -27,3 +27,4 @@ lib::relative@1.000
 Array::Utils@0.5
 List::Util@1.33
 Feature::Compat::Try@0.04 # Issues with fatpacking if version >0.04.
+Perl::Tidy@20220217

@@ -1,15 +1,18 @@
 # -*- mode:org;mode:auto-fill;fill-column:80 -*-
 #+title: YABSM (yet another btrfs snapshot manager)
 #+author: Nicholas Hubbard
+
+* What is Yabsm?
+
+Yabsm is a btrfs snapshot manager that runs as a daemon and allows you to
+organize your snapshots into 5minute, hourly, daily, and monthly timeslots.
+
+Yabsm is also a btrfs snapshot backup manager. You can define backups that
+use btrfs send/receive to perform incremental backups over ssh.
+
 * Contents
-  + [[#Features][Features]]
-  + [[#Dependencies][Dependencies]]
-  + [[#Installation][Installation]]
-  + [[#Post-Installation][Post Installation]]
   + [[#Configuration][Configuration]]
-  + [[#Commands][Commands]]
-  + [[#Finding-Snapshots][Finding Snapshots]]
-  + [[#Remote-Backups][Remote Backups]]
+  
 
 # Features
 * Features
@@ -72,10 +75,12 @@ For more information on how to create a configuration see the section below.
 
 *** Example Config
 #+BEGIN_SRC 
-    # /etc/yabsm.conf
+    # /etc/yabsmd.conf
 
     yabsm_dir=/.snapshots/yabsm
 
+    # Lets define some subvols
+  
     subvol home {
         mountpoint=/home
 
@@ -86,16 +91,38 @@ For more information on how to create a configuration see the section below.
         hourly_keep=24
 
         daily_want=yes
-        daily_time=23:59
+        daily_time=18:00
         daily_keep=30
 
         weekly_want=yes
         weekly_day=wednesday
-        weekly_time=00:00
+        weekly_time=09:30
         weekly_keep=12
 
         monthly_want=no
+        monthly_day=13
+        monthly_time=05:00
+        monthly_keep=12
     }
+
+    subvol root {
+        mountpoint=/
+
+        5minute_want=no
+
+        hourly_want=no
+
+        daily_want=no
+
+        weekly_want=yes
+        weekly_day=friday
+        weekly_time=23:59
+        weekly_keep=52
+
+        monthly_want=no
+    }
+
+    # Now lets backup the subvols
 
     backup homeBackup {
         subvol=home
@@ -104,13 +131,23 @@ For more information on how to create a configuration see the section below.
 
         host=alice@192.168.1.73
 
-        backup_dir=/backups/yabsm/desktopHomeBackup
+        # the remote dir
+        backup_dir=/.snapshots/backups/yabsm/desktopHomeBackup
 
         timeframe=daily
 
         time=23:59
 
         keep=365
+    }
+
+    backup rootBackup {
+        subvol=root
+
+        remote=no
+
+        # this is a local dir because remote=no
+        backup_dir=/.snapshots/slkserverRootBackup
     }
 #+END_SRC 
   

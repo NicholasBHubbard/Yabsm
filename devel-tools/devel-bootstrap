@@ -46,7 +46,8 @@ sub main {
     GetOptions('b=s' => \$perl_dir, 'help|h' => \$help) or die "$usage";
     print $usage and exit 0 if $help;
 
-    die unless $perl_dir =~ /perl-5\.16\.3?\/$/;
+    die "$script: error: directory $perl_dir is not named perl-5.16.3\n"
+      unless $perl_dir =~ /perl-5\.16\.3\/?$/;
 
     # main chdir $yabsm_root;
     my $perl = install_perl($perl_dir);

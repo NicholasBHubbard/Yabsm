@@ -1,0 +1,21 @@
+# -*- mode:org;mode:auto-fill;fill-column:66 -*-
+#+title: Yabsm Todo File
+#+author: Nicholas Hubbard
+
+* TODO Todo for version 3.73
+
+- [ ] Write groff manual so we can ship a man page.
+- [X] Write an rc init script for yabsmd.
+- [ ] Add logging.
+- [ ] Grub integration.
+- [ ] Implement yabsm list snapshots command.
+- [ ] SSH output should go through a non root user.»
+- [X] Make yabsmd handle all signals that terminate the program.
+- [ ] Write a cpanfile to specify dependencies
+- [X] Improve error messages on erroneous configas
+- [X] Let user select day for monthly snapshots.
+- [ ] Write server authentication script to setup yabsm user.
+- [ ] Improve test suite.
+- [ ] Create Makefile that cleans the fatpacked scripts.
+- [ ] Create a comment that shows the tree structure of a produced
+      config in src/lib/Config.pm.

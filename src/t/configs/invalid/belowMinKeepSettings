@@ -23,6 +23,7 @@ subvol home {
 
        monthly_want=yes
        monthly_time=00:00
+       monthly_day=30
        monthly_keep=0 # minimum is 1
 }
 

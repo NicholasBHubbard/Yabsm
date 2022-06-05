@@ -1,0 +1,28 @@
+#
+# This config shows that the the order we define settings doesn't matter
+#
+
+yabsm_dir=/
+
+subvol home {
+    mountpoint=/home
+    5minute_want=no
+    hourly_want=no
+    daily_want=no
+    weekly_want=no
+    
+    monthly_want=yes
+    monthly_keep=12
+    monthly_time=23:59
+    monthly_day=32 # <- Error
+}
+
+backup homeBackup {
+    subvol=home
+    remote=no
+    backup_dir=/home
+    timeframe=monthly
+    keep=12
+    monthly_time=23:59
+    monthly_day=123 # <- Error
+}

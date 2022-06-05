@@ -21,11 +21,12 @@ use lib::relative 'lib';
 use Yabsm::Base;
 use Yabsm::Config;
 
-my $usage = "usage: yabsmd <start|stop|restart|status>\n";
-  
 main(@ARGV);
 
 sub main {
+
+    my $usage = "usage: yabsmd <start|stop|restart|status>\n";
+
     my $cmd = shift or die $usage;
     
     shift and die $usage;
@@ -41,14 +42,14 @@ sub yabsmd_pid {
 
     # If there is a running instance of yabsmd return its pid
     # otherwise return 0.
+    
+    my $pgrep_pid = `pgrep ^yabsmd | tr -d '\n'`;
 
     my $pid_file_pid;
     if (open my $fh, '<', '/run/yabsmd.pid') {
         chomp($pid_file_pid = <$fh>);
         close $fh;
     }
-
-    my $pgrep_pid = `pgrep ^yabsmd | tr -d '\n'`;
 
     my $is_running = $pid_file_pid && $pgrep_pid && $pid_file_pid eq $pgrep_pid;
 

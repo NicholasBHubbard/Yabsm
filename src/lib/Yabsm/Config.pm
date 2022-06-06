@@ -89,7 +89,7 @@ sub p {
                 my $kvs  = $self->scope_of('{', 'subvol_def_p', '}');
                 $config{subvols}{$name} = $kvs;
             },
-            sub {                     
+            sub {
                 $self->token_kw( 'backup' );
                 $self->commit;
                 my $name = $self->maybe_expect( $regex{subject_name} );
@@ -97,7 +97,7 @@ sub p {
                 my $kvs  = $self->scope_of('{', 'backup_def_p', '}');
                 $config{backups}{$name} = $kvs;
             },
-            sub { 
+            sub {
                 my $k = $self->token_kw( misc_keywords() );
                 $self->commit;
                 $self->maybe_expect( '=' ) // $self->fail("expected '='");
@@ -156,7 +156,7 @@ sub subvol_def_p {
         elsif ($k eq 'monthly_day') {
             $v = $self->maybe_expect( $regex{month_day} );
             $v // $self->fail('expected integer in range 1-31');
-        } 
+        }
         else {
             confess "yabsm: internal error: no such subvol setting '$k'";
         }
@@ -311,7 +311,7 @@ sub missing_backup_settings {
             if ($remote eq 'yes') {
                 push @req, 'host';
             }
-            
+
             if ($tframe eq 'daily') {
                 push @req, 'daily_time';
             }

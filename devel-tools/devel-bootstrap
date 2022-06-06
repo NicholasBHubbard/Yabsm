@@ -75,7 +75,7 @@ sub install_perl {
         0 == system($cmd) or die "$script: error: could not install perl v5.16.3 via Perl::Build\n";
     }
 
-    unless ('5.016003' eq `$perl -e 'print $]'`) {
+    unless ('5.016003' eq `$perl -e 'print \$]'`) {
         die "$perl is not a perl v5.16.3 interpreter\n";
     }
 

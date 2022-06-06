@@ -7,7 +7,7 @@
 # Perl::Build      - https://metacpan.org/pod/Perl::Build
 # App::plx         - https://metacpan.org/pod/App::plx
 # App::cpanminus   - https://metacpan.org/pod/App::cpanminus
-# Module::CPANfile - https://metacpan.org/pod/Module::CPANfile  
+# Module::CPANfile - https://metacpan.org/pod/Module::CPANfile
 
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ use v5.16.3;
 
 use Cwd qw(abs_path);
 use File::Basename qw(basename dirname);
-use File::Path qw(make_path);
+use File::Path qw(make_path rmtree);
 
 use autodie;
 
@@ -66,7 +66,7 @@ sub install_perl {
     my $dir = shift or die;
 
     my $perl = "$dir/bin/perl";
-    
+
     unless (-x $perl) {
         # This command builds perl v5.16.13 using Perl::Build's bootstrapping
         # feature, which means we don't need to install Perl::Build explicitly.
@@ -84,14 +84,14 @@ sub install_perl {
 }
 
 sub init_plx {
-    
+
     # Initialize plx to point at the perl executable $perl. If plx
     # is already installed on the system then use the system plx,
     # otherwise bootstrap a new plx and install it into
     # $yabsm_root/local/bin
-    
+
     my $perl = shift or die;
-    
+
     my $plx = '';
     $plx = "$yabsm_root/local/bin/plx" if -x "$yabsm_root/local/bin/plx";
     $plx = `sh -c 'command -v plx'` if `sh -c 'command -v plx'`;
@@ -106,10 +106,10 @@ sub init_plx {
         chmod 0555, $plx;
     }
 
-    my $plx_init_cmd = "$plx --init $perl";
+    rmtree "$yabsm_root/.plx" if -d "$yabsm_root/.plx";
 
+    my $plx_init_cmd = "$plx --init $perl";
     say "$script: executing: $plx_init_cmd";
-    
     0 == system($plx_init_cmd) or die "$script: error: could not initialize plx\n";
 
     return $plx;
@@ -120,10 +120,10 @@ sub install_deps {
     # Install deps from /CPANFILE using $plx and cpanminus.
 
     my $plx = shift or die;
-    
+
     my $cpanfile = "$yabsm_root/CPANFILE";
-    
-    my $install_cmd = "PERL_CPANM_HOME=$yabsm_root $plx --cpanm -Llocal -v --cpanfile $cpanfile";
+
+    my $install_cmd = "PERL_CPANM_HOME=$yabsm_root $plx --cpanm -L local -v -f --cpanfile $cpanfile --installdeps .";
 
     say "$script: executing: $install_cmd";
 

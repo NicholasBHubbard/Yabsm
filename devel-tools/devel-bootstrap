@@ -42,8 +42,8 @@ main();
 sub main {
 
     # get options
-    my $perl_dir = "$yabsm_root/perl-5.16.3";
     my $help;
+    my $perl_dir = "$yabsm_root/perl-5.16.3";
     GetOptions('b=s' => \$perl_dir, 'help|h' => \$help) or die $usage;
     print $usage and exit 0 if $help;
 

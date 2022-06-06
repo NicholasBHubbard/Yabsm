@@ -28,7 +28,7 @@ sub main {
     my $usage = "usage: yabsmd <start|stop|restart|status>\n";
 
     my $cmd = shift or die $usage;
-    
+
     shift and die $usage;
 
     if    ($cmd eq 'start')   { yabsmd_start()   }
@@ -42,7 +42,7 @@ sub yabsmd_pid {
 
     # If there is a running instance of yabsmd return its pid
     # otherwise return 0.
-    
+
     my $pgrep_pid = `pgrep ^yabsmd | tr -d '\n'`;
 
     my $pid_file_pid;
@@ -58,13 +58,13 @@ sub yabsmd_pid {
 
 sub cleanup_and_exit {
 
-    # Used as signal handler for default terminating signals. 
-    
+    # Used as signal handler for default terminating signals.
+
     if (my $yabsmd_pid = yabsmd_pid()) {
         unlink '/run/yabsmd.pid';
         kill 'KILL', $yabsmd_pid;
     }
-    
+
     else {
         confess "yabsmd: internal error: can not find a running instance of yabsmd";
     }
@@ -73,7 +73,7 @@ sub cleanup_and_exit {
 sub yabsmd_start {
 
     die "yabsmd: error: permission denied\n" if $<;
-    
+
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {
         die "yabsmd: error: yabsmd tried to start when there is already a running as pid $yabsmd_pid\n";
@@ -129,7 +129,7 @@ sub yabsmd_start {
 sub yabsmd_stop {
 
     die "yabsmd: error: permission denied\n" if $<;
-    
+
     if (my $pid = yabsmd_pid()) {
         say "Stopping yabsmd process running as pid $pid";
         kill 'TERM', $pid;
@@ -140,13 +140,13 @@ sub yabsmd_stop {
 }
 
 sub yabsmd_restart {
-    
+
     die "yabsmd: error: permission denied\n" if $<;
-    
+
     yabsmd_stop();
-    
+
     sleep 1;
-    
+
     yabsmd_start();
 }
 

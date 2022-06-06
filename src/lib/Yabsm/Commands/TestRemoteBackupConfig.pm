@@ -53,10 +53,10 @@ sub main {
     # make sure user has read/write permissions on the remote backup_dir
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    my $backup_dir_exists =  
+    my $backup_dir_exists =
       "if ! [ -d $backup_dir ]; then "
     . qq(echo -n "yabsm: error: no such directory '$backup_dir' at host '$host'"; fi);
-    
+
     if (my $out = $ssh->capture( $backup_dir_exists )) {
         die "$out\n";
     }

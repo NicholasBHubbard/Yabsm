@@ -10,6 +10,7 @@ use v5.16.3;
 
 use Cwd qw/abs_path/;
 use File::Basename qw/basename dirname/;
+use File::Path qw(rmtree);
 
 my $script = basename(__FILE__);
 my $yabsm_root = dirname(abs_path(__FILE__ . '/..'));
@@ -29,8 +30,8 @@ my $fatpack_yabsm_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsm.pl > $y
 my $fatpack_yabsmd_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsmd.pl > $yabsmd_fatpacked";
 
 my $perltidy = "$yabsm_root/local/bin/perltidy";
-my $strip_yabsm_cmd = "$perltidy --delete-pod --delete-block-comments --delete-side-comments $yabsm_fatpacked";
-my $strip_yabsmd_cmd = "$perltidy --delete-pod --delete-block-comments --delete-side-comments $yabsmd_fatpacked";
+my $strip_yabsm_cmd = "$plx $perltidy --delete-pod --delete-block-comments --delete-side-comments $yabsm_fatpacked";
+my $strip_yabsmd_cmd = "$plx $perltidy --delete-pod --delete-block-comments --delete-side-comments $yabsmd_fatpacked";
 
 chdir "$yabsm_root/src";
 
@@ -45,5 +46,7 @@ say "$script: executing: $strip_yabsm_cmd";
 
 say "$script: executing: $strip_yabsmd_cmd";
 0 == system($fatpack_yabsmd_cmd) or die "$script: error: could not strip $yabsmd_fatpacked";
+
+rmtree "$yabsm_root/src/fatlib";
 
 say 'all good';

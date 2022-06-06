@@ -8,4 +8,3 @@ requires 'lib::relative', '== 1.000';
 requires 'Array::Utils', '== 0.5';
 requires 'List::Util', '== 1.33';
 requires 'Feature::Compat::Try', '== 0.04';
-requires 'Perl::Tidy', '== 20220217';

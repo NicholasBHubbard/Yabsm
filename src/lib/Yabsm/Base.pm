@@ -32,7 +32,6 @@ use v5.16.3;
 
 use Net::OpenSSH;
 use Time::Piece;
-use Carp;
 use List::Util 1.33 qw(any);
 use File::Path qw(make_path);
 
@@ -149,7 +148,7 @@ sub do_backup_bootstrap { # No test. Is not pure.
     }
 
     else {
-	confess "yabsm: internal error: no such user defined backup '$backup'";
+	log_fatal "yabsm: internal error: no such user defined backup '$backup'";
     }
 
     return;
@@ -274,7 +273,7 @@ sub do_backup { # No test. Is not pure.
     }
 
     else {
-	confess "yabsm: internal error: no such defined backup '$backup'";
+	log_fatal "yabsm: internal error: no such defined backup '$backup'";
     }
 
     return;
@@ -290,7 +289,7 @@ sub do_backup_local { # No test. Is not pure.
     my $backup     = shift // log_fatal missing_arg();
 
     if (not has_bootstrap($config_ref, $backup)) {
-        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
+        log_fatal "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
     # bootstrap dir should have exactly one snap
@@ -330,7 +329,7 @@ sub do_backup_ssh { # No test. Is not pure.
     my $backup     = shift // log_fatal missing_arg();
 
     if (not has_bootstrap($config_ref, $backup)) {
-        confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
+        log_fatal "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
     # bootstrap snapshot dir should have exactly one snapshot.
@@ -483,7 +482,7 @@ sub has_bootstrap { # No test. Is not pure.
     return 0 if not -d $bootstrap_snap_dir;
 
     opendir(my $dh, $bootstrap_snap_dir) or
-      confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
+      log_fatal "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
 
     my @snaps = grep { /^[^.]/ } readdir($dh);
 
@@ -636,7 +635,7 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
     if    ($unit =~ /^(minutes|mins|m)$/) { $seconds_per_unit = 60    }
     elsif ($unit =~ /^(hours|hrs|h)$/   ) { $seconds_per_unit = 3600  }
     elsif ($unit =~ /^(days|d)$/        ) { $seconds_per_unit = 86400 }
-    else  { confess "yabsm: internal error: '$unit' is not a valid time unit" }
+    else  { log_fatal "yabsm: internal error: '$unit' is not a valid time unit" }
 
     my $current_time = current_time_snapstring();
 
@@ -720,7 +719,7 @@ sub immediate_to_snapstring { # No test. Is pure.
     }
 
     # input should have already been cleansed.
-    confess "yabsm: internal error: '$imm' is not an immediate";
+    log_fatal "yabsm: internal error: '$imm' is not an immediate";
 }
 
 sub literal_time_to_snapstring { # Has test. Is pure.
@@ -772,7 +771,7 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     }
 
     # input should have already been cleansed.
-    confess "yabsm: internal error: '$lit_time' is not a valid literal time";
+    log_fatal "yabsm: internal error: '$lit_time' is not a valid literal time";
 }
 
 sub time_hour { # Has test. Is pure.
@@ -1108,7 +1107,7 @@ sub newest_snap { # Has test. Is not pure.
 	return $all_snaps_ref->[0];
     }
 
-    confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
+    log_fatal "yabsm: internal error: '$ref' has ref type '$ref_type'";
 }
 
 sub oldest_snap { # Has test. Is not pure.
@@ -1133,7 +1132,7 @@ sub oldest_snap { # Has test. Is not pure.
 	return $all_snaps_ref->[-1];
     }
 
-    confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
+    log_fatal "yabsm: internal error: '$ref' has ref type '$ref_type'";
 }
 
 sub answer_query { # No test. Is not pure.
@@ -1216,7 +1215,7 @@ sub answer_query { # No test. Is not pure.
     }
 
     else { # input should have already been cleansed
-	confess "yabsm: internal error: '$query' is not a valid query";
+	log_fatal "yabsm: internal error: '$query' is not a valid query";
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;
@@ -1617,7 +1616,7 @@ sub day_of_week_num { # Has test. Is pure.
     elsif ($dow =~ /^saturday$/)  { return 6 }
     elsif ($dow =~ /^sunday$/)    { return 7 }
     else {
-        confess "yabsm: internal error: no such day of week '$dow'";
+        log_fatal "yabsm: internal error: no such day of week '$dow'";
     }
 }
 

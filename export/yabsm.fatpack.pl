@@ -504,7 +504,7 @@ FILE_SLURP_TINY
 $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_OPENSSH';
   package Net::OpenSSH;
   
-  our $VERSION = '0.80';
+  our $VERSION = '0.82';
   
   use strict;
   use warnings;
@@ -1875,7 +1875,8 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
       my $ssh_flags = '';
       $ssh_flags .= ($tty ? 'qtt' : 'T') if defined $tty;
       if ($self->{_forward_agent}) {
-          my $forward_agent = delete $opts{forward_agent};
+  	my $forward_always = (($self->{_forward_agent} eq 'always') ? 1 : undef);
+          my $forward_agent = _first_defined(delete($opts{forward_agent}), $forward_always);
           $ssh_flags .= ($forward_agent ? 'A' : 'a') if defined $forward_agent;
       }
       if ($self->{_forward_X11}) {
@@ -2038,9 +2039,9 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
       my $ssh_opts = delete $opts{ssh_opts};
       $ssh_opts = $self->{_default_ssh_opts} unless defined $ssh_opts;
       my @ssh_opts = $self->_expand_vars(_array_or_scalar_to_list $ssh_opts);
-  
       if ($self->{_forward_agent}) {
-          my $forward_agent = delete $opts{forward_agent};
+  	my $forward_always = (($self->{_forward_agent} eq 'always') ? 1 : undef);
+          my $forward_agent = _first_defined(delete($opts{forward_agent}), $forward_always);
           $ssh_flags .= ($forward_agent ? 'A' : 'a') if defined $forward_agent;
       }
       if ($self->{_forward_X11}) {
@@ -2818,9 +2819,9 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
                                               skip-compress filter exclude exclude-from include include-from
                                               out-format log-file log-file-format bwlimit protocol iconv checksum-seed files-from);
   
-  my %rsync_opt_forbidden = map { $_ => 1 } qw(rsh address port sockopts blocking-io password-file write-batch
+  my %rsync_opt_forbidden = map { $_ => 1 } qw(rsh address port sockopts password-file write-batch
                                               only-write-batch read-batch ipv4 ipv6 version help daemon config detach
-                                              blocking-io protect-args list-only);
+                                              protect-args list-only);
   
   $rsync_opt_forbidden{"no-$_"} = 1 for (keys %rsync_opt_with_arg, keys %rsync_opt_forbidden);
   
@@ -2861,7 +2862,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
       my $timeout = delete $opts{timeout};
       $quiet = 1 unless (defined $quiet or $verbose);
   
-      my @opts = qw(--blocking-io) ;
+      my @opts;
       push @opts, '-q' if $quiet;
       push @opts, '-pt' if $copy_attrs;
       push @opts, '-' . ($verbose =~ /^\d+$/ ? 'v' x $verbose : 'v') if $verbose;
@@ -3354,7 +3355,15 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
   
   =item forward_agent => 1
   
+  =item forward_agent => 'always'
+  
   Enables forwarding of the authentication agent.
+  
+  When C<always> is passed as the argument, agent forwarding will be
+  enabled by default in all the channels created from the
+  object. Otherwise, it will have to be explicitly requested when
+  calling the channel creating methods (i.e. C<open_ex> and its
+  derivations).
   
   This option can not be used when passing a passphrase (via
   L</passphrase>) to unlock the login private key.
@@ -4383,6 +4392,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
   In asynchronous mode, this method requires the connection to be
   terminated before it gets called. Afterwards, C<wait_for_master>
   should be called repeaptly until the new connection is stablished.
+  For instance:
   
     my $async = 1;
     $ssh->disconnect($async);
@@ -4397,7 +4407,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
     while (1) {
       defined $ssh->wait_for_master($async)
         and last;
-      do_somethin_else();
+      do_something_else();
     }
   
   
@@ -5782,7 +5792,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
   
   =head1 COPYRIGHT AND LICENSE
   
-  Copyright (C) 2008-2020 by Salvador FandiE<ntilde>o
+  Copyright (C) 2008-2022 by Salvador FandiE<ntilde>o
   (sfandino@yahoo.com)
   
   This library is free software; you can redistribute it and/or modify
@@ -8502,7 +8512,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   sub do_snapshot { # No test. Is not pure.
   
       # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
-      
+  
       my $config_ref = shift // confess missing_arg();
       my $subvol     = shift // confess missing_arg();
       my $timeframe  = shift // confess missing_arg();
@@ -8536,7 +8546,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   }
   
   sub delete_old_snapshots { # No test. Is not pure.
-      
+  
       # delete old snapshot(s) based off $subvol's ${timeframe}_keep
       # setting defined in the users config. This function should be
       # called directly after take_new_snapshot().
@@ -8553,7 +8563,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # There is 1 more snapshot than should be kept because we just
       # took a snapshot.
-      if ($num_snaps == $num_to_keep + 1) { 
+      if ($num_snaps == $num_to_keep + 1) {
   
   	# pop takes from the end of the array. This is the oldest snap
   	# because they are sorted newest to oldest.
@@ -8568,14 +8578,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       elsif ($num_snaps <= $num_to_keep) { return }
   
       # User changed their settings to keep less snapshots than they
-      # were keeping prior. 
-      else { 
-  	
+      # were keeping prior.
+      else {
+  
   	while ($num_snaps > $num_to_keep) {
   
   	    # pop mutates $existing_snaps_ref, and thus is not idempotent.
               my $oldest_snap = pop @$existing_snaps_ref;
-              
+  
   	    system("btrfs subvol delete $oldest_snap");
   
   	    $num_snaps--;
@@ -8680,11 +8690,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
       my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
-      
+  
       system("btrfs subvol snapshot -r $mountpoint $boot_snap");
   
       ### REMOTE ###
-      
+  
       # setup local bootstrap snap
       my $server_ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
   
@@ -8717,7 +8727,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if (not has_bootstrap($config_ref, $backup)) {
           do_backup_bootstrap($config_ref, $backup)
       }
-      
+  
       elsif (is_local_backup($config_ref, $backup)) {
   	do_backup_local($config_ref, $backup);
       }
@@ -8759,11 +8769,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
   
       make_path $tmp_dir if not -d $tmp_dir;
-      
+  
       my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
-      
+  
       system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-      
+  
       system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
   
       system("btrfs subvol delete $tmp_snap");
@@ -8793,7 +8803,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $subvol = $config_ref->{backups}{$backup}{subvol};
   
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-      
+  
       my $remote_host = $config_ref->{backups}{$backup}{host};
   
       my $server_ssh = new_ssh_connection($remote_host);
@@ -8801,20 +8811,20 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
       my $local_yabsm_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-      
+  
       make_path $local_yabsm_dir if not -d $local_yabsm_dir;
   
       my $snapshot = "$local_yabsm_dir/" . current_time_snapstring();
-  	
+  
       # main
-      
+  
       system("btrfs subvol snapshot -r $mountpoint $snapshot");
-  	
+  
       $server_ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $snapshot"]}
                           , "sudo -n btrfs receive $remote_backup_dir");
-  	
+  
       system("btrfs subvol delete $snapshot");
-  	
+  
       delete_old_backups_ssh($config_ref, $server_ssh, $backup);
   
       return;
@@ -8851,17 +8861,17 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       # We haven't reached the backup quota yet so we don't delete anything.
-      elsif ($num_backups <= $num_to_keep) { return } 
+      elsif ($num_backups <= $num_to_keep) { return }
   
       # User changed their settings to keep less backups than they
-      # were keeping prior. 
-      else { 
-  	
+      # were keeping prior.
+      else {
+  
   	while ($num_backups > $num_to_keep) {
-  	    
+  
   	    # note that pop mutates existing_snaps
   	    my $oldest_backup = pop @existing_backups;
-              
+  
   	    system("btrfs subvol delete $oldest_backup");
   
   	    $num_backups--;
@@ -8882,7 +8892,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $server_ssh = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
   
-      my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
+      my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
       my @existing_backups = all_backup_snaps($config_ref, $backup, $server_ssh);
   
@@ -8904,21 +8914,21 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       # We haven't reached the backup quota yet so we don't delete anything.
-      elsif ($num_backups <= $num_to_keep) { return } 
+      elsif ($num_backups <= $num_to_keep) { return }
   
       # User changed their settings to keep less backups than they
-      # were keeping prior. 
-      else { 
-  	
+      # were keeping prior.
+      else {
+  
   	while ($num_backups > $num_to_keep) {
   
   	    # note that pop mutates existing_snaps
   	    my $oldest_backup = pop @existing_backups;
-              
+  
   	    $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
   
   	    $num_backups--;
-  	} 
+  	}
   
   	return;
       }
@@ -8969,13 +8979,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           if (not @timeframes) {
               @timeframes = all_timeframes();
           }
-      
+  
           foreach my $tf (@timeframes) {
-          
+  
               my $snap_dir = local_yabsm_dir($config_ref, $subject, $tf);
-          
+  
               if (-d $snap_dir) {
-                  push @all_snaps, glob "$snap_dir/*"; 
+                  push @all_snaps, glob "$snap_dir/*";
               }
           }
   
@@ -8991,7 +9001,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   }
   
   sub all_backup_snaps { # No test. Is not pure.
-      
+  
       # Gather all snapshots (full paths) of $backup and return them
       # sorted from newest to oldest. A Net::OpenSSH connection object
       # can be passed as an arg if $backup is a remote backup, otherwise
@@ -9001,7 +9011,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $backup     = shift // confess missing_arg();
   
       my @all_backups = ();
-      
+  
       if (is_remote_backup($config_ref, $backup)) {
           my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
           my $remote_host = $config_ref->{backups}{$backup}{host};
@@ -9032,7 +9042,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       if (defined $subvol) {
   	$yabsm_dir .= "/$subvol";
-  	if (defined $timeframe) { 
+  	if (defined $timeframe) {
   	    $yabsm_dir .= "/$timeframe";
   	}
       }
@@ -9066,9 +9076,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   }
   
   sub current_time_snapstring { # No test. Is not pure.
-      
+  
       # Return a snapstring of the current time.
-      
+  
       my $t = localtime();
   
       return nums_to_snapstring($t->year, $t->mon, $t->mday, $t->hour, $t->min);
@@ -9078,7 +9088,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return a snapstring of the time $n $unit's ago from the current
       # time. The unit can be minutes, hours or days.
-     
+  
       my $n    = shift // confess missing_arg();
       my $unit = shift // confess missing_arg();
   
@@ -9105,7 +9115,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # An immediate is either a literal time or a relative time.
   
       my $imm = shift // confess missing_arg();
-      
+  
       return is_literal_time($imm) || is_relative_time($imm);
   }
   
@@ -9151,14 +9161,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $back_correct = $back =~ /^b(ack)?$/;
   
       my $amount_correct = $amount =~ /^\d+$/;
-      
+  
       my $unit_correct = any { $unit eq $_ } qw(minutes mins m hours hrs h days d);
-      
+  
       return $back_correct && $amount_correct && $unit_correct;
   }
   
   
-  sub immediate_to_snapstring { # No test. Is pure. 
+  sub immediate_to_snapstring { # No test. Is pure.
   
       # Resolve an immediate to a snapstring.
   
@@ -9172,7 +9182,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   	return relative_time_to_snapstring($imm);
       }
   
-      # input should have already been cleansed. 
+      # input should have already been cleansed.
       confess "yabsm: internal error: '$imm' is not an immediate";
   }
   
@@ -9218,13 +9228,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           my $t = localtime;
           return nums_to_snapstring($t->year, $t->mon, $1, $2, $3);
       }
-      
+  
       if ($lit_time =~ $hr_min) {
           my $t = localtime;
           return nums_to_snapstring($t->year, $t->mon, $t->mday, $1, $2);
       }
   
-      # input should have already been cleansed. 
+      # input should have already been cleansed.
       confess "yabsm: internal error: '$lit_time' is not a valid literal time";
   }
   
@@ -9260,7 +9270,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $n_units_ago_snapstring = n_units_ago_snapstring($amount, $unit);
   
-      return $n_units_ago_snapstring; 
+      return $n_units_ago_snapstring;
   }
   
   sub snapstring_to_nums { # Has test. Is pure.
@@ -9330,7 +9340,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return -1 if $snap1 is newer than $snap2.
       # Return 1 if $snap1 is older than $snap2
-      # Return 0 if $snap1 and $snap2 are the same. 
+      # Return 0 if $snap1 and $snap2 are the same.
       # Works with both plain snapstrings and full paths.
   
       my $snap1 = shift // confess missing_arg();
@@ -9362,11 +9372,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $snap;
   
       for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
-  	
+  
   	my $this_snap = $all_snaps_ref->[$i];
   
   	my $cmp = cmp_snaps($this_snap, $target_snap);
-  	
+  
   	# if $this_snap is the same as $target_snap
   	if ($cmp == 0) {
   	    $snap = $this_snap;
@@ -9389,7 +9399,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if (not defined $snap) {
   	$snap = oldest_snap($all_snaps_ref);
       }
-      
+  
       return $snap;
   }
   
@@ -9428,7 +9438,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   	my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $target_snap);  
+  	my $cmp = cmp_snaps($this_snap, $target_snap);
   
   	# if $this_snap is newer than $target_snap
   	if ($cmp == -1) {
@@ -9448,14 +9458,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $target_snap   = shift // confess missing_arg();
   
       my @older = ();
-      
+  
       my $last_idx = $#{ $all_snaps_ref };
   
       for (my $i = 0; $i <= $last_idx; $i++) {
   
   	my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $target_snap);  
+  	my $cmp = cmp_snaps($this_snap, $target_snap);
   
   	# if $this_snap is older than $target_snap
   	if ($cmp == 1) {
@@ -9509,7 +9519,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   	    # between (inclusive)
   	    push @snaps_between, $this_snap if $cmp == 0;
-  	    
+  
   	    for (my $j = $i+1; $j <= $last_idx; $j++) {
   
   		my $this_snap = $all_snaps_ref->[$j];
@@ -9531,7 +9541,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   		    push @snaps_between, $this_snap;
   		}
   	    }
-  	    
+  
   	    last;
   	}
       }
@@ -9571,7 +9581,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # config this is because the caller wants to get the oldest
       # snapshot of some subvol/backup, and thus will require an extra
       # argument denoting the desired subvol/backup.
-      
+  
       my $ref = shift // confess missing_arg();
   
       my $ref_type = ref($ref);
@@ -9585,7 +9595,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   	my $all_snaps_ref = all_snaps($ref, $subject);
   	return $all_snaps_ref->[-1];
       }
-      
+  
       confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
   }
   
@@ -9604,7 +9614,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my @snaps_to_return;
   
       if ($query eq 'all') {
-  	
+  
   	# return all the snaps
   
   	@snaps_to_return = @$all_snaps_ref;
@@ -9632,7 +9642,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   	# return the one snap closest to the time denoted by the immediate.
   
-  	my $target = immediate_to_snapstring($query); 
+  	my $target = immediate_to_snapstring($query);
   
   	my $snap = snap_closest_to($all_snaps_ref, $target);
   
@@ -9677,7 +9687,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   sub is_valid_query { # Has test. Is pure.
   
-      # True iff $query is a valid query. Used to validate 
+      # True iff $query is a valid query. Used to validate
       # user input query for 'yabsm find'.
   
       my $query = shift // confess missing_arg();
@@ -9739,7 +9749,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return 1 iff $query is a syntactically valid 'between' query.
       # A between query takes two immediate arguments and returns all
-      # snapshots between the two immediate times. 
+      # snapshots between the two immediate times.
   
       my $query = shift // confess missing_arg();
   
@@ -9789,7 +9799,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $config_ref = shift // confess missing_arg();
       my $subvol     = shift // confess missing_arg();
-      
+  
       my @tfs = ();
   
       foreach my $tf (all_timeframes()) {
@@ -9833,11 +9843,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my @backups = ();
   
       foreach my $backup (all_backups($config_ref)) {
-  	
+  
   	my $this_subvol = $config_ref->{backups}{$backup}{subvol};
   
   	if ($this_subvol eq $subvol) {
-  	    push @backups, $backup 
+  	    push @backups, $backup
   	}
       }
   
@@ -9861,10 +9871,10 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   sub is_subvol { # Has test. Is pure.
   
       # True iff $subvol is the name of a user defined subvol.
-      
+  
       my $config_ref = shift // confess missing_arg();
       my $subvol     = shift // confess missing_arg();
-      
+  
       return any { $subvol eq $_ } all_subvols($config_ref);
   }
   
@@ -9898,12 +9908,12 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Schedule snapshots based off user configuration by adding
       # them to $cron_scheduler object (see Schedule::Cron module).
-          
+  
       my $config_ref     = shift // confess missing_arg();
       my $cron_scheduler = shift // confess missing_arg();
   
       foreach my $subvol (all_subvols($config_ref)) {
-          
+  
           my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
           my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
           my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
@@ -9962,7 +9972,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Schedule backups based off user configuration by adding
       # them to $cron_scheduler object (see Schedule::Cron module).
-      
+  
       my $config_ref     = shift // confess missing_arg();
       my $cron_scheduler = shift // confess missing_arg();
   
@@ -9985,7 +9995,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           }
   
           elsif ($timeframe eq 'daily') {
-              my $time = $config_ref->{backups}{$backup}{time};
+              my $time = $config_ref->{backups}{$backup}{daily_time};
               my $hr   = time_hour($time);
               my $min  = time_minute($time);
               $cron_scheduler->add_entry(
@@ -9995,7 +10005,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           }
   
           elsif ($timeframe eq 'weekly') {
-              my $time = $config_ref->{backups}{$backup}{time};
+              my $time = $config_ref->{backups}{$backup}{weekly_time};
               my $hr   = time_hour($time);
               my $min  = time_minute($time);
               my $dow  = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
@@ -10006,7 +10016,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           }
   
           elsif ($timeframe eq 'monthly') {
-              my $time = $config_ref->{backups}{$backup}{time};
+              my $time = $config_ref->{backups}{$backup}{monthly_time};
               my $hr   = time_hour($time);
               my $min  = time_minute($time);
               my $day  = $config_ref->{backups}{$backup}{monthly_day};
@@ -10047,7 +10057,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       $server_ssh->error and
         die "yabsm: ssh error: could not establish ssh connection to '$remote_host' " . $server_ssh->error . "\n";
-      
+  
       return $server_ssh;
   }
   
@@ -10060,13 +10070,15 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $dow = shift // confess missing_arg();
   
-      if    ($dow =~ /^monday$/i)    { return 1 }
-      elsif ($dow =~ /^tuesday$/i)   { return 2 }
-      elsif ($dow =~ /^wednesday$/i) { return 3 }
-      elsif ($dow =~ /^thursday$/i)  { return 4 }
-      elsif ($dow =~ /^friday$/i)    { return 5 }
-      elsif ($dow =~ /^saturday$/i)  { return 6 }
-      elsif ($dow =~ /^sunday$/i)    { return 7 }
+      $dow = lc $dow;
+  
+      if    ($dow =~ /^monday$/)    { return 1 }
+      elsif ($dow =~ /^tuesday$/)   { return 2 }
+      elsif ($dow =~ /^wednesday$/) { return 3 }
+      elsif ($dow =~ /^thursday$/)  { return 4 }
+      elsif ($dow =~ /^friday$/)    { return 5 }
+      elsif ($dow =~ /^saturday$/)  { return 6 }
+      elsif ($dow =~ /^sunday$/)    { return 7 }
       else {
           confess "yabsm: internal error: no such day of week '$dow'";
       }
@@ -10079,7 +10091,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       return qw(monday tuesday wednesday thursday friday saturday sunday);
   }
   
-  sub missing_arg { 
+  sub missing_arg {
       return 'yabsm: internal error: subroutine missing a required arg';
   }
   
@@ -10306,10 +10318,10 @@ $fatpacked{"Yabsm/Commands/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).'
       # make sure user has read/write permissions on the remote backup_dir
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
-      my $backup_dir_exists =  
+      my $backup_dir_exists =
         "if ! [ -d $backup_dir ]; then "
       . qq(echo -n "yabsm: error: no such directory '$backup_dir' at host '$host'"; fi);
-      
+  
       if (my $out = $ssh->capture( $backup_dir_exists )) {
           die "$out\n";
       }
@@ -10359,7 +10371,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               , ssh_host     => qr/[-@.\/\w]+/
               , comment      => qr/#.*/
               , pos_int      => qr/[1-9]\d*/
-              , month_day    => qr/[1-31]/
+              , month_day    => qr/3[01]|[12][0-9]|[1-9]/ # 1-31
               , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
               );
   
@@ -10414,7 +10426,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                   my $kvs  = $self->scope_of('{', 'subvol_def_p', '}');
                   $config{subvols}{$name} = $kvs;
               },
-              sub {                     
+              sub {
                   $self->token_kw( 'backup' );
                   $self->commit;
                   my $name = $self->maybe_expect( $regex{subject_name} );
@@ -10422,7 +10434,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                   my $kvs  = $self->scope_of('{', 'backup_def_p', '}');
                   $config{backups}{$name} = $kvs;
               },
-              sub { 
+              sub {
                   my $k = $self->token_kw( misc_keywords() );
                   $self->commit;
                   $self->maybe_expect( '=' ) // $self->fail("expected '='");
@@ -10481,7 +10493,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           elsif ($k eq 'monthly_day') {
               $v = $self->maybe_expect( $regex{month_day} );
               $v // $self->fail('expected integer in range 1-31');
-          } 
+          }
           else {
               confess "yabsm: internal error: no such subvol setting '$k'";
           }
@@ -10512,7 +10524,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           elsif ($k eq 'timeframe') {
               $v = $self->token_kw( Yabsm::Base::all_timeframes() );
           }
-          elsif ($k eq 'time') {
+          elsif ($k =~ /(daily|weekly|monthly)_time$/) {
               $v = $self->maybe_expect( $regex{time} );
               $v // $self->fail(q(expected time in format 'hh:mm'));
           }
@@ -10636,15 +10648,15 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               if ($remote eq 'yes') {
                   push @req, 'host';
               }
-              
-              if ($tframe eq 'daily' || $tframe eq 'monthly') {
-                  push @req, 'time';
+  
+              if ($tframe eq 'daily') {
+                  push @req, 'daily_time';
               }
               elsif ($tframe eq 'weekly') {
-                  push @req, 'time', 'weekly_day';
+                  push @req, 'weekly_time', 'weekly_day';
               }
               elsif ($tframe eq 'monthly') {
-                  push @req, 'time', 'monthly_day';
+                  push @req, 'monthly_time', 'monthly_day';
               }
   
               if (my @missing = array_minus(@req, @def)) {
@@ -10683,7 +10695,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   }
   
   sub backup_keywords {
-      return qw(subvol remote host keep backup_dir timeframe time weekly_day monthly_day);
+      return qw(subvol remote host keep backup_dir timeframe daily_time weekly_time monthly_time weekly_day monthly_day);
   }
   
   sub misc_keywords {
@@ -12110,7 +12122,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix.pm"} = '#line '.(1+__LINE__).' "'.__FILE
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Infix 0.22;
+  package XS::Parse::Infix 0.23;
   
   use v5.14;
   use warnings;
@@ -12538,7 +12550,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder.pm"} = '#line '.(1+__LINE__).' "
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Infix::Builder 0.22;
+  package XS::Parse::Infix::Builder 0.23;
   
   use v5.14;
   use warnings;
@@ -12650,7 +12662,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder.pm"} = '#line '.(1+__LINE__).' "
 X86_64-LINUX_XS_PARSE_INFIX_BUILDER
 
 $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder_data.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_XS_PARSE_INFIX_BUILDER_DATA';
-  package XS::Parse::Infix::Builder_data 0.22;
+  package XS::Parse::Infix::Builder_data 0.23;
   
   use v5.14;
   use warnings;
@@ -12791,7 +12803,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   #
   #  (C) Paul Evans, 2021-2022 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Keyword 0.22;
+  package XS::Parse::Keyword 0.23;
   
   use v5.14;
   use warnings;
@@ -13071,6 +13083,19 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   new anonymous subroutine. This will be passed as a protosub CV in the I<cv>
   field.
   
+  =head2 XPK_ARITHEXPR
+  
+  I<atomic, emits op.>
+  
+     XPK_ARITHEXPR
+  
+  An arithmetic expression is expected, parsed using C<parse_arithexpr()>, and
+  passed as an optree in the I<op> field.
+  
+  =head2 XPK_ARITHEXPR_VOIDCTX, XPK_ARITHEXPR_SCALARCTX
+  
+  Variants of C<XPK_ARITHEXPR> which puts the expression in void or scalar context.
+  
   =head2 XPK_TERMEXPR
   
   I<atomic, emits op.>
@@ -13226,8 +13251,19 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   C<XPK_OPTIONAL> or C<XPK_REPEATED> sequence, to provide a "secondary keyword"
   that such a repeated item can look out for.
   
-  This was previously called C<XPK_STRING>, and is provided as a synonym for
-  back-compatibility but new code should use this new name instead.
+  =head2 XPK_KEYWORD
+  
+  I<atomic, can probe, emits nothing.>
+  
+     XPK_KEYWORD("keyword")
+  
+  A literal string match is expected. No argument value is passed.
+  
+  This is similar to C<XPK_LITERAL> except that it additionally checks that the
+  following character is not an identifier character. This ensures that the
+  expected keyword-like behaviour is preserved. For example, given the input
+  C<"keyword">, the piece C<XPK_LITERAL("key")> would match it, whereas
+  C<XPK_KEYWORD("key")> would not because of the subsequent C<"w"> character.
   
   =head2 XPK_SEQUENCE
   
@@ -13327,6 +13363,20 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   A structural type which expects to find a sequence of pieces, all contained in
   parentheses as C<( ... )>. This will pass no extra arguments.
   
+  =head2 XPK_ARGSCOPE
+  
+  I<structural, emits nothing.>
+  
+     XPK_ARGSCOPE(pieces ...)
+  
+  A structural type similar to C<XPK_PARENSCOPE>, except that the parentheses
+  themselves are optional; much like Perl's parsing of calls to known functions.
+  
+  If parentheses are encountered in the input, they will be consumed by this
+  piece and it will behave identically to C<XPK_PARENSCOPE>. If there is no open
+  parenthesis, this piece will behave like C<XPK_SEQUENCE> and consume all the
+  pieces inside it, without expecting a closing parenthesis.
+  
   =head2 XPK_BRACKETSCOPE
   
   I<structural, can probe, emits nothing.>
@@ -13396,7 +13446,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder.pm"} = '#line '.(1+__LINE__).'
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Keyword::Builder 0.22;
+  package XS::Parse::Keyword::Builder 0.23;
   
   use v5.14;
   use warnings;
@@ -13508,7 +13558,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder.pm"} = '#line '.(1+__LINE__).'
 X86_64-LINUX_XS_PARSE_KEYWORD_BUILDER
 
 $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_XS_PARSE_KEYWORD_BUILDER_DATA';
-  package XS::Parse::Keyword::Builder_data 0.22;
+  package XS::Parse::Keyword::Builder_data 0.23;
   
   use v5.14;
   use warnings;
@@ -13559,8 +13609,8 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   
     XS_PARSE_KEYWORD_BLOCK = 0x10,      /* op */
     XS_PARSE_KEYWORD_ANONSUB,           /* cv */
-    /* TODO: XS_PARSE_KEYWORD_ARITHEXPR = 0x12 */
-    XS_PARSE_KEYWORD_TERMEXPR = 0x13,   /* op */
+    XS_PARSE_KEYWORD_ARITHEXPR,         /* op */
+    XS_PARSE_KEYWORD_TERMEXPR,          /* op */
     XS_PARSE_KEYWORD_LISTEXPR,          /* op */
     /* TODO: XS_PARSE_KEYWORD_FULLEXPR = 0x15 */
     XS_PARSE_KEYWORD_IDENT = 0x16,      /* sv */
@@ -13594,7 +13644,8 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   
   enum {
     XPK_TYPEFLAG_OPT      = (1<<16),
-    XPK_TYPEFLAG_SPECIAL  = (1<<17), /* on XPK_BLOCK: scoped
+    XPK_TYPEFLAG_SPECIAL  = (1<<17), /* on XPK_LITERALSTR: keyword
+                                        on XPK_BLOCK: scoped
                                         on XPK_LEXVAR: my */
   
     /* These three are shifted versions of perl's G_VOID, G_SCALAR, G_LIST */
@@ -13603,6 +13654,8 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
     XPK_TYPEFLAG_G_LIST   = (3<<18),
   
     XPK_TYPEFLAG_ENTERLEAVE = (1<<20), /* wrap ENTER/LEAVE pair around the item */
+  
+    XPK_TYPEFLAG_MAYBEPARENS = (1<<21), /* parens themselves are optional on PARENSCOPE */
   };
   
   #define XPK_BLOCK_flags(flags) {.type = XS_PARSE_KEYWORD_BLOCK|(flags), .u.pieces = NULL}
@@ -13620,6 +13673,10 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   
   #define XPK_ANONSUB {.type = XS_PARSE_KEYWORD_ANONSUB}
   
+  #define XPK_ARITHEXPR_flags(flags) {.type = XS_PARSE_KEYWORD_ARITHEXPR|(flags)}
+  #define XPK_ARITHEXPR              XPK_ARITHEXPR_flags(0)
+  #define XPK_ARITHEXPR_VOIDCTX      XPK_ARITHEXPR_flags(XPK_TYPEFLAG_G_VOID)
+  #define XPK_ARITHEXPR_SCALARCTX    XPK_ARITHEXPR_flags(XPK_TYPEFLAG_G_SCALAR)
   #define XPK_TERMEXPR_flags(flags) {.type = XS_PARSE_KEYWORD_TERMEXPR|(flags)}
   #define XPK_TERMEXPR              XPK_TERMEXPR_flags(0)
   #define XPK_TERMEXPR_VOIDCTX      XPK_TERMEXPR_flags(XPK_TYPEFLAG_G_VOID)
@@ -13649,6 +13706,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   #define XPK_LITERAL(s) {.type = XS_PARSE_KEYWORD_LITERALSTR, .u.str = (const char *)s}
   #define XPK_STRING(s)  XPK_LITERAL(s)
   #define XPK_AUTOSEMI   {.type = XS_PARSE_KEYWORD_AUTOSEMI}
+  #define XPK_KEYWORD(s) {.type = XS_PARSE_KEYWORD_LITERALSTR|XPK_TYPEFLAG_SPECIAL, .u.str = (const char *)s}
   
   #define XPK_INFIX(select) {.type = XS_PARSE_KEYWORD_INFIX, .u.c = select}
   #define XPK_INFIX_RELATION       XPK_INFIX(XPI_SELECT_RELATION)
@@ -13681,6 +13739,9 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
     {.type = XS_PARSE_KEYWORD_PARENSCOPE, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
   #define XPK_PARENSCOPE_OPT(...) \
     {.type = XS_PARSE_KEYWORD_PARENSCOPE|XPK_TYPEFLAG_OPT, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
+  
+  #define XPK_ARGSCOPE(...) \
+    {.type = XS_PARSE_KEYWORD_PARENSCOPE|XPK_TYPEFLAG_MAYBEPARENS, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
   
   #define XPK_BRACKETSCOPE(...) \
     {.type = XS_PARSE_KEYWORD_BRACKETSCOPE, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
@@ -13823,7 +13884,7 @@ use v5.16.3;
 
 sub usage {
     print <<END_USAGE;
-Usage: yabsm [--help] [--version] <command> <arg(s)>
+usage: yabsm [--help] [--version] <command> <arg(s)>
 
   find, f <SUBJECT> <QUERY>               Find a snapshot of SUBJECT using
                                           QUERY. SUBJECT must be a backup or

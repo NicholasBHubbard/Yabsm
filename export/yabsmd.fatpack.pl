@@ -504,7 +504,7 @@ FILE_SLURP_TINY
 $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_OPENSSH';
   package Net::OpenSSH;
   
-  our $VERSION = '0.80';
+  our $VERSION = '0.82';
   
   use strict;
   use warnings;
@@ -1875,7 +1875,8 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
       my $ssh_flags = '';
       $ssh_flags .= ($tty ? 'qtt' : 'T') if defined $tty;
       if ($self->{_forward_agent}) {
-          my $forward_agent = delete $opts{forward_agent};
+  	my $forward_always = (($self->{_forward_agent} eq 'always') ? 1 : undef);
+          my $forward_agent = _first_defined(delete($opts{forward_agent}), $forward_always);
           $ssh_flags .= ($forward_agent ? 'A' : 'a') if defined $forward_agent;
       }
       if ($self->{_forward_X11}) {
@@ -2038,9 +2039,9 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
       my $ssh_opts = delete $opts{ssh_opts};
       $ssh_opts = $self->{_default_ssh_opts} unless defined $ssh_opts;
       my @ssh_opts = $self->_expand_vars(_array_or_scalar_to_list $ssh_opts);
-  
       if ($self->{_forward_agent}) {
-          my $forward_agent = delete $opts{forward_agent};
+  	my $forward_always = (($self->{_forward_agent} eq 'always') ? 1 : undef);
+          my $forward_agent = _first_defined(delete($opts{forward_agent}), $forward_always);
           $ssh_flags .= ($forward_agent ? 'A' : 'a') if defined $forward_agent;
       }
       if ($self->{_forward_X11}) {
@@ -2818,9 +2819,9 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
                                               skip-compress filter exclude exclude-from include include-from
                                               out-format log-file log-file-format bwlimit protocol iconv checksum-seed files-from);
   
-  my %rsync_opt_forbidden = map { $_ => 1 } qw(rsh address port sockopts blocking-io password-file write-batch
+  my %rsync_opt_forbidden = map { $_ => 1 } qw(rsh address port sockopts password-file write-batch
                                               only-write-batch read-batch ipv4 ipv6 version help daemon config detach
-                                              blocking-io protect-args list-only);
+                                              protect-args list-only);
   
   $rsync_opt_forbidden{"no-$_"} = 1 for (keys %rsync_opt_with_arg, keys %rsync_opt_forbidden);
   
@@ -2861,7 +2862,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
       my $timeout = delete $opts{timeout};
       $quiet = 1 unless (defined $quiet or $verbose);
   
-      my @opts = qw(--blocking-io) ;
+      my @opts;
       push @opts, '-q' if $quiet;
       push @opts, '-pt' if $copy_attrs;
       push @opts, '-' . ($verbose =~ /^\d+$/ ? 'v' x $verbose : 'v') if $verbose;
@@ -3354,7 +3355,15 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
   
   =item forward_agent => 1
   
+  =item forward_agent => 'always'
+  
   Enables forwarding of the authentication agent.
+  
+  When C<always> is passed as the argument, agent forwarding will be
+  enabled by default in all the channels created from the
+  object. Otherwise, it will have to be explicitly requested when
+  calling the channel creating methods (i.e. C<open_ex> and its
+  derivations).
   
   This option can not be used when passing a passphrase (via
   L</passphrase>) to unlock the login private key.
@@ -4383,6 +4392,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
   In asynchronous mode, this method requires the connection to be
   terminated before it gets called. Afterwards, C<wait_for_master>
   should be called repeaptly until the new connection is stablished.
+  For instance:
   
     my $async = 1;
     $ssh->disconnect($async);
@@ -4397,7 +4407,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
     while (1) {
       defined $ssh->wait_for_master($async)
         and last;
-      do_somethin_else();
+      do_something_else();
     }
   
   
@@ -5782,7 +5792,7 @@ $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET
   
   =head1 COPYRIGHT AND LICENSE
   
-  Copyright (C) 2008-2020 by Salvador FandiE<ntilde>o
+  Copyright (C) 2008-2022 by Salvador FandiE<ntilde>o
   (sfandino@yahoo.com)
   
   This library is free software; you can redistribute it and/or modify
@@ -12424,829 +12434,6 @@ $fatpacked{"Time/Timezone.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'T
   
 TIME_TIMEZONE
 
-$fatpacked{"Try/Tiny.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'TRY_TINY';
-  package Try::Tiny; # git description: v0.30-11-g1b81d0a
-  use 5.006;
-  # ABSTRACT: Minimal try/catch with proper preservation of $@
-  
-  our $VERSION = '0.31';
-  
-  use strict;
-  use warnings;
-  
-  use Exporter 5.57 'import';
-  our @EXPORT = our @EXPORT_OK = qw(try catch finally);
-  
-  use Carp;
-  $Carp::Internal{+__PACKAGE__}++;
-  
-  BEGIN {
-    my $su = $INC{'Sub/Util.pm'} && defined &Sub::Util::set_subname;
-    my $sn = $INC{'Sub/Name.pm'} && eval { Sub::Name->VERSION(0.08) };
-    unless ($su || $sn) {
-      $su = eval { require Sub::Util; } && defined &Sub::Util::set_subname;
-      unless ($su) {
-        $sn = eval { require Sub::Name; Sub::Name->VERSION(0.08) };
-      }
-    }
-  
-    *_subname = $su ? \&Sub::Util::set_subname
-              : $sn ? \&Sub::Name::subname
-              : sub { $_[1] };
-    *_HAS_SUBNAME = ($su || $sn) ? sub(){1} : sub(){0};
-  }
-  
-  my %_finally_guards;
-  
-  # Need to prototype as @ not $$ because of the way Perl evaluates the prototype.
-  # Keeping it at $$ means you only ever get 1 sub because we need to eval in a list
-  # context & not a scalar one
-  
-  sub try (&;@) {
-    my ( $try, @code_refs ) = @_;
-  
-    # we need to save this here, the eval block will be in scalar context due
-    # to $failed
-    my $wantarray = wantarray;
-  
-    # work around perl bug by explicitly initializing these, due to the likelyhood
-    # this will be used in global destruction (perl rt#119311)
-    my ( $catch, @finally ) = ();
-  
-    # find labeled blocks in the argument list.
-    # catch and finally tag the blocks by blessing a scalar reference to them.
-    foreach my $code_ref (@code_refs) {
-  
-      if ( ref($code_ref) eq 'Try::Tiny::Catch' ) {
-        croak 'A try() may not be followed by multiple catch() blocks'
-          if $catch;
-        $catch = ${$code_ref};
-      } elsif ( ref($code_ref) eq 'Try::Tiny::Finally' ) {
-        push @finally, ${$code_ref};
-      } else {
-        croak(
-          'try() encountered an unexpected argument ('
-        . ( defined $code_ref ? $code_ref : 'undef' )
-        . ') - perhaps a missing semi-colon before or'
-        );
-      }
-    }
-  
-    # FIXME consider using local $SIG{__DIE__} to accumulate all errors. It's
-    # not perfect, but we could provide a list of additional errors for
-    # $catch->();
-  
-    # name the blocks if we have Sub::Name installed
-    _subname(caller().'::try {...} ' => $try)
-      if _HAS_SUBNAME;
-  
-    # set up scope guards to invoke the finally blocks at the end.
-    # this should really be a function scope lexical variable instead of
-    # file scope + local but that causes issues with perls < 5.20 due to
-    # perl rt#119311
-    local $_finally_guards{guards} = [
-      map Try::Tiny::ScopeGuard->_new($_),
-      @finally
-    ];
-  
-    # save the value of $@ so we can set $@ back to it in the beginning of the eval
-    # and restore $@ after the eval finishes
-    my $prev_error = $@;
-  
-    my ( @ret, $error );
-  
-    # failed will be true if the eval dies, because 1 will not be returned
-    # from the eval body
-    my $failed = not eval {
-      $@ = $prev_error;
-  
-      # evaluate the try block in the correct context
-      if ( $wantarray ) {
-        @ret = $try->();
-      } elsif ( defined $wantarray ) {
-        $ret[0] = $try->();
-      } else {
-        $try->();
-      };
-  
-      return 1; # properly set $failed to false
-    };
-  
-    # preserve the current error and reset the original value of $@
-    $error = $@;
-    $@ = $prev_error;
-  
-    # at this point $failed contains a true value if the eval died, even if some
-    # destructor overwrote $@ as the eval was unwinding.
-    if ( $failed ) {
-      # pass $error to the finally blocks
-      push @$_, $error for @{$_finally_guards{guards}};
-  
-      # if we got an error, invoke the catch block.
-      if ( $catch ) {
-        # This works like given($error), but is backwards compatible and
-        # sets $_ in the dynamic scope for the body of C<$catch>
-        for ($error) {
-          return $catch->($error);
-        }
-  
-        # in case when() was used without an explicit return, the C<for>
-        # loop will be aborted and there's no useful return value
-      }
-  
-      return;
-    } else {
-      # no failure, $@ is back to what it was, everything is fine
-      return $wantarray ? @ret : $ret[0];
-    }
-  }
-  
-  sub catch (&;@) {
-    my ( $block, @rest ) = @_;
-  
-    croak 'Useless bare catch()' unless wantarray;
-  
-    _subname(caller().'::catch {...} ' => $block)
-      if _HAS_SUBNAME;
-    return (
-      bless(\$block, 'Try::Tiny::Catch'),
-      @rest,
-    );
-  }
-  
-  sub finally (&;@) {
-    my ( $block, @rest ) = @_;
-  
-    croak 'Useless bare finally()' unless wantarray;
-  
-    _subname(caller().'::finally {...} ' => $block)
-      if _HAS_SUBNAME;
-    return (
-      bless(\$block, 'Try::Tiny::Finally'),
-      @rest,
-    );
-  }
-  
-  {
-    package # hide from PAUSE
-      Try::Tiny::ScopeGuard;
-  
-    use constant UNSTABLE_DOLLARAT => ("$]" < '5.013002') ? 1 : 0;
-  
-    sub _new {
-      shift;
-      bless [ @_ ];
-    }
-  
-    sub DESTROY {
-      my ($code, @args) = @{ $_[0] };
-  
-      local $@ if UNSTABLE_DOLLARAT;
-      eval {
-        $code->(@args);
-        1;
-      } or do {
-        warn
-          "Execution of finally() block $code resulted in an exception, which "
-        . '*CAN NOT BE PROPAGATED* due to fundamental limitations of Perl. '
-        . 'Your program will continue as if this event never took place. '
-        . "Original exception text follows:\n\n"
-        . (defined $@ ? $@ : '$@ left undefined...')
-        . "\n"
-        ;
-      }
-    }
-  }
-  
-  __PACKAGE__
-  
-  __END__
-  
-  =pod
-  
-  =encoding UTF-8
-  
-  =head1 NAME
-  
-  Try::Tiny - Minimal try/catch with proper preservation of $@
-  
-  =head1 VERSION
-  
-  version 0.31
-  
-  =head1 SYNOPSIS
-  
-  You can use Try::Tiny's C<try> and C<catch> to expect and handle exceptional
-  conditions, avoiding quirks in Perl and common mistakes:
-  
-    # handle errors with a catch handler
-    try {
-      die "foo";
-    } catch {
-      warn "caught error: $_"; # not $@
-    };
-  
-  You can also use it like a standalone C<eval> to catch and ignore any error
-  conditions.  Obviously, this is an extreme measure not to be undertaken
-  lightly:
-  
-    # just silence errors
-    try {
-      die "foo";
-    };
-  
-  =head1 DESCRIPTION
-  
-  This module provides bare bones C<try>/C<catch>/C<finally> statements that are designed to
-  minimize common mistakes with eval blocks, and NOTHING else.
-  
-  This is unlike L<TryCatch> which provides a nice syntax and avoids adding
-  another call stack layer, and supports calling C<return> from the C<try> block to
-  return from the parent subroutine. These extra features come at a cost of a few
-  dependencies, namely L<Devel::Declare> and L<Scope::Upper> which are
-  occasionally problematic, and the additional catch filtering uses L<Moose>
-  type constraints which may not be desirable either.
-  
-  The main focus of this module is to provide simple and reliable error handling
-  for those having a hard time installing L<TryCatch>, but who still want to
-  write correct C<eval> blocks without 5 lines of boilerplate each time.
-  
-  It's designed to work as correctly as possible in light of the various
-  pathological edge cases (see L</BACKGROUND>) and to be compatible with any style
-  of error values (simple strings, references, objects, overloaded objects, etc).
-  
-  If the C<try> block dies, it returns the value of the last statement executed in
-  the C<catch> block, if there is one. Otherwise, it returns C<undef> in scalar
-  context or the empty list in list context. The following examples all
-  assign C<"bar"> to C<$x>:
-  
-    my $x = try { die "foo" } catch { "bar" };
-    my $x = try { die "foo" } || "bar";
-    my $x = (try { die "foo" }) // "bar";
-  
-    my $x = eval { die "foo" } || "bar";
-  
-  You can add C<finally> blocks, yielding the following:
-  
-    my $x;
-    try { die 'foo' } finally { $x = 'bar' };
-    try { die 'foo' } catch { warn "Got a die: $_" } finally { $x = 'bar' };
-  
-  C<finally> blocks are always executed making them suitable for cleanup code
-  which cannot be handled using local.  You can add as many C<finally> blocks to a
-  given C<try> block as you like.
-  
-  Note that adding a C<finally> block without a preceding C<catch> block
-  suppresses any errors. This behaviour is consistent with using a standalone
-  C<eval>, but it is not consistent with C<try>/C<finally> patterns found in
-  other programming languages, such as Java, Python, Javascript or C#. If you
-  learned the C<try>/C<finally> pattern from one of these languages, watch out for
-  this.
-  
-  =head1 EXPORTS
-  
-  All functions are exported by default using L<Exporter>.
-  
-  If you need to rename the C<try>, C<catch> or C<finally> keyword consider using
-  L<Sub::Import> to get L<Sub::Exporter>'s flexibility.
-  
-  =over 4
-  
-  =item try (&;@)
-  
-  Takes one mandatory C<try> subroutine, an optional C<catch> subroutine and C<finally>
-  subroutine.
-  
-  The mandatory subroutine is evaluated in the context of an C<eval> block.
-  
-  If no error occurred the value from the first block is returned, preserving
-  list/scalar context.
-  
-  If there was an error and the second subroutine was given it will be invoked
-  with the error in C<$_> (localized) and as that block's first and only
-  argument.
-  
-  C<$@> does B<not> contain the error. Inside the C<catch> block it has the same
-  value it had before the C<try> block was executed.
-  
-  Note that the error may be false, but if that happens the C<catch> block will
-  still be invoked.
-  
-  Once all execution is finished then the C<finally> block, if given, will execute.
-  
-  =item catch (&;@)
-  
-  Intended to be used in the second argument position of C<try>.
-  
-  Returns a reference to the subroutine it was given but blessed as
-  C<Try::Tiny::Catch> which allows try to decode correctly what to do
-  with this code reference.
-  
-    catch { ... }
-  
-  Inside the C<catch> block the caught error is stored in C<$_>, while previous
-  value of C<$@> is still available for use.  This value may or may not be
-  meaningful depending on what happened before the C<try>, but it might be a good
-  idea to preserve it in an error stack.
-  
-  For code that captures C<$@> when throwing new errors (i.e.
-  L<Class::Throwable>), you'll need to do:
-  
-    local $@ = $_;
-  
-  =item finally (&;@)
-  
-    try     { ... }
-    catch   { ... }
-    finally { ... };
-  
-  Or
-  
-    try     { ... }
-    finally { ... };
-  
-  Or even
-  
-    try     { ... }
-    finally { ... }
-    catch   { ... };
-  
-  Intended to be the second or third element of C<try>. C<finally> blocks are always
-  executed in the event of a successful C<try> or if C<catch> is run. This allows
-  you to locate cleanup code which cannot be done via C<local()> e.g. closing a file
-  handle.
-  
-  When invoked, the C<finally> block is passed the error that was caught.  If no
-  error was caught, it is passed nothing.  (Note that the C<finally> block does not
-  localize C<$_> with the error, since unlike in a C<catch> block, there is no way
-  to know if C<$_ == undef> implies that there were no errors.) In other words,
-  the following code does just what you would expect:
-  
-    try {
-      die_sometimes();
-    } catch {
-      # ...code run in case of error
-    } finally {
-      if (@_) {
-        print "The try block died with: @_\n";
-      } else {
-        print "The try block ran without error.\n";
-      }
-    };
-  
-  B<You must always do your own error handling in the C<finally> block>. C<Try::Tiny> will
-  not do anything about handling possible errors coming from code located in these
-  blocks.
-  
-  Furthermore B<exceptions in C<finally> blocks are not trappable and are unable
-  to influence the execution of your program>. This is due to limitation of
-  C<DESTROY>-based scope guards, which C<finally> is implemented on top of. This
-  may change in a future version of Try::Tiny.
-  
-  In the same way C<catch()> blesses the code reference this subroutine does the same
-  except it bless them as C<Try::Tiny::Finally>.
-  
-  =back
-  
-  =head1 BACKGROUND
-  
-  There are a number of issues with C<eval>.
-  
-  =head2 Clobbering $@
-  
-  When you run an C<eval> block and it succeeds, C<$@> will be cleared, potentially
-  clobbering an error that is currently being caught.
-  
-  This causes action at a distance, clearing previous errors your caller may have
-  not yet handled.
-  
-  C<$@> must be properly localized before invoking C<eval> in order to avoid this
-  issue.
-  
-  More specifically,
-  L<before Perl version 5.14.0|perl5140delta/"Exception Handling">
-  C<$@> was clobbered at the beginning of the C<eval>, which
-  also made it impossible to capture the previous error before you die (for
-  instance when making exception objects with error stacks).
-  
-  For this reason C<try> will actually set C<$@> to its previous value (the one
-  available before entering the C<try> block) in the beginning of the C<eval>
-  block.
-  
-  =head2 Localizing $@ silently masks errors
-  
-  Inside an C<eval> block, C<die> behaves sort of like:
-  
-    sub die {
-      $@ = $_[0];
-      return_undef_from_eval();
-    }
-  
-  This means that if you were polite and localized C<$@> you can't die in that
-  scope, or your error will be discarded (printing "Something's wrong" instead).
-  
-  The workaround is very ugly:
-  
-    my $error = do {
-      local $@;
-      eval { ... };
-      $@;
-    };
-  
-    ...
-    die $error;
-  
-  =head2 $@ might not be a true value
-  
-  This code is wrong:
-  
-    if ( $@ ) {
-      ...
-    }
-  
-  because due to the previous caveats it may have been unset.
-  
-  C<$@> could also be an overloaded error object that evaluates to false, but
-  that's asking for trouble anyway.
-  
-  The classic failure mode (fixed in L<Perl 5.14.0|perl5140delta/"Exception Handling">) is:
-  
-    sub Object::DESTROY {
-      eval { ... }
-    }
-  
-    eval {
-      my $obj = Object->new;
-  
-      die "foo";
-    };
-  
-    if ( $@ ) {
-  
-    }
-  
-  In this case since C<Object::DESTROY> is not localizing C<$@> but still uses
-  C<eval>, it will set C<$@> to C<"">.
-  
-  The destructor is called when the stack is unwound, after C<die> sets C<$@> to
-  C<"foo at Foo.pm line 42\n">, so by the time C<if ( $@ )> is evaluated it has
-  been cleared by C<eval> in the destructor.
-  
-  The workaround for this is even uglier than the previous ones. Even though we
-  can't save the value of C<$@> from code that doesn't localize, we can at least
-  be sure the C<eval> was aborted due to an error:
-  
-    my $failed = not eval {
-      ...
-  
-      return 1;
-    };
-  
-  This is because an C<eval> that caught a C<die> will always return a false
-  value.
-  
-  =head1 ALTERNATE SYNTAX
-  
-  Using Perl 5.10 you can use L<perlsyn/"Switch statements"> (but please don't,
-  because that syntax has since been deprecated because there was too much
-  unexpected magical behaviour).
-  
-  =for stopwords topicalizer
-  
-  The C<catch> block is invoked in a topicalizer context (like a C<given> block),
-  but note that you can't return a useful value from C<catch> using the C<when>
-  blocks without an explicit C<return>.
-  
-  This is somewhat similar to Perl 6's C<CATCH> blocks. You can use it to
-  concisely match errors:
-  
-    try {
-      require Foo;
-    } catch {
-      when (/^Can't locate .*?\.pm in \@INC/) { } # ignore
-      default { die $_ }
-    };
-  
-  =head1 CAVEATS
-  
-  =over 4
-  
-  =item *
-  
-  C<@_> is not available within the C<try> block, so you need to copy your
-  argument list. In case you want to work with argument values directly via C<@_>
-  aliasing (i.e. allow C<$_[1] = "foo">), you need to pass C<@_> by reference:
-  
-    sub foo {
-      my ( $self, @args ) = @_;
-      try { $self->bar(@args) }
-    }
-  
-  or
-  
-    sub bar_in_place {
-      my $self = shift;
-      my $args = \@_;
-      try { $_ = $self->bar($_) for @$args }
-    }
-  
-  =item *
-  
-  C<return> returns from the C<try> block, not from the parent sub (note that
-  this is also how C<eval> works, but not how L<TryCatch> works):
-  
-    sub parent_sub {
-      try {
-        die;
-      }
-      catch {
-        return;
-      };
-  
-      say "this text WILL be displayed, even though an exception is thrown";
-    }
-  
-  Instead, you should capture the return value:
-  
-    sub parent_sub {
-      my $success = try {
-        die;
-        1;
-      };
-      return unless $success;
-  
-      say "This text WILL NEVER appear!";
-    }
-    # OR
-    sub parent_sub_with_catch {
-      my $success = try {
-        die;
-        1;
-      }
-      catch {
-        # do something with $_
-        return undef; #see note
-      };
-      return unless $success;
-  
-      say "This text WILL NEVER appear!";
-    }
-  
-  Note that if you have a C<catch> block, it must return C<undef> for this to work,
-  since if a C<catch> block exists, its return value is returned in place of C<undef>
-  when an exception is thrown.
-  
-  =item *
-  
-  C<try> introduces another caller stack frame. L<Sub::Uplevel> is not used. L<Carp>
-  will not report this when using full stack traces, though, because
-  C<%Carp::Internal> is used. This lack of magic is considered a feature.
-  
-  =for stopwords unhygienically
-  
-  =item *
-  
-  The value of C<$_> in the C<catch> block is not guaranteed to be the value of
-  the exception thrown (C<$@>) in the C<try> block.  There is no safe way to
-  ensure this, since C<eval> may be used unhygienically in destructors.  The only
-  guarantee is that the C<catch> will be called if an exception is thrown.
-  
-  =item *
-  
-  The return value of the C<catch> block is not ignored, so if testing the result
-  of the expression for truth on success, be sure to return a false value from
-  the C<catch> block:
-  
-    my $obj = try {
-      MightFail->new;
-    } catch {
-      ...
-  
-      return; # avoid returning a true value;
-    };
-  
-    return unless $obj;
-  
-  =item *
-  
-  C<$SIG{__DIE__}> is still in effect.
-  
-  Though it can be argued that C<$SIG{__DIE__}> should be disabled inside of
-  C<eval> blocks, since it isn't people have grown to rely on it. Therefore in
-  the interests of compatibility, C<try> does not disable C<$SIG{__DIE__}> for
-  the scope of the error throwing code.
-  
-  =item *
-  
-  Lexical C<$_> may override the one set by C<catch>.
-  
-  For example Perl 5.10's C<given> form uses a lexical C<$_>, creating some
-  confusing behavior:
-  
-    given ($foo) {
-      when (...) {
-        try {
-          ...
-        } catch {
-          warn $_; # will print $foo, not the error
-          warn $_[0]; # instead, get the error like this
-        }
-      }
-    }
-  
-  Note that this behavior was changed once again in
-  L<Perl5 version 18|https://metacpan.org/module/perldelta#given-now-aliases-the-global-_>.
-  However, since the entirety of lexical C<$_> is now L<considered experimental
-  |https://metacpan.org/module/perldelta#Lexical-_-is-now-experimental>, it
-  is unclear whether the new version 18 behavior is final.
-  
-  =back
-  
-  =head1 SEE ALSO
-  
-  =over 4
-  
-  =item L<Syntax::Keyword::Try>
-  
-  Only available on perls >= 5.14, with a slightly different syntax (e.g. no trailing C<;> because
-  it's actually a keyword, not a sub, but this means you can C<return> and C<next> within it). Use
-  L<Feature::Compat::Try> to automatically switch to the native C<try> syntax in newer perls (when
-  available). See also L<Try Catch Exception Handling|perlsyn/Try-Catch-Exception-Handling>.
-  
-  =item L<TryCatch>
-  
-  Much more feature complete, more convenient semantics, but at the cost of
-  implementation complexity.
-  
-  =item L<autodie>
-  
-  Automatic error throwing for builtin functions and more. Also designed to
-  work well with C<given>/C<when>.
-  
-  =item L<Throwable>
-  
-  A lightweight role for rolling your own exception classes.
-  
-  =item L<Error>
-  
-  Exception object implementation with a C<try> statement. Does not localize
-  C<$@>.
-  
-  =item L<Exception::Class::TryCatch>
-  
-  Provides a C<catch> statement, but properly calling C<eval> is your
-  responsibility.
-  
-  The C<try> keyword pushes C<$@> onto an error stack, avoiding some of the
-  issues with C<$@>, but you still need to localize to prevent clobbering.
-  
-  =back
-  
-  =head1 LIGHTNING TALK
-  
-  I gave a lightning talk about this module, you can see the slides (Firefox
-  only):
-  
-  L<http://web.archive.org/web/20100628040134/http://nothingmuch.woobling.org/talks/takahashi.xul>
-  
-  Or read the source:
-  
-  L<http://web.archive.org/web/20100305133605/http://nothingmuch.woobling.org/talks/yapc_asia_2009/try_tiny.yml>
-  
-  =head1 SUPPORT
-  
-  Bugs may be submitted through L<the RT bug tracker|https://rt.cpan.org/Public/Dist/Display.html?Name=Try-Tiny>
-  (or L<bug-Try-Tiny@rt.cpan.org|mailto:bug-Try-Tiny@rt.cpan.org>).
-  
-  =head1 AUTHORS
-  
-  =over 4
-  
-  =item *
-  
-  יובל קוג'מן (Yuval Kogman) <nothingmuch@woobling.org>
-  
-  =item *
-  
-  Jesse Luehrs <doy@tozt.net>
-  
-  =back
-  
-  =head1 CONTRIBUTORS
-  
-  =for stopwords Karen Etheridge Peter Rabbitson Ricardo Signes Mark Fowler Graham Knop Aristotle Pagaltzis Dagfinn Ilmari Mannsåker Lukas Mai Alex anaxagoras Andrew Yates awalker chromatic cm-perl David Lowe Glenn Hans Dieter Pearcey Jens Berthold Jonathan Yu Marc Mims Stosberg Pali Paul Howarth Rudolf Leermakers
-  
-  =over 4
-  
-  =item *
-  
-  Karen Etheridge <ether@cpan.org>
-  
-  =item *
-  
-  Peter Rabbitson <ribasushi@cpan.org>
-  
-  =item *
-  
-  Ricardo Signes <rjbs@cpan.org>
-  
-  =item *
-  
-  Mark Fowler <mark@twoshortplanks.com>
-  
-  =item *
-  
-  Graham Knop <haarg@haarg.org>
-  
-  =item *
-  
-  Aristotle Pagaltzis <pagaltzis@gmx.de>
-  
-  =item *
-  
-  Dagfinn Ilmari Mannsåker <ilmari@ilmari.org>
-  
-  =item *
-  
-  Lukas Mai <l.mai@web.de>
-  
-  =item *
-  
-  Alex <alex@koban.(none)>
-  
-  =item *
-  
-  anaxagoras <walkeraj@gmail.com>
-  
-  =item *
-  
-  Andrew Yates <ayates@haddock.local>
-  
-  =item *
-  
-  awalker <awalker@sourcefire.com>
-  
-  =item *
-  
-  chromatic <chromatic@wgz.org>
-  
-  =item *
-  
-  cm-perl <cm-perl@users.noreply.github.com>
-  
-  =item *
-  
-  David Lowe <davidl@lokku.com>
-  
-  =item *
-  
-  Glenn Fowler <cebjyre@cpan.org>
-  
-  =item *
-  
-  Hans Dieter Pearcey <hdp@weftsoar.net>
-  
-  =item *
-  
-  Jens Berthold <jens@jebecs.de>
-  
-  =item *
-  
-  Jonathan Yu <JAWNSY@cpan.org>
-  
-  =item *
-  
-  Marc Mims <marc@questright.com>
-  
-  =item *
-  
-  Mark Stosberg <mark@stosberg.com>
-  
-  =item *
-  
-  Pali <pali@cpan.org>
-  
-  =item *
-  
-  Paul Howarth <paul@city-fan.org>
-  
-  =item *
-  
-  Rudolf Leermakers <rudolf@hatsuseno.org>
-  
-  =back
-  
-  =head1 COPYRIGHT AND LICENCE
-  
-  This software is Copyright (c) 2009 by יובל קוג'מן (Yuval Kogman).
-  
-  This is free software, licensed under:
-  
-    The MIT (X11) License
-  
-  =cut
-TRY_TINY
-
 $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABSM_BASE';
   #  Author:  Nicholas Hubbard
   #  WWW:     https://github.com/NicholasBHubbard/yabsm
@@ -13289,7 +12476,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   sub do_snapshot { # No test. Is not pure.
   
       # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
-      
+  
       my $config_ref = shift // confess missing_arg();
       my $subvol     = shift // confess missing_arg();
       my $timeframe  = shift // confess missing_arg();
@@ -13323,7 +12510,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   }
   
   sub delete_old_snapshots { # No test. Is not pure.
-      
+  
       # delete old snapshot(s) based off $subvol's ${timeframe}_keep
       # setting defined in the users config. This function should be
       # called directly after take_new_snapshot().
@@ -13340,7 +12527,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # There is 1 more snapshot than should be kept because we just
       # took a snapshot.
-      if ($num_snaps == $num_to_keep + 1) { 
+      if ($num_snaps == $num_to_keep + 1) {
   
   	# pop takes from the end of the array. This is the oldest snap
   	# because they are sorted newest to oldest.
@@ -13355,14 +12542,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       elsif ($num_snaps <= $num_to_keep) { return }
   
       # User changed their settings to keep less snapshots than they
-      # were keeping prior. 
-      else { 
-  	
+      # were keeping prior.
+      else {
+  
   	while ($num_snaps > $num_to_keep) {
   
   	    # pop mutates $existing_snaps_ref, and thus is not idempotent.
               my $oldest_snap = pop @$existing_snaps_ref;
-              
+  
   	    system("btrfs subvol delete $oldest_snap");
   
   	    $num_snaps--;
@@ -13467,11 +12654,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
       my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
-      
+  
       system("btrfs subvol snapshot -r $mountpoint $boot_snap");
   
       ### REMOTE ###
-      
+  
       # setup local bootstrap snap
       my $server_ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
   
@@ -13504,7 +12691,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if (not has_bootstrap($config_ref, $backup)) {
           do_backup_bootstrap($config_ref, $backup)
       }
-      
+  
       elsif (is_local_backup($config_ref, $backup)) {
   	do_backup_local($config_ref, $backup);
       }
@@ -13546,11 +12733,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
   
       make_path $tmp_dir if not -d $tmp_dir;
-      
+  
       my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
-      
+  
       system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-      
+  
       system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
   
       system("btrfs subvol delete $tmp_snap");
@@ -13580,7 +12767,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $subvol = $config_ref->{backups}{$backup}{subvol};
   
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-      
+  
       my $remote_host = $config_ref->{backups}{$backup}{host};
   
       my $server_ssh = new_ssh_connection($remote_host);
@@ -13588,20 +12775,20 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
       my $local_yabsm_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-      
+  
       make_path $local_yabsm_dir if not -d $local_yabsm_dir;
   
       my $snapshot = "$local_yabsm_dir/" . current_time_snapstring();
-  	
+  
       # main
-      
+  
       system("btrfs subvol snapshot -r $mountpoint $snapshot");
-  	
+  
       $server_ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $snapshot"]}
                           , "sudo -n btrfs receive $remote_backup_dir");
-  	
+  
       system("btrfs subvol delete $snapshot");
-  	
+  
       delete_old_backups_ssh($config_ref, $server_ssh, $backup);
   
       return;
@@ -13638,17 +12825,17 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       # We haven't reached the backup quota yet so we don't delete anything.
-      elsif ($num_backups <= $num_to_keep) { return } 
+      elsif ($num_backups <= $num_to_keep) { return }
   
       # User changed their settings to keep less backups than they
-      # were keeping prior. 
-      else { 
-  	
+      # were keeping prior.
+      else {
+  
   	while ($num_backups > $num_to_keep) {
-  	    
+  
   	    # note that pop mutates existing_snaps
   	    my $oldest_backup = pop @existing_backups;
-              
+  
   	    system("btrfs subvol delete $oldest_backup");
   
   	    $num_backups--;
@@ -13669,7 +12856,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $server_ssh = shift // confess missing_arg();
       my $backup     = shift // confess missing_arg();
   
-      my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir}; 
+      my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
       my @existing_backups = all_backup_snaps($config_ref, $backup, $server_ssh);
   
@@ -13691,21 +12878,21 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       # We haven't reached the backup quota yet so we don't delete anything.
-      elsif ($num_backups <= $num_to_keep) { return } 
+      elsif ($num_backups <= $num_to_keep) { return }
   
       # User changed their settings to keep less backups than they
-      # were keeping prior. 
-      else { 
-  	
+      # were keeping prior.
+      else {
+  
   	while ($num_backups > $num_to_keep) {
   
   	    # note that pop mutates existing_snaps
   	    my $oldest_backup = pop @existing_backups;
-              
+  
   	    $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
   
   	    $num_backups--;
-  	} 
+  	}
   
   	return;
       }
@@ -13756,13 +12943,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           if (not @timeframes) {
               @timeframes = all_timeframes();
           }
-      
+  
           foreach my $tf (@timeframes) {
-          
+  
               my $snap_dir = local_yabsm_dir($config_ref, $subject, $tf);
-          
+  
               if (-d $snap_dir) {
-                  push @all_snaps, glob "$snap_dir/*"; 
+                  push @all_snaps, glob "$snap_dir/*";
               }
           }
   
@@ -13778,7 +12965,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   }
   
   sub all_backup_snaps { # No test. Is not pure.
-      
+  
       # Gather all snapshots (full paths) of $backup and return them
       # sorted from newest to oldest. A Net::OpenSSH connection object
       # can be passed as an arg if $backup is a remote backup, otherwise
@@ -13788,7 +12975,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $backup     = shift // confess missing_arg();
   
       my @all_backups = ();
-      
+  
       if (is_remote_backup($config_ref, $backup)) {
           my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
           my $remote_host = $config_ref->{backups}{$backup}{host};
@@ -13819,7 +13006,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       if (defined $subvol) {
   	$yabsm_dir .= "/$subvol";
-  	if (defined $timeframe) { 
+  	if (defined $timeframe) {
   	    $yabsm_dir .= "/$timeframe";
   	}
       }
@@ -13853,9 +13040,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   }
   
   sub current_time_snapstring { # No test. Is not pure.
-      
+  
       # Return a snapstring of the current time.
-      
+  
       my $t = localtime();
   
       return nums_to_snapstring($t->year, $t->mon, $t->mday, $t->hour, $t->min);
@@ -13865,7 +13052,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return a snapstring of the time $n $unit's ago from the current
       # time. The unit can be minutes, hours or days.
-     
+  
       my $n    = shift // confess missing_arg();
       my $unit = shift // confess missing_arg();
   
@@ -13892,7 +13079,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # An immediate is either a literal time or a relative time.
   
       my $imm = shift // confess missing_arg();
-      
+  
       return is_literal_time($imm) || is_relative_time($imm);
   }
   
@@ -13938,14 +13125,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $back_correct = $back =~ /^b(ack)?$/;
   
       my $amount_correct = $amount =~ /^\d+$/;
-      
+  
       my $unit_correct = any { $unit eq $_ } qw(minutes mins m hours hrs h days d);
-      
+  
       return $back_correct && $amount_correct && $unit_correct;
   }
   
   
-  sub immediate_to_snapstring { # No test. Is pure. 
+  sub immediate_to_snapstring { # No test. Is pure.
   
       # Resolve an immediate to a snapstring.
   
@@ -13959,7 +13146,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   	return relative_time_to_snapstring($imm);
       }
   
-      # input should have already been cleansed. 
+      # input should have already been cleansed.
       confess "yabsm: internal error: '$imm' is not an immediate";
   }
   
@@ -14005,13 +13192,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           my $t = localtime;
           return nums_to_snapstring($t->year, $t->mon, $1, $2, $3);
       }
-      
+  
       if ($lit_time =~ $hr_min) {
           my $t = localtime;
           return nums_to_snapstring($t->year, $t->mon, $t->mday, $1, $2);
       }
   
-      # input should have already been cleansed. 
+      # input should have already been cleansed.
       confess "yabsm: internal error: '$lit_time' is not a valid literal time";
   }
   
@@ -14047,7 +13234,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $n_units_ago_snapstring = n_units_ago_snapstring($amount, $unit);
   
-      return $n_units_ago_snapstring; 
+      return $n_units_ago_snapstring;
   }
   
   sub snapstring_to_nums { # Has test. Is pure.
@@ -14117,7 +13304,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return -1 if $snap1 is newer than $snap2.
       # Return 1 if $snap1 is older than $snap2
-      # Return 0 if $snap1 and $snap2 are the same. 
+      # Return 0 if $snap1 and $snap2 are the same.
       # Works with both plain snapstrings and full paths.
   
       my $snap1 = shift // confess missing_arg();
@@ -14149,11 +13336,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $snap;
   
       for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
-  	
+  
   	my $this_snap = $all_snaps_ref->[$i];
   
   	my $cmp = cmp_snaps($this_snap, $target_snap);
-  	
+  
   	# if $this_snap is the same as $target_snap
   	if ($cmp == 0) {
   	    $snap = $this_snap;
@@ -14176,7 +13363,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if (not defined $snap) {
   	$snap = oldest_snap($all_snaps_ref);
       }
-      
+  
       return $snap;
   }
   
@@ -14215,7 +13402,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   	my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $target_snap);  
+  	my $cmp = cmp_snaps($this_snap, $target_snap);
   
   	# if $this_snap is newer than $target_snap
   	if ($cmp == -1) {
@@ -14235,14 +13422,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $target_snap   = shift // confess missing_arg();
   
       my @older = ();
-      
+  
       my $last_idx = $#{ $all_snaps_ref };
   
       for (my $i = 0; $i <= $last_idx; $i++) {
   
   	my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $target_snap);  
+  	my $cmp = cmp_snaps($this_snap, $target_snap);
   
   	# if $this_snap is older than $target_snap
   	if ($cmp == 1) {
@@ -14296,7 +13483,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   	    # between (inclusive)
   	    push @snaps_between, $this_snap if $cmp == 0;
-  	    
+  
   	    for (my $j = $i+1; $j <= $last_idx; $j++) {
   
   		my $this_snap = $all_snaps_ref->[$j];
@@ -14318,7 +13505,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   		    push @snaps_between, $this_snap;
   		}
   	    }
-  	    
+  
   	    last;
   	}
       }
@@ -14358,7 +13545,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # config this is because the caller wants to get the oldest
       # snapshot of some subvol/backup, and thus will require an extra
       # argument denoting the desired subvol/backup.
-      
+  
       my $ref = shift // confess missing_arg();
   
       my $ref_type = ref($ref);
@@ -14372,7 +13559,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   	my $all_snaps_ref = all_snaps($ref, $subject);
   	return $all_snaps_ref->[-1];
       }
-      
+  
       confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
   }
   
@@ -14391,7 +13578,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my @snaps_to_return;
   
       if ($query eq 'all') {
-  	
+  
   	# return all the snaps
   
   	@snaps_to_return = @$all_snaps_ref;
@@ -14419,7 +13606,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   	# return the one snap closest to the time denoted by the immediate.
   
-  	my $target = immediate_to_snapstring($query); 
+  	my $target = immediate_to_snapstring($query);
   
   	my $snap = snap_closest_to($all_snaps_ref, $target);
   
@@ -14464,7 +13651,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   sub is_valid_query { # Has test. Is pure.
   
-      # True iff $query is a valid query. Used to validate 
+      # True iff $query is a valid query. Used to validate
       # user input query for 'yabsm find'.
   
       my $query = shift // confess missing_arg();
@@ -14526,7 +13713,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return 1 iff $query is a syntactically valid 'between' query.
       # A between query takes two immediate arguments and returns all
-      # snapshots between the two immediate times. 
+      # snapshots between the two immediate times.
   
       my $query = shift // confess missing_arg();
   
@@ -14576,7 +13763,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $config_ref = shift // confess missing_arg();
       my $subvol     = shift // confess missing_arg();
-      
+  
       my @tfs = ();
   
       foreach my $tf (all_timeframes()) {
@@ -14620,11 +13807,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my @backups = ();
   
       foreach my $backup (all_backups($config_ref)) {
-  	
+  
   	my $this_subvol = $config_ref->{backups}{$backup}{subvol};
   
   	if ($this_subvol eq $subvol) {
-  	    push @backups, $backup 
+  	    push @backups, $backup
   	}
       }
   
@@ -14648,10 +13835,10 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   sub is_subvol { # Has test. Is pure.
   
       # True iff $subvol is the name of a user defined subvol.
-      
+  
       my $config_ref = shift // confess missing_arg();
       my $subvol     = shift // confess missing_arg();
-      
+  
       return any { $subvol eq $_ } all_subvols($config_ref);
   }
   
@@ -14685,12 +13872,12 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Schedule snapshots based off user configuration by adding
       # them to $cron_scheduler object (see Schedule::Cron module).
-          
+  
       my $config_ref     = shift // confess missing_arg();
       my $cron_scheduler = shift // confess missing_arg();
   
       foreach my $subvol (all_subvols($config_ref)) {
-          
+  
           my $_5minute_want = $config_ref->{subvols}{$subvol}{'5minute_want'};
           my $hourly_want   = $config_ref->{subvols}{$subvol}{hourly_want};
           my $daily_want    = $config_ref->{subvols}{$subvol}{daily_want};
@@ -14749,7 +13936,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Schedule backups based off user configuration by adding
       # them to $cron_scheduler object (see Schedule::Cron module).
-      
+  
       my $config_ref     = shift // confess missing_arg();
       my $cron_scheduler = shift // confess missing_arg();
   
@@ -14772,7 +13959,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           }
   
           elsif ($timeframe eq 'daily') {
-              my $time = $config_ref->{backups}{$backup}{time};
+              my $time = $config_ref->{backups}{$backup}{daily_time};
               my $hr   = time_hour($time);
               my $min  = time_minute($time);
               $cron_scheduler->add_entry(
@@ -14782,7 +13969,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           }
   
           elsif ($timeframe eq 'weekly') {
-              my $time = $config_ref->{backups}{$backup}{time};
+              my $time = $config_ref->{backups}{$backup}{weekly_time};
               my $hr   = time_hour($time);
               my $min  = time_minute($time);
               my $dow  = day_of_week_num($config_ref->{backups}{$backup}{weekly_day});
@@ -14793,7 +13980,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           }
   
           elsif ($timeframe eq 'monthly') {
-              my $time = $config_ref->{backups}{$backup}{time};
+              my $time = $config_ref->{backups}{$backup}{monthly_time};
               my $hr   = time_hour($time);
               my $min  = time_minute($time);
               my $day  = $config_ref->{backups}{$backup}{monthly_day};
@@ -14834,7 +14021,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       $server_ssh->error and
         die "yabsm: ssh error: could not establish ssh connection to '$remote_host' " . $server_ssh->error . "\n";
-      
+  
       return $server_ssh;
   }
   
@@ -14847,13 +14034,15 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $dow = shift // confess missing_arg();
   
-      if    ($dow =~ /^monday$/i)    { return 1 }
-      elsif ($dow =~ /^tuesday$/i)   { return 2 }
-      elsif ($dow =~ /^wednesday$/i) { return 3 }
-      elsif ($dow =~ /^thursday$/i)  { return 4 }
-      elsif ($dow =~ /^friday$/i)    { return 5 }
-      elsif ($dow =~ /^saturday$/i)  { return 6 }
-      elsif ($dow =~ /^sunday$/i)    { return 7 }
+      $dow = lc $dow;
+  
+      if    ($dow =~ /^monday$/)    { return 1 }
+      elsif ($dow =~ /^tuesday$/)   { return 2 }
+      elsif ($dow =~ /^wednesday$/) { return 3 }
+      elsif ($dow =~ /^thursday$/)  { return 4 }
+      elsif ($dow =~ /^friday$/)    { return 5 }
+      elsif ($dow =~ /^saturday$/)  { return 6 }
+      elsif ($dow =~ /^sunday$/)    { return 7 }
       else {
           confess "yabsm: internal error: no such day of week '$dow'";
       }
@@ -14866,7 +14055,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       return qw(monday tuesday wednesday thursday friday saturday sunday);
   }
   
-  sub missing_arg { 
+  sub missing_arg {
       return 'yabsm: internal error: subroutine missing a required arg';
   }
   
@@ -15093,10 +14282,10 @@ $fatpacked{"Yabsm/Commands/TestRemoteBackupConfig.pm"} = '#line '.(1+__LINE__).'
       # make sure user has read/write permissions on the remote backup_dir
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
-      my $backup_dir_exists =  
+      my $backup_dir_exists =
         "if ! [ -d $backup_dir ]; then "
       . qq(echo -n "yabsm: error: no such directory '$backup_dir' at host '$host'"; fi);
-      
+  
       if (my $out = $ssh->capture( $backup_dir_exists )) {
           die "$out\n";
       }
@@ -15146,7 +14335,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               , ssh_host     => qr/[-@.\/\w]+/
               , comment      => qr/#.*/
               , pos_int      => qr/[1-9]\d*/
-              , month_day    => qr/[1-31]/
+              , month_day    => qr/3[01]|[12][0-9]|[1-9]/ # 1-31
               , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
               );
   
@@ -15201,7 +14390,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                   my $kvs  = $self->scope_of('{', 'subvol_def_p', '}');
                   $config{subvols}{$name} = $kvs;
               },
-              sub {                     
+              sub {
                   $self->token_kw( 'backup' );
                   $self->commit;
                   my $name = $self->maybe_expect( $regex{subject_name} );
@@ -15209,7 +14398,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
                   my $kvs  = $self->scope_of('{', 'backup_def_p', '}');
                   $config{backups}{$name} = $kvs;
               },
-              sub { 
+              sub {
                   my $k = $self->token_kw( misc_keywords() );
                   $self->commit;
                   $self->maybe_expect( '=' ) // $self->fail("expected '='");
@@ -15268,7 +14457,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           elsif ($k eq 'monthly_day') {
               $v = $self->maybe_expect( $regex{month_day} );
               $v // $self->fail('expected integer in range 1-31');
-          } 
+          }
           else {
               confess "yabsm: internal error: no such subvol setting '$k'";
           }
@@ -15299,7 +14488,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
           elsif ($k eq 'timeframe') {
               $v = $self->token_kw( Yabsm::Base::all_timeframes() );
           }
-          elsif ($k eq 'time') {
+          elsif ($k =~ /(daily|weekly|monthly)_time$/) {
               $v = $self->maybe_expect( $regex{time} );
               $v // $self->fail(q(expected time in format 'hh:mm'));
           }
@@ -15423,15 +14612,15 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
               if ($remote eq 'yes') {
                   push @req, 'host';
               }
-              
-              if ($tframe eq 'daily' || $tframe eq 'monthly') {
-                  push @req, 'time';
+  
+              if ($tframe eq 'daily') {
+                  push @req, 'daily_time';
               }
               elsif ($tframe eq 'weekly') {
-                  push @req, 'time', 'weekly_day';
+                  push @req, 'weekly_time', 'weekly_day';
               }
               elsif ($tframe eq 'monthly') {
-                  push @req, 'time', 'monthly_day';
+                  push @req, 'monthly_time', 'monthly_day';
               }
   
               if (my @missing = array_minus(@req, @def)) {
@@ -15470,7 +14659,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   }
   
   sub backup_keywords {
-      return qw(subvol remote host keep backup_dir timeframe time weekly_day monthly_day);
+      return qw(subvol remote host keep backup_dir timeframe daily_time weekly_time monthly_time weekly_day monthly_day);
   }
   
   sub misc_keywords {
@@ -16897,7 +16086,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix.pm"} = '#line '.(1+__LINE__).' "'.__FILE
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Infix 0.22;
+  package XS::Parse::Infix 0.23;
   
   use v5.14;
   use warnings;
@@ -17325,7 +16514,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder.pm"} = '#line '.(1+__LINE__).' "
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Infix::Builder 0.22;
+  package XS::Parse::Infix::Builder 0.23;
   
   use v5.14;
   use warnings;
@@ -17437,7 +16626,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder.pm"} = '#line '.(1+__LINE__).' "
 X86_64-LINUX_XS_PARSE_INFIX_BUILDER
 
 $fatpacked{"x86_64-linux/XS/Parse/Infix/Builder_data.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_XS_PARSE_INFIX_BUILDER_DATA';
-  package XS::Parse::Infix::Builder_data 0.22;
+  package XS::Parse::Infix::Builder_data 0.23;
   
   use v5.14;
   use warnings;
@@ -17578,7 +16767,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   #
   #  (C) Paul Evans, 2021-2022 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Keyword 0.22;
+  package XS::Parse::Keyword 0.23;
   
   use v5.14;
   use warnings;
@@ -17858,6 +17047,19 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   new anonymous subroutine. This will be passed as a protosub CV in the I<cv>
   field.
   
+  =head2 XPK_ARITHEXPR
+  
+  I<atomic, emits op.>
+  
+     XPK_ARITHEXPR
+  
+  An arithmetic expression is expected, parsed using C<parse_arithexpr()>, and
+  passed as an optree in the I<op> field.
+  
+  =head2 XPK_ARITHEXPR_VOIDCTX, XPK_ARITHEXPR_SCALARCTX
+  
+  Variants of C<XPK_ARITHEXPR> which puts the expression in void or scalar context.
+  
   =head2 XPK_TERMEXPR
   
   I<atomic, emits op.>
@@ -18013,8 +17215,19 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   C<XPK_OPTIONAL> or C<XPK_REPEATED> sequence, to provide a "secondary keyword"
   that such a repeated item can look out for.
   
-  This was previously called C<XPK_STRING>, and is provided as a synonym for
-  back-compatibility but new code should use this new name instead.
+  =head2 XPK_KEYWORD
+  
+  I<atomic, can probe, emits nothing.>
+  
+     XPK_KEYWORD("keyword")
+  
+  A literal string match is expected. No argument value is passed.
+  
+  This is similar to C<XPK_LITERAL> except that it additionally checks that the
+  following character is not an identifier character. This ensures that the
+  expected keyword-like behaviour is preserved. For example, given the input
+  C<"keyword">, the piece C<XPK_LITERAL("key")> would match it, whereas
+  C<XPK_KEYWORD("key")> would not because of the subsequent C<"w"> character.
   
   =head2 XPK_SEQUENCE
   
@@ -18114,6 +17327,20 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword.pm"} = '#line '.(1+__LINE__).' "'.__FI
   A structural type which expects to find a sequence of pieces, all contained in
   parentheses as C<( ... )>. This will pass no extra arguments.
   
+  =head2 XPK_ARGSCOPE
+  
+  I<structural, emits nothing.>
+  
+     XPK_ARGSCOPE(pieces ...)
+  
+  A structural type similar to C<XPK_PARENSCOPE>, except that the parentheses
+  themselves are optional; much like Perl's parsing of calls to known functions.
+  
+  If parentheses are encountered in the input, they will be consumed by this
+  piece and it will behave identically to C<XPK_PARENSCOPE>. If there is no open
+  parenthesis, this piece will behave like C<XPK_SEQUENCE> and consume all the
+  pieces inside it, without expecting a closing parenthesis.
+  
   =head2 XPK_BRACKETSCOPE
   
   I<structural, can probe, emits nothing.>
@@ -18183,7 +17410,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder.pm"} = '#line '.(1+__LINE__).'
   #
   #  (C) Paul Evans, 2021 -- leonerd@leonerd.org.uk
   
-  package XS::Parse::Keyword::Builder 0.22;
+  package XS::Parse::Keyword::Builder 0.23;
   
   use v5.14;
   use warnings;
@@ -18295,7 +17522,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder.pm"} = '#line '.(1+__LINE__).'
 X86_64-LINUX_XS_PARSE_KEYWORD_BUILDER
 
 $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'X86_64-LINUX_XS_PARSE_KEYWORD_BUILDER_DATA';
-  package XS::Parse::Keyword::Builder_data 0.22;
+  package XS::Parse::Keyword::Builder_data 0.23;
   
   use v5.14;
   use warnings;
@@ -18346,8 +17573,8 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   
     XS_PARSE_KEYWORD_BLOCK = 0x10,      /* op */
     XS_PARSE_KEYWORD_ANONSUB,           /* cv */
-    /* TODO: XS_PARSE_KEYWORD_ARITHEXPR = 0x12 */
-    XS_PARSE_KEYWORD_TERMEXPR = 0x13,   /* op */
+    XS_PARSE_KEYWORD_ARITHEXPR,         /* op */
+    XS_PARSE_KEYWORD_TERMEXPR,          /* op */
     XS_PARSE_KEYWORD_LISTEXPR,          /* op */
     /* TODO: XS_PARSE_KEYWORD_FULLEXPR = 0x15 */
     XS_PARSE_KEYWORD_IDENT = 0x16,      /* sv */
@@ -18381,7 +17608,8 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   
   enum {
     XPK_TYPEFLAG_OPT      = (1<<16),
-    XPK_TYPEFLAG_SPECIAL  = (1<<17), /* on XPK_BLOCK: scoped
+    XPK_TYPEFLAG_SPECIAL  = (1<<17), /* on XPK_LITERALSTR: keyword
+                                        on XPK_BLOCK: scoped
                                         on XPK_LEXVAR: my */
   
     /* These three are shifted versions of perl's G_VOID, G_SCALAR, G_LIST */
@@ -18390,6 +17618,8 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
     XPK_TYPEFLAG_G_LIST   = (3<<18),
   
     XPK_TYPEFLAG_ENTERLEAVE = (1<<20), /* wrap ENTER/LEAVE pair around the item */
+  
+    XPK_TYPEFLAG_MAYBEPARENS = (1<<21), /* parens themselves are optional on PARENSCOPE */
   };
   
   #define XPK_BLOCK_flags(flags) {.type = XS_PARSE_KEYWORD_BLOCK|(flags), .u.pieces = NULL}
@@ -18407,6 +17637,10 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   
   #define XPK_ANONSUB {.type = XS_PARSE_KEYWORD_ANONSUB}
   
+  #define XPK_ARITHEXPR_flags(flags) {.type = XS_PARSE_KEYWORD_ARITHEXPR|(flags)}
+  #define XPK_ARITHEXPR              XPK_ARITHEXPR_flags(0)
+  #define XPK_ARITHEXPR_VOIDCTX      XPK_ARITHEXPR_flags(XPK_TYPEFLAG_G_VOID)
+  #define XPK_ARITHEXPR_SCALARCTX    XPK_ARITHEXPR_flags(XPK_TYPEFLAG_G_SCALAR)
   #define XPK_TERMEXPR_flags(flags) {.type = XS_PARSE_KEYWORD_TERMEXPR|(flags)}
   #define XPK_TERMEXPR              XPK_TERMEXPR_flags(0)
   #define XPK_TERMEXPR_VOIDCTX      XPK_TERMEXPR_flags(XPK_TYPEFLAG_G_VOID)
@@ -18436,6 +17670,7 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
   #define XPK_LITERAL(s) {.type = XS_PARSE_KEYWORD_LITERALSTR, .u.str = (const char *)s}
   #define XPK_STRING(s)  XPK_LITERAL(s)
   #define XPK_AUTOSEMI   {.type = XS_PARSE_KEYWORD_AUTOSEMI}
+  #define XPK_KEYWORD(s) {.type = XS_PARSE_KEYWORD_LITERALSTR|XPK_TYPEFLAG_SPECIAL, .u.str = (const char *)s}
   
   #define XPK_INFIX(select) {.type = XS_PARSE_KEYWORD_INFIX, .u.c = select}
   #define XPK_INFIX_RELATION       XPK_INFIX(XPI_SELECT_RELATION)
@@ -18468,6 +17703,9 @@ $fatpacked{"x86_64-linux/XS/Parse/Keyword/Builder_data.pm"} = '#line '.(1+__LINE
     {.type = XS_PARSE_KEYWORD_PARENSCOPE, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
   #define XPK_PARENSCOPE_OPT(...) \
     {.type = XS_PARSE_KEYWORD_PARENSCOPE|XPK_TYPEFLAG_OPT, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
+  
+  #define XPK_ARGSCOPE(...) \
+    {.type = XS_PARSE_KEYWORD_PARENSCOPE|XPK_TYPEFLAG_MAYBEPARENS, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
   
   #define XPK_BRACKETSCOPE(...) \
     {.type = XS_PARSE_KEYWORD_BRACKETSCOPE, .u.pieces = (const struct XSParseKeywordPieceType []){ __VA_ARGS__, {0} }}
@@ -18609,7 +17847,6 @@ use v5.16.3;
 
 use Carp;
 use File::Path;
-use Try::Tiny;
 use Schedule::Cron;
 
 use lib::relative 'lib';
@@ -18617,68 +17854,140 @@ use lib::relative 'lib';
 use Yabsm::Base;
 use Yabsm::Config;
 
-die "yabsm: error: permission denied\n" if $<;
+main(@ARGV);
 
-my $usage = "usage: yabsmd <start|stop|restart>\n";
+sub main {
 
-my $resource_dir = '/run/yabsmd';
-my $pid_file     = "$resource_dir/yabsmd.pid";
-my $socket_path  = "$resource_dir/yabsmd.socket";
+    my $usage = "usage: yabsmd <start|stop|restart|status>\n";
 
-my $log_dir      = '/var/log/yabsmd';
-my $std_log      = "$log_dir/yabsmd-std.log";
-my $err_log      = "$log_dir/yabsmd-err.log";
+    my $cmd = shift or die $usage;
 
-#open STDOUT, '>>', $std_log;
-#open STDERR, '>>', $err_log;
+    shift and die $usage;
 
-$SIG{INT}  = \&yabsmd_stop;
-$SIG{TERM} = \&yabsmd_stop;
-$SIG{HUP}  = \&yabsmd_restart;
+    if    ($cmd eq 'start')   { yabsmd_start()   }
+    elsif ($cmd eq 'stop')    { yabsmd_stop()    }
+    elsif ($cmd eq 'restart') { yabsmd_restart() }
+    elsif ($cmd eq 'status')  { yabsmd_status()  }
+    else                      { die $usage       }
+}
 
-# Main
+sub yabsmd_pid {
 
-die $usage unless $#ARGV == 0 && $ARGV[0] =~ /^(start|stop|restart)$/;
+    # If there is a running instance of yabsmd return its pid
+    # otherwise return 0.
 
-$ARGV[0] eq 'start'   && yabsmd_start();
-$ARGV[0] eq 'stop'    && yabsmd_stop();
-$ARGV[0] eq 'restart' && yabsmd_restart();
+    my $pgrep_pid = `pgrep ^yabsmd | tr -d '\n'`;
 
-# Implementation
+    my $pid_file_pid;
+    if (open my $fh, '<', '/run/yabsmd.pid') {
+        chomp($pid_file_pid = <$fh>);
+        close $fh;
+    }
 
-sub cron_dispatcher {
-  say "ID:   ", shift;
-  say "Args: ", "@_";
+    my $is_running = $pid_file_pid && $pgrep_pid && $pid_file_pid eq $pgrep_pid;
+
+    return $is_running ? $pgrep_pid : 0;
+}
+
+sub cleanup_and_exit {
+
+    # Used as signal handler for default terminating signals.
+
+    if (my $yabsmd_pid = yabsmd_pid()) {
+        unlink '/run/yabsmd.pid';
+        kill 'KILL', $yabsmd_pid;
+    }
+
+    else {
+        confess "yabsmd: internal error: can not find a running instance of yabsmd";
+    }
 }
 
 sub yabsmd_start {
 
+    die "yabsmd: error: permission denied\n" if $<;
+
+    # There can only ever be one running instance of yabsmd.
+    if (my $yabsmd_pid = yabsmd_pid()) {
+        die "yabsmd: error: yabsmd tried to start when there is already a running as pid $yabsmd_pid\n";
+    }
+
+    # Daemons should restart on a SIGHUP.
+    $SIG{HUP}    = \&yabsmd_restart;
+
+    # Yabsmd will exit gracefully on any signal that has a
+    # default action of terminate or dump.
+    $SIG{ABRT}   = \&cleanup_and_exit;
+    $SIG{ALRM}   = \&cleanup_and_exit;
+    $SIG{BUS}    = \&cleanup_and_exit;
+    $SIG{FPE}    = \&cleanup_and_exit;
+    $SIG{ILL}    = \&cleanup_and_exit;
+    $SIG{INT}    = \&cleanup_and_exit;
+    $SIG{IO}     = \&cleanup_and_exit;
+    $SIG{KILL}   = \&cleanup_and_exit;
+    $SIG{PIPE}   = \&cleanup_and_exit;
+    $SIG{PROF}   = \&cleanup_and_exit;
+    $SIG{PWR}    = \&cleanup_and_exit;
+    $SIG{QUIT}   = \&cleanup_and_exit;
+    $SIG{SEGV}   = \&cleanup_and_exit;
+    $SIG{STKFLT} = \&cleanup_and_exit;
+    $SIG{SYS}    = \&cleanup_and_exit;
+    $SIG{TERM}   = \&cleanup_and_exit;
+    $SIG{TRAP}   = \&cleanup_and_exit;
+    $SIG{USR1}   = \&cleanup_and_exit;
+    $SIG{USR2}   = \&cleanup_and_exit;
+    $SIG{VTALRM} = \&cleanup_and_exit;
+    $SIG{XCPU}   = \&cleanup_and_exit;
+    $SIG{XFSZ}   = \&cleanup_and_exit;
+
     # Program will die with relevant error messages if config is invalid.
     my $config_ref = Yabsm::Config::read_config();
 
-    rmtree $resource_dir if -d $resource_dir;
-    mkdir $resource_dir;
-
-    open my $fh, '>', $pid_file or die "yabsmd: error: failed to open file '$pid_file'\n";
-    say $fh $$;
-    close $fh;
-    chmod 0644, $pid_file;
-
     # Shedule::Cron takes care of the entire underlying mechanism for
     # running a cron daemon.
-    my $cron_scheduler = Schedule::Cron->new(\&cron_dispatcher);
+    my $cron_scheduler = Schedule::Cron->new(
+        sub { confess "yabsmd: internal error: default cron dispatcher invoked" }
+        , processprefix => 'yabsmd'
+    );
 
+    # Schedule the snapshots and backups based off the users config.
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
 
-    $cron_scheduler->run();
+    my $pid = $cron_scheduler->run(detach => 1, pid_file => '/run/yabsmd.pid');
+
+    say "yabsmd started as pid $pid";
 }
 
 sub yabsmd_stop {
 
-    rmtree $resource_dir if -d $resource_dir;
+    die "yabsmd: error: permission denied\n" if $<;
 
-    exit 0;
+    if (my $pid = yabsmd_pid()) {
+        say "Stopping yabsmd process running as pid $pid";
+        kill 'TERM', $pid;
+    }
+    else {
+        say STDERR "no running instance of yabsmd";
+    }
 }
 
-sub yabsmd_restart { yabsmd_stop() ; yabsmd_start() }
+sub yabsmd_restart {
+
+    die "yabsmd: error: permission denied\n" if $<;
+
+    yabsmd_stop();
+
+    sleep 1;
+
+    yabsmd_start();
+}
+
+sub yabsmd_status {
+    if (my $pid = yabsmd_pid()) {
+        say "yabsmd is running as pid $pid";
+    }
+    else {
+        say STDERR "no running instance of yabsmd";
+    }
+}

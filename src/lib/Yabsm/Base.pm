@@ -30,28 +30,28 @@ use strict;
 use warnings;
 use v5.16.3;
 
+use Log::Log4perl;
 use Net::OpenSSH;
 use Time::Piece;
 use List::Util 1.33 qw(any);
 use File::Path qw(make_path);
 
-use Log::Log4perl;
-Log::Log4perl::init(do {
-    my $conf = q(
-log4perl.category.Yabsm.Base       = INFO, LogFile, Screen
-log4perl.appender.LogFile          = Log::Log4perl::Appender::File
-log4perl.appender.LogFile.filename = /var/log/yabsm.log
-);
-    \$conf;
-});
+sub log_and_die {
+    my $log = Log::Log4perl::get_logger(__PACKAGE__);
+    $log->logconfess(shift);
+}
+
+sub missing_arg {
+    return 'yabsm: internal error: subroutine missing a required arg';
+}
 
 sub do_snapshot { # No test. Is not pure.
 
     # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subvol     = shift // log_fatal missing_arg();
-    my $timeframe  = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subvol     = shift // log_and_die missing_arg();
+    my $timeframe  = shift // log_and_die missing_arg();
 
     take_new_snapshot($config_ref, $subvol, $timeframe);
     delete_old_snapshots($config_ref, $subvol, $timeframe);
@@ -64,9 +64,9 @@ sub take_new_snapshot { # No test. Is not pure.
     # take a single $timeframe snapshot of $subvol. Used for yabsm's
     # 'take-snap' command.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subvol     = shift // log_fatal missing_arg();
-    my $timeframe  = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subvol     = shift // log_and_die missing_arg();
+    my $timeframe  = shift // log_and_die missing_arg();
 
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
@@ -87,9 +87,9 @@ sub delete_old_snapshots { # No test. Is not pure.
     # setting defined in the users config. This function should be
     # called directly after take_new_snapshot().
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subvol     = shift // log_fatal missing_arg();
-    my $timeframe  = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subvol     = shift // log_and_die missing_arg();
+    my $timeframe  = shift // log_and_die missing_arg();
 
     my $existing_snaps_ref = all_snaps($config_ref, $subvol, $timeframe);
 
@@ -136,8 +136,8 @@ sub do_backup_bootstrap { # No test. Is not pure.
     # Determine if $backup is local or remote and dispatch the
     # corresponding do_backup_bootstrap_* subroutine.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     if (is_local_backup($config_ref, $backup)) {
 	do_backup_bootstrap_local($config_ref, $backup);
@@ -148,7 +148,7 @@ sub do_backup_bootstrap { # No test. Is not pure.
     }
 
     else {
-	log_fatal "yabsm: internal error: no such user defined backup '$backup'";
+	log_and_die "yabsm: internal error: no such user defined backup '$backup'";
     }
 
     return;
@@ -161,8 +161,8 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     # backups backup bootstrap dir and then then btrfs send/receive
     # the bootstrap snap.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
@@ -206,8 +206,8 @@ sub do_backup_bootstrap_ssh{ # No test. Is not pure.
     # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
     # then btrfs send/receive the bootstrap snap over ssh.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     ### LOCAL ###
 
@@ -257,8 +257,8 @@ sub do_backup { # No test. Is not pure.
     # has not been bootstrapped then instead perform the bootstrap
     # routine.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     if (not has_bootstrap($config_ref, $backup)) {
         do_backup_bootstrap($config_ref, $backup)
@@ -273,7 +273,7 @@ sub do_backup { # No test. Is not pure.
     }
 
     else {
-	log_fatal "yabsm: internal error: no such defined backup '$backup'";
+	log_and_die "yabsm: internal error: no such defined backup '$backup'";
     }
 
     return;
@@ -285,11 +285,11 @@ sub do_backup_local { # No test. Is not pure.
     # function will kill the program if the bootstrap phase has not
     # yet been completed.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     if (not has_bootstrap($config_ref, $backup)) {
-        log_fatal "yabsm: internal error: backup '$backup' has not been bootstrapped";
+        log_and_die "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
     # bootstrap dir should have exactly one snap
@@ -325,11 +325,11 @@ sub do_backup_ssh { # No test. Is not pure.
     # This function will kill the program if the bootstrap phase has
     # not yet been completed.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     if (not has_bootstrap($config_ref, $backup)) {
-        log_fatal "yabsm: internal error: backup '$backup' has not been bootstrapped";
+        log_and_die "yabsm: internal error: backup '$backup' has not been bootstrapped";
     }
 
     # bootstrap snapshot dir should have exactly one snapshot.
@@ -372,8 +372,8 @@ sub delete_old_backups_local { # No test. Is not pure.
     # $keep setting defined in the users config. This
     # function should be called directly after do_backup_local().
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
@@ -424,9 +424,9 @@ sub delete_old_backups_ssh { # No test. Is not pure.
     # setting defined in the users config. This function should be
     # called directly after do_backup_ssh().
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $server_ssh = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $server_ssh = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
@@ -474,15 +474,15 @@ sub has_bootstrap { # No test. Is not pure.
 
     # True if $backup already has a bootstrap snapshot.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
     return 0 if not -d $bootstrap_snap_dir;
 
     opendir(my $dh, $bootstrap_snap_dir) or
-      log_fatal "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
+      log_and_die "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
 
     my @snaps = grep { /^[^.]/ } readdir($dh);
 
@@ -504,8 +504,8 @@ sub all_snaps { # No test. Is not pure.
     # only want snapshots from certain timeframes which can be passed
     # as the >=3'rd arguments.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subject    = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subject    = shift // log_and_die missing_arg();
     my @timeframes = @_;
 
     my @all_snaps = (); # return this
@@ -543,8 +543,8 @@ sub all_backup_snaps { # No test. Is not pure.
     # can be passed as an arg if $backup is a remote backup, otherwise
     # a new connection will be opened.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     my @all_backups = ();
 
@@ -570,7 +570,7 @@ sub local_yabsm_dir { # Has test. Is pure.
     # $subvol and $timeframe arguments are optional. Note that we do not
     # check check that $subvol and $timeframe are a valid subvol/timeframe.
 
-    my $config_ref = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
     my $subvol     = shift; # optional
     my $timeframe  = shift; # optional
 
@@ -591,8 +591,8 @@ sub bootstrap_snap_dir { # Has test. Is pure.
     # Return the path of the directory holding the bootstrap snapshot for
     # $backup. The bootstrap snapshot is used for btrfs incremental backups.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
 
@@ -606,7 +606,7 @@ sub is_snapstring { # Has test. Is pure.
     # Return 1 iff $snapstring is a valid snapstring. Works on
     # absolute paths as well as plain snapstrings.
 
-    my $snapstring = shift // log_fatal missing_arg();
+    my $snapstring = shift // log_and_die missing_arg();
 
     return $snapstring =~ /day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/;
 }
@@ -625,8 +625,8 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
     # Return a snapstring of the time $n $unit's ago from the current
     # time. The unit can be minutes, hours or days.
 
-    my $n    = shift // log_fatal missing_arg();
-    my $unit = shift // log_fatal missing_arg();
+    my $n    = shift // log_and_die missing_arg();
+    my $unit = shift // log_and_die missing_arg();
 
     # Can add/subtract by seconds with Time::Piece objects.
 
@@ -635,7 +635,7 @@ sub n_units_ago_snapstring { # Has test. Is not pure.
     if    ($unit =~ /^(minutes|mins|m)$/) { $seconds_per_unit = 60    }
     elsif ($unit =~ /^(hours|hrs|h)$/   ) { $seconds_per_unit = 3600  }
     elsif ($unit =~ /^(days|d)$/        ) { $seconds_per_unit = 86400 }
-    else  { log_fatal "yabsm: internal error: '$unit' is not a valid time unit" }
+    else  { log_and_die "yabsm: internal error: '$unit' is not a valid time unit" }
 
     my $current_time = current_time_snapstring();
 
@@ -650,7 +650,7 @@ sub is_immediate { # Has test. Is pure.
 
     # An immediate is either a literal time or a relative time.
 
-    my $imm = shift // log_fatal missing_arg();
+    my $imm = shift // log_and_die missing_arg();
 
     return is_literal_time($imm) || is_relative_time($imm);
 }
@@ -661,7 +661,7 @@ sub is_literal_time { # Has test. Is pure.
     # come in one of 5 different forms which can be seen by the 5
     # regexps below.
 
-    my $lit_time = shift // log_fatal missing_arg();
+    my $lit_time = shift // log_and_die missing_arg();
 
     # yr-mon-day-hr:min
     my $re1 = qr/^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}:\d{1,2}$/;
@@ -688,7 +688,7 @@ sub is_relative_time { # Has test. Is pure.
     # The amount field must be a whole number.
     # The unit field must be a time unit like 'minutes', 'hours', or 'days'.
 
-    my $rel_time = shift // log_fatal missing_arg();
+    my $rel_time = shift // log_and_die missing_arg();
 
     my ($back, $amount, $unit) = split '-', $rel_time, 3;
 
@@ -708,7 +708,7 @@ sub immediate_to_snapstring { # No test. Is pure.
 
     # Resolve an immediate to a snapstring.
 
-    my $imm = shift // log_fatal missing_arg();
+    my $imm = shift // log_and_die missing_arg();
 
     if (is_literal_time($imm)) {
 	return literal_time_to_snapstring($imm);
@@ -719,14 +719,14 @@ sub immediate_to_snapstring { # No test. Is pure.
     }
 
     # input should have already been cleansed.
-    log_fatal "yabsm: internal error: '$imm' is not an immediate";
+    log_and_die "yabsm: internal error: '$imm' is not an immediate";
 }
 
 sub literal_time_to_snapstring { # Has test. Is pure.
 
     # Resolve a literal time to a snapstring.
 
-    my $lit_time = shift // log_fatal missing_arg();
+    my $lit_time = shift // log_and_die missing_arg();
 
     # literal time forms
     my $yr_mon_day_hr_min = qr/^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
@@ -771,7 +771,7 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     }
 
     # input should have already been cleansed.
-    log_fatal "yabsm: internal error: '$lit_time' is not a valid literal time";
+    log_and_die "yabsm: internal error: '$lit_time' is not a valid literal time";
 }
 
 sub time_hour { # Has test. Is pure.
@@ -800,7 +800,7 @@ sub relative_time_to_snapstring { # Has test. Is not pure.
 
     # Resolve a relative time to a snapstring.
 
-    my $rel_time = shift // log_fatal missing_arg();
+    my $rel_time = shift // log_and_die missing_arg();
 
     my (undef, $amount, $unit) = split '-', $rel_time, 3;
 
@@ -815,7 +815,7 @@ sub snapstring_to_nums { # Has test. Is pure.
     # order the year, month, day, hour, and minute. This works with
     # both a full path and just a snapshot name string.
 
-    my $snap = shift // log_fatal missing_arg();
+    my $snap = shift // log_and_die missing_arg();
 
     my @nums = $snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;
 
@@ -837,7 +837,7 @@ sub snapstring_to_time_piece_obj { # Has test. Is pure.
     # Turn a snapshot name string into a Time::Peice object. This is
     # useful because we can do time arithmetic on these objects.
 
-    my $snap = shift // log_fatal missing_arg();
+    my $snap = shift // log_and_die missing_arg();
 
     my ($yr, $mon, $day, $hr, $min) = snapstring_to_nums($snap);
 
@@ -848,7 +848,7 @@ sub time_piece_obj_to_snapstring { # Has test. Is pure.
 
     # Turn a Time::Piece object into a snapshot name string.
 
-    my $time_piece_obj = shift // log_fatal missing_arg();
+    my $time_piece_obj = shift // log_and_die missing_arg();
 
     my $yr  = $time_piece_obj->year;
     my $mon = $time_piece_obj->mon;
@@ -865,7 +865,7 @@ sub sort_snaps { # Has test. Is pure.
     # The snapshots will be returned newest to oldest. Works with
     # plain snapstrings and full paths.
 
-    my $snaps_ref = shift // log_fatal missing_arg();
+    my $snaps_ref = shift // log_and_die missing_arg();
 
     my @sorted_snaps = sort { cmp_snaps($a, $b) } @$snaps_ref;
 
@@ -879,8 +879,8 @@ sub cmp_snaps { # Has test. Is pure.
     # Return 0 if $snap1 and $snap2 are the same.
     # Works with both plain snapstrings and full paths.
 
-    my $snap1 = shift // log_fatal missing_arg();
-    my $snap2 = shift // log_fatal missing_arg();
+    my $snap1 = shift // log_and_die missing_arg();
+    my $snap2 = shift // log_and_die missing_arg();
 
     my @snap1_nums = snapstring_to_nums($snap1);
     my @snap2_nums = snapstring_to_nums($snap2);
@@ -902,8 +902,8 @@ sub snap_closest_to { # Has test. Is pure.
     # $target_snap. $all_snaps_ref should be sorted from newest to
     # oldest.
 
-    my $all_snaps_ref = shift // log_fatal missing_arg();
-    my $target_snap   = shift // log_fatal missing_arg();
+    my $all_snaps_ref = shift // log_and_die missing_arg();
+    my $target_snap   = shift // log_and_die missing_arg();
 
     my $snap;
 
@@ -944,9 +944,9 @@ sub snap_closer { # Has test. Is pure.
     # Return either $snap1 or $snap2, depending on which is closer to
     # $target_snap. If they are equidistant return $snap1.
 
-    my $target_snap = shift // log_fatal missing_arg();
-    my $snap1       = shift // log_fatal missing_arg();
-    my $snap2       = shift // log_fatal missing_arg();
+    my $target_snap = shift // log_and_die missing_arg();
+    my $snap1       = shift // log_and_die missing_arg();
+    my $snap2       = shift // log_and_die missing_arg();
 
     my $target_epoch = snapstring_to_time_piece_obj($target_snap)->epoch;
     my $snap1_epoch  = snapstring_to_time_piece_obj($snap1)->epoch;
@@ -965,8 +965,8 @@ sub snaps_newer_than { # Has test. Is pure.
     # $target_snap. We assume that $all_snaps_ref is sorted from
     # newest to oldest.
 
-    my $all_snaps_ref = shift // log_fatal missing_arg();
-    my $target_snap   = shift // log_fatal missing_arg();
+    my $all_snaps_ref = shift // log_and_die missing_arg();
+    my $target_snap   = shift // log_and_die missing_arg();
 
     my @newer = ();
 
@@ -990,8 +990,8 @@ sub snaps_older_than { # Has test. Is pure.
 
     # Return all the snapshots that are older than $target_snap.
 
-    my $all_snaps_ref = shift // log_fatal missing_arg();
-    my $target_snap   = shift // log_fatal missing_arg();
+    my $all_snaps_ref = shift // log_and_die missing_arg();
+    my $target_snap   = shift // log_and_die missing_arg();
 
     my @older = ();
 
@@ -1019,9 +1019,9 @@ sub snaps_between { # Has test. Is pure.
     # and $target_snap2. Remember that $all_snaps_ref is sorted
     # newest to oldest.
 
-    my $all_snaps_ref = shift // log_fatal missing_arg();
-    my $target_snap1  = shift // log_fatal missing_arg();
-    my $target_snap2  = shift // log_fatal missing_arg();
+    my $all_snaps_ref = shift // log_and_die missing_arg();
+    my $target_snap1  = shift // log_and_die missing_arg();
+    my $target_snap2  = shift // log_and_die missing_arg();
 
     # figure out which target snap is newer/older.
 
@@ -1093,7 +1093,7 @@ sub newest_snap { # Has test. Is not pure.
     # snapshot of some subvol/backup, and thus will require an extra
     # argument denoting the desired subvol/backup.
 
-    my $ref    = shift // log_fatal missing_arg();
+    my $ref    = shift // log_and_die missing_arg();
     my $subvol = shift; # only needed if $ref is $config_ref
 
     my $ref_type = ref($ref);
@@ -1107,7 +1107,7 @@ sub newest_snap { # Has test. Is not pure.
 	return $all_snaps_ref->[0];
     }
 
-    log_fatal "yabsm: internal error: '$ref' has ref type '$ref_type'";
+    log_and_die "yabsm: internal error: '$ref' has ref type '$ref_type'";
 }
 
 sub oldest_snap { # Has test. Is not pure.
@@ -1118,7 +1118,7 @@ sub oldest_snap { # Has test. Is not pure.
     # snapshot of some subvol/backup, and thus will require an extra
     # argument denoting the desired subvol/backup.
 
-    my $ref = shift // log_fatal missing_arg();
+    my $ref = shift // log_and_die missing_arg();
 
     my $ref_type = ref($ref);
 
@@ -1127,12 +1127,12 @@ sub oldest_snap { # Has test. Is not pure.
     }
 
     if ($ref_type eq 'HASH') {
-	my $subject = shift // log_fatal missing_arg();
+	my $subject = shift // log_and_die missing_arg();
 	my $all_snaps_ref = all_snaps($ref, $subject);
 	return $all_snaps_ref->[-1];
     }
 
-    log_fatal "yabsm: internal error: '$ref' has ref type '$ref_type'";
+    log_and_die "yabsm: internal error: '$ref' has ref type '$ref_type'";
 }
 
 sub answer_query { # No test. Is not pure.
@@ -1141,9 +1141,9 @@ sub answer_query { # No test. Is not pure.
     # $subject. We expect that $query has already been
     # validated. $subject can either be a defined subvol or a backup.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subject    = shift // log_fatal missing_arg();
-    my $query      = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subject    = shift // log_and_die missing_arg();
+    my $query      = shift // log_and_die missing_arg();
 
     my $all_snaps_ref = all_snaps($config_ref, $subject);
 
@@ -1215,7 +1215,7 @@ sub answer_query { # No test. Is not pure.
     }
 
     else { # input should have already been cleansed
-	log_fatal "yabsm: internal error: '$query' is not a valid query";
+	log_and_die "yabsm: internal error: '$query' is not a valid query";
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;
@@ -1226,7 +1226,7 @@ sub is_valid_query { # Has test. Is pure.
     # True iff $query is a valid query. Used to validate
     # user input query for 'yabsm find'.
 
-    my $query = shift // log_fatal missing_arg();
+    my $query = shift // log_and_die missing_arg();
 
     if ($query eq 'all')             { return 1 }
     if ($query eq 'newest')          { return 1 }
@@ -1247,7 +1247,7 @@ sub is_newer_than_query { # Has test. Is pure.
     # keywords 'newer', 'after', or 'aft'. A newer_than query takes
     # exactly one immediate as an argument.
 
-    my $query = shift // log_fatal missing_arg();
+    my $query = shift // log_and_die missing_arg();
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
@@ -1268,7 +1268,7 @@ sub is_older_than_query { # Has test. Is pure.
     # keywords 'older', 'before', or 'bef'. An older_than query takes
     # exactly one immediate as an argument.
 
-    my $query = shift // log_fatal missing_arg();
+    my $query = shift // log_and_die missing_arg();
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
@@ -1287,7 +1287,7 @@ sub is_between_query { # Has test. Is pure.
     # A between query takes two immediate arguments and returns all
     # snapshots between the two immediate times.
 
-    my $query = shift // log_fatal missing_arg();
+    my $query = shift // log_and_die missing_arg();
 
     my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
 
@@ -1313,7 +1313,7 @@ sub is_timeframe { # Has test. Is pure.
 
     # true if $tf is a yabsm timeframe.
 
-    my $tf = shift // log_fatal missing_arg();
+    my $tf = shift // log_and_die missing_arg();
 
     return any { $tf eq $_ } all_timeframes();
 }
@@ -1322,9 +1322,9 @@ sub timeframe_want { # Has test. Is pure.
 
     # true iff $subvol wants to take $timeframe snapshots.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subvol     = shift // log_fatal missing_arg();
-    my $timeframe  = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subvol     = shift // log_and_die missing_arg();
+    my $timeframe  = shift // log_and_die missing_arg();
 
     return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
 }
@@ -1333,8 +1333,8 @@ sub subvols_timeframes { # Has test. Is pure.
 
     # Return an array of all the timeframes that $subvol wants snapshots for.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subvol     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subvol     = shift // log_and_die missing_arg();
 
     my @tfs = ();
 
@@ -1351,7 +1351,7 @@ sub all_subvols { # Has test. Is pure.
 
     # Return an array of the names of every user defined subvol.
 
-    my $config_ref = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
 
     my @subvols = sort keys %{$config_ref->{subvols}};
 
@@ -1362,7 +1362,7 @@ sub all_backups { # Has test. Is pure.
 
     # Return an array of the names of every user defined backup.
 
-    my $config_ref = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
 
     my @backups = sort keys %{$config_ref->{backups}};
 
@@ -1373,8 +1373,8 @@ sub all_backups_of_subvol { # Has test. Is pure.
 
     # Return an array of all the backups that are backing up $subvol.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subvol     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subvol     = shift // log_and_die missing_arg();
 
     my @backups = ();
 
@@ -1395,8 +1395,8 @@ sub is_subject { # Has test. Is pure.
     # True iff $subject is an existing user defined subject. A subject
     # is either a subvol or backup.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subject    = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subject    = shift // log_and_die missing_arg();
 
     my $is_subvol = is_subvol($config_ref, $subject);
     my $is_backup = is_backup($config_ref, $subject);
@@ -1408,8 +1408,8 @@ sub is_subvol { # Has test. Is pure.
 
     # True iff $subvol is the name of a user defined subvol.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $subvol     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $subvol     = shift // log_and_die missing_arg();
 
     return any { $subvol eq $_ } all_subvols($config_ref);
 }
@@ -1418,8 +1418,8 @@ sub is_backup { # Has test. Is pure.
 
     # True iff $backup is the name of a user defined backup.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     return any { $backup eq $_ } all_backups($config_ref);
 }
@@ -1430,8 +1430,8 @@ sub is_remote_backup { # Has test. Is pure.
     # local backup is one in which the backups 'remote' field is set
     # to 'yes'.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'yes';
@@ -1445,8 +1445,8 @@ sub schedule_snapshots { # No test. Is not pure.
     # Schedule snapshots based off user configuration by adding
     # them to $cron_scheduler object (see Schedule::Cron module).
 
-    my $config_ref     = shift // log_fatal missing_arg();
-    my $cron_scheduler = shift // log_fatal missing_arg();
+    my $config_ref     = shift // log_and_die missing_arg();
+    my $cron_scheduler = shift // log_and_die missing_arg();
 
     foreach my $subvol (all_subvols($config_ref)) {
 
@@ -1509,8 +1509,8 @@ sub schedule_backups { # No test. Is not pure.
     # Schedule backups based off user configuration by adding
     # them to $cron_scheduler object (see Schedule::Cron module).
 
-    my $config_ref     = shift // log_fatal missing_arg();
-    my $cron_scheduler = shift // log_fatal missing_arg();
+    my $config_ref     = shift // log_and_die missing_arg();
+    my $cron_scheduler = shift // log_and_die missing_arg();
 
     foreach my $backup (all_backups($config_ref)) {
 
@@ -1569,8 +1569,8 @@ sub is_local_backup { # Has test. Is pure.
     # Return 1 iff $backup is the name of a defined local backup. A
     # local backup is a backup whos 'remote' field is set # to 'no'.
 
-    my $config_ref = shift // log_fatal missing_arg();
-    my $backup     = shift // log_fatal missing_arg();
+    my $config_ref = shift // log_and_die missing_arg();
+    my $backup     = shift // log_and_die missing_arg();
 
     if (is_backup($config_ref, $backup)) {
 	return $config_ref->{backups}{$backup}{remote} eq 'no';
@@ -1583,7 +1583,7 @@ sub new_ssh_connection { # No test. Is not pure.
     # Create and return a Net::OpenSSH connection object. Kill the
     # program if we cannot establish a connection to $remote host.
 
-    my $remote_host = shift // log_fatal missing_arg();
+    my $remote_host = shift // log_and_die missing_arg();
 
     my $server_ssh = Net::OpenSSH->new( $remote_host,
                                       , batch_mode => 1 # Don't try asking for password
@@ -1604,7 +1604,7 @@ sub day_of_week_num { # Has test. Is pure.
     # the week, and this function is used to generate cron
     # strings. Exit program if $dow is not a valid day of week.
 
-    my $dow = shift // log_fatal missing_arg();
+    my $dow = shift // log_and_die missing_arg();
 
     $dow = lc $dow;
 
@@ -1616,7 +1616,7 @@ sub day_of_week_num { # Has test. Is pure.
     elsif ($dow =~ /^saturday$/)  { return 6 }
     elsif ($dow =~ /^sunday$/)    { return 7 }
     else {
-        log_fatal "yabsm: internal error: no such day of week '$dow'";
+        log_and_die "yabsm: internal error: no such day of week '$dow'";
     }
 }
 
@@ -1625,15 +1625,6 @@ sub all_days_of_week { # No test. Is pure.
     # Return all the valid days of the week.
 
     return qw(monday tuesday wednesday thursday friday saturday sunday);
-}
-
-sub missing_arg {
-    return 'yabsm: internal error: subroutine missing a required arg';
-}
-
-sub log_fatal {
-    my $log = Log::Log4perl::get_logger(__PACKAGE__);
-    $log->logconfess(shift);
 }
 
 1;

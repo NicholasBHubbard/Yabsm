@@ -2,6 +2,7 @@ requires 'Test::Exception', '== 0.43';
 requires 'App::FatPacker', '== 0.10.8';
 requires 'Parser::MGC', '== 0.19';
 requires 'Try::Tiny', '== 0.31';
+requires 'Log::Log4perl', '== 1.55';
 requires 'Net::OpenSSH', '== 0.82';
 requires 'Schedule::Cron', '== 1.01';
 requires 'lib::relative', '== 1.000';

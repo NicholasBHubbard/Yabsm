@@ -36,6 +36,16 @@ use Carp;
 use List::Util 1.33 qw(any);
 use File::Path qw(make_path);
 
+use Log::Log4perl;
+Log::Log4perl::init(do {
+    my $conf = q(
+log4perl.category.Yabsm.Base       = INFO, LogFile, Screen
+log4perl.appender.LogFile          = Log::Log4perl::Appender::File
+log4perl.appender.LogFile.filename = /var/log/yabsm.log
+);
+    \$conf;
+});
+
 sub do_snapshot { # No test. Is not pure.
 
     # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
@@ -1620,6 +1630,11 @@ sub all_days_of_week { # No test. Is pure.
 
 sub missing_arg {
     return 'yabsm: internal error: subroutine missing a required arg';
+}
+
+sub log_fatal {
+    my $log = Log::Log4perl::get_logger(__PACKAGE__);
+    $log->logconfess(shift);
 }
 
 1;

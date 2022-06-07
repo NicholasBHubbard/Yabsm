@@ -34,7 +34,7 @@ use Net::OpenSSH;
 use Time::Piece;
 use Carp;
 use List::Util 1.33 qw(any);
-use File::Path qw(make_path); # make_path() behaves like 'mkdir --parents'
+use File::Path qw(make_path);
 
 sub do_snapshot { # No test. Is not pure.
 

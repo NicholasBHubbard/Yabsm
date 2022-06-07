@@ -22,7 +22,7 @@
 #  has not been informally tested.
 #
 #  An error message prefixed with 'yabsm: internal error' is an error for a
-#  scenario that will only occur a bug is present.
+#  scenario that will only occur if a bug is present.
 
 package Yabsm::Base;
 

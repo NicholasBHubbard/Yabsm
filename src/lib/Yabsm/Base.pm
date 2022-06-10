@@ -92,7 +92,7 @@ sub delete_old_snapshots { # No test. Is not pure.
     # took a snapshot.
     if ($num_snaps == $num_to_keep + 1) {
 
-	# This is the oldest snap # because they are sorted newest
+	# This is the oldest snap because they are sorted newest
         # to oldest and pop takes from the end of the array.
 	my $oldest_snap = pop @$existing_snaps_ref;
 

@@ -92,8 +92,8 @@ sub delete_old_snapshots { # No test. Is not pure.
     # took a snapshot.
     if ($num_snaps == $num_to_keep + 1) {
 
-	# pop takes from the end of the array. This is the oldest snap
-	# because they are sorted newest to oldest.
+	# This is the oldest snap # because they are sorted newest
+        # to oldest and pop takes from the end of the array.
 	my $oldest_snap = pop @$existing_snaps_ref;
 
 	system("btrfs subvol delete $oldest_snap");

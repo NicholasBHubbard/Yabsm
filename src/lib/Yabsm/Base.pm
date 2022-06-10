@@ -65,6 +65,7 @@ sub take_new_snapshot { # No test. Is not pure.
 
     my $snap_name = current_time_snapstring();
 
+    # For the first time we take a $timeframe snapshot of $subvol.
     make_path $snap_dir if not -d $snap_dir;
 
     system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");

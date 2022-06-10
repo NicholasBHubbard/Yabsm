@@ -21,6 +21,7 @@ use Yabsm::Base;
 
 use Carp;
 use Array::Utils 'array_minus';
+use Log::Log4perl 'get_logger';
 
 use Parser::MGC;
 use base 'Parser::MGC';
@@ -74,7 +75,7 @@ sub read_config {
 
 sub p {
 
-    my $self = shift // Yabsm::Base::missing_arg();
+    my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
 
     my %config;
 
@@ -124,7 +125,7 @@ sub p {
 
 sub subvol_def_p {
 
-    my $self = shift // Yabsm::Base::missing_arg();
+    my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
 
     my %kvs; # return this
     my $k;
@@ -169,7 +170,7 @@ sub subvol_def_p {
 
 sub backup_def_p {
 
-    my $self = shift // Yabsm::Base::missing_arg();
+    my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
 
     my %kvs; # return this
     my $k;
@@ -231,7 +232,7 @@ sub backup_def_p {
 
 sub missing_subvol_settings {
 
-    my $config_ref = shift // Yabsm::Base::missing_arg();
+    my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
 
     my @err_msgs = ();
 
@@ -283,7 +284,7 @@ sub missing_subvol_settings {
 
 sub missing_backup_settings {
 
-    my $config_ref = shift // Yabsm::Base::missing_arg();
+    my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
 
     my @err_msgs = ();
 
@@ -333,7 +334,7 @@ sub missing_backup_settings {
 
 sub missing_misc_settings {
 
-    my $config_ref = shift // Yabsm::Base::missing_arg();
+    my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
 
     my @err_msgs = ();
 

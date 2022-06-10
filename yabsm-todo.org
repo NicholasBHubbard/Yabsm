@@ -13,7 +13,7 @@
 - [ ] SSH output should go through a non root user.»
 - [X] Make yabsmd handle all signals that terminate the program.
 - [ ] Write a cpanfile to specify dependencies
-- [X] Improve error messages on erroneous configss
+- [X] Improve error messages on erroneous configs
 - [X] Let user select day for monthly snapshots.
 - [ ] Write server authentication script to setup yabsm user.
 - [ ] Improve test suite.

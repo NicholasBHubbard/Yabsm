@@ -7,6 +7,7 @@
 - [ ] Write groff manual so we can ship a man page.
 - [X] Write an rc init script for yabsmd.
 - [ ] Add logging.
+  - [ ] Comprehensive logging for functions that aren't pure.
 - [ ] Grub integration.
 - [ ] Implement yabsm list snapshots command.
 - [ ] SSH output should go through a non root user.»

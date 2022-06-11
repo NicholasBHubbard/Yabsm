@@ -68,7 +68,9 @@ sub take_new_snapshot { # No test. Is not pure.
     # For the first time we take a $timeframe snapshot of $subvol.
     make_path $snap_dir if not -d $snap_dir;
 
-    system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
+    my $cmd = "btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name";
+
+    0 == system($cmd) or get_logger->error("'$cmd' exited with non-zero status");
 
     return;
 }
@@ -93,13 +95,15 @@ sub delete_old_snapshots { # No test. Is not pure.
     # took a snapshot.
     if ($num_snaps == $num_to_keep + 1) {
 
-	# This is the oldest snap because they are sorted newest
+        # This is the oldest snap because they are sorted newest
         # to oldest and pop takes from the end of the array.
-	my $oldest_snap = pop @$existing_snaps_ref;
+        my $oldest_snap = pop @$existing_snaps_ref;
 
-	system("btrfs subvol delete $oldest_snap");
+        my $cmd = "btrfs subvol delete $oldest_snap";
 
-	return;
+        0 == system($cmd) or get_logger->error("'$cmd' exited with non-zero status");
+
+        return;
     }
 
     # We haven't reached the snapshot quota yet so don't delete anything.
@@ -109,17 +113,17 @@ sub delete_old_snapshots { # No test. Is not pure.
     # were keeping prior.
     else {
 
-	while ($num_snaps > $num_to_keep) {
+        while ($num_snaps > $num_to_keep) {
 
-	    # pop mutates $existing_snaps_ref, and thus is not idempotent.
+            # pop mutates $existing_snaps_ref, and thus is not idempotent.
             my $oldest_snap = pop @$existing_snaps_ref;
 
-	    system("btrfs subvol delete $oldest_snap");
+            system("btrfs subvol delete $oldest_snap");
 
-	    $num_snaps--;
-	}
+            $num_snaps--;
+        }
 
-	return;
+        return;
     }
 }
 
@@ -132,15 +136,15 @@ sub do_backup_bootstrap { # No test. Is not pure.
     my $backup     = shift // get_logger->logconfess(missing_arg());
 
     if (is_local_backup($config_ref, $backup)) {
-	do_backup_bootstrap_local($config_ref, $backup);
+        do_backup_bootstrap_local($config_ref, $backup);
     }
 
     elsif (is_remote_backup($config_ref, $backup)) {
-	do_backup_bootstrap_ssh($config_ref, $backup);
+        do_backup_bootstrap_ssh($config_ref, $backup);
     }
 
     else {
-	get_logger->logconfess("yabsm: internal error: no such user defined backup '$backup'");
+        get_logger->logconfess("yabsm: internal error: no such user defined backup '$backup'");
     }
 
     return;
@@ -236,8 +240,8 @@ sub do_backup_bootstrap_ssh{ # No test. Is not pure.
 
     # send the bootstrap backup to remote host
     $server_ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
-		, "sudo -n btrfs receive $backup_dir"
-	        );
+                , "sudo -n btrfs receive $backup_dir"
+                );
 
     return;
 }
@@ -257,15 +261,15 @@ sub do_backup { # No test. Is not pure.
     }
 
     elsif (is_local_backup($config_ref, $backup)) {
-	do_backup_local($config_ref, $backup);
+        do_backup_local($config_ref, $backup);
     }
 
     elsif (is_remote_backup($config_ref, $backup)) {
-	do_backup_ssh($config_ref, $backup);
+        do_backup_ssh($config_ref, $backup);
     }
 
     else {
-	get_logger->logconfess("yabsm: internal error: no such defined backup '$backup'");
+        get_logger->logconfess("yabsm: internal error: no such defined backup '$backup'");
     }
 
     return;
@@ -379,13 +383,13 @@ sub delete_old_backups_local { # No test. Is not pure.
     # performed a backup.
     if ($num_backups == $num_to_keep + 1) {
 
-	# pop takes from the end of the array. This is the oldest backup
-	# because they are sorted newest to oldest.
-	my $oldest_backup = pop @existing_backups;
+        # pop takes from the end of the array. This is the oldest backup
+        # because they are sorted newest to oldest.
+        my $oldest_backup = pop @existing_backups;
 
-	system("btrfs subvol delete $oldest_backup");
+        system("btrfs subvol delete $oldest_backup");
 
-	return;
+        return;
     }
 
     # We haven't reached the backup quota yet so we don't delete anything.
@@ -395,17 +399,17 @@ sub delete_old_backups_local { # No test. Is not pure.
     # were keeping prior.
     else {
 
-	while ($num_backups > $num_to_keep) {
+        while ($num_backups > $num_to_keep) {
 
-	    # note that pop mutates existing_snaps
-	    my $oldest_backup = pop @existing_backups;
+            # note that pop mutates existing_snaps
+            my $oldest_backup = pop @existing_backups;
 
-	    system("btrfs subvol delete $oldest_backup");
+            system("btrfs subvol delete $oldest_backup");
 
-	    $num_backups--;
-	}
+            $num_backups--;
+        }
 
-	return;
+        return;
     }
 }
 
@@ -432,13 +436,13 @@ sub delete_old_backups_ssh { # No test. Is not pure.
     # performed a backup.
     if ($num_backups == $num_to_keep + 1) {
 
-	# pop takes from the end of the array. This is the oldest backup
-	# because they are sorted newest to oldest.
-	my $oldest_backup = pop @existing_backups;
+        # pop takes from the end of the array. This is the oldest backup
+        # because they are sorted newest to oldest.
+        my $oldest_backup = pop @existing_backups;
 
-	$server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+        $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
 
-	return;
+        return;
     }
 
     # We haven't reached the backup quota yet so we don't delete anything.
@@ -448,17 +452,17 @@ sub delete_old_backups_ssh { # No test. Is not pure.
     # were keeping prior.
     else {
 
-	while ($num_backups > $num_to_keep) {
+        while ($num_backups > $num_to_keep) {
 
-	    # note that pop mutates existing_snaps
-	    my $oldest_backup = pop @existing_backups;
+            # note that pop mutates existing_snaps
+            my $oldest_backup = pop @existing_backups;
 
-	    $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+            $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
 
-	    $num_backups--;
-	}
+            $num_backups--;
+        }
 
-	return;
+        return;
     }
 }
 
@@ -569,10 +573,10 @@ sub local_yabsm_dir { # Has test. Is pure.
     my $yabsm_dir = $config_ref->{misc}{yabsm_dir};
 
     if (defined $subvol) {
-	$yabsm_dir .= "/$subvol";
-	if (defined $timeframe) {
-	    $yabsm_dir .= "/$timeframe";
-	}
+        $yabsm_dir .= "/$subvol";
+        if (defined $timeframe) {
+            $yabsm_dir .= "/$timeframe";
+        }
     }
 
     return $yabsm_dir;
@@ -703,11 +707,11 @@ sub immediate_to_snapstring { # No test. Is pure.
     my $imm = shift // get_logger->logconfess(missing_arg());
 
     if (is_literal_time($imm)) {
-	return literal_time_to_snapstring($imm);
+        return literal_time_to_snapstring($imm);
     }
 
     if (is_relative_time($imm)) {
-	return relative_time_to_snapstring($imm);
+        return relative_time_to_snapstring($imm);
     }
 
     # input should have already been cleansed.
@@ -730,26 +734,26 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     my $hr_min            = qr/^(\d{1,2}):(\d{1,2})$/;
 
     if ($lit_time =~ $yr_mon_day_hr_min) {
-	return nums_to_snapstring($1, $2, $3, $4, $5);
+        return nums_to_snapstring($1, $2, $3, $4, $5);
     }
 
     if ($lit_time =~ $yr_mon_day) {
-	return nums_to_snapstring($1, $2, $3, 0, 0);
+        return nums_to_snapstring($1, $2, $3, 0, 0);
     }
 
     if ($lit_time =~ $mon_day) {
-	my $t = localtime;
-	return nums_to_snapstring($t->year, $1, $2, 0, 0);
+        my $t = localtime;
+        return nums_to_snapstring($t->year, $1, $2, 0, 0);
     }
 
     if ($lit_time =~ $mon_day_hr) {
-	my $t = localtime;
-	return nums_to_snapstring($t->year, $1, $2, $3, 0);
+        my $t = localtime;
+        return nums_to_snapstring($t->year, $1, $2, $3, 0);
     }
 
     if ($lit_time =~ $mon_day_hr_min) {
-	my $t = localtime;
-	return nums_to_snapstring($t->year, $1, $2, $3, $4);
+        my $t = localtime;
+        return nums_to_snapstring($t->year, $1, $2, $3, $4);
     }
 
     if ($lit_time =~ $day_hr_min) {
@@ -880,8 +884,8 @@ sub cmp_snaps { # Has test. Is pure.
     # lexicographic order
     for (my $i = 0; $i <= $#snap1_nums; $i++) {
 
-	return -1 if $snap1_nums[$i] > $snap2_nums[$i];
-	return 1  if $snap1_nums[$i] < $snap2_nums[$i];
+        return -1 if $snap1_nums[$i] > $snap2_nums[$i];
+        return 1  if $snap1_nums[$i] < $snap2_nums[$i];
     }
 
     # Must be the same
@@ -901,31 +905,31 @@ sub snap_closest_to { # Has test. Is pure.
 
     for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
 
-	my $this_snap = $all_snaps_ref->[$i];
+        my $this_snap = $all_snaps_ref->[$i];
 
-	my $cmp = cmp_snaps($this_snap, $target_snap);
+        my $cmp = cmp_snaps($this_snap, $target_snap);
 
-	# if $this_snap is the same as $target_snap
-	if ($cmp == 0) {
-	    $snap = $this_snap;
-	    last;
-	}
+        # if $this_snap is the same as $target_snap
+        if ($cmp == 0) {
+            $snap = $this_snap;
+            last;
+        }
 
-	# if $this_snap is older than $target_snap
-	if ($cmp == 1) {
-	    if ($i == 0) { # No previous snap. This is as close as were getting.
-		$snap = $this_snap;
-	    }
-	    else {
-		my $prev_snap = $all_snaps_ref->[$i-1];
-		$snap = snap_closer($target_snap, $prev_snap, $this_snap);
-	    }
-	    last;
-	}
+        # if $this_snap is older than $target_snap
+        if ($cmp == 1) {
+            if ($i == 0) { # No previous snap. This is as close as were getting.
+                $snap = $this_snap;
+            }
+            else {
+                my $prev_snap = $all_snaps_ref->[$i-1];
+                $snap = snap_closer($target_snap, $prev_snap, $this_snap);
+            }
+            last;
+        }
     }
 
     if (not defined $snap) {
-	$snap = oldest_snap($all_snaps_ref);
+        $snap = oldest_snap($all_snaps_ref);
     }
 
     return $snap;
@@ -964,15 +968,15 @@ sub snaps_newer_than { # Has test. Is pure.
 
     for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
 
-	my $this_snap = $all_snaps_ref->[$i];
+        my $this_snap = $all_snaps_ref->[$i];
 
-	my $cmp = cmp_snaps($this_snap, $target_snap);
+        my $cmp = cmp_snaps($this_snap, $target_snap);
 
-	# if $this_snap is newer than $target_snap
-	if ($cmp == -1) {
-	    push @newer, $this_snap;
-	}
-	else { last }
+        # if $this_snap is newer than $target_snap
+        if ($cmp == -1) {
+            push @newer, $this_snap;
+        }
+        else { last }
     }
 
     return wantarray ? @newer : \@newer;
@@ -991,15 +995,15 @@ sub snaps_older_than { # Has test. Is pure.
 
     for (my $i = 0; $i <= $last_idx; $i++) {
 
-	my $this_snap = $all_snaps_ref->[$i];
+        my $this_snap = $all_snaps_ref->[$i];
 
-	my $cmp = cmp_snaps($this_snap, $target_snap);
+        my $cmp = cmp_snaps($this_snap, $target_snap);
 
-	# if $this_snap is older than $target_snap
-	if ($cmp == 1) {
-	    @older = @$all_snaps_ref[$i .. $last_idx];
-	    last;
-	}
+        # if $this_snap is older than $target_snap
+        if ($cmp == 1) {
+            @older = @$all_snaps_ref[$i .. $last_idx];
+            last;
+        }
     }
 
     return wantarray ? @older : \@older;
@@ -1021,12 +1025,12 @@ sub snaps_between { # Has test. Is pure.
     my $newer;
 
     if (-1 == cmp_snaps($target_snap1, $target_snap2)) {
-	$newer = $target_snap1;
-	$older = $target_snap2;
+        $newer = $target_snap1;
+        $older = $target_snap2;
     }
     else {
-	$newer = $target_snap2;
-	$older = $target_snap1;
+        $newer = $target_snap2;
+        $older = $target_snap1;
     }
 
     # Find the snaps between (inclusive) $newer and $older. Remember
@@ -1038,40 +1042,40 @@ sub snaps_between { # Has test. Is pure.
 
     for (my $i = 0; $i <= $last_idx; $i++) {
 
-	my $this_snap = $all_snaps_ref->[$i];
+        my $this_snap = $all_snaps_ref->[$i];
 
-	my $cmp = cmp_snaps($this_snap, $newer);
+        my $cmp = cmp_snaps($this_snap, $newer);
 
-	# if $this_snap is older or equal to the $newer
-	if ($cmp == 1 || $cmp == 0) {
+        # if $this_snap is older or equal to the $newer
+        if ($cmp == 1 || $cmp == 0) {
 
-	    # between (inclusive)
-	    push @snaps_between, $this_snap if $cmp == 0;
+            # between (inclusive)
+            push @snaps_between, $this_snap if $cmp == 0;
 
-	    for (my $j = $i+1; $j <= $last_idx; $j++) {
+            for (my $j = $i+1; $j <= $last_idx; $j++) {
 
-		my $this_snap = $all_snaps_ref->[$j];
+                my $this_snap = $all_snaps_ref->[$j];
 
-		my $cmp = cmp_snaps($this_snap, $older);
+                my $cmp = cmp_snaps($this_snap, $older);
 
-		# if $this_snap is older than or equal to $older
-		if ($cmp == 1 || $cmp == 0) {
+                # if $this_snap is older than or equal to $older
+                if ($cmp == 1 || $cmp == 0) {
 
-		    # between (inclusive)
-		    push @snaps_between, $this_snap if $cmp == 0;
+                    # between (inclusive)
+                    push @snaps_between, $this_snap if $cmp == 0;
 
-		    # Were done. Break the inner loop. The outer loop
-		    # will be broken as well.
-		    last;
-		}
+                    # Were done. Break the inner loop. The outer loop
+                    # will be broken as well.
+                    last;
+                }
 
-		else {
-		    push @snaps_between, $this_snap;
-		}
-	    }
+                else {
+                    push @snaps_between, $this_snap;
+                }
+            }
 
-	    last;
-	}
+            last;
+        }
     }
 
     return wantarray ? @snaps_between : \@snaps_between;
@@ -1091,12 +1095,12 @@ sub newest_snap { # Has test. Is not pure.
     my $ref_type = ref($ref);
 
     if ($ref_type eq 'ARRAY') {
-	return $ref->[0]
+        return $ref->[0]
     }
 
     if ($ref_type eq 'HASH') {
-	my $all_snaps_ref = all_snaps($ref, $subvol);
-	return $all_snaps_ref->[0];
+        my $all_snaps_ref = all_snaps($ref, $subvol);
+        return $all_snaps_ref->[0];
     }
 
     get_logger->logconfess("yabsm: internal error: '$ref' has ref type '$ref_type'");
@@ -1115,13 +1119,13 @@ sub oldest_snap { # Has test. Is not pure.
     my $ref_type = ref($ref);
 
     if ($ref_type eq 'ARRAY') {
-	return $ref->[-1];
+        return $ref->[-1];
     }
 
     if ($ref_type eq 'HASH') {
-	my $subject = shift // get_logger->logconfess(missing_arg());
-	my $all_snaps_ref = all_snaps($ref, $subject);
-	return $all_snaps_ref->[-1];
+        my $subject = shift // get_logger->logconfess(missing_arg());
+        my $all_snaps_ref = all_snaps($ref, $subject);
+        return $all_snaps_ref->[-1];
     }
 
     get_logger("yabsm: internal error: '$ref' has ref type '$ref_type'");
@@ -1143,71 +1147,71 @@ sub answer_query { # No test. Is not pure.
 
     if ($query eq 'all') {
 
-	# return all the snaps
+        # return all the snaps
 
-	@snaps_to_return = @$all_snaps_ref;
+        @snaps_to_return = @$all_snaps_ref;
     }
 
     elsif ($query eq 'newest') {
 
-	# return just the newest snap
+        # return just the newest snap
 
-	my $snap = newest_snap($all_snaps_ref);
+        my $snap = newest_snap($all_snaps_ref);
 
-	@snaps_to_return = ($snap);
+        @snaps_to_return = ($snap);
     }
 
     elsif ($query eq 'oldest') {
 
-	# return just the oldest snap
+        # return just the oldest snap
 
-	my $snap = oldest_snap($all_snaps_ref);
+        my $snap = oldest_snap($all_snaps_ref);
 
-	@snaps_to_return = ($snap);
+        @snaps_to_return = ($snap);
     }
 
     elsif (is_immediate($query)) {
 
-	# return the one snap closest to the time denoted by the immediate.
+        # return the one snap closest to the time denoted by the immediate.
 
-	my $target = immediate_to_snapstring($query);
+        my $target = immediate_to_snapstring($query);
 
-	my $snap = snap_closest_to($all_snaps_ref, $target);
+        my $snap = snap_closest_to($all_snaps_ref, $target);
 
-	@snaps_to_return = ($snap);
+        @snaps_to_return = ($snap);
     }
 
     elsif (is_newer_than_query($query)) {
 
-	my (undef, $imm) = split /\s/, $query, 2;
+        my (undef, $imm) = split /\s/, $query, 2;
 
-	my $target = immediate_to_snapstring($imm);
+        my $target = immediate_to_snapstring($imm);
 
-	@snaps_to_return = snaps_newer_than($all_snaps_ref, $target);
+        @snaps_to_return = snaps_newer_than($all_snaps_ref, $target);
     }
 
     elsif (is_older_than_query($query)) {
 
-	my (undef, $imm) = split /\s/, $query, 2;
+        my (undef, $imm) = split /\s/, $query, 2;
 
-	my $target = immediate_to_snapstring($imm);
+        my $target = immediate_to_snapstring($imm);
 
-	@snaps_to_return = snaps_older_than($all_snaps_ref, $target);
+        @snaps_to_return = snaps_older_than($all_snaps_ref, $target);
     }
 
     elsif (is_between_query($query)) {
 
-	my (undef, $imm1, $imm2) = split /\s/, $query, 3;
+        my (undef, $imm1, $imm2) = split /\s/, $query, 3;
 
-	my $target1 = immediate_to_snapstring($imm1);
+        my $target1 = immediate_to_snapstring($imm1);
 
-	my $target2 = immediate_to_snapstring($imm2);
+        my $target2 = immediate_to_snapstring($imm2);
 
-	@snaps_to_return = snaps_between($all_snaps_ref, $target1, $target2);
+        @snaps_to_return = snaps_between($all_snaps_ref, $target1, $target2);
     }
 
     else { # input should have already been cleansed
-	get_logger->("yabsm: internal error: '$query' is not a valid query");
+        get_logger->("yabsm: internal error: '$query' is not a valid query");
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;
@@ -1372,11 +1376,11 @@ sub all_backups_of_subvol { # Has test. Is pure.
 
     foreach my $backup (all_backups($config_ref)) {
 
-	my $this_subvol = $config_ref->{backups}{$backup}{subvol};
+        my $this_subvol = $config_ref->{backups}{$backup}{subvol};
 
-	if ($this_subvol eq $subvol) {
-	    push @backups, $backup
-	}
+        if ($this_subvol eq $subvol) {
+            push @backups, $backup
+        }
     }
 
     return wantarray ? @backups : \@backups;
@@ -1426,7 +1430,7 @@ sub is_remote_backup { # Has test. Is pure.
     my $backup     = shift // get_logger->logconfess(missing_arg());
 
     if (is_backup($config_ref, $backup)) {
-	return $config_ref->{backups}{$backup}{remote} eq 'yes';
+        return $config_ref->{backups}{$backup}{remote} eq 'yes';
     }
 
     else { return 0 }
@@ -1565,7 +1569,7 @@ sub is_local_backup { # Has test. Is pure.
     my $backup     = shift // get_logger->logconfess(missing_arg());
 
     if (is_backup($config_ref, $backup)) {
-	return $config_ref->{backups}{$backup}{remote} eq 'no';
+        return $config_ref->{backups}{$backup}{remote} eq 'no';
     }
     else { return 0 }
 }
@@ -1579,9 +1583,9 @@ sub new_ssh_connection { # No test. Is not pure.
 
     my $server_ssh = Net::OpenSSH->new( $remote_host,
                                       , batch_mode => 1 # Don't try asking for password
-			              , timeout => 5    # Minutes
-			              , kill_ssh_on_timeout => 1
-			              );
+                                      , timeout => 5    # Minutes
+                                      , kill_ssh_on_timeout => 1
+                                      );
 
     $server_ssh->error and
       die "yabsm: ssh error: could not establish ssh connection to '$remote_host' " . $server_ssh->error . "\n";

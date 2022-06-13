@@ -68,9 +68,7 @@ sub take_new_snapshot { # No test. Is not pure.
     # For the first time we take a $timeframe snapshot of $subvol.
     make_path $snap_dir if not -d $snap_dir;
 
-    my $cmd = "btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name";
-
-    0 == system($cmd) or get_logger->error("'$cmd' exited with non-zero status");
+    safe_system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
 
     return;
 }
@@ -99,9 +97,7 @@ sub delete_old_snapshots { # No test. Is not pure.
         # to oldest and pop takes from the end of the array.
         my $oldest_snap = pop @$existing_snaps_ref;
 
-        my $cmd = "btrfs subvol delete $oldest_snap";
-
-        0 == system($cmd) or get_logger->error("'$cmd' exited with non-zero status");
+        safe_system("btrfs subvol delete $oldest_snap");
 
         return;
     }
@@ -109,7 +105,7 @@ sub delete_old_snapshots { # No test. Is not pure.
     # We haven't reached the snapshot quota yet so don't delete anything.
     elsif ($num_snaps <= $num_to_keep) { return }
 
-    # User changed their settings to keep less snapshots than they
+    # User changed their settings to keep less snapshots then they
     # were keeping prior.
     else {
 
@@ -118,7 +114,7 @@ sub delete_old_snapshots { # No test. Is not pure.
             # pop mutates $existing_snaps_ref, and thus is not idempotent.
             my $oldest_snap = pop @$existing_snaps_ref;
 
-            system("btrfs subvol delete $oldest_snap");
+            safe_system("btrfs subvol delete $oldest_snap");
 
             $num_snaps--;
         }
@@ -164,7 +160,9 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
 
     # delete old bootstrap snap
     if (-d $boot_snap_dir) {
-        system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
+        my @snaps = glob "$boot_snap_dir/*";
+        1 == scalar @snaps or get_logger->error("yabsm: error: multiple bootstrap snapshots in $boot_snap_dir");
+        safe_system("btrfs subvol delete " . shift @snaps);
     }
     else {
         make_path $boot_snap_dir;
@@ -175,26 +173,25 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     # if $backup_dir exists this cannot be the first time
     # bootstrapping so we need to delete the old bootstrap snap.
     if (-d $backup_dir) {
-        system "btrfs subvol delete $_" for grep { $_ =~ /BOOTSTRAP-day/ } glob "$backup_dir/*";
+        my @boot_snap = grep { /BOOTSTRAP-/ } glob "$backup_dir/*";
+        1 == scalar @boot_snap or get_logger->error("yabsm: error: multiple bootstrap snapshots in $backup_dir");
+        safe_system('btrfs subvol delete ' . shift @boot_snap);
     }
     else {
         make_path $backup_dir;
     }
 
-    my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
-
-    my $subvol = $config_ref->{backups}{$backup}{subvol};
-
+    my $boot_snap  = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
+    my $subvol     = $config_ref->{backups}{$backup}{subvol};
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
 
-    system("btrfs subvol snapshot -r $mountpoint $boot_snap");
-
-    system("btrfs send $boot_snap | btrfs receive $backup_dir");
+    safe_system("btrfs subvol snapshot -r $mountpoint $boot_snap");
+    safe_system("btrfs send $boot_snap | btrfs receive $backup_dir");
 
     return;
 }
 
-sub do_backup_bootstrap_ssh{ # No test. Is not pure.
+sub do_backup_bootstrap_ssh { # No test. Is not pure.
 
     # Perform bootstrap phase of a btrfs incremental backup. To
     # bootstrap a backup we create a new snapshot and place it in the
@@ -205,43 +202,35 @@ sub do_backup_bootstrap_ssh{ # No test. Is not pure.
     my $config_ref = shift // get_logger->logconfess(missing_arg());
     my $backup     = shift // get_logger->logconfess(missing_arg());
 
-    ### LOCAL ###
-
     my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
     # if $boot_snap_dir exists this cannot be the first time bootstrapping
+    # so we need to delete the old bootstrap snap.
     if (-d $boot_snap_dir) {
-        system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
+        my @boot_snap = glob "$boot_snap_dir/*";
+        1 == scalar @boot_snap or get_logger->error('multiple bootstrap snapshots in $boot_snap_dir');
+        safe_system('btrfs subvol delete ' . shift @boot_snap);
     }
     else {
         make_path $boot_snap_dir;
     }
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
-
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-
+    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
     my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
 
-    system("btrfs subvol snapshot -r $mountpoint $boot_snap");
+    safe_system("btrfs subvol snapshot -r $mountpoint $boot_snap");
 
-    ### REMOTE ###
-
-    # setup local bootstrap snap
-    my $server_ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
-
-    my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+    # setup Net::OpenSSH ssh connection
+    my $host = $config_ref->{backups}{$backup}{host};
+    my $ssh = new_ssh_connection($host);
 
     # delete old remote bootstrap snap(s) if it exists
-    $server_ssh->system( "ls -d $backup_dir/* "
-                . '| grep BOOTSTRAP-day '
-                . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
-                );
+    safe_system_ssh($ssh, "ls -d $backup_dir/* | grep BOOTSTRAP- | while read -r boot_snap; do sudo -n btrfs subvol delete \"\$boot_snap\"; done");
 
     # send the bootstrap backup to remote host
-    $server_ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
-                , "sudo -n btrfs receive $backup_dir"
-                );
+    safe_system_ssh($ssh, "sudo -n btrfs receive $backup_dir", {stdin_file => ['-|', "btrfs send $boot_snap"]});
 
     return;
 }
@@ -289,27 +278,20 @@ sub do_backup_local { # No test. Is not pure.
     }
 
     # bootstrap dir should have exactly one snap
-    my $boot_snap =
-      [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
-
+    my $boot_snap = [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-
     my $subvol = $config_ref->{backups}{$backup}{subvol};
-
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-
     my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-
-    make_path $tmp_dir if not -d $tmp_dir;
-
     my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
 
-    system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    # If this is the first time backing up $backup.
+    make_path $tmp_dir if not -d $tmp_dir;
 
-    system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
-
-    system("btrfs subvol delete $tmp_snap");
-
+    # main
+    safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    safe_system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
+    safe_system("btrfs subvol delete $tmp_snap");
     delete_old_backups_local($config_ref, $backup);
 
     return;
@@ -333,31 +315,21 @@ sub do_backup_ssh { # No test. Is not pure.
       [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
-
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-
     my $remote_host = $config_ref->{backups}{$backup}{host};
-
-    my $server_ssh = new_ssh_connection($remote_host);
-
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+    my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
+    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+    my $ssh = new_ssh_connection($remote_host);
 
-    my $local_yabsm_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-
-    make_path $local_yabsm_dir if not -d $local_yabsm_dir;
-
-    my $snapshot = "$local_yabsm_dir/" . current_time_snapstring();
+    # If this is the first time backing up $backup.
+    make_path $tmp_dir if not -d $tmp_dir;
 
     # main
-
-    system("btrfs subvol snapshot -r $mountpoint $snapshot");
-
-    $server_ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $snapshot"]}
-                        , "sudo -n btrfs receive $remote_backup_dir");
-
-    system("btrfs subvol delete $snapshot");
-
-    delete_old_backups_ssh($config_ref, $server_ssh, $backup);
+    safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+    safe_system_ssh($ssh, "sudo -n btrfs receive $remote_backup_dir", {stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]});
+    safe_system("btrfs subvol delete $tmp_snap");
+    delete_old_backups_ssh($config_ref, $ssh, $backup);
 
     return;
 }
@@ -387,7 +359,7 @@ sub delete_old_backups_local { # No test. Is not pure.
         # because they are sorted newest to oldest.
         my $oldest_backup = pop @existing_backups;
 
-        system("btrfs subvol delete $oldest_backup");
+        safe_system("btrfs subvol delete $oldest_backup");
 
         return;
     }
@@ -404,7 +376,7 @@ sub delete_old_backups_local { # No test. Is not pure.
             # note that pop mutates existing_snaps
             my $oldest_backup = pop @existing_backups;
 
-            system("btrfs subvol delete $oldest_backup");
+            safe_system("btrfs subvol delete $oldest_backup");
 
             $num_backups--;
         }
@@ -416,17 +388,17 @@ sub delete_old_backups_local { # No test. Is not pure.
 sub delete_old_backups_ssh { # No test. Is not pure.
 
     # Delete old backup snapshot(s) at the remote host connected to by
-    # $server_ssh. We know how many backups to keep based off $backup's $keep
+    # $ssh. We know how many backups to keep based off $backup's $keep
     # setting defined in the users config. This function should be
     # called directly after do_backup_ssh().
 
     my $config_ref = shift // get_logger->logconfess(missing_arg());
-    my $server_ssh = shift // get_logger->logconfess(missing_arg());
+    my $ssh = shift // get_logger->logconfess(missing_arg());
     my $backup     = shift // get_logger->logconfess(missing_arg());
 
     my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
 
-    my @existing_backups = all_backup_snaps($config_ref, $backup, $server_ssh);
+    my @existing_backups = all_backup_snaps($config_ref, $backup, $ssh);
 
     my $num_backups = scalar @existing_backups;
 
@@ -440,7 +412,7 @@ sub delete_old_backups_ssh { # No test. Is not pure.
         # because they are sorted newest to oldest.
         my $oldest_backup = pop @existing_backups;
 
-        $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+        safe_system_ssh($ssh, "sudo -n btrfs subvol delete $oldest_backup");
 
         return;
     }
@@ -457,7 +429,7 @@ sub delete_old_backups_ssh { # No test. Is not pure.
             # note that pop mutates existing_snaps
             my $oldest_backup = pop @existing_backups;
 
-            $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+            safe_system_ssh($ssh, "sudo -n btrfs subvol delete $oldest_backup");
 
             $num_backups--;
         }
@@ -478,7 +450,7 @@ sub has_bootstrap { # No test. Is not pure.
     return 0 if not -d $bootstrap_snap_dir;
 
     opendir(my $dh, $bootstrap_snap_dir) or
-      get_logger->logconfess("yabsm: internal error: can not open dir '$bootstrap_snap_dir'");
+      get_logger->logdie("yabsm: internal error: can not open dir '$bootstrap_snap_dir'");
 
     my @snaps = grep { /^[^.]/ } readdir($dh);
 
@@ -547,8 +519,8 @@ sub all_backup_snaps { # No test. Is not pure.
     if (is_remote_backup($config_ref, $backup)) {
         my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
         my $remote_host = $config_ref->{backups}{$backup}{host};
-        my $server_ssh = shift // new_ssh_connection( $remote_host );
-        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $server_ssh->capture("ls $backup_dir") ]);
+        my $ssh = shift // new_ssh_connection( $remote_host );
+        @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $ssh->capture("ls $backup_dir") ]);
 
     }
 
@@ -1557,6 +1529,10 @@ sub schedule_backups { # No test. Is not pure.
                 sub { do_backup($config_ref, $backup) }
             );
         }
+
+        else {
+            get_logger->logdie("yabsm: internal error: invalid timeframe '$timeframe'");
+        }
     }
 }
 
@@ -1581,16 +1557,16 @@ sub new_ssh_connection { # No test. Is not pure.
 
     my $remote_host = shift // get_logger->logconfess(missing_arg());
 
-    my $server_ssh = Net::OpenSSH->new( $remote_host,
+    my $ssh = Net::OpenSSH->new( $remote_host,
                                       , batch_mode => 1 # Don't try asking for password
                                       , timeout => 5    # Minutes
                                       , kill_ssh_on_timeout => 1
                                       );
 
-    $server_ssh->error and
-      die "yabsm: ssh error: could not establish ssh connection to '$remote_host' " . $server_ssh->error . "\n";
+    $ssh->error and
+      get_logger->logdie("yabsm: error: could not establish ssh connection to '$remote_host': " . $ssh->error);
 
-    return $server_ssh;
+    return $ssh;
 }
 
 sub day_of_week_num { # Has test. Is pure.
@@ -1604,13 +1580,13 @@ sub day_of_week_num { # Has test. Is pure.
 
     $dow = lc $dow;
 
-    if    ($dow =~ /^monday$/)    { return 1 }
-    elsif ($dow =~ /^tuesday$/)   { return 2 }
-    elsif ($dow =~ /^wednesday$/) { return 3 }
-    elsif ($dow =~ /^thursday$/)  { return 4 }
-    elsif ($dow =~ /^friday$/)    { return 5 }
-    elsif ($dow =~ /^saturday$/)  { return 6 }
-    elsif ($dow =~ /^sunday$/)    { return 7 }
+    if    ($dow eq 'monday')    { return 1 }
+    elsif ($dow eq 'tuesday')   { return 2 }
+    elsif ($dow eq 'wednesday') { return 3 }
+    elsif ($dow eq 'thursday')  { return 4 }
+    elsif ($dow eq 'friday')    { return 5 }
+    elsif ($dow eq 'saturday')  { return 6 }
+    elsif ($dow eq 'sunday')    { return 7 }
     else {
         get_logger->logconfess("yabsm: internal error: no such day of week '$dow'");
     }
@@ -1621,6 +1597,46 @@ sub all_days_of_week { # No test. Is pure.
     # Return all the valid days of the week.
 
     return qw(monday tuesday wednesday thursday friday saturday sunday);
+}
+
+sub safe_system {
+
+    # Like backticks but log and die if $cmd exits with non-zero status.
+
+    my $cmd     = shift // get_logger->logconfess(missing_arg());
+    my $err_msg = shift;
+
+    my $output = `$cmd`;
+
+    # $? is the exit status of $cmd
+    unless (0 == $?) {
+        $err_msg = $err_msg // "yabsm: error: shell command '$cmd' exited with status $? and outputted - $output";
+        get_logger->logdie($err_msg);
+    }
+
+    return $output;
+}
+
+sub safe_system_ssh {
+
+    # Like Net::OpenSSH::capture but log and die if $cmd exits with
+    # a non-zero status.
+
+    my $ssh  = shift // get_logger->logconfess(missing_arg());
+    my $cmd  = shift // get_logger->logconfess(missing_arg());
+    my %opts = (ref $_[0] eq 'HASH' ? %{shift()} : ());
+
+    my $output = $ssh->capture({%opts}, $cmd);
+
+    unless (0 == $?) {
+        get_logger->logdie( 'yabsm: error: SSH command sent to '
+                          . $ssh->get_host
+                          . " exited with status $? and outputted - "
+                          . $output
+                          );
+    }
+
+    return $output
 }
 
 sub missing_arg {

@@ -15,6 +15,7 @@ use v5.16.3;
 use Carp;
 use File::Path;
 use Schedule::Cron;
+use Log::Log4perl 'get_logger';
 
 use lib::relative 'lib';
 
@@ -30,6 +31,18 @@ sub main {
     my $cmd = shift or die $usage;
 
     shift and die $usage;
+
+    Log::Log4perl::init(do {
+    my $log_config = q(
+log4perl.category.Yabsm.Base       = ALL, Logfile
+log4perl.appender.Logfile          = Log::Log4perl::Appender::File
+log4perl.appender.Logfile.filename = /var/log/yabsmd.log
+log4perl.appender.Logfile.mode     = append
+log4perl.appender.Logfile.layout   = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Logfile.layout.ConversionPattern = %d [%M]: %m{chomp}%n
+);
+    \$log_config;
+});
 
     if    ($cmd eq 'start')   { yabsmd_start()   }
     elsif ($cmd eq 'stop')    { yabsmd_stop()    }
@@ -66,7 +79,7 @@ sub cleanup_and_exit {
     }
 
     else {
-        confess "yabsmd: internal error: can not find a running instance of yabsmd";
+        get_logger->logconfess("yabsmd: internal error: can not find a running instance of yabsmd");
     }
 }
 
@@ -113,7 +126,7 @@ sub yabsmd_start {
     # Shedule::Cron takes care of the entire underlying mechanism for
     # running a cron daemon.
     my $cron_scheduler = Schedule::Cron->new(
-        sub { confess "yabsmd: internal error: default cron dispatcher invoked" }
+        sub { get_logger->logconfess("yabsmd: internal error: default cron dispatcher invoked") }
         , processprefix => 'yabsmd'
     );
 

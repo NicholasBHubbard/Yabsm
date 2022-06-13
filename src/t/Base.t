@@ -216,15 +216,6 @@ sub rand_day_of_week {
                  #               TESTS              #
                  ####################################
 
-test_do_snapshot();
-sub test_do_snapshot {
-    $SIG{__DIE__} = sub {
-        print "TODO - CLEANUP HERE";
-    };
-
-
-}
-
 test_cmp_snaps();
 sub test_cmp_snaps {
 

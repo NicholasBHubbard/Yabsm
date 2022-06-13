@@ -161,7 +161,7 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     # delete old bootstrap snap
     if (-d $boot_snap_dir) {
         my @snaps = glob "$boot_snap_dir/*";
-        1 == scalar @snaps or get_logger->error("yabsm: error: multiple bootstrap snapshots in $boot_snap_dir");
+        1 == scalar @snaps or get_logger->logdie("yabsm: error: multiple bootstrap snapshots in $boot_snap_dir");
         safe_system("btrfs subvol delete " . shift @snaps);
     }
     else {
@@ -174,7 +174,7 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
     # bootstrapping so we need to delete the old bootstrap snap.
     if (-d $backup_dir) {
         my @boot_snap = grep { /BOOTSTRAP-/ } glob "$backup_dir/*";
-        1 == scalar @boot_snap or get_logger->error("yabsm: error: multiple bootstrap snapshots in $backup_dir");
+        1 == scalar @boot_snap or get_logger->logdie("yabsm: error: multiple bootstrap snapshots in $backup_dir");
         safe_system('btrfs subvol delete ' . shift @boot_snap);
     }
     else {
@@ -208,7 +208,7 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
     # so we need to delete the old bootstrap snap.
     if (-d $boot_snap_dir) {
         my @boot_snap = glob "$boot_snap_dir/*";
-        1 == scalar @boot_snap or get_logger->error('multiple bootstrap snapshots in $boot_snap_dir');
+        1 == scalar @boot_snap or get_logger->logdie('multiple bootstrap snapshots in $boot_snap_dir');
         safe_system('btrfs subvol delete ' . shift @boot_snap);
     }
     else {

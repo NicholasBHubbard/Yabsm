@@ -22,7 +22,7 @@
 #  has not been informally tested.
 #
 #  An error message prefixed with 'yabsm: internal error' is an error for a
-#  scenario that will only occur a bug is present.
+#  scenario that will only occur if a bug is present.
 
 package Yabsm::Base;
 
@@ -93,11 +93,19 @@ sub delete_old_snapshots { # No test. Is not pure.
     # took a snapshot.
     if ($num_snaps == $num_to_keep + 1) {
 
+<<<<<<< HEAD
         # This is the oldest snap because they are sorted newest
         # to oldest and pop takes from the end of the array.
         my $oldest_snap = pop @$existing_snaps_ref;
 
         safe_system("btrfs subvol delete $oldest_snap");
+=======
+        # pop takes from the end of the array. This is the oldest snap
+        # because they are sorted newest to oldest.
+        my $oldest_snap = pop @$existing_snaps_ref;
+
+        system("btrfs subvol delete $oldest_snap");
+>>>>>>> devel
 
         return;
     }
@@ -114,7 +122,11 @@ sub delete_old_snapshots { # No test. Is not pure.
             # pop mutates $existing_snaps_ref, and thus is not idempotent.
             my $oldest_snap = pop @$existing_snaps_ref;
 
+<<<<<<< HEAD
             safe_system("btrfs subvol delete $oldest_snap");
+=======
+            system("btrfs subvol delete $oldest_snap");
+>>>>>>> devel
 
             $num_snaps--;
         }
@@ -140,7 +152,11 @@ sub do_backup_bootstrap { # No test. Is not pure.
     }
 
     else {
+<<<<<<< HEAD
         get_logger->logconfess("yabsm: internal error: no such user defined backup '$backup'");
+=======
+        confess "yabsm: internal error: no such user defined backup '$backup'";
+>>>>>>> devel
     }
 
     return;
@@ -230,7 +246,13 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
     safe_system_ssh($ssh, "ls -d $backup_dir/* | grep BOOTSTRAP- | while read -r boot_snap; do sudo -n btrfs subvol delete \"\$boot_snap\"; done");
 
     # send the bootstrap backup to remote host
+<<<<<<< HEAD
     safe_system_ssh($ssh, "sudo -n btrfs receive $backup_dir", {stdin_file => ['-|', "btrfs send $boot_snap"]});
+=======
+    $server_ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
+                , "sudo -n btrfs receive $backup_dir"
+                );
+>>>>>>> devel
 
     return;
 }
@@ -258,7 +280,11 @@ sub do_backup { # No test. Is not pure.
     }
 
     else {
+<<<<<<< HEAD
         get_logger->logconfess("yabsm: internal error: no such defined backup '$backup'");
+=======
+        confess "yabsm: internal error: no such defined backup '$backup'";
+>>>>>>> devel
     }
 
     return;
@@ -359,7 +385,11 @@ sub delete_old_backups_local { # No test. Is not pure.
         # because they are sorted newest to oldest.
         my $oldest_backup = pop @existing_backups;
 
+<<<<<<< HEAD
         safe_system("btrfs subvol delete $oldest_backup");
+=======
+        system("btrfs subvol delete $oldest_backup");
+>>>>>>> devel
 
         return;
     }
@@ -376,7 +406,11 @@ sub delete_old_backups_local { # No test. Is not pure.
             # note that pop mutates existing_snaps
             my $oldest_backup = pop @existing_backups;
 
+<<<<<<< HEAD
             safe_system("btrfs subvol delete $oldest_backup");
+=======
+            system("btrfs subvol delete $oldest_backup");
+>>>>>>> devel
 
             $num_backups--;
         }
@@ -412,7 +446,11 @@ sub delete_old_backups_ssh { # No test. Is not pure.
         # because they are sorted newest to oldest.
         my $oldest_backup = pop @existing_backups;
 
+<<<<<<< HEAD
         safe_system_ssh($ssh, "sudo -n btrfs subvol delete $oldest_backup");
+=======
+        $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+>>>>>>> devel
 
         return;
     }
@@ -429,7 +467,11 @@ sub delete_old_backups_ssh { # No test. Is not pure.
             # note that pop mutates existing_snaps
             my $oldest_backup = pop @existing_backups;
 
+<<<<<<< HEAD
             safe_system_ssh($ssh, "sudo -n btrfs subvol delete $oldest_backup");
+=======
+            $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+>>>>>>> devel
 
             $num_backups--;
         }
@@ -448,6 +490,8 @@ sub has_bootstrap { # No test. Is not pure.
     my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
 
     return 0 if not -d $bootstrap_snap_dir;
+
+    # Log if the bootstrap dir does not exist
 
     opendir(my $dh, $bootstrap_snap_dir) or
       get_logger->logdie("yabsm: internal error: can not open dir '$bootstrap_snap_dir'");
@@ -1095,7 +1139,11 @@ sub oldest_snap { # Has test. Is not pure.
     }
 
     if ($ref_type eq 'HASH') {
+<<<<<<< HEAD
         my $subject = shift // get_logger->logconfess(missing_arg());
+=======
+        my $subject = shift // confess missing_arg();
+>>>>>>> devel
         my $all_snaps_ref = all_snaps($ref, $subject);
         return $all_snaps_ref->[-1];
     }
@@ -1183,7 +1231,11 @@ sub answer_query { # No test. Is not pure.
     }
 
     else { # input should have already been cleansed
+<<<<<<< HEAD
         get_logger->("yabsm: internal error: '$query' is not a valid query");
+=======
+        confess "yabsm: internal error: '$query' is not a valid query";
+>>>>>>> devel
     }
 
     return wantarray ? @snaps_to_return : \@snaps_to_return;

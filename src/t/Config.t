@@ -99,7 +99,7 @@ backup homeBackup {
 }
 EOF
 
-my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' } 
+my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' }
 
              , subvols => { root => { mountpoint     => '/'
                                     , '5minute_want' => 'no'
@@ -114,7 +114,7 @@ my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' }
                                     , monthly_time   => '12:30'
                                     , monthly_day    => '30'
                                     , monthly_keep   => '12'
-                                    } 
+                                    }
 
                           , home => { mountpoint     => '/home'
                                     , '5minute_want' => 'yes'
@@ -125,7 +125,7 @@ my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' }
                                     , daily_keep     => '14'
                                     , weekly_want    => 'no'
                                     , monthly_want   => 'no'
-                                    } 
+                                    }
                           }
 
              , backups => { rootBackup => { subvol      => 'root'

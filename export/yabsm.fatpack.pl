@@ -501,6 +501,19879 @@ $fatpacked{"File/Slurp/Tiny.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<
   =cut
 FILE_SLURP_TINY
 
+$fatpacked{"Log/Log4perl.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL';
+  ##################################################
+  package Log::Log4perl;
+  ##################################################
+  
+  END { local($?); Log::Log4perl::Logger::cleanup(); }
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  use Carp;
+  
+  use Log::Log4perl::Util;
+  use Log::Log4perl::Logger;
+  use Log::Log4perl::Level;
+  use Log::Log4perl::Config;
+  use Log::Log4perl::Appender;
+  
+  our $VERSION = '1.55';
+  
+     # set this to '1' if you're using a wrapper
+     # around Log::Log4perl
+  our $caller_depth = 0;
+  
+      #this is a mapping of convenience names to opcode masks used in
+      #$ALLOWED_CODE_OPS_IN_CONFIG_FILE below
+  our %ALLOWED_CODE_OPS = (
+      'safe'        => [ ':browse' ],
+      'restrictive' => [ ':default' ],
+  );
+  
+  our %WRAPPERS_REGISTERED = map { $_ => 1 } qw(Log::Log4perl);
+  
+      #set this to the opcodes which are allowed when
+      #$ALLOW_CODE_IN_CONFIG_FILE is set to a true value
+      #if undefined, there are no restrictions on code that can be
+      #excuted
+  our @ALLOWED_CODE_OPS_IN_CONFIG_FILE;
+  
+      #this hash lists things that should be exported into the Safe
+      #compartment.  The keys are the package the symbol should be
+      #exported from and the values are array references to the names
+      #of the symbols (including the leading type specifier)
+  our %VARS_SHARED_WITH_SAFE_COMPARTMENT = (
+      main => [ '%ENV' ],
+  );
+  
+      #setting this to a true value will allow Perl code to be executed
+      #within the config file.  It works in conjunction with
+      #$ALLOWED_CODE_OPS_IN_CONFIG_FILE, which if defined restricts the
+      #opcodes which can be executed using the 'Safe' module.
+      #setting this to a false value disables code execution in the
+      #config file
+  our $ALLOW_CODE_IN_CONFIG_FILE = 1;
+  
+      #arrays in a log message will be joined using this character,
+      #see Log::Log4perl::Appender::DBI
+  our $JOIN_MSG_ARRAY_CHAR = '';
+  
+      #version required for XML::DOM, to enable XML Config parsing
+      #and XML Config unit tests
+  our $DOM_VERSION_REQUIRED = '1.29'; 
+  
+  our $CHATTY_DESTROY_METHODS = 0;
+  
+  our $LOGDIE_MESSAGE_ON_STDERR = 1;
+  our $LOGEXIT_CODE             = 1;
+  our %IMPORT_CALLED;
+  
+  our $EASY_CLOSURES = {};
+  
+    # to throw refs as exceptions via logcarp/confess, turn this off
+  our $STRINGIFY_DIE_MESSAGE = 1;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  ##################################################
+  sub import {
+  ##################################################
+      my($class) = shift;
+  
+      my $caller_pkg = caller();
+  
+      return 1 if $IMPORT_CALLED{$caller_pkg}++;
+  
+      my(%tags) = map { $_ => 1 } @_;
+  
+          # Lazy man's logger
+      if(exists $tags{':easy'}) {
+          $tags{':levels'} = 1;
+          $tags{':nowarn'} = 1;
+          $tags{'get_logger'} = 1;
+      }
+  
+      if(exists $tags{':no_extra_logdie_message'}) {
+          $Log::Log4perl::LOGDIE_MESSAGE_ON_STDERR = 0;
+          delete $tags{':no_extra_logdie_message'};
+      }
+  
+      if(exists $tags{get_logger}) {
+          # Export get_logger into the calling module's 
+          no strict qw(refs);
+          *{"$caller_pkg\::get_logger"} = *get_logger;
+  
+          delete $tags{get_logger};
+      }
+  
+      if(exists $tags{':levels'}) {
+          # Export log levels ($DEBUG, $INFO etc.) from Log4perl::Level
+          for my $key (keys %Log::Log4perl::Level::PRIORITY) {
+              my $name  = "$caller_pkg\::$key";
+                 # Need to split this up in two lines, or CVS will
+                 # mess it up.
+              my $value = $Log::Log4perl::Level::PRIORITY{
+                $key};
+              no strict qw(refs);
+              *{"$name"} = \$value;
+          } 
+  
+          delete $tags{':levels'};
+      }
+  
+          # Lazy man's logger
+      if(exists $tags{':easy'}) {
+          delete $tags{':easy'};
+  
+              # Define default logger object in caller's package
+          my $logger = get_logger("$caller_pkg");
+          
+              # Define DEBUG, INFO, etc. routines in caller's package
+          for(qw(TRACE DEBUG INFO WARN ERROR FATAL ALWAYS)) {
+              my $level   = $_;
+              $level = "OFF" if $level eq "ALWAYS";
+              my $lclevel = lc($_);
+              easy_closure_create($caller_pkg, $_, sub {
+                  Log::Log4perl::Logger::init_warn() unless 
+                      $Log::Log4perl::Logger::INITIALIZED or
+                      $Log::Log4perl::Logger::NON_INIT_WARNED;
+                  $logger->{$level}->($logger, @_, $level);
+              }, $logger);
+          }
+  
+              # Define LOGCROAK, LOGCLUCK, etc. routines in caller's package
+          for(qw(LOGCROAK LOGCLUCK LOGCARP LOGCONFESS)) {
+              my $method = "Log::Log4perl::Logger::" . lc($_);
+  
+              easy_closure_create($caller_pkg, $_, sub {
+                  unshift @_, $logger;
+                  goto &$method;
+              }, $logger);
+          }
+  
+              # Define LOGDIE, LOGWARN
+           easy_closure_create($caller_pkg, "LOGDIE", sub {
+               Log::Log4perl::Logger::init_warn() unless 
+                       $Log::Log4perl::Logger::INITIALIZED or
+                       $Log::Log4perl::Logger::NON_INIT_WARNED;
+               $logger->{FATAL}->($logger, @_, "FATAL");
+               $Log::Log4perl::LOGDIE_MESSAGE_ON_STDERR ?
+                   CORE::die(Log::Log4perl::Logger::callerline(join '', @_)) :
+                   exit $Log::Log4perl::LOGEXIT_CODE;
+           }, $logger);
+  
+           easy_closure_create($caller_pkg, "LOGEXIT", sub {
+              Log::Log4perl::Logger::init_warn() unless 
+                      $Log::Log4perl::Logger::INITIALIZED or
+                      $Log::Log4perl::Logger::NON_INIT_WARNED;
+              $logger->{FATAL}->($logger, @_, "FATAL");
+              exit $Log::Log4perl::LOGEXIT_CODE;
+           }, $logger);
+  
+          easy_closure_create($caller_pkg, "LOGWARN", sub {
+              Log::Log4perl::Logger::init_warn() unless 
+                      $Log::Log4perl::Logger::INITIALIZED or
+                      $Log::Log4perl::Logger::NON_INIT_WARNED;
+              $logger->{WARN}->($logger, @_, "WARN");
+              CORE::warn(Log::Log4perl::Logger::callerline(join '', @_))
+                  if $Log::Log4perl::LOGDIE_MESSAGE_ON_STDERR;
+          }, $logger);
+      }
+  
+      if(exists $tags{':nowarn'}) {
+          $Log::Log4perl::Logger::NON_INIT_WARNED = 1;
+          delete $tags{':nowarn'};
+      }
+  
+      if(exists $tags{':nostrict'}) {
+          $Log::Log4perl::Logger::NO_STRICT = 1;
+          delete $tags{':nostrict'};
+      }
+  
+      if(exists $tags{':resurrect'}) {
+          my $FILTER_MODULE = "Filter::Util::Call";
+          if(! Log::Log4perl::Util::module_available($FILTER_MODULE)) {
+              die "$FILTER_MODULE required with :resurrect" .
+                  "(install from CPAN)";
+          }
+          eval "require $FILTER_MODULE" or die "Cannot pull in $FILTER_MODULE";
+          Filter::Util::Call::filter_add(
+              sub {
+                  my($status);
+                  s/^\s*###l4p// if
+                      ($status = Filter::Util::Call::filter_read()) > 0;
+                  $status;
+                  });
+          delete $tags{':resurrect'};
+      }
+  
+      if(keys %tags) {
+          # We received an Option we couldn't understand.
+          die "Unknown Option(s): @{[keys %tags]}";
+      }
+  }
+  
+  ##################################################
+  sub initialized {
+  ##################################################
+      return $Log::Log4perl::Logger::INITIALIZED;
+  }
+  
+  ##################################################
+  sub new {
+  ##################################################
+      die "THIS CLASS ISN'T FOR DIRECT USE. " .
+          "PLEASE CHECK 'perldoc " . __PACKAGE__ . "'.";
+  }
+  
+  ##################################################
+  sub reset { # Mainly for debugging/testing
+  ##################################################
+      # Delegate this to the logger ...
+      return Log::Log4perl::Logger->reset();
+  }
+  
+  ##################################################
+  sub init_once { # Call init only if it hasn't been
+                  # called yet.
+  ##################################################
+      init(@_) unless $Log::Log4perl::Logger::INITIALIZED;
+  }
+  
+  ##################################################
+  sub init { # Read the config file
+  ##################################################
+      my($class, @args) = @_;
+  
+      #woops, they called ::init instead of ->init, let's be forgiving
+      if ($class ne __PACKAGE__) {
+          unshift(@args, $class);
+      }
+  
+      # Delegate this to the config module
+      return Log::Log4perl::Config->init(@args);
+  }
+  
+  ##################################################
+  sub init_and_watch { 
+  ##################################################
+      my($class, @args) = @_;
+  
+      #woops, they called ::init instead of ->init, let's be forgiving
+      if ($class ne __PACKAGE__) {
+          unshift(@args, $class);
+      }
+  
+      # Delegate this to the config module
+      return Log::Log4perl::Config->init_and_watch(@args);
+  }
+  
+  
+  ##################################################
+  sub easy_init { # Initialize the root logger with a screen appender
+  ##################################################
+      my($class, @args) = @_;
+  
+      # Did somebody call us with Log::Log4perl::easy_init()?
+      if(ref($class) or $class =~ /^\d+$/) {
+          unshift @args, $class;
+      }
+  
+      # Reset everything first
+      Log::Log4perl->reset();
+  
+      my @loggers = ();
+  
+      my %default = ( level    => $DEBUG,
+                      file     => "STDERR",
+                      utf8     => undef,
+                      category => "",
+                      layout   => "%d %m%n",
+                    );
+  
+      if(!@args) {
+          push @loggers, \%default;
+      } else {
+          for my $arg (@args) {
+              if($arg =~ /^\d+$/) {
+                  my %logger = (%default, level => $arg);
+                  push @loggers, \%logger;
+              } elsif(ref($arg) eq "HASH") {
+                  my %logger = (%default, %$arg);
+                  push @loggers, \%logger;
+              } else {
+                  # I suggest this becomes a croak() after a
+                  # reasonable deprecation cycle.
+                  carp "All arguments to easy_init should be either "
+                     . "an integer log level or a hash reference.";
+              }
+          }
+      }
+  
+      for my $logger (@loggers) {
+  
+          my $app;
+  
+          if($logger->{file} =~ /^stderr$/i) {
+              $app = Log::Log4perl::Appender->new(
+                  "Log::Log4perl::Appender::Screen",
+                  utf8 => $logger->{utf8});
+          } elsif($logger->{file} =~ /^stdout$/i) {
+              $app = Log::Log4perl::Appender->new(
+                  "Log::Log4perl::Appender::Screen",
+                  stderr => 0,
+                  utf8   => $logger->{utf8});
+          } else {
+              my $binmode;
+              if($logger->{file} =~ s/^(:.*?)>/>/) {
+                  $binmode = $1;
+              }
+              $logger->{file} =~ /^(>)?(>)?/;
+              my $mode = ($2 ? "append" : "write");
+              $logger->{file} =~ s/.*>+\s*//g;
+              $app = Log::Log4perl::Appender->new(
+                  "Log::Log4perl::Appender::File",
+                  filename => $logger->{file},
+                  mode     => $mode,
+                  utf8     => $logger->{utf8},
+                  binmode  => $binmode,
+              );
+          }
+  
+          my $layout = Log::Log4perl::Layout::PatternLayout->new(
+                                                          $logger->{layout});
+          $app->layout($layout);
+  
+          my $log = Log::Log4perl->get_logger($logger->{category});
+          $log->level($logger->{level});
+          $log->add_appender($app);
+      }
+  
+      $Log::Log4perl::Logger::INITIALIZED = 1;
+  }
+  
+  ##################################################
+  sub wrapper_register {  
+  ##################################################
+      my $wrapper = $_[-1];
+  
+      $WRAPPERS_REGISTERED{ $wrapper } = 1;
+  }
+  
+  ##################################################
+  sub get_logger {  # Get an instance (shortcut)
+  ##################################################
+      # get_logger() can be called in the following ways:
+      #
+      #   (1) Log::Log4perl::get_logger()     => ()
+      #   (2) Log::Log4perl->get_logger()     => ("Log::Log4perl")
+      #   (3) Log::Log4perl::get_logger($cat) => ($cat)
+      #   
+      #   (5) Log::Log4perl->get_logger($cat) => ("Log::Log4perl", $cat)
+      #   (6)   L4pSubclass->get_logger($cat) => ("L4pSubclass", $cat)
+  
+      # Note that (4) L4pSubclass->get_logger() => ("L4pSubclass")
+      # is indistinguishable from (3) and therefore can't be allowed.
+      # Wrapper classes always have to specify the category explicitly.
+  
+      my $category;
+  
+      if(@_ == 0) {
+            # 1
+          my $level = 0;
+          do { $category = scalar caller($level++);
+          } while exists $WRAPPERS_REGISTERED{ $category };
+  
+      } elsif(@_ == 1) {
+            # 2, 3
+          $category = $_[0];
+  
+          my $level = 0;
+          while(exists $WRAPPERS_REGISTERED{ $category }) { 
+              $category = scalar caller($level++);
+          }
+  
+      } else {
+            # 5, 6
+          $category = $_[1];
+      }
+  
+      # Delegate this to the logger module
+      return Log::Log4perl::Logger->get_logger($category);
+  }
+  
+  ###########################################
+  sub caller_depth_offset {
+  ###########################################
+      my( $level ) = @_;
+  
+      my $category;
+  
+      { 
+          my $category = scalar caller($level + 1);
+  
+          if(defined $category and
+             exists $WRAPPERS_REGISTERED{ $category }) {
+              $level++;
+              redo;
+          }
+      }
+  
+      return $level;
+  }
+  
+  ##################################################
+  sub appenders {  # Get a hashref of all defined appender wrappers
+  ##################################################
+      return \%Log::Log4perl::Logger::APPENDER_BY_NAME;
+  }
+  
+  ##################################################
+  sub add_appender { # Add an appender to the system, but don't assign
+  	           # it to a logger yet
+  ##################################################
+      my($class, $appender) = @_;
+  
+      my $name = $appender->name();
+      die "Mandatory parameter 'name' missing in appender" unless defined $name;
+  
+        # Make it known by name in the Log4perl universe
+        # (so that composite appenders can find it)
+      Log::Log4perl->appenders()->{ $name } = $appender;
+  }
+  
+  ##################################################
+  # Return number of appenders changed
+  sub appender_thresholds_adjust {  # Readjust appender thresholds
+  ##################################################
+          # If someone calls L4p-> and not L4p::
+      shift if $_[0] eq __PACKAGE__;
+      my($delta, $appenders) = @_;
+  	my $retval = 0;
+  
+      if($delta == 0) {
+            # Nothing to do, no delta given.
+          return;
+      }
+  
+      if(defined $appenders) {
+              # Map names to objects
+          $appenders = [map { 
+                         die "Unkown appender: '$_'" unless exists
+                            $Log::Log4perl::Logger::APPENDER_BY_NAME{
+                              $_};
+                         $Log::Log4perl::Logger::APPENDER_BY_NAME{
+                           $_} 
+                        } @$appenders];
+      } else {
+              # Just hand over all known appenders
+          $appenders = [values %{Log::Log4perl::appenders()}] unless 
+              defined $appenders;
+      }
+  
+          # Change all appender thresholds;
+      foreach my $app (@$appenders) {
+          my $old_thres = $app->threshold();
+          my $new_thres;
+          if($delta > 0) {
+              $new_thres = Log::Log4perl::Level::get_higher_level(
+                               $old_thres, $delta);
+          } else {
+              $new_thres = Log::Log4perl::Level::get_lower_level(
+                               $old_thres, -$delta);
+          }
+  
+          ++$retval if ($app->threshold($new_thres) == $new_thres);
+      }
+  	return $retval;
+  }
+  
+  ##################################################
+  sub appender_by_name {  # Get a (real) appender by name
+  ##################################################
+          # If someone calls L4p->appender_by_name and not L4p::appender_by_name
+      shift if $_[0] eq __PACKAGE__;
+  
+      my($name) = @_;
+  
+      if(defined $name and
+         exists $Log::Log4perl::Logger::APPENDER_BY_NAME{
+                   $name}) {
+          return $Log::Log4perl::Logger::APPENDER_BY_NAME{
+                   $name}->{appender};
+      } else {
+          return undef;
+      }
+  }
+  
+  ##################################################
+  sub eradicate_appender {  # Remove an appender from the system
+  ##################################################
+          # If someone calls L4p->... and not L4p::...
+      shift if $_[0] eq __PACKAGE__;
+      Log::Log4perl::Logger->eradicate_appender(@_);
+  }
+  
+  ##################################################
+  sub infiltrate_lwp {  # 
+  ##################################################
+      no warnings qw(redefine);
+  
+      my $l4p_wrapper = sub {
+          my($prio, @message) = @_;
+          local $Log::Log4perl::caller_depth =
+                $Log::Log4perl::caller_depth + 2;
+          get_logger(scalar caller(1))->log($prio, @message);
+      };
+  
+      *LWP::Debug::trace = sub { 
+          $l4p_wrapper->($INFO, @_); 
+      };
+      *LWP::Debug::conns =
+      *LWP::Debug::debug = sub { 
+          $l4p_wrapper->($DEBUG, @_); 
+      };
+  }
+  
+  ##################################################
+  sub easy_closure_create {
+  ##################################################
+      my($caller_pkg, $entry, $code, $logger) = @_;
+  
+      no strict 'refs';
+  
+      print("easy_closure: Setting shortcut $caller_pkg\::$entry ", 
+           "(logger=$logger\n") if _INTERNAL_DEBUG;
+  
+      $EASY_CLOSURES->{ $caller_pkg }->{ $entry } = $logger;
+      *{"$caller_pkg\::$entry"} = $code;
+  }
+  
+  ###########################################
+  sub easy_closure_cleanup {
+  ###########################################
+      my($caller_pkg, $entry) = @_;
+  
+      no warnings 'redefine';
+      no strict 'refs';
+  
+      my $logger = $EASY_CLOSURES->{ $caller_pkg }->{ $entry };
+  
+      print("easy_closure: Nuking easy shortcut $caller_pkg\::$entry ", 
+           "(logger=$logger\n") if _INTERNAL_DEBUG;
+  
+      *{"$caller_pkg\::$entry"} = sub { };
+      delete $EASY_CLOSURES->{ $caller_pkg }->{ $entry };
+  }
+  
+  ##################################################
+  sub easy_closure_category_cleanup {
+  ##################################################
+      my($caller_pkg) = @_;
+  
+      if(! exists $EASY_CLOSURES->{ $caller_pkg } ) {
+          return 1;
+      }
+  
+      for my $entry ( keys %{ $EASY_CLOSURES->{ $caller_pkg } } ) {
+          easy_closure_cleanup( $caller_pkg, $entry );
+      }
+  
+      delete $EASY_CLOSURES->{ $caller_pkg };
+  }
+  
+  ###########################################
+  sub easy_closure_global_cleanup {
+  ###########################################
+  
+      for my $caller_pkg ( keys %$EASY_CLOSURES ) {
+          easy_closure_category_cleanup( $caller_pkg );
+      }
+  }
+  
+  ###########################################
+  sub easy_closure_logger_remove {
+  ###########################################
+      my($class, $logger) = @_;
+  
+      PKG: for my $caller_pkg ( keys %$EASY_CLOSURES ) {
+          for my $entry ( keys %{ $EASY_CLOSURES->{ $caller_pkg } } ) {
+              if( $logger == $EASY_CLOSURES->{ $caller_pkg }->{ $entry } ) {
+                  easy_closure_category_cleanup( $caller_pkg );
+                  next PKG;
+              }
+          }
+      }
+  }
+  
+  ##################################################
+  sub remove_logger {
+  ##################################################
+      my ($class, $logger) = @_;
+  
+      # Any stealth logger convenience function still using it will
+      # now become a no-op.
+      Log::Log4perl->easy_closure_logger_remove( $logger );
+  
+      # Remove the logger from the system
+        # Need to split this up in two lines, or CVS will
+        # mess it up.
+      delete $Log::Log4perl::Logger::LOGGERS_BY_NAME->{ 
+        $logger->{category} };
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl - Log4j implementation for Perl
+  
+  =head1 SYNOPSIS
+          
+  		# Easy mode if you like it simple ...
+  
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($ERROR);
+  
+      DEBUG "This doesn't go anywhere";
+      ERROR "This gets logged";
+  
+          # ... or standard mode for more features:
+  
+      Log::Log4perl::init('/etc/log4perl.conf');
+      
+      --or--
+      
+          # Check config every 10 secs
+      Log::Log4perl::init_and_watch('/etc/log4perl.conf',10);
+  
+      --then--
+      
+      $logger = Log::Log4perl->get_logger('house.bedrm.desk.topdrwr');
+      
+      $logger->debug('this is a debug message');
+      $logger->info('this is an info message');
+      $logger->warn('etc');
+      $logger->error('..');
+      $logger->fatal('..');
+      
+      #####/etc/log4perl.conf###############################
+      log4perl.logger.house              = WARN,  FileAppndr1
+      log4perl.logger.house.bedroom.desk = DEBUG, FileAppndr1
+      
+      log4perl.appender.FileAppndr1      = Log::Log4perl::Appender::File
+      log4perl.appender.FileAppndr1.filename = desk.log 
+      log4perl.appender.FileAppndr1.layout   = \
+                              Log::Log4perl::Layout::SimpleLayout
+      ######################################################
+  
+  =head1 ABSTRACT
+  
+  Log::Log4perl provides a powerful logging API for your application
+  
+  =head1 DESCRIPTION
+  
+  Log::Log4perl lets you remote-control and fine-tune the logging behaviour
+  of your system from the outside. It implements the widely popular 
+  (Java-based) Log4j logging package in pure Perl. 
+  
+  B<For a detailed tutorial on Log::Log4perl usage, please read> 
+  
+  L<http://www.perl.com/pub/a/2002/09/11/log4perl.html>
+  
+  Logging beats a debugger if you want to know what's going on 
+  in your code during runtime. However, traditional logging packages
+  are too static and generate a flood of log messages in your log files
+  that won't help you.
+  
+  C<Log::Log4perl> is different. It allows you to control the number of 
+  logging messages generated at three different levels:
+  
+  =over 4
+  
+  =item *
+  
+  At a central location in your system (either in a configuration file or
+  in the startup code) you specify I<which components> (classes, functions) 
+  of your system should generate logs.
+  
+  =item *
+  
+  You specify how detailed the logging of these components should be by
+  specifying logging I<levels>.
+  
+  =item *
+  
+  You also specify which so-called I<appenders> you want to feed your
+  log messages to ("Print it to the screen and also append it to /tmp/my.log")
+  and which format ("Write the date first, then the file name and line 
+  number, and then the log message") they should be in.
+  
+  =back
+  
+  This is a very powerful and flexible mechanism. You can turn on and off
+  your logs at any time, specify the level of detail and make that
+  dependent on the subsystem that's currently executed. 
+  
+  Let me give you an example: You might 
+  find out that your system has a problem in the 
+  C<MySystem::Helpers::ScanDir>
+  component. Turning on detailed debugging logs all over the system would
+  generate a flood of useless log messages and bog your system down beyond
+  recognition. With C<Log::Log4perl>, however, you can tell the system:
+  "Continue to log only severe errors to the log file. Open a second
+  log file, turn on full debug logs in the C<MySystem::Helpers::ScanDir>
+  component and dump all messages originating from there into the new
+  log file". And all this is possible by just changing the parameters
+  in a configuration file, which your system can re-read even 
+  while it's running!
+  
+  =head1 How to use it
+  
+  The C<Log::Log4perl> package can be initialized in two ways: Either
+  via Perl commands or via a C<log4j>-style configuration file.
+  
+  =head2 Initialize via a configuration file
+  
+  This is the easiest way to prepare your system for using
+  C<Log::Log4perl>. Use a configuration file like this:
+  
+      ############################################################
+      # A simple root logger with a Log::Log4perl::Appender::File 
+      # file appender in Perl.
+      ############################################################
+      log4perl.rootLogger=ERROR, LOGFILE
+      
+      log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
+      log4perl.appender.LOGFILE.filename=/var/log/myerrs.log
+      log4perl.appender.LOGFILE.mode=append
+      
+      log4perl.appender.LOGFILE.layout=PatternLayout
+      log4perl.appender.LOGFILE.layout.ConversionPattern=[%r] %F %L %c - %m%n
+  
+  These lines define your standard logger that's appending severe
+  errors to C</var/log/myerrs.log>, using the format
+  
+      [millisecs] source-filename line-number class - message newline
+  
+  Assuming that this configuration file is saved as C<log.conf>, you need to 
+  read it in the startup section of your code, using the following
+  commands:
+  
+    use Log::Log4perl;
+    Log::Log4perl->init("log.conf");
+  
+  After that's done I<somewhere> in the code, you can retrieve
+  logger objects I<anywhere> in the code. Note that
+  there's no need to carry any logger references around with your 
+  functions and methods. You can get a logger anytime via a singleton
+  mechanism:
+  
+      package My::MegaPackage;
+      use  Log::Log4perl;
+  
+      sub some_method {
+          my($param) = @_;
+  
+          my $log = Log::Log4perl->get_logger("My::MegaPackage");
+  
+          $log->debug("Debug message");
+          $log->info("Info message");
+          $log->error("Error message");
+  
+          ...
+      }
+  
+  With the configuration file above, C<Log::Log4perl> will write
+  "Error message" to the specified log file, but won't do anything for 
+  the C<debug()> and C<info()> calls, because the log level has been set
+  to C<ERROR> for all components in the first line of 
+  configuration file shown above.
+  
+  Why C<Log::Log4perl-E<gt>get_logger> and
+  not C<Log::Log4perl-E<gt>new>? We don't want to create a new
+  object every time. Usually in OO-Programming, you create an object
+  once and use the reference to it to call its methods. However,
+  this requires that you pass around the object to all functions
+  and the last thing we want is pollute each and every function/method
+  we're using with a handle to the C<Logger>:
+  
+      sub function {  # Brrrr!!
+          my($logger, $some, $other, $parameters) = @_;
+      }
+  
+  Instead, if a function/method wants a reference to the logger, it
+  just calls the Logger's static C<get_logger($category)> method to obtain
+  a reference to the I<one and only> possible logger object of
+  a certain category.
+  That's called a I<singleton> if you're a Gamma fan.
+  
+  How does the logger know
+  which messages it is supposed to log and which ones to suppress?
+  C<Log::Log4perl> works with inheritance: The config file above didn't 
+  specify anything about C<My::MegaPackage>. 
+  And yet, we've defined a logger of the category 
+  C<My::MegaPackage>.
+  In this case, C<Log::Log4perl> will walk up the namespace hierarchy
+  (C<My> and then we're at the root) to figure out if a log level is
+  defined somewhere. In the case above, the log level at the root
+  (root I<always> defines a log level, but not necessarily an appender)
+  defines that 
+  the log level is supposed to be C<ERROR> -- meaning that I<DEBUG>
+  and I<INFO> messages are suppressed. Note that this 'inheritance' is
+  unrelated to Perl's class inheritance, it is merely related to the
+  logger namespace.
+  By the way, if you're ever in doubt about what a logger's category is, 
+  use C<$logger-E<gt>category()> to retrieve it.
+  
+  =head2 Log Levels
+  
+  There are six predefined log levels: C<FATAL>, C<ERROR>, C<WARN>, C<INFO>,
+  C<DEBUG>, and C<TRACE> (in descending priority). Your configured logging level
+  has to at least match the priority of the logging message.
+  
+  If your configured logging level is C<WARN>, then messages logged 
+  with C<info()>, C<debug()>, and C<trace()> will be suppressed. 
+  C<fatal()>, C<error()> and C<warn()> will make their way through,
+  because their priority is higher or equal than the configured setting.
+  
+  Instead of calling the methods
+  
+      $logger->trace("...");  # Log a trace message
+      $logger->debug("...");  # Log a debug message
+      $logger->info("...");   # Log a info message
+      $logger->warn("...");   # Log a warn message
+      $logger->error("...");  # Log a error message
+      $logger->fatal("...");  # Log a fatal message
+  
+  you could also call the C<log()> method with the appropriate level
+  using the constants defined in C<Log::Log4perl::Level>:
+  
+      use Log::Log4perl::Level;
+  
+      $logger->log($TRACE, "...");
+      $logger->log($DEBUG, "...");
+      $logger->log($INFO, "...");
+      $logger->log($WARN, "...");
+      $logger->log($ERROR, "...");
+      $logger->log($FATAL, "...");
+  
+  This form is rarely used, but it comes in handy if you want to log 
+  at different levels depending on an exit code of a function:
+  
+      $logger->log( $exit_level{ $rc }, "...");
+  
+  As for needing more logging levels than these predefined ones: It's
+  usually best to steer your logging behaviour via the category 
+  mechanism instead.
+  
+  If you need to find out if the currently configured logging
+  level would allow a logger's logging statement to go through, use the
+  logger's C<is_I<level>()> methods:
+  
+      $logger->is_trace()    # True if trace messages would go through
+      $logger->is_debug()    # True if debug messages would go through
+      $logger->is_info()     # True if info messages would go through
+      $logger->is_warn()     # True if warn messages would go through
+      $logger->is_error()    # True if error messages would go through
+      $logger->is_fatal()    # True if fatal messages would go through
+  
+  Example: C<$logger-E<gt>is_warn()> returns true if the logger's current
+  level, as derived from either the logger's category (or, in absence of
+  that, one of the logger's parent's level setting) is 
+  C<$WARN>, C<$ERROR> or C<$FATAL>.
+  
+  Also available are a series of more Java-esque functions which return
+  the same values. These are of the format C<isI<Level>Enabled()>,
+  so C<$logger-E<gt>isDebugEnabled()> is synonymous to 
+  C<$logger-E<gt>is_debug()>.
+  
+  
+  These level checking functions
+  will come in handy later, when we want to block unnecessary
+  expensive parameter construction in case the logging level is too
+  low to log the statement anyway, like in:
+  
+      if($logger->is_error()) {
+          $logger->error("Erroneous array: @super_long_array");
+      }
+  
+  If we had just written
+  
+      $logger->error("Erroneous array: @super_long_array");
+  
+  then Perl would have interpolated
+  C<@super_long_array> into the string via an expensive operation
+  only to figure out shortly after that the string can be ignored
+  entirely because the configured logging level is lower than C<$ERROR>.
+  
+  The to-be-logged
+  message passed to all of the functions described above can
+  consist of an arbitrary number of arguments, which the logging functions
+  just chain together to a single string. Therefore
+  
+      $logger->debug("Hello ", "World", "!");  # and
+      $logger->debug("Hello World!");
+  
+  are identical.
+  
+  Note that even if one of the methods above returns true, it doesn't 
+  necessarily mean that the message will actually get logged. 
+  What is_debug() checks is that
+  the logger used is configured to let a message of the given priority 
+  (DEBUG) through. But after this check, Log4perl will eventually apply custom 
+  filters and forward the message to one or more appenders. None of this
+  gets checked by is_xxx(), for the simple reason that it's 
+  impossible to know what a custom filter does with a message without
+  having the actual message or what an appender does to a message without
+  actually having it log it.
+  
+  =head2 Log and die or warn
+  
+  Often, when you croak / carp / warn / die, you want to log those messages.
+  Rather than doing the following:
+  
+      $logger->fatal($err) && die($err);
+  
+  you can use the following:
+  
+      $logger->logdie($err);
+  
+  And if instead of using
+  
+      warn($message);
+      $logger->warn($message);
+  
+  to both issue a warning via Perl's warn() mechanism and make sure you have
+  the same message in the log file as well, use:
+  
+      $logger->logwarn($message);
+  
+  Since there is
+  an ERROR level between WARN and FATAL, there are two additional helper
+  functions in case you'd like to use ERROR for either warn() or die():
+  
+      $logger->error_warn();
+      $logger->error_die();
+  
+  Finally, there's the Carp functions that, in addition to logging,
+  also pass the stringified message to their companions in the Carp package:
+  
+      $logger->logcarp();        # warn w/ 1-level stack trace
+      $logger->logcluck();       # warn w/ full stack trace
+      $logger->logcroak();       # die w/ 1-level stack trace
+      $logger->logconfess();     # die w/ full stack trace
+  
+  =head2 Appenders
+  
+  If you don't define any appenders, nothing will happen. Appenders will
+  be triggered whenever the configured logging level requires a message
+  to be logged and not suppressed.
+  
+  C<Log::Log4perl> doesn't define any appenders by default, not even the root
+  logger has one.
+  
+  C<Log::Log4perl> already comes with a standard set of appenders:
+  
+      Log::Log4perl::Appender::Screen
+      Log::Log4perl::Appender::ScreenColoredLevels
+      Log::Log4perl::Appender::File
+      Log::Log4perl::Appender::Socket
+      Log::Log4perl::Appender::DBI
+      Log::Log4perl::Appender::Synchronized
+      Log::Log4perl::Appender::RRDs
+  
+  to log to the screen, to files and to databases. 
+  
+  On CPAN, you can find additional appenders like
+  
+      Log::Log4perl::Layout::XMLLayout
+  
+  by Guido Carls E<lt>gcarls@cpan.orgE<gt>.
+  It allows for hooking up Log::Log4perl with the graphical Log Analyzer
+  Chainsaw (see 
+  L<Log::Log4perl::FAQ/"Can I use Log::Log4perl with log4j's Chainsaw?">).
+  
+  =head2 Additional Appenders via Log::Dispatch
+  
+  C<Log::Log4perl> also supports I<Dave Rolskys> excellent C<Log::Dispatch>
+  framework which implements a wide variety of different appenders. 
+  
+  Here's the list of appender modules currently available via C<Log::Dispatch>:
+  
+         Log::Dispatch::ApacheLog
+         Log::Dispatch::DBI (by Tatsuhiko Miyagawa)
+         Log::Dispatch::Email,
+         Log::Dispatch::Email::MailSend,
+         Log::Dispatch::Email::MailSendmail,
+         Log::Dispatch::Email::MIMELite
+         Log::Dispatch::File
+         Log::Dispatch::FileRotate (by Mark Pfeiffer)
+         Log::Dispatch::Handle
+         Log::Dispatch::Screen
+         Log::Dispatch::Syslog
+         Log::Dispatch::Tk (by Dominique Dumont)
+  
+  Please note that in order to use any of these additional appenders, you
+  have to fetch Log::Dispatch from CPAN and install it. Also the particular
+  appender you're using might require installing the particular module.
+  
+  For additional information on appenders, please check the
+  L<Log::Log4perl::Appender> manual page.
+  
+  =head2 Appender Example
+  
+  Now let's assume that we want to log C<info()> or
+  higher prioritized messages in the C<Foo::Bar> category
+  to both STDOUT and to a log file, say C<test.log>.
+  In the initialization section of your system,
+  just define two appenders using the readily available
+  C<Log::Log4perl::Appender::File> and C<Log::Log4perl::Appender::Screen> 
+  modules:
+  
+    use Log::Log4perl;
+  
+       # Configuration in a string ...
+    my $conf = q(
+      log4perl.category.Foo.Bar          = INFO, Logfile, Screen
+  
+      log4perl.appender.Logfile          = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile.filename = test.log
+      log4perl.appender.Logfile.layout   = Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.Logfile.layout.ConversionPattern = [%r] %F %L %m%n
+  
+      log4perl.appender.Screen         = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.stderr  = 0
+      log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+    );
+  
+       # ... passed as a reference to init()
+    Log::Log4perl::init( \$conf );
+  
+  Once the initialization shown above has happened once, typically in
+  the startup code of your system, just use the defined logger anywhere in 
+  your system:
+  
+    ##########################
+    # ... in some function ...
+    ##########################
+    my $log = Log::Log4perl::get_logger("Foo::Bar");
+  
+      # Logs both to STDOUT and to the file test.log
+    $log->info("Important Info!");
+  
+  The C<layout> settings specified in the configuration section define the 
+  format in which the
+  message is going to be logged by the specified appender. The format shown
+  for the file appender is logging not only the message but also the number of
+  milliseconds since the program has started (%r), the name of the file
+  the call to the logger has happened and the line number there (%F and
+  %L), the message itself (%m) and a OS-specific newline character (%n):
+  
+      [187] ./myscript.pl 27 Important Info!
+  
+  The
+  screen appender above, on the other hand, 
+  uses a C<SimpleLayout>, which logs the 
+  debug level, a hyphen (-) and the log message:
+  
+      INFO - Important Info!
+  
+  For more detailed info on layout formats, see L<Log Layouts>. 
+  
+  In the configuration sample above, we chose to define a I<category> 
+  logger (C<Foo::Bar>).
+  This will cause only messages originating from
+  this specific category logger to be logged in the defined format
+  and locations.
+  
+  =head2 Logging newlines
+  
+  There's some controversy between different logging systems as to when and 
+  where newlines are supposed to be added to logged messages.
+  
+  The Log4perl way is that a logging statement I<should not> 
+  contain a newline:
+  
+      $logger->info("Some message");
+      $logger->info("Another message");
+  
+  If this is supposed to end up in a log file like
+  
+      Some message
+      Another message
+  
+  then an appropriate appender layout like "%m%n" will take care of adding
+  a newline at the end of each message to make sure every message is 
+  printed on its own line.
+  
+  Other logging systems, Log::Dispatch in particular, recommend adding the
+  newline to the log statement. This doesn't work well, however, if you, say,
+  replace your file appender by a database appender, and all of a sudden
+  those newlines scattered around the code don't make sense anymore.
+  
+  Assigning matching layouts to different appenders and leaving newlines
+  out of the code solves this problem. If you inherited code that has logging
+  statements with newlines and want to make it work with Log4perl, read
+  the L<Log::Log4perl::Layout::PatternLayout> documentation on how to 
+  accomplish that.
+  
+  =head2 Configuration files
+  
+  As shown above, you can define C<Log::Log4perl> loggers both from within
+  your Perl code or from configuration files. The latter have the unbeatable
+  advantage that you can modify your system's logging behaviour without 
+  interfering with the code at all. So even if your code is being run by 
+  somebody who's totally oblivious to Perl, they still can adapt the
+  module's logging behaviour to their needs.
+  
+  C<Log::Log4perl> has been designed to understand C<Log4j> configuration
+  files -- as used by the original Java implementation. Instead of 
+  reiterating the format description in [2], let me just list three
+  examples (also derived from [2]), which should also illustrate
+  how it works:
+  
+      log4j.rootLogger=DEBUG, A1
+      log4j.appender.A1=org.apache.log4j.ConsoleAppender
+      log4j.appender.A1.layout=org.apache.log4j.PatternLayout
+      log4j.appender.A1.layout.ConversionPattern=%-4r %-5p %c %x - %m%n
+  
+  This enables messages of priority C<DEBUG> or higher in the root
+  hierarchy and has the system write them to the console. 
+  C<ConsoleAppender> is a Java appender, but C<Log::Log4perl> jumps
+  through a significant number of hoops internally to map these to their
+  corresponding Perl classes, C<Log::Log4perl::Appender::Screen> in this case.
+  
+  Second example:
+  
+      log4perl.rootLogger=DEBUG, A1
+      log4perl.appender.A1=Log::Log4perl::Appender::Screen
+      log4perl.appender.A1.layout=PatternLayout
+      log4perl.appender.A1.layout.ConversionPattern=%d %-5p %c - %m%n
+      log4perl.logger.com.foo=WARN
+  
+  This defines two loggers: The root logger and the C<com.foo> logger.
+  The root logger is easily triggered by debug-messages, 
+  but the C<com.foo> logger makes sure that messages issued within
+  the C<Com::Foo> component and below are only forwarded to the appender
+  if they're of priority I<warning> or higher. 
+  
+  Note that the C<com.foo> logger doesn't define an appender. Therefore,
+  it will just propagate the message up the hierarchy until the root logger
+  picks it up and forwards it to the one and only appender of the root
+  category, using the format defined for it.
+  
+  Third example:
+  
+      log4j.rootLogger=DEBUG, stdout, R
+      log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+      log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+      log4j.appender.stdout.layout.ConversionPattern=%5p (%F:%L) - %m%n
+      log4j.appender.R=org.apache.log4j.RollingFileAppender
+      log4j.appender.R.File=example.log
+      log4j.appender.R.layout=org.apache.log4j.PatternLayout
+      log4j.appender.R.layout.ConversionPattern=%p %c - %m%n
+  
+  The root logger defines two appenders here: C<stdout>, which uses 
+  C<org.apache.log4j.ConsoleAppender> (ultimately mapped by C<Log::Log4perl>
+  to L<Log::Log4perl::Appender::Screen>) to write to the screen. And
+  C<R>, a C<org.apache.log4j.RollingFileAppender> 
+  (mapped by C<Log::Log4perl> to 
+  L<Log::Dispatch::FileRotate> with the C<File> attribute specifying the
+  log file.
+  
+  See L<Log::Log4perl::Config> for more examples and syntax explanations.
+  
+  =head2 Log Layouts
+  
+  If the logging engine passes a message to an appender, because it thinks
+  it should be logged, the appender doesn't just
+  write it out haphazardly. There's ways to tell the appender how to format
+  the message and add all sorts of interesting data to it: The date and
+  time when the event happened, the file, the line number, the
+  debug level of the logger and others.
+  
+  There's currently two layouts defined in C<Log::Log4perl>: 
+  C<Log::Log4perl::Layout::SimpleLayout> and
+  C<Log::Log4perl::Layout::PatternLayout>:
+  
+  =over 4 
+  
+  =item C<Log::Log4perl::SimpleLayout> 
+  
+  formats a message in a simple
+  way and just prepends it by the debug level and a hyphen:
+  C<"$level - $message>, for example C<"FATAL - Can't open password file">.
+  
+  =item C<Log::Log4perl::Layout::PatternLayout> 
+  
+  on the other hand is very powerful and 
+  allows for a very flexible format in C<printf>-style. The format
+  string can contain a number of placeholders which will be
+  replaced by the logging engine when it's time to log the message:
+  
+      %c Category of the logging event.
+      %C Fully qualified package (or class) name of the caller
+      %d Current date in yyyy/MM/dd hh:mm:ss format
+      %F File where the logging event occurred
+      %H Hostname (if Sys::Hostname is available)
+      %l Fully qualified name of the calling method followed by the
+         callers source the file name and line number between 
+         parentheses.
+      %L Line number within the file where the log statement was issued
+      %m The message to be logged
+      %m{chomp} The message to be logged, stripped off a trailing newline
+      %M Method or function where the logging request was issued
+      %n Newline (OS-independent)
+      %p Priority of the logging event
+      %P pid of the current process
+      %r Number of milliseconds elapsed from program start to logging 
+         event
+      %R Number of milliseconds elapsed from last logging event to
+         current logging event 
+      %T A stack trace of functions called
+      %x The topmost NDC (see below)
+      %X{key} The entry 'key' of the MDC (see below)
+      %% A literal percent (%) sign
+  
+  NDC and MDC are explained in L<"Nested Diagnostic Context (NDC)">
+  and L<"Mapped Diagnostic Context (MDC)">.
+  
+  Also, C<%d> can be fine-tuned to display only certain characteristics
+  of a date, according to the SimpleDateFormat in the Java World
+  (L<http://java.sun.com/j2se/1.3/docs/api/java/text/SimpleDateFormat.html>)
+  
+  In this way, C<%d{HH:mm}> displays only hours and minutes of the current date,
+  while C<%d{yy, EEEE}> displays a two-digit year, followed by a spelled-out day
+  (like C<Wednesday>). 
+  
+  Similar options are available for shrinking the displayed category or
+  limit file/path components, C<%F{1}> only displays the source file I<name>
+  without any path components while C<%F> logs the full path. %c{2} only
+  logs the last two components of the current category, C<Foo::Bar::Baz> 
+  becomes C<Bar::Baz> and saves space.
+  
+  If those placeholders aren't enough, then you can define your own right in
+  the config file like this:
+  
+      log4perl.PatternLayout.cspec.U = sub { return "UID $<" }
+  
+  See L<Log::Log4perl::Layout::PatternLayout> for further details on
+  customized specifiers.
+  
+  Please note that the subroutines you're defining in this way are going
+  to be run in the C<main> namespace, so be sure to fully qualify functions
+  and variables if they're located in different packages.
+  
+  SECURITY NOTE: this feature means arbitrary perl code can be embedded in the 
+  config file.  In the rare case where the people who have access to your config 
+  file are different from the people who write your code and shouldn't have 
+  execute rights, you might want to call
+  
+      Log::Log4perl::Config->allow_code(0);
+  
+  before you call init(). Alternatively you can supply a restricted set of
+  Perl opcodes that can be embedded in the config file as described in
+  L<"Restricting what Opcodes can be in a Perl Hook">.
+  
+  =back
+  
+  All placeholders are quantifiable, just like in I<printf>. Following this 
+  tradition, C<%-20c> will reserve 20 chars for the category and left-justify it.
+  
+  For more details on logging and how to use the flexible and the simple
+  format, check out the original C<log4j> website under
+  
+  L<SimpleLayout|http://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/SimpleLayout.html>
+  and
+  L<PatternLayout|http://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html>
+  
+  =head2 Penalties
+  
+  Logging comes with a price tag. C<Log::Log4perl> has been optimized
+  to allow for maximum performance, both with logging enabled and disabled.
+  
+  But you need to be aware that there's a small hit every time your code
+  encounters a log statement -- no matter if logging is enabled or not. 
+  C<Log::Log4perl> has been designed to keep this so low that it will
+  be unnoticeable to most applications.
+  
+  Here's a couple of tricks which help C<Log::Log4perl> to avoid
+  unnecessary delays:
+  
+  You can save serious time if you're logging something like
+  
+          # Expensive in non-debug mode!
+      for (@super_long_array) {
+          $logger->debug("Element: $_");
+      }
+  
+  and C<@super_long_array> is fairly big, so looping through it is pretty
+  expensive. Only you, the programmer, knows that going through that C<for>
+  loop can be skipped entirely if the current logging level for the 
+  actual component is higher than C<debug>.
+  In this case, use this instead:
+  
+          # Cheap in non-debug mode!
+      if($logger->is_debug()) {
+          for (@super_long_array) {
+              $logger->debug("Element: $_");
+          }
+      }
+  
+  If you're afraid that generating the parameters to the
+  logging function is fairly expensive, use closures:
+  
+          # Passed as subroutine ref
+      use Data::Dumper;
+      $logger->debug(sub { Dumper($data) } );
+  
+  This won't unravel C<$data> via Dumper() unless it's actually needed
+  because it's logged. 
+  
+  Also, Log::Log4perl lets you specify arguments
+  to logger functions in I<message output filter syntax>:
+  
+      $logger->debug("Structure: ",
+                     { filter => \&Dumper,
+                       value  => $someref });
+  
+  In this way, shortly before Log::Log4perl sending the
+  message out to any appenders, it will be searching all arguments for
+  hash references and treat them in a special way:
+  
+  It will invoke the function given as a reference with the C<filter> key
+  (C<Data::Dumper::Dumper()>) and pass it the value that came with
+  the key named C<value> as an argument.
+  The anonymous hash in the call above will be replaced by the return 
+  value of the filter function.
+  
+  =head1 Categories
+  
+  B<Categories are also called "Loggers" in Log4perl, both refer
+  to the same thing and these terms are used interchangeably.>
+  C<Log::Log4perl> uses I<categories> to determine if a log statement in
+  a component should be executed or suppressed at the current logging level.
+  Most of the time, these categories are just the classes the log statements
+  are located in:
+  
+      package Candy::Twix;
+  
+      sub new { 
+          my $logger = Log::Log4perl->get_logger("Candy::Twix");
+          $logger->debug("Creating a new Twix bar");
+          bless {}, shift;
+      }
+   
+      # ...
+  
+      package Candy::Snickers;
+  
+      sub new { 
+          my $logger = Log::Log4perl->get_logger("Candy.Snickers");
+          $logger->debug("Creating a new Snickers bar");
+          bless {}, shift;
+      }
+  
+      # ...
+  
+      package main;
+      Log::Log4perl->init("mylogdefs.conf");
+  
+          # => "LOG> Creating a new Snickers bar"
+      my $first = Candy::Snickers->new();
+          # => "LOG> Creating a new Twix bar"
+      my $second = Candy::Twix->new();
+  
+  Note that you can separate your category hierarchy levels
+  using either dots like
+  in Java (.) or double-colons (::) like in Perl. Both notations
+  are equivalent and are handled the same way internally.
+  
+  However, categories are just there to make
+  use of inheritance: if you invoke a logger in a sub-category, 
+  it will bubble up the hierarchy and call the appropriate appenders.
+  Internally, categories are not related to the class hierarchy of the program
+  at all -- they're purely virtual. You can use arbitrary categories --
+  for example in the following program, which isn't oo-style, but
+  procedural:
+  
+      sub print_portfolio {
+  
+          my $log = Log::Log4perl->get_logger("user.portfolio");
+          $log->debug("Quotes requested: @_");
+  
+          for(@_) {
+              print "$_: ", get_quote($_), "\n";
+          }
+      }
+  
+      sub get_quote {
+  
+          my $log = Log::Log4perl->get_logger("internet.quotesystem");
+          $log->debug("Fetching quote: $_[0]");
+  
+          return yahoo_quote($_[0]);
+      }
+  
+  The logger in first function, C<print_portfolio>, is assigned the
+  (virtual) C<user.portfolio> category. Depending on the C<Log4perl>
+  configuration, this will either call a C<user.portfolio> appender,
+  a C<user> appender, or an appender assigned to root -- without
+  C<user.portfolio> having any relevance to the class system used in 
+  the program.
+  The logger in the second function adheres to the 
+  C<internet.quotesystem> category -- again, maybe because it's bundled 
+  with other Internet functions, but not because there would be
+  a class of this name somewhere.
+  
+  However, be careful, don't go overboard: if you're developing a system
+  in object-oriented style, using the class hierarchy is usually your best
+  choice. Think about the people taking over your code one day: The
+  class hierarchy is probably what they know right up front, so it's easy
+  for them to tune the logging to their needs.
+  
+  =head2 Turn off a component
+  
+  C<Log4perl> doesn't only allow you to selectively switch I<on> a category
+  of log messages, you can also use the mechanism to selectively I<disable>
+  logging in certain components whereas logging is kept turned on in higher-level
+  categories. This mechanism comes in handy if you find that while bumping 
+  up the logging level of a high-level (i. e. close to root) category, 
+  that one component logs more than it should, 
+  
+  Here's how it works: 
+  
+      ############################################################
+      # Turn off logging in a lower-level category while keeping
+      # it active in higher-level categories.
+      ############################################################
+      log4perl.rootLogger=DEBUG, LOGFILE
+      log4perl.logger.deep.down.the.hierarchy = ERROR, LOGFILE
+  
+      # ... Define appenders ...
+  
+  This way, log messages issued from within 
+  C<Deep::Down::The::Hierarchy> and below will be
+  logged only if they're C<ERROR> or worse, while in all other system components
+  even C<DEBUG> messages will be logged.
+  
+  =head2 Return Values
+  
+  All logging methods return values indicating if their message
+  actually reached one or more appenders. If the message has been
+  suppressed because of level constraints, C<undef> is returned.
+  
+  For example,
+  
+      my $ret = $logger->info("Message");
+  
+  will return C<undef> if the system debug level for the current category
+  is not C<INFO> or more permissive. 
+  If Log::Log4perl
+  forwarded the message to one or more appenders, the number of appenders
+  is returned.
+  
+  If appenders decide to veto on the message with an appender threshold,
+  the log method's return value will have them excluded. This means that if
+  you've got one appender holding an appender threshold and you're 
+  logging a message
+  which passes the system's log level hurdle but not the appender threshold,
+  C<0> will be returned by the log function.
+  
+  The bottom line is: Logging functions will return a I<true> value if the message
+  made it through to one or more appenders and a I<false> value if it didn't.
+  This allows for constructs like
+  
+      $logger->fatal("@_") or print STDERR "@_\n";
+  
+  which will ensure that the fatal message isn't lost
+  if the current level is lower than FATAL or printed twice if 
+  the level is acceptable but an appender already points to STDERR.
+  
+  =head2 Pitfalls with Categories
+  
+  Be careful with just blindly reusing the system's packages as
+  categories. If you do, you'll get into trouble with inherited methods.
+  Imagine the following class setup:
+  
+      use Log::Log4perl;
+  
+      ###########################################
+      package Bar;
+      ###########################################
+      sub new {
+          my($class) = @_;
+          my $logger = Log::Log4perl::get_logger(__PACKAGE__);
+          $logger->debug("Creating instance");
+          bless {}, $class;
+      }
+      ###########################################
+      package Bar::Twix;
+      ###########################################
+      our @ISA = qw(Bar);
+  
+      ###########################################
+      package main;
+      ###########################################
+      Log::Log4perl->init(\ qq{
+      log4perl.category.Bar.Twix = DEBUG, Screen
+      log4perl.appender.Screen = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.layout = SimpleLayout
+      });
+  
+      my $bar = Bar::Twix->new();
+  
+  C<Bar::Twix> just inherits everything from C<Bar>, including the constructor
+  C<new()>.
+  Contrary to what you might be thinking at first, this won't log anything. 
+  Reason for this is the C<get_logger()> call in package C<Bar>, which
+  will always get a logger of the C<Bar> category, even if we call C<new()> via
+  the C<Bar::Twix> package, which will make perl go up the inheritance 
+  tree to actually execute C<Bar::new()>. Since we've only defined logging
+  behaviour for C<Bar::Twix> in the configuration file, nothing will happen.
+  
+  This can be fixed by changing the C<get_logger()> method in C<Bar::new()>
+  to obtain a logger of the category matching the
+  I<actual> class of the object, like in
+  
+          # ... in Bar::new() ...
+      my $logger = Log::Log4perl::get_logger( $class );
+  
+  In a method other than the constructor, the class name of the actual
+  object can be obtained by calling C<ref()> on the object reference, so
+  
+      package BaseClass;
+      use Log::Log4perl qw( get_logger );
+  
+      sub new { 
+          bless {}, shift; 
+      }
+  
+      sub method {
+          my( $self ) = @_;
+  
+          get_logger( ref $self )->debug( "message" );
+      }
+  
+      package SubClass;
+      our @ISA = qw(BaseClass);
+  
+  is the recommended pattern to make sure that 
+  
+      my $sub = SubClass->new();
+      $sub->meth();
+  
+  starts logging if the C<"SubClass"> category 
+  (and not the C<"BaseClass"> category has logging enabled at the DEBUG level.
+  
+  =head2 Initialize once and only once
+  
+  It's important to realize that Log::Log4perl gets initialized once and only
+  once, typically at the start of a program or system. Calling C<init()>
+  more than once will cause it to clobber the existing configuration and
+  I<replace> it by the new one.
+  
+  If you're in a traditional CGI environment, where every request is
+  handled by a new process, calling C<init()> every time is fine. In
+  persistent environments like C<mod_perl>, however, Log::Log4perl
+  should be initialized either at system startup time (Apache offers
+  startup handlers for that) or via
+  
+          # Init or skip if already done
+      Log::Log4perl->init_once($conf_file);
+  
+  C<init_once()> is identical to C<init()>, just with the exception
+  that it will leave a potentially existing configuration alone and 
+  will only call C<init()> if Log::Log4perl hasn't been initialized yet.
+  
+  If you're just curious if Log::Log4perl has been initialized yet, the
+  check
+  
+      if(Log::Log4perl->initialized()) {
+          # Yes, Log::Log4perl has already been initialized
+      } else {
+          # No, not initialized yet ...
+      }
+  
+  can be used.
+  
+  If you're afraid that the components of your system are stepping on 
+  each other's toes or if you are thinking that different components should
+  initialize Log::Log4perl separately, try to consolidate your system
+  to use a centralized Log4perl configuration file and use 
+  Log4perl's I<categories> to separate your components.
+  
+  =head2 Custom Filters
+  
+  Log4perl allows the use of customized filters in its appenders
+  to control the output of messages. These filters might grep for
+  certain text chunks in a message, verify that its priority
+  matches or exceeds a certain level or that this is the 10th
+  time the same message has been submitted -- and come to a log/no log 
+  decision based upon these circumstantial facts.
+  
+  Check out L<Log::Log4perl::Filter> for detailed instructions 
+  on how to use them.
+  
+  =head2 Performance
+  
+  The performance of Log::Log4perl calls obviously depends on a lot of things.
+  But to give you a general idea, here's some rough numbers:
+  
+  On a Pentium 4 Linux box at 2.4 GHz, you'll get through
+  
+  =over 4
+  
+  =item *
+  
+  500,000 suppressed log statements per second
+  
+  =item *
+  
+  30,000 logged messages per second (using an in-memory appender)
+  
+  =item *
+  
+  init_and_watch delay mode: 300,000 suppressed, 30,000 logged.
+  init_and_watch signal mode: 450,000 suppressed, 30,000 logged.
+  
+  =back
+  
+  Numbers depend on the complexity of the Log::Log4perl configuration.
+  For a more detailed benchmark test, check the C<docs/benchmark.results.txt> 
+  document in the Log::Log4perl distribution.
+  
+  =head1 Cool Tricks
+  
+  Here's a collection of useful tricks for the advanced C<Log::Log4perl> user.
+  For more, check the FAQ, either in the distribution 
+  (L<Log::Log4perl::FAQ>) or on L<http://log4perl.sourceforge.net>.
+  
+  =head2 Shortcuts
+  
+  When getting an instance of a logger, instead of saying
+  
+      use Log::Log4perl;
+      my $logger = Log::Log4perl->get_logger();
+  
+  it's often more convenient to import the C<get_logger> method from 
+  C<Log::Log4perl> into the current namespace:
+  
+      use Log::Log4perl qw(get_logger);
+      my $logger = get_logger();
+  
+  Please note this difference: To obtain the root logger, please use
+  C<get_logger("")>, call it without parameters (C<get_logger()>), you'll
+  get the logger of a category named after the current package. 
+  C<get_logger()> is equivalent to C<get_logger(__PACKAGE__)>.
+  
+  =head2 Alternative initialization
+  
+  Instead of having C<init()> read in a configuration file by specifying
+  a file name or passing it a reference to an open filehandle
+  (C<Log::Log4perl-E<gt>init( \*FILE )>),
+  you can 
+  also pass in a reference to a string, containing the content of
+  the file:
+  
+      Log::Log4perl->init( \$config_text );
+  
+  Also, if you've got the C<name=value> pairs of the configuration in
+  a hash, you can just as well initialize C<Log::Log4perl> with
+  a reference to it:
+  
+      my %key_value_pairs = (
+          "log4perl.rootLogger"       => "ERROR, LOGFILE",
+          "log4perl.appender.LOGFILE" => "Log::Log4perl::Appender::File",
+          ...
+      );
+  
+      Log::Log4perl->init( \%key_value_pairs );
+  
+  Or also you can use a URL, see below:
+  
+  =head2 Using LWP to parse URLs
+  
+  (This section borrowed from XML::DOM::Parser by T.J. Mather).
+  
+  The init() function now also supports URLs, e.g. I<http://www.erols.com/enno/xsa.xml>.
+  It uses LWP to download the file and then calls parse() on the resulting string.
+  By default it will use a L<LWP::UserAgent> that is created as follows:
+  
+   use LWP::UserAgent;
+   $LWP_USER_AGENT = LWP::UserAgent->new;
+   $LWP_USER_AGENT->env_proxy;
+  
+  Note that env_proxy reads proxy settings from environment variables, which is what Log4perl needs to
+  do to get through our firewall. If you want to use a different LWP::UserAgent, you can 
+  set it with
+  
+      Log::Log4perl::Config::set_LWP_UserAgent($my_agent);
+  
+  Currently, LWP is used when the filename (passed to parsefile) starts with one of
+  the following URL schemes: http, https, ftp, wais, gopher, or file (followed by a colon.)
+  
+  Don't use this feature with init_and_watch().
+  
+  =head2 Automatic reloading of changed configuration files
+  
+  Instead of just statically initializing Log::Log4perl via
+  
+      Log::Log4perl->init($conf_file);
+  
+  there's a way to have Log::Log4perl periodically check for changes
+  in the configuration and reload it if necessary:
+  
+      Log::Log4perl->init_and_watch($conf_file, $delay);
+  
+  In this mode, Log::Log4perl will examine the configuration file 
+  C<$conf_file> every C<$delay> seconds for changes via the file's
+  last modification timestamp. If the file has been updated, it will
+  be reloaded and replace the current Log::Log4perl configuration.
+  
+  The way this works is that with every logger function called 
+  (debug(), is_debug(), etc.), Log::Log4perl will check if the delay 
+  interval has expired. If so, it will run a -M file check on the 
+  configuration file. If its timestamp has been modified, the current
+  configuration will be dumped and new content of the file will be
+  loaded.
+  
+  This convenience comes at a price, though: Calling time() with every
+  logging function call, especially the ones that are "suppressed" (!), 
+  will slow down these Log4perl calls by about 40%.
+  
+  To alleviate this performance hit a bit, C<init_and_watch()> 
+  can be configured to listen for a Unix signal to reload the 
+  configuration instead:
+  
+      Log::Log4perl->init_and_watch($conf_file, 'HUP');
+  
+  This will set up a signal handler for SIGHUP and reload the configuration
+  if the application receives this signal, e.g. via the C<kill> command:
+  
+      kill -HUP pid
+  
+  where C<pid> is the process ID of the application. This will bring you back
+  to about 85% of Log::Log4perl's normal execution speed for suppressed
+  statements. For details, check out L<"Performance">. For more info
+  on the signal handler, look for L<Log::Log4perl::Config::Watch/"SIGNAL MODE">.
+  
+  If you have a somewhat long delay set between physical config file checks
+  or don't want to use the signal associated with the config file watcher,
+  you can trigger a configuration reload at the next possible time by
+  calling C<Log::Log4perl::Config-E<gt>watcher-E<gt>force_next_check()>.
+  
+  One thing to watch out for: If the configuration file contains a syntax
+  or other fatal error, a running application will stop with C<die> if
+  this damaged configuration will be loaded during runtime, triggered
+  either by a signal or if the delay period expired and the change is 
+  detected. This behaviour might change in the future.
+  
+  To allow the application to intercept and control a configuration reload
+  in init_and_watch mode, a callback can be specified:
+  
+      Log::Log4perl->init_and_watch($conf_file, 10, { 
+              preinit_callback => \&callback });
+  
+  If Log4perl determines that the configuration needs to be reloaded, it will
+  call the C<preinit_callback> function without parameters. If the callback
+  returns a true value, Log4perl will proceed and reload the configuration.  If
+  the callback returns a false value, Log4perl will keep the old configuration
+  and skip reloading it until the next time around.  Inside the callback, an
+  application can run all kinds of checks, including accessing the configuration
+  file, which is available via
+  C<Log::Log4perl::Config-E<gt>watcher()-E<gt>file()>.
+  
+  =head2 Variable Substitution
+  
+  To avoid having to retype the same expressions over and over again,
+  Log::Log4perl's configuration files support simple variable substitution.
+  New variables are defined simply by adding
+  
+      varname = value
+  
+  lines to the configuration file before using
+  
+      ${varname}
+  
+  afterwards to recall the assigned values. Here's an example:
+  
+      layout_class   = Log::Log4perl::Layout::PatternLayout
+      layout_pattern = %d %F{1} %L> %m %n
+      
+      log4perl.category.Bar.Twix = WARN, Logfile, Screen
+  
+      log4perl.appender.Logfile  = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile.filename = test.log
+      log4perl.appender.Logfile.layout = ${layout_class}
+      log4perl.appender.Logfile.layout.ConversionPattern = ${layout_pattern}
+  
+      log4perl.appender.Screen  = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.layout = ${layout_class}
+      log4perl.appender.Screen.layout.ConversionPattern = ${layout_pattern}
+  
+  This is a convenient way to define two appenders with the same layout 
+  without having to retype the pattern definitions.
+  
+  Variable substitution via C<${varname}> 
+  will first try to find an explicitly defined 
+  variable. If that fails, it will check your shell's environment
+  for a variable of that name. If that also fails, the program will C<die()>.
+  
+  =head2 Perl Hooks in the Configuration File
+  
+  If some of the values used in the Log4perl configuration file 
+  need to be dynamically modified by the program, use Perl hooks:
+  
+      log4perl.appender.File.filename = \
+          sub { return getLogfileName(); }
+  
+  Each value starting with the string C<sub {...> is interpreted as Perl code to
+  be executed at the time the application parses the configuration
+  via C<Log::Log4perl::init()>. The return value of the subroutine
+  is used by Log::Log4perl as the configuration value.
+  
+  The Perl code is executed in the C<main> package, functions in
+  other packages have to be called in fully-qualified notation.
+  
+  Here's another example, utilizing an environment variable as a
+  username for a DBI appender:
+  
+      log4perl.appender.DB.username = \
+          sub { $ENV{DB_USER_NAME } }
+  
+  However, please note the difference between these code snippets and those
+  used for user-defined conversion specifiers as discussed in
+  L<Log::Log4perl::Layout::PatternLayout>: 
+  While the snippets above are run I<once>
+  when C<Log::Log4perl::init()> is called, the conversion specifier
+  snippets are executed I<each time> a message is rendered according to
+  the PatternLayout.
+  
+  SECURITY NOTE: this feature means arbitrary perl code can be embedded in the 
+  config file.  In the rare case where the people who have access to your config 
+  file are different from the people who write your code and shouldn't have 
+  execute rights, you might want to set
+  
+      Log::Log4perl::Config->allow_code(0);
+  
+  before you call init().  Alternatively you can supply a restricted set of
+  Perl opcodes that can be embedded in the config file as described in
+  L<"Restricting what Opcodes can be in a Perl Hook">.
+  
+  =head2 Restricting what Opcodes can be in a Perl Hook
+  
+  The value you pass to Log::Log4perl::Config->allow_code() determines whether
+  the code that is embedded in the config file is eval'd unrestricted, or
+  eval'd in a Safe compartment.  By default, a value of '1' is assumed,
+  which does a normal 'eval' without any restrictions. A value of '0' 
+  however prevents any embedded code from being evaluated.
+  
+  If you would like fine-grained control over what can and cannot be included
+  in embedded code, then please utilize the following methods:
+  
+   Log::Log4perl::Config->allow_code( $allow );
+   Log::Log4perl::Config->allowed_code_ops($op1, $op2, ... );
+   Log::Log4perl::Config->vars_shared_with_safe_compartment( [ \%vars | $package, \@vars ] );
+   Log::Log4perl::Config->allowed_code_ops_convenience_map( [ \%map | $name, \@mask ] );
+  
+  Log::Log4perl::Config-E<gt>allowed_code_ops() takes a list of opcode masks
+  that are allowed to run in the compartment.  The opcode masks must be
+  specified as described in L<Opcode>:
+  
+   Log::Log4perl::Config->allowed_code_ops(':subprocess');
+  
+  This example would allow Perl operations like backticks, system, fork, and
+  waitpid to be executed in the compartment.  Of course, you probably don't
+  want to use this mask -- it would allow exactly what the Safe compartment is
+  designed to prevent.
+  
+  Log::Log4perl::Config-E<gt>vars_shared_with_safe_compartment() 
+  takes the symbols which
+  should be exported into the Safe compartment before the code is evaluated. 
+  The keys of this hash are the package names that the symbols are in, and the
+  values are array references to the literal symbol names.  For convenience,
+  the default settings export the '%ENV' hash from the 'main' package into the
+  compartment:
+  
+   Log::Log4perl::Config->vars_shared_with_safe_compartment(
+     main => [ '%ENV' ],
+   );
+  
+  Log::Log4perl::Config-E<gt>allowed_code_ops_convenience_map() is an accessor
+  method to a map of convenience names to opcode masks. At present, the
+  following convenience names are defined:
+  
+   safe        = [ ':browse' ]
+   restrictive = [ ':default' ]
+  
+  For convenience, if Log::Log4perl::Config-E<gt>allow_code() is called with a
+  value which is a key of the map previously defined with
+  Log::Log4perl::Config-E<gt>allowed_code_ops_convenience_map(), then the
+  allowed opcodes are set according to the value defined in the map. If this
+  is confusing, consider the following:
+  
+   use Log::Log4perl;
+   
+   my $config = <<'END';
+    log4perl.logger = INFO, Main
+    log4perl.appender.Main = Log::Log4perl::Appender::File
+    log4perl.appender.Main.filename = \
+        sub { "example" . getpwuid($<) . ".log" }
+    log4perl.appender.Main.layout = Log::Log4perl::Layout::SimpleLayout
+   END
+   
+   $Log::Log4perl::Config->allow_code('restrictive');
+   Log::Log4perl->init( \$config );       # will fail
+   $Log::Log4perl::Config->allow_code('safe');
+   Log::Log4perl->init( \$config );       # will succeed
+  
+  The reason that the first call to -E<gt>init() fails is because the
+  'restrictive' name maps to an opcode mask of ':default'.  getpwuid() is not
+  part of ':default', so -E<gt>init() fails.  The 'safe' name maps to an opcode
+  mask of ':browse', which allows getpwuid() to run, so -E<gt>init() succeeds.
+  
+  allowed_code_ops_convenience_map() can be invoked in several ways:
+  
+  =over 4
+  
+  =item allowed_code_ops_convenience_map()
+  
+  Returns the entire convenience name map as a hash reference in scalar
+  context or a hash in list context.
+  
+  =item allowed_code_ops_convenience_map( \%map )
+  
+  Replaces the entire convenience name map with the supplied hash reference.
+  
+  =item allowed_code_ops_convenience_map( $name )
+  
+  Returns the opcode mask for the given convenience name, or undef if no such
+  name is defined in the map.
+  
+  =item allowed_code_ops_convenience_map( $name, \@mask )
+  
+  Adds the given name/mask pair to the convenience name map.  If the name
+  already exists in the map, it's value is replaced with the new mask.
+  
+  =back
+  
+  as can vars_shared_with_safe_compartment():
+  
+  =over 4
+  
+  =item vars_shared_with_safe_compartment()
+  
+  Return the entire map of packages to variables as a hash reference in scalar
+  context or a hash in list context.
+  
+  =item vars_shared_with_safe_compartment( \%packages )
+  
+  Replaces the entire map of packages to variables with the supplied hash
+  reference.
+  
+  =item vars_shared_with_safe_compartment( $package )
+  
+  Returns the arrayref of variables to be shared for a specific package.
+  
+  =item vars_shared_with_safe_compartment( $package, \@vars )
+  
+  Adds the given package / varlist pair to the map.  If the package already
+  exists in the map, it's value is replaced with the new arrayref of variable
+  names.
+  
+  =back
+  
+  For more information on opcodes and Safe Compartments, see L<Opcode> and
+  L<Safe>.
+  
+  =head2 Changing the Log Level on a Logger
+  
+  Log4perl provides some internal functions for quickly adjusting the
+  log level from within a running Perl program. 
+  
+  Now, some people might
+  argue that you should adjust your levels from within an external 
+  Log4perl configuration file, but Log4perl is everybody's darling.
+  
+  Typically run-time adjusting of levels is done
+  at the beginning, or in response to some external input (like a
+  "more logging" runtime command for diagnostics).
+  
+  You get the log level from a logger object with:
+  
+      $current_level = $logger->level();
+  
+  and you may set it with the same method, provided you first
+  imported the log level constants, with:
+  
+      use Log::Log4perl::Level;
+  
+  Then you can set the level on a logger to one of the constants,
+  
+      $logger->level($ERROR); # one of DEBUG, INFO, WARN, ERROR, FATAL
+  
+  To B<increase> the level of logging currently being done, use:
+  
+      $logger->more_logging($delta);
+  
+  and to B<decrease> it, use:
+  
+      $logger->less_logging($delta);
+  
+  $delta must be a positive integer (for now, we may fix this later ;).
+  
+  There are also two equivalent functions:
+  
+      $logger->inc_level($delta);
+      $logger->dec_level($delta);
+  
+  They're included to allow you a choice in readability. Some folks
+  will prefer more/less_logging, as they're fairly clear in what they
+  do, and allow the programmer not to worry too much about what a Level
+  is and whether a higher level means more or less logging. However,
+  other folks who do understand and have lots of code that deals with
+  levels will probably prefer the inc_level() and dec_level() methods as
+  they want to work with Levels and not worry about whether that means
+  more or less logging. :)
+  
+  That diatribe aside, typically you'll use more_logging() or inc_level()
+  as such:
+  
+      my $v = 0; # default level of verbosity.
+      
+      GetOptions("v+" => \$v, ...);
+  
+      if( $v ) {
+        $logger->more_logging($v); # inc logging level once for each -v in ARGV
+      }
+  
+  =head2 Custom Log Levels
+  
+  First off, let me tell you that creating custom levels is heavily
+  deprecated by the log4j folks. Indeed, instead of creating additional
+  levels on top of the predefined DEBUG, INFO, WARN, ERROR and FATAL, 
+  you should use categories to control the amount of logging smartly,
+  based on the location of the log-active code in the system.
+  
+  Nevertheless, 
+  Log4perl provides a nice way to create custom levels via the 
+  create_custom_level() routine function. However, this must be done
+  before the first call to init() or get_logger(). Say you want to create
+  a NOTIFY logging level that comes after WARN (and thus before INFO).
+  You'd do such as follows:
+  
+      use Log::Log4perl;
+      use Log::Log4perl::Level;
+  
+      Log::Log4perl::Logger::create_custom_level("NOTIFY", "WARN");
+  
+  And that's it! C<create_custom_level()> creates the following functions /
+  variables for level FOO:
+  
+      $FOO_INT        # integer to use in L4p::Level::to_level()
+      $logger->foo()  # log function to log if level = FOO
+      $logger->is_foo()   # true if current level is >= FOO
+  
+  These levels can also be used in your
+  config file, but note that your config file probably won't be
+  portable to another log4perl or log4j environment unless you've
+  made the appropriate mods there too.
+  
+  Since Log4perl translates log levels to syslog and Log::Dispatch if 
+  their appenders are used, you may add mappings for custom levels as well:
+  
+    Log::Log4perl::Level::add_priority("NOTIFY", "WARN",
+                                       $syslog_equiv, $log_dispatch_level);
+  
+  For example, if your new custom "NOTIFY" level is supposed to map 
+  to syslog level 2 ("LOG_NOTICE") and Log::Dispatch level 2 ("notice"), use:
+  
+    Log::Log4perl::Logger::create_custom_level("NOTIFY", "WARN", 2, 2);
+  
+  =head2 System-wide log levels
+  
+  As a fairly drastic measure to decrease (or increase) the logging level
+  all over the system with one single configuration option, use the C<threshold>
+  keyword in the Log4perl configuration file:
+  
+      log4perl.threshold = ERROR
+  
+  sets the system-wide (or hierarchy-wide according to the log4j documentation)
+  to ERROR and therefore deprives every logger in the system of the right 
+  to log lower-prio messages.
+  
+  =head2 Easy Mode
+  
+  For teaching purposes (especially for [1]), I've put C<:easy> mode into 
+  C<Log::Log4perl>, which just initializes a single root logger with a 
+  defined priority and a screen appender including some nice standard layout:
+  
+      ### Initialization Section
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($ERROR);  # Set priority of root logger to ERROR
+  
+      ### Application Section
+      my $logger = get_logger();
+      $logger->fatal("This will get logged.");
+      $logger->debug("This won't.");
+  
+  This will dump something like
+  
+      2002/08/04 11:43:09 ERROR> script.pl:16 main::function - This will get logged.
+  
+  to the screen. While this has been proven to work well familiarizing people
+  with C<Log::Logperl> slowly, effectively avoiding to clobber them over the 
+  head with a 
+  plethora of different knobs to fiddle with (categories, appenders, levels, 
+  layout), the overall mission of C<Log::Log4perl> is to let people use
+  categories right from the start to get used to the concept. So, let's keep
+  this one fairly hidden in the man page (congrats on reading this far :).
+  
+  =head2 Stealth loggers
+  
+  Sometimes, people are lazy. If you're whipping up a 50-line script and want 
+  the comfort of Log::Log4perl without having the burden of carrying a
+  separate log4perl.conf file or a 5-liner defining that you want to append
+  your log statements to a file, you can use the following features:
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->easy_init( { level   => $DEBUG,
+                                  file    => ">>test.log" } );
+  
+          # Logs to test.log via stealth logger
+      DEBUG("Debug this!");
+      INFO("Info this!");
+      WARN("Warn this!");
+      ERROR("Error this!");
+  
+      some_function();
+  
+      sub some_function {
+              # Same here
+          FATAL("Fatal this!");
+      }
+  
+  In C<:easy> mode, C<Log::Log4perl> will instantiate a I<stealth logger>
+  and introduce the
+  convenience functions C<TRACE>, C<DEBUG()>, C<INFO()>, C<WARN()>, 
+  C<ERROR()>, C<FATAL()>, and C<ALWAYS> into the package namespace.
+  These functions simply take messages as
+  arguments and forward them to the stealth loggers methods (C<debug()>,
+  C<info()>, and so on).
+  
+  If a message should never be blocked, regardless of the log level,
+  use the C<ALWAYS> function which corresponds to a log level of C<OFF>:
+  
+      ALWAYS "This will be printed regardless of the log level";
+  
+  The C<easy_init> method can be called with a single level value to
+  create a STDERR appender and a root logger as in
+  
+      Log::Log4perl->easy_init($DEBUG);
+  
+  or, as shown below (and in the example above) 
+  with a reference to a hash, specifying values
+  for C<level> (the logger's priority), C<file> (the appender's data sink),
+  C<category> (the logger's category and C<layout> for the appender's 
+  pattern layout specification.
+  All key-value pairs are optional, they 
+  default to C<$DEBUG> for C<level>, C<STDERR> for C<file>,
+  C<""> (root category) for C<category> and 
+  C<%d %m%n> for C<layout>:
+  
+      Log::Log4perl->easy_init( { level    => $DEBUG,
+                                  file     => ">test.log",
+                                  utf8     => 1,
+                                  category => "Bar::Twix",
+                                  layout   => '%F{1}-%L-%M: %m%n' } );
+  
+  The C<file> parameter takes file names preceded by C<"E<gt>">
+  (overwrite) and C<"E<gt>E<gt>"> (append) as arguments. This will
+  cause C<Log::Log4perl::Appender::File> appenders to be created behind
+  the scenes. Also the keywords C<STDOUT> and C<STDERR> (no C<E<gt>> or
+  C<E<gt>E<gt>>) are recognized, which will utilize and configure
+  C<Log::Log4perl::Appender::Screen> appropriately. The C<utf8> flag,
+  if set to a true value, runs a C<binmode> command on the file handle
+  to establish a utf8 line discipline on the file, otherwise you'll get a
+  'wide character in print' warning message and probably not what you'd
+  expect as output.
+  
+  The stealth loggers can be used in different packages, you just need to make
+  sure you're calling the "use" function in every package you're using
+  C<Log::Log4perl>'s easy services:
+  
+      package Bar::Twix;
+      use Log::Log4perl qw(:easy);
+      sub eat { DEBUG("Twix mjam"); }
+  
+      package Bar::Mars;
+      use Log::Log4perl qw(:easy);
+      sub eat { INFO("Mars mjam"); }
+  
+      package main;
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->easy_init( { level    => $DEBUG,
+                                  file     => ">>test.log",
+                                  category => "Bar::Twix",
+                                  layout   => '%F{1}-%L-%M: %m%n' },
+                                { level    => $DEBUG,
+                                  file     => "STDOUT",
+                                  category => "Bar::Mars",
+                                  layout   => '%m%n' },
+                              );
+      Bar::Twix::eat();
+      Bar::Mars::eat();
+  
+  As shown above, C<easy_init()> will take any number of different logger 
+  definitions as hash references.
+  
+  Also, stealth loggers feature the functions C<LOGWARN()>, C<LOGDIE()>,
+  and C<LOGEXIT()>,
+  combining a logging request with a subsequent Perl warn() or die() or exit()
+  statement. So, for example
+  
+      if($all_is_lost) {
+          LOGDIE("Terrible Problem");
+      }
+  
+  will log the message if the package's logger is at least C<FATAL> but
+  C<die()> (including the traditional output to STDERR) in any case afterwards.
+  
+  See L<"Log and die or warn"> for the similar C<logdie()> and C<logwarn()>
+  functions of regular (i.e non-stealth) loggers.
+  
+  Similarily, C<LOGCARP()>, C<LOGCLUCK()>, C<LOGCROAK()>, and C<LOGCONFESS()>
+  are provided in C<:easy> mode, facilitating the use of C<logcarp()>,
+  C<logcluck()>, C<logcroak()>, and C<logconfess()> with stealth loggers.
+  
+  B<When using Log::Log4perl in easy mode, 
+  please make sure you understand the implications of 
+  L</"Pitfalls with Categories">>.
+  
+  By the way, these convenience functions perform exactly as fast as the 
+  standard Log::Log4perl logger methods, there's I<no> performance penalty
+  whatsoever.
+  
+  =head2 Nested Diagnostic Context (NDC)
+  
+  If you find that your application could use a global (thread-specific)
+  data stack which your loggers throughout the system have easy access to,
+  use Nested Diagnostic Contexts (NDCs). Also check out
+  L<"Mapped Diagnostic Context (MDC)">, this might turn out to be even more
+  useful.
+  
+  For example, when handling a request of a web client, it's probably 
+  useful to have the user's IP address available in all log statements
+  within code dealing with this particular request. Instead of passing
+  this piece of data around between your application functions, you can just
+  use the global (but thread-specific) NDC mechanism. It allows you
+  to push data pieces (scalars usually) onto its stack via
+  
+      Log::Log4perl::NDC->push("San");
+      Log::Log4perl::NDC->push("Francisco");
+  
+  and have your loggers retrieve them again via the "%x" placeholder in
+  the PatternLayout. With the stack values above and a PatternLayout format
+  like "%x %m%n", the call
+  
+      $logger->debug("rocks");
+  
+  will end up as 
+  
+      San Francisco rocks
+  
+  in the log appender.
+  
+  The stack mechanism allows for nested structures.
+  Just make sure that at the end of the request, you either decrease the stack
+  one by one by calling
+  
+      Log::Log4perl::NDC->pop();
+      Log::Log4perl::NDC->pop();
+  
+  or clear out the entire NDC stack by calling
+  
+      Log::Log4perl::NDC->remove();
+  
+  Even if you should forget to do that, C<Log::Log4perl> won't grow the stack
+  indefinitely, but limit it to a maximum, defined in C<Log::Log4perl::NDC>
+  (currently 5). A call to C<push()> on a full stack will just replace
+  the topmost element by the new value.
+  
+  Again, the stack is always available via the "%x" placeholder
+  in the Log::Log4perl::Layout::PatternLayout class whenever a logger
+  fires. It will replace "%x" by the blank-separated list of the
+  values on the stack. It does that by just calling
+  
+      Log::Log4perl::NDC->get();
+  
+  internally. See details on how this standard log4j feature is implemented
+  in L<Log::Log4perl::NDC>.
+  
+  =head2 Mapped Diagnostic Context (MDC)
+  
+  Just like the previously discussed NDC stores thread-specific
+  information in a stack structure, the MDC implements a hash table
+  to store key/value pairs in.
+  
+  The static method
+  
+      Log::Log4perl::MDC->put($key, $value);
+  
+  stores C<$value> under a key C<$key>, with which it can be retrieved later
+  (possibly in a totally different part of the system) by calling
+  the C<get> method:
+  
+      my $value = Log::Log4perl::MDC->get($key);
+  
+  If no value has been stored previously under C<$key>, the C<get> method
+  will return C<undef>.
+  
+  Typically, MDC values are retrieved later on via the C<"%X{...}"> placeholder
+  in C<Log::Log4perl::Layout::PatternLayout>. If the C<get()> method
+  returns C<undef>, the placeholder will expand to the string C<[undef]>.
+  
+  An application taking a web request might store the remote host
+  like
+  
+      Log::Log4perl::MDC->put("remote_host", $r->headers("HOST"));
+  
+  at its beginning and if the appender's layout looks something like
+  
+      log4perl.appender.Logfile.layout.ConversionPattern = %X{remote_host}: %m%n
+  
+  then a log statement like
+  
+     DEBUG("Content delivered");
+  
+  will log something like
+  
+     adsl-63.dsl.snf.pacbell.net: Content delivered 
+  
+  later on in the program.
+  
+  For details, please check L<Log::Log4perl::MDC>.
+  
+  =head2 Resurrecting hidden Log4perl Statements
+  
+  Sometimes scripts need to be deployed in environments without having
+  Log::Log4perl installed yet. On the other hand, you don't want to
+  live without your Log4perl statements -- they're gonna come in
+  handy later.
+  
+  So, just deploy your script with Log4perl statements commented out with the
+  pattern C<###l4p>, like in
+  
+      ###l4p DEBUG "It works!";
+      # ...
+      ###l4p INFO "Really!";
+  
+  If Log::Log4perl is available,
+  use the C<:resurrect> tag to have Log4perl resurrect those buried 
+  statements before the script starts running:
+  
+      use Log::Log4perl qw(:resurrect :easy);
+  
+      ###l4p Log::Log4perl->easy_init($DEBUG);
+      ###l4p DEBUG "It works!";
+      # ...
+      ###l4p INFO "Really!";
+  
+  This will have a source filter kick in and indeed print
+  
+      2004/11/18 22:08:46 It works!
+      2004/11/18 22:08:46 Really!
+  
+  In environments lacking Log::Log4perl, just comment out the first line
+  and the script will run nevertheless (but of course without logging):
+  
+      # use Log::Log4perl qw(:resurrect :easy);
+  
+      ###l4p Log::Log4perl->easy_init($DEBUG);
+      ###l4p DEBUG "It works!";
+      # ...
+      ###l4p INFO "Really!";
+  
+  because everything's a regular comment now. Alternatively, put the
+  magic Log::Log4perl comment resurrection line into your shell's 
+  PERL5OPT environment variable, e.g. for bash:
+  
+      set PERL5OPT=-MLog::Log4perl=:resurrect,:easy
+      export PERL5OPT
+  
+  This will awaken the giant within an otherwise silent script like
+  the following:
+  
+      #!/usr/bin/perl
+  
+      ###l4p Log::Log4perl->easy_init($DEBUG);
+      ###l4p DEBUG "It works!";
+  
+  As of C<Log::Log4perl> 1.12, you can even force I<all> modules
+  loaded by a script to have their hidden Log4perl statements
+  resurrected. For this to happen, load C<Log::Log4perl::Resurrector>
+  I<before> loading any modules:
+  
+      use Log::Log4perl qw(:easy);
+      use Log::Log4perl::Resurrector;
+  
+      use Foobar; # All hidden Log4perl statements in here will
+                  # be uncommented before Foobar gets loaded.
+  
+      Log::Log4perl->easy_init($DEBUG);
+      ...
+  
+  Check the C<Log::Log4perl::Resurrector> manpage for more details.
+  
+  =head2 Access defined appenders
+  
+  All appenders defined in the configuration file or via Perl code
+  can be retrieved by the C<appender_by_name()> class method. This comes
+  in handy if you want to manipulate or query appender properties after
+  the Log4perl configuration has been loaded via C<init()>.
+  
+  Note that internally, Log::Log4perl uses the C<Log::Log4perl::Appender> 
+  wrapper class to control the real appenders (like 
+  C<Log::Log4perl::Appender::File> or C<Log::Dispatch::FileRotate>). 
+  The C<Log::Log4perl::Appender> class has an C<appender> attribute,
+  pointing to the real appender.
+  
+  The reason for this is that external appenders like 
+  C<Log::Dispatch::FileRotate> don't support all of Log::Log4perl's 
+  appender control mechanisms (like appender thresholds).
+  
+  The previously mentioned method C<appender_by_name()> returns a
+  reference to the I<real> appender object. If you want access to the
+  wrapper class (e.g. if you want to modify the appender's threshold),
+  use the hash C<$Log::Log4perl::Logger::APPENDER_BY_NAME{...}> instead,
+  which holds references to all appender wrapper objects.
+  
+  =head2 Modify appender thresholds
+  
+  To set an appender's threshold, use its C<threshold()> method:
+  
+      $app->threshold( $FATAL );
+  
+  To conveniently adjust I<all> appender thresholds (e.g. because a script
+  uses more_logging()), use
+  
+         # decrease thresholds of all appenders
+      Log::Log4perl->appender_thresholds_adjust(-1);
+  
+  This will decrease the thresholds of all appenders in the system by
+  one level, i.e. WARN becomes INFO, INFO becomes DEBUG, etc. To only modify 
+  selected ones, use
+  
+         # decrease thresholds of selected appenders
+      Log::Log4perl->appender_thresholds_adjust(-1, ['AppName1', ...]);
+  
+  and pass the names of affected appenders in a ref to an array.
+  
+  =head1 Advanced configuration within Perl
+  
+  Initializing Log::Log4perl can certainly also be done from within Perl.
+  At last, this is what C<Log::Log4perl::Config> does behind the scenes.
+  Log::Log4perl's configuration file parsers are using a publically 
+  available API to set up Log::Log4perl's categories, appenders and layouts.
+  
+  Here's an example on how to configure two appenders with the same layout
+  in Perl, without using a configuration file at all:
+  
+    ########################
+    # Initialization section
+    ########################
+    use Log::Log4perl;
+    use Log::Log4perl::Layout;
+    use Log::Log4perl::Level;
+  
+       # Define a category logger
+    my $log = Log::Log4perl->get_logger("Foo::Bar");
+  
+       # Define a layout
+    my $layout = Log::Log4perl::Layout::PatternLayout->new("[%r] %F %L %m%n");
+  
+       # Define a file appender
+    my $file_appender = Log::Log4perl::Appender->new(
+                            "Log::Log4perl::Appender::File",
+                            name      => "filelog",
+                            filename  => "/tmp/my.log");
+  
+       # Define a stdout appender
+    my $stdout_appender =  Log::Log4perl::Appender->new(
+                            "Log::Log4perl::Appender::Screen",
+                            name      => "screenlog",
+                            stderr    => 0);
+  
+       # Define a mixed stderr/stdout appender
+    my $mixed_stdout_stderr_appender = Log::Log4perl::Appender->new(
+                            "Log::Log4perl::Appender::Screen",
+                            name      => "screenlog",
+                            stderr    => { ERROR => 1, FATAL => 1 });
+  
+       # Have both appenders use the same layout (could be different)
+    $stdout_appender->layout($layout);
+    $file_appender->layout($layout);
+  
+    $log->add_appender($stdout_appender);
+    $log->add_appender($file_appender);
+    $log->level($INFO);
+  
+  Please note the class of the appender object is passed as a I<string> to
+  C<Log::Log4perl::Appender> in the I<first> argument. Behind the scenes,
+  C<Log::Log4perl::Appender> will create the necessary
+  C<Log::Log4perl::Appender::*> (or C<Log::Dispatch::*>) object and pass
+  along the name value pairs we provided to
+  C<Log::Log4perl::Appender-E<gt>new()> after the first argument.
+  
+  The C<name> value is optional and if you don't provide one,
+  C<Log::Log4perl::Appender-E<gt>new()> will create a unique one for you.
+  The names and values of additional parameters are dependent on the requirements
+  of the particular appender class and can be looked up in their
+  manual pages.
+  
+  A side note: In case you're wondering if
+  C<Log::Log4perl::Appender-E<gt>new()> will also take care of the
+  C<min_level> argument to the C<Log::Dispatch::*> constructors called
+  behind the scenes -- yes, it does. This is because we want the
+  C<Log::Dispatch> objects to blindly log everything we send them
+  (C<debug> is their lowest setting) because I<we> in C<Log::Log4perl>
+  want to call the shots and decide on when and what to log.
+  
+  The call to the appender's I<layout()> method specifies the format (as a
+  previously created C<Log::Log4perl::Layout::PatternLayout> object) in which the
+  message is being logged in the specified appender. 
+  If you don't specify a layout, the logger will fall back to
+  C<Log::Log4perl::SimpleLayout>, which logs the debug level, a hyphen (-)
+  and the log message.
+  
+  Layouts are objects, here's how you create them:
+  
+          # Create a simple layout
+      my $simple = Log::Log4perl::SimpleLayout();
+  
+          # create a flexible layout:
+          # ("yyyy/MM/dd hh:mm:ss (file:lineno)> message\n")
+      my $pattern = Log::Log4perl::Layout::PatternLayout("%d (%F:%L)> %m%n");
+  
+  Every appender has exactly one layout assigned to it. You assign
+  the layout to the appender using the appender's C<layout()> object:
+  
+      my $app =  Log::Log4perl::Appender->new(
+                    "Log::Log4perl::Appender::Screen",
+                    name      => "screenlog",
+                    stderr    => 0);
+  
+          # Assign the previously defined flexible layout
+      $app->layout($pattern);
+  
+          # Add the appender to a previously defined logger
+      $logger->add_appender($app);
+  
+          # ... and you're good to go!
+      $logger->debug("Blah");
+          # => "2002/07/10 23:55:35 (test.pl:207)> Blah\n"
+  
+  It's also possible to remove appenders from a logger:
+  
+      $logger->remove_appender($appender_name);
+  
+  will remove an appender, specified by name, from a given logger. 
+  Please note that this does
+  I<not> remove an appender from the system.
+  
+  To eradicate an appender from the system, 
+  you need to call C<Log::Log4perl-E<gt>eradicate_appender($appender_name)>
+  which will first remove the appender from every logger in the system
+  and then will delete all references Log4perl holds to it.
+  
+  To remove a logger from the system, use 
+  C<Log::Log4perl-E<gt>remove_logger($logger)>. After the remaining 
+  reference C<$logger> goes away, the logger will self-destruct. If the
+  logger in question is a stealth logger, all of its convenience shortcuts
+  (DEBUG, INFO, etc) will turn into no-ops.
+  
+  =head1 How about Log::Dispatch::Config?
+  
+  Tatsuhiko Miyagawa's C<Log::Dispatch::Config> is a very clever 
+  simplified logger implementation, covering some of the I<log4j>
+  functionality. Among the things that 
+  C<Log::Log4perl> can but C<Log::Dispatch::Config> can't are:
+  
+  =over 4
+  
+  =item *
+  
+  You can't assign categories to loggers. For small systems that's fine,
+  but if you can't turn off and on detailed logging in only a tiny
+  subsystem of your environment, you're missing out on a majorly
+  useful log4j feature.
+  
+  =item *
+  
+  Defining appender thresholds. Important if you want to solve problems like
+  "log all messages of level FATAL to STDERR, plus log all DEBUG
+  messages in C<Foo::Bar> to a log file". If you don't have appenders
+  thresholds, there's no way to prevent cluttering STDERR with DEBUG messages.
+  
+  =item *
+  
+  PatternLayout specifications in accordance with the standard
+  (e.g. "%d{HH:mm}").
+  
+  =back
+  
+  Bottom line: Log::Dispatch::Config is fine for small systems with
+  simple logging requirements. However, if you're
+  designing a system with lots of subsystems which you need to control
+  independently, you'll love the features of C<Log::Log4perl>,
+  which is equally easy to use.
+  
+  =head1 Using Log::Log4perl with wrapper functions and classes
+  
+  If you don't use C<Log::Log4perl> as described above, 
+  but from a wrapper function, the pattern layout will generate wrong data 
+  for %F, %C, %L, and the like. Reason for this is that C<Log::Log4perl>'s 
+  loggers assume a static caller depth to the application that's using them. 
+  
+  If you're using
+  one (or more) wrapper functions, C<Log::Log4perl> will indicate where
+  your logger function called the loggers, not where your application
+  called your wrapper:
+  
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init({ level => $DEBUG, 
+                                 layout => "%M %m%n" });
+  
+      sub mylog {
+          my($message) = @_;
+  
+          DEBUG $message;
+      }
+  
+      sub func {
+          mylog "Hello";
+      }
+  
+      func();
+  
+  prints
+  
+      main::mylog Hello
+  
+  but that's probably not what your application expects. Rather, you'd
+  want
+  
+      main::func Hello
+  
+  because the C<func> function called your logging function.
+  
+  But don't despair, there's a solution: Just register your wrapper
+  package with Log4perl beforehand. If Log4perl then finds that it's being 
+  called from a registered wrapper, it will automatically step up to the
+  next call frame.
+  
+      Log::Log4perl->wrapper_register(__PACKAGE__);
+  
+      sub mylog {
+          my($message) = @_;
+  
+          DEBUG $message;
+      }
+  
+  Alternatively, you can increase the value of the global variable
+  C<$Log::Log4perl::caller_depth> (defaults to 0) by one for every
+  wrapper that's in between your application and C<Log::Log4perl>,
+  then C<Log::Log4perl> will compensate for the difference:
+  
+      sub mylog {
+          my($message) = @_;
+  
+          local $Log::Log4perl::caller_depth =
+                $Log::Log4perl::caller_depth + 1;
+          DEBUG $message;
+      }
+  
+  Also, note that if you're writing a subclass of Log4perl, like
+  
+      package MyL4pWrapper;
+      use Log::Log4perl;
+      our @ISA = qw(Log::Log4perl);
+  
+  and you want to call get_logger() in your code, like
+  
+      use MyL4pWrapper;
+  
+      sub get_logger {
+          my $logger = Log::Log4perl->get_logger();
+      }
+  
+  then the get_logger() call will get a logger for the C<MyL4pWrapper>
+  category, not for the package calling the wrapper class as in
+  
+      package UserPackage;
+      my $logger = MyL4pWrapper->get_logger();
+  
+  To have the above call to get_logger return a logger for the 
+  "UserPackage" category, you need to tell Log4perl that "MyL4pWrapper"
+  is a Log4perl wrapper class:
+  
+      use MyL4pWrapper;
+      Log::Log4perl->wrapper_register(__PACKAGE__);
+  
+      sub get_logger {
+            # Now gets a logger for the category of the calling package
+          my $logger = Log::Log4perl->get_logger();
+      }
+  
+  This feature works both for Log4perl-relaying classes like the wrapper
+  described above, and for wrappers that inherit from Log4perl use Log4perl's
+  get_logger function via inheritance, alike.
+  
+  =head1 Access to Internals
+  
+  The following methods are only of use if you want to peek/poke in
+  the internals of Log::Log4perl. Be careful not to disrupt its
+  inner workings.
+  
+  =over 4
+  
+  =item C<< Log::Log4perl->appenders() >>
+  
+  To find out which appenders are currently defined (not only
+  for a particular logger, but overall), a C<appenders()>
+  method is available to return a reference to a hash mapping appender
+  names to their Log::Log4perl::Appender object references.
+  
+  =back
+  
+  =head1 Dirty Tricks
+  
+  =over 4
+  
+  =item infiltrate_lwp()
+  
+  The famous LWP::UserAgent module isn't Log::Log4perl-enabled. Often, though,
+  especially when tracing Web-related problems, it would be helpful to get
+  some insight on what's happening inside LWP::UserAgent. Ideally, LWP::UserAgent
+  would even play along in the Log::Log4perl framework.
+  
+  A call to C<Log::Log4perl-E<gt>infiltrate_lwp()> does exactly this. 
+  In a very rude way, it pulls the rug from under LWP::UserAgent and transforms
+  its C<debug/conn> messages into C<debug()> calls of loggers of the category
+  C<"LWP::UserAgent">. Similarily, C<LWP::UserAgent>'s C<trace> messages 
+  are turned into C<Log::Log4perl>'s C<info()> method calls. Note that this
+  only works for LWP::UserAgent versions E<lt> 5.822, because this (and
+  probably later) versions miss debugging functions entirely.
+  
+  =item Suppressing 'duplicate' LOGDIE messages
+  
+  If a script with a simple Log4perl configuration uses logdie() to catch
+  errors and stop processing, as in 
+  
+      use Log::Log4perl qw(:easy) ;
+      Log::Log4perl->easy_init($DEBUG);
+      
+      shaky_function() or LOGDIE "It failed!";
+  
+  there's a cosmetic problem: The message gets printed twice:
+  
+      2005/07/10 18:37:14 It failed!
+      It failed! at ./t line 12
+  
+  The obvious solution is to use LOGEXIT() instead of LOGDIE(), but there's
+  also a special tag for Log4perl that suppresses the second message:
+  
+      use Log::Log4perl qw(:no_extra_logdie_message);
+  
+  This causes logdie() and logcroak() to call exit() instead of die(). To
+  modify the script exit code in these occasions, set the variable
+  C<$Log::Log4perl::LOGEXIT_CODE> to the desired value, the default is 1.
+  
+  =item Redefine values without causing errors
+  
+  Log4perl's configuration file parser has a few basic safety mechanisms to 
+  make sure configurations are more or less sane. 
+  
+  One of these safety measures is catching redefined values. For example, if
+  you first write
+  
+      log4perl.category = WARN, Logfile
+  
+  and then a couple of lines later
+  
+      log4perl.category = TRACE, Logfile
+  
+  then you might have unintentionally overwritten the first value and Log4perl
+  will die on this with an error (suspicious configurations always throw an
+  error). Now, there's a chance that this is intentional, for example when
+  you're lumping together several configuration files and actually I<want>
+  the first value to overwrite the second. In this case use
+  
+      use Log::Log4perl qw(:nostrict);
+  
+  to put Log4perl in a more permissive mode.
+  
+  =item Prevent croak/confess from stringifying
+  
+  The logcroak/logconfess functions stringify their arguments before
+  they pass them to Carp's croak/confess functions. This can get in the
+  way if you want to throw an object or a hashref as an exception, in
+  this case use:
+  
+      $Log::Log4perl::STRINGIFY_DIE_MESSAGE = 0;
+  
+      eval {
+            # throws { foo => "bar" }
+            # without stringification
+          $logger->logcroak( { foo => "bar" } );
+      };
+  
+  =back
+  
+  =head1 EXAMPLE
+  
+  A simple example to cut-and-paste and get started:
+  
+      use Log::Log4perl qw(get_logger);
+      
+      my $conf = q(
+      log4perl.category.Bar.Twix         = WARN, Logfile
+      log4perl.appender.Logfile          = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile.filename = test.log
+      log4perl.appender.Logfile.layout = \
+          Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.Logfile.layout.ConversionPattern = %d %F{1} %L> %m %n
+      );
+      
+      Log::Log4perl::init(\$conf);
+      
+      my $logger = get_logger("Bar::Twix");
+      $logger->error("Blah");
+  
+  This will log something like
+  
+      2002/09/19 23:48:15 t1 25> Blah 
+  
+  to the log file C<test.log>, which Log4perl will append to or 
+  create it if it doesn't exist already.
+  
+  =head1 INSTALLATION
+  
+  If you want to use external appenders provided with C<Log::Dispatch>,
+  you need to install C<Log::Dispatch> (2.00 or better) from CPAN,
+  which itself depends on C<Attribute-Handlers> and
+  C<Params-Validate>. And a lot of other modules, that's the reason
+  why we're now shipping Log::Log4perl with its own standard appenders
+  and only if you wish to use additional ones, you'll have to go through
+  the C<Log::Dispatch> installation process.
+  
+  Log::Log4perl needs C<Test::More>, C<Test::Harness> and C<File::Spec>, 
+  but they already come with fairly recent versions of perl.
+  If not, everything's automatically fetched from CPAN if you're using the CPAN 
+  shell (CPAN.pm), because they're listed as dependencies.
+  
+  C<Time::HiRes> (1.20 or better) is required only if you need the
+  fine-grained time stamps of the C<%r> parameter in
+  C<Log::Log4perl::Layout::PatternLayout>.
+  
+  Manual installation works as usual with
+  
+      perl Makefile.PL
+      make
+      make test
+      make install
+  
+  =head1 DEVELOPMENT
+  
+  Log::Log4perl is still being actively developed. We will
+  always make sure the test suite (approx. 500 cases) will pass, but there 
+  might still be bugs. please check L<http://github.com/mschilli/log4perl>
+  for the latest release. The api has reached a mature state, we will 
+  not change it unless for a good reason.
+  
+  Bug reports and feedback are always welcome, just email them to our 
+  mailing list shown in the AUTHORS section. We're usually addressing
+  them immediately.
+  
+  =head1 REFERENCES
+  
+  =over 4
+  
+  =item [1]
+  
+  Michael Schilli, "Retire your debugger, log smartly with Log::Log4perl!",
+  Tutorial on perl.com, 09/2002, 
+  L<http://www.perl.com/pub/a/2002/09/11/log4perl.html>
+  
+  =item [2]
+  
+  Ceki Gülcü, "Short introduction to log4j",
+  L<http://logging.apache.org/log4j/1.2/manual.html>
+  
+  =item [3]
+  
+  Vipan Singla, "Don't Use System.out.println! Use Log4j.",
+  L<http://www.vipan.com/htdocs/log4jhelp.html>
+  
+  =item [4]
+  
+  The Log::Log4perl project home page: L<http://log4perl.com>
+  
+  =back
+  
+  =head1 SEE ALSO
+  
+  L<Log::Log4perl::Config|Log::Log4perl::Config>,
+  L<Log::Log4perl::Appender|Log::Log4perl::Appender>,
+  L<Log::Log4perl::Layout::PatternLayout|Log::Log4perl::Layout::PatternLayout>,
+  L<Log::Log4perl::Layout::SimpleLayout|Log::Log4perl::Layout::SimpleLayout>,
+  L<Log::Log4perl::Level|Log::Log4perl::Level>,
+  L<Log::Log4perl::JavaMap|Log::Log4perl::JavaMap>
+  L<Log::Log4perl::NDC|Log::Log4perl::NDC>,
+  
+  =head1 AUTHORS
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier, David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+LOG_LOG4PERL
+
+$fatpacked{"Log/Log4perl/Appender.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER';
+  ##################################################
+  package Log::Log4perl::Appender;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Level;
+  use Carp;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  our $unique_counter = 0;
+  
+  ##################################################
+  sub reset {
+  ##################################################
+      $unique_counter = 0;
+  }
+  
+  ##################################################
+  sub unique_name {
+  ##################################################
+          # THREADS: Need to lock here to make it thread safe
+      $unique_counter++;
+      my $unique_name = sprintf("app%03d", $unique_counter);
+          # THREADS: Need to unlock here to make it thread safe
+      return $unique_name;
+  }
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, $appenderclass, %params) = @_;
+  
+          # Pull in the specified Log::Log4perl::Appender object
+      eval {
+  
+             # Eval erroneously succeeds on unknown appender classes if
+             # the eval string just consists of valid perl code (e.g. an
+             # appended ';' in $appenderclass variable). Fail if we see
+             # anything in there that can't be class name.
+          die "'$appenderclass' not a valid class name " if 
+              $appenderclass =~ /[^:\w]/;
+  
+          # Check if the class/package is already available because
+          # something like Class::Prototyped injected it previously.
+  
+          # Use UNIVERSAL::can to check the appender's new() method
+          # [RT 28987]
+          if( ! $appenderclass->can('new') ) {
+              # Not available yet, try to pull it in.
+              # see 'perldoc -f require' for why two evals
+              eval "require $appenderclass";
+                   #unless ${$appenderclass.'::IS_LOADED'};  #for unit tests, 
+                                                            #see 004Config
+              die $@ if $@;
+          }
+      };
+  
+      $@ and die "ERROR: can't load appenderclass '$appenderclass'\n$@";
+      print "Appender class $appenderclass loaded OK ($@)\n" if _INTERNAL_DEBUG;
+  
+      $params{name} = unique_name() unless exists $params{name};
+  
+      # If it's a Log::Dispatch::File appender, default to append 
+      # mode (Log::Dispatch::File defaults to 'clobber') -- consensus 9/2002
+      # (Log::Log4perl::Appender::File already defaults to 'append')
+      if ($appenderclass eq 'Log::Dispatch::File' &&
+          ! exists $params{mode}) {
+          $params{mode} = 'append';
+      }
+  
+      print "Calling $appenderclass new\n" if _INTERNAL_DEBUG;
+  
+      my $appender = $appenderclass->new(
+              # Set min_level to the lowest setting. *we* are 
+              # controlling this now, the appender should just
+              # log it with no questions asked.
+          min_level => 'debug',
+              # Set 'name' and other parameters
+          map { $_ => $params{$_} } keys %params,
+      );
+  
+      print "Calling $appenderclass new returned OK\n" if _INTERNAL_DEBUG;
+  
+      my $self = {
+                   appender  => $appender,
+                   name      => $params{name},
+                   layout    => undef,
+                   level     => $ALL,
+                   composite => 0,
+                 };
+  
+          #whether to collapse arrays, etc.
+      $self->{warp_message} = $params{warp_message};
+  
+      if (!$INC{'Log/Log4perl/Config.pm'}) {
+          require Log::Log4perl::Config;
+      }
+  
+      if($self->{warp_message} and
+         my $cref = 
+         Log::Log4perl::Config::compile_if_perl($self->{warp_message})) {
+          $self->{warp_message} = $cref;
+      }
+      
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub composite { # Set/Get the composite flag
+  ##################################################
+      my ($self, $flag) = @_;
+  
+      $self->{composite} = $flag if defined $flag;
+      return $self->{composite};
+  }
+  
+  ##################################################
+  sub threshold { # Set/Get the appender threshold
+  ##################################################
+      my ($self, $level) = @_;
+  
+      print "Setting threshold to $level\n" if _INTERNAL_DEBUG;
+  
+      if(defined $level) {
+          # Checking for \d makes for a faster regex(p)
+          $self->{level} = ($level =~ /^(\d+)$/) ? $level :
+              # Take advantage of &to_priority's error reporting
+              Log::Log4perl::Level::to_priority($level);
+      }
+  
+      return $self->{level};
+  }
+  
+  ##################################################
+  sub log { 
+  ##################################################
+  # Relay this call to Log::Log4perl::Appender:* or
+  # Log::Dispatch::*
+  ##################################################
+      my ($self, $p, $category, $level, $cache) = @_;
+  
+      # Check if the appender has a last-minute veto in form
+      # of an "appender threshold"
+      if($self->{level} > $
+                          Log::Log4perl::Level::PRIORITY{$level}) {
+          print "$self->{level} > $level, aborting\n" if _INTERNAL_DEBUG;
+          return undef;
+      }
+  
+      # Run against the (yes only one) customized filter (which in turn
+      # might call other filters via the Boolean filter) and check if its
+      # ok() method approves the message or blocks it.
+      if($self->{filter}) {
+          if($self->{filter}->ok(%$p,
+                                 log4p_category => $category,
+                                 log4p_level    => $level )) {
+              print "Filter $self->{filter}->{name} passes\n" if _INTERNAL_DEBUG;
+          } else {
+              print "Filter $self->{filter}->{name} blocks\n" if _INTERNAL_DEBUG;
+              return undef;
+          }
+      }
+  
+      unless($self->composite()) {
+  
+              #not defined, the normal case
+          if (! defined $self->{warp_message} ){
+                  #join any message elements
+              if (ref $p->{message} eq "ARRAY") {
+                  for my $i (0..$#{$p->{message}}) {
+                      if( !defined $p->{message}->[ $i ] ) {
+                          local $Carp::CarpLevel =
+                          $Carp::CarpLevel + $Log::Log4perl::caller_depth + 1;
+                          carp "Warning: Log message argument #" . 
+                               ($i+1) . " undefined";
+                      }
+                  }
+                  $p->{message} = 
+                      join($Log::Log4perl::JOIN_MSG_ARRAY_CHAR, 
+                           @{$p->{message}} 
+                           );
+              }
+              
+              #defined but false, e.g. Appender::DBI
+          } elsif (! $self->{warp_message}) {
+              ;  #leave the message alone
+      
+          } elsif (ref($self->{warp_message}) eq "CODE") {
+              #defined and a subref
+              $p->{message} = 
+                  [$self->{warp_message}->(@{$p->{message}})];
+          } else {
+              #defined and a function name?
+              no strict qw(refs);
+              $p->{message} = 
+                  [$self->{warp_message}->(@{$p->{message}})];
+          }
+  
+          $p->{message} = $self->{layout}->render($p->{message}, 
+              $category,
+              $level,
+              3 + $Log::Log4perl::caller_depth,
+          ) if $self->layout();
+      }
+  
+      my $args = [%$p, log4p_category => $category, log4p_level => $level];
+  
+      if(defined $cache) {
+          $$cache = $args;
+      } else {
+          $self->{appender}->log(@$args);
+      }
+  
+      return 1;
+  }
+  
+  ###########################################
+  sub log_cached {
+  ###########################################
+      my ($self, $cache) = @_;
+  
+      $self->{appender}->log(@$cache);
+  }
+  
+  ##################################################
+  sub name { # Set/Get the name
+  ##################################################
+      my($self, $name) = @_;
+  
+          # Somebody wants to *set* the name?
+      if($name) {
+          $self->{name} = $name;
+      }
+  
+      return $self->{name};
+  }
+  
+  ###########################################
+  sub layout { # Set/Get the layout object
+               # associated with this appender
+  ###########################################
+      my($self, $layout) = @_;
+  
+          # Somebody wants to *set* the layout?
+      if($layout) {
+          $self->{layout} = $layout;
+  
+          # somebody wants a layout, but not set yet, so give 'em default
+      }elsif (! $self->{layout}) {
+          $self->{layout} = Log::Log4perl::Layout::SimpleLayout
+                                                  ->new($self->{name});
+  
+      }
+  
+      return $self->{layout};
+  }
+  
+  ##################################################
+  sub filter { # Set filter
+  ##################################################
+      my ($self, $filter) = @_;
+  
+      if($filter) {
+          print "Setting filter to $filter->{name}\n" if _INTERNAL_DEBUG;
+          $self->{filter} = $filter;
+      }
+  
+      return $self->{filter};
+  }
+  
+  ##################################################
+  sub AUTOLOAD { 
+  ##################################################
+  # Relay everything else to the underlying 
+  # Log::Log4perl::Appender::* or Log::Dispatch::*
+  #  object
+  ##################################################
+      my $self = shift;
+  
+      no strict qw(vars);
+  
+      $AUTOLOAD =~ s/.*:://;
+  
+      if(! defined $self->{appender}) {
+          die "Can't locate object method $AUTOLOAD() in ", __PACKAGE__;
+      }
+  
+      return $self->{appender}->$AUTOLOAD(@_);
+  }
+  
+  ##################################################
+  sub DESTROY {
+  ##################################################
+      foreach my $key (keys %{$_[0]}) {
+          # print "deleting $key\n";
+          delete $_[0]->{$key};
+      }
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender - Log appender class
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl;
+  
+        # Define a logger
+    my $logger = Log::Log4perl->get_logger("abc.def.ghi");
+  
+        # Define a layout
+    my $layout = Log::Log4perl::Layout::PatternLayout->new(
+                     "%d (%F:%L)> %m");
+  
+        # Define an appender
+    my $appender = Log::Log4perl::Appender->new(
+                     "Log::Log4perl::Appender::Screen",
+                     name => 'dumpy');
+  
+        # Set the appender's layout
+    $appender->layout($layout);
+    $logger->add_appender($appender);
+  
+  =head1 DESCRIPTION
+  
+  This class is a wrapper around the C<Log::Log4perl::Appender>
+  appender set. 
+  
+  It also supports the <Log::Dispatch::*> collections of appenders. The
+  module hides the idiosyncrasies of C<Log::Dispatch> (e.g. every
+  dispatcher gotta have a name, but there's no accessor to retrieve it)
+  from C<Log::Log4perl> and yet re-uses the extremely useful variety of
+  dispatchers already created and tested in C<Log::Dispatch>.
+  
+  =head1 FUNCTIONS
+  
+  =head2 Log::Log4perl::Appender->new($dispatcher_class_name, ...);
+  
+  The constructor C<new()> takes the name of the appender
+  class to be created as a I<string> (!) argument, optionally followed by 
+  a number of appender-specific parameters,
+  for example:
+  
+        # Define an appender
+    my $appender = Log::Log4perl::Appender->new(
+        "Log::Log4perl::Appender::File"
+        filename => 'out.log');
+  
+  In case of C<Log::Dispatch> appenders,
+  if no C<name> parameter is specified, the appender object will create
+  a unique one (format C<appNNN>), which can be retrieved later via
+  the C<name()> method:
+  
+    print "The appender's name is ", $appender->name(), "\n";
+  
+  Other parameters are specific to the appender class being used.
+  In the case above, the C<filename> parameter specifies the name of 
+  the C<Log::Log4perl::Appender::File> dispatcher used. 
+  
+  However, if, for instance, 
+  you're using a C<Log::Dispatch::Email> dispatcher to send you 
+  email, you'll have to specify C<from> and C<to> email addresses.
+  Every dispatcher is different.
+  Please check the C<Log::Dispatch::*> documentation for the appender used
+  for details on specific requirements.
+  
+  The C<new()> method will just pass these parameters on to a newly created
+  C<Log::Dispatch::*> object of the specified type.
+  
+  When it comes to logging, the C<Log::Log4perl::Appender> will transparently
+  relay all messages to the C<Log::Dispatch::*> object it carries 
+  in its womb.
+  
+  =head2 $appender->layout($layout);
+  
+  The C<layout()> method sets the log layout
+  used by the appender to the format specified by the 
+  C<Log::Log4perl::Layout::*> object which is passed to it as a reference.
+  Currently there's two layouts available:
+  
+      Log::Log4perl::Layout::SimpleLayout
+      Log::Log4perl::Layout::PatternLayout
+  
+  Please check the L<Log::Log4perl::Layout::SimpleLayout> and 
+  L<Log::Log4perl::Layout::PatternLayout> manual pages for details.
+  
+  =head1 Supported Appenders 
+  
+  Here's the list of appender modules currently available via C<Log::Dispatch>,
+  if not noted otherwise, written by Dave Rolsky:
+  
+         Log::Dispatch::ApacheLog
+         Log::Dispatch::DBI (by Tatsuhiko Miyagawa)
+         Log::Dispatch::Email,
+         Log::Dispatch::Email::MailSend,
+         Log::Dispatch::Email::MailSendmail,
+         Log::Dispatch::Email::MIMELite
+         Log::Dispatch::File
+         Log::Dispatch::FileRotate (by Mark Pfeiffer)
+         Log::Dispatch::Handle
+         Log::Dispatch::Screen
+         Log::Dispatch::Syslog
+         Log::Dispatch::Tk (by Dominique Dumont)
+  
+  C<Log4perl> doesn't care which ones you use, they're all handled in 
+  the same way via the C<Log::Log4perl::Appender> interface.
+  Please check the well-written manual pages of the 
+  C<Log::Dispatch> hierarchy on how to use each one of them.
+  
+  =head1 Parameters passed on to the appender's log() method
+  
+  When calling the appender's log()-Funktion, Log::Log4perl will 
+  submit a list of key/value pairs. Entries to the following keys are
+  guaranteed to be present:
+  
+  =over 4
+  
+  =item message
+  
+  Text of the rendered message
+  
+  =item log4p_category
+  
+  Name of the category of the logger that triggered the event.
+  
+  =item log4p_level
+  
+  Log::Log4perl level of the event
+  
+  =back
+  
+  =head1 Pitfalls
+  
+  Since the C<Log::Dispatch::File> appender truncates log files by default,
+  and most of the time this is I<not> what you want, we've instructed 
+  C<Log::Log4perl> to change this behavior by slipping it the 
+  C<mode =E<gt> append> parameter behind the scenes. So, effectively
+  with C<Log::Log4perl> 0.23, a configuration like
+  
+      log4perl.category = INFO, FileAppndr
+      log4perl.appender.FileAppndr          = Log::Dispatch::File
+      log4perl.appender.FileAppndr.filename = test.log
+      log4perl.appender.FileAppndr.layout   = Log::Log4perl::Layout::SimpleLayout
+  
+  will always I<append> to an existing logfile C<test.log> while if you 
+  specifically request clobbering like in
+  
+      log4perl.category = INFO, FileAppndr
+      log4perl.appender.FileAppndr          = Log::Dispatch::File
+      log4perl.appender.FileAppndr.filename = test.log
+      log4perl.appender.FileAppndr.mode     = write
+      log4perl.appender.FileAppndr.layout   = Log::Log4perl::Layout::SimpleLayout
+  
+  it will overwrite an existing log file C<test.log> and start from scratch.
+  
+  =head1 Appenders Expecting Message Chunks
+  
+  Instead of simple strings, certain appenders are expecting multiple fields
+  as log messages. If a statement like 
+  
+      $logger->debug($ip, $user, "signed in");
+  
+  causes an off-the-shelf C<Log::Log4perl::Appender::Screen> 
+  appender to fire, the appender will 
+  just concatenate the three message chunks passed to it
+  in order to form a single string.
+  The chunks will be separated by a string defined in 
+  C<$Log::Log4perl::JOIN_MSG_ARRAY_CHAR> (defaults to the empty string
+  ""). 
+  
+  However, different appenders might choose to 
+  interpret the message above differently: An
+  appender like C<Log::Log4perl::Appender::DBI> might take the
+  three arguments passed to the logger and put them in three separate
+  rows into the DB.
+  
+  The  C<warp_message> appender option is used to specify the desired 
+  behavior.
+  If no setting for the appender property
+  
+      # *** Not defined ***
+      # log4perl.appender.SomeApp.warp_message
+  
+  is defined in the Log4perl configuration file, the
+  appender referenced by C<SomeApp> will fall back to the standard behavior
+  and join all message chunks together, separating them by
+  C<$Log::Log4perl::JOIN_MSG_ARRAY_CHAR>.
+  
+  If, on the other hand, it is set to a false value, like in
+  
+      log4perl.appender.SomeApp.layout=NoopLayout
+      log4perl.appender.SomeApp.warp_message = 0
+  
+  then the message chunks are passed unmodified to the appender as an
+  array reference. Please note that you need to set the appender's
+  layout to C<Log::Log4perl::Layout::NoopLayout> which just leaves 
+  the messages chunks alone instead of formatting them or replacing
+  conversion specifiers.
+  
+  B<Please note that the standard appenders in the Log::Dispatch hierarchy
+  will choke on a bunch of messages passed to them as an array reference. 
+  You can't use C<warp_message = 0> (or the function name syntax
+  defined below) on them.
+  Only special appenders like Log::Log4perl::Appender::DBI can deal with
+  this.>
+  
+  If (and now we're getting fancy)
+  an appender expects message chunks, but we would 
+  like to pre-inspect and probably modify them before they're 
+  actually passed to the appender's C<log>
+  method, an inspection subroutine can be defined with the
+  appender's C<warp_message> property:
+  
+      log4perl.appender.SomeApp.layout=NoopLayout
+      log4perl.appender.SomeApp.warp_message = sub { \
+                                             $#_ = 2 if @_ > 3; \
+                                             return @_; }
+  
+  The inspection subroutine defined by the C<warp_message> 
+  property will receive the list of message chunks, like they were
+  passed to the logger and is expected to return a corrected list.
+  The example above simply limits the argument list to a maximum of
+  three by cutting off excess elements and returning the shortened list.
+  
+  Also, the warp function can be specified by name like in
+  
+      log4perl.appender.SomeApp.layout=NoopLayout
+      log4perl.appender.SomeApp.warp_message = main::filter_my_message
+  
+  In this example,
+  C<filter_my_message> is a function in the C<main> package, 
+  defined like this:
+  
+      my $COUNTER = 0;
+  
+      sub filter_my_message {
+          my @chunks = @_;
+          unshift @chunks, ++$COUNTER;
+          return @chunks;
+      }
+  
+  The subroutine above will add an ever increasing counter
+  as an additional first field to 
+  every message passed to the C<SomeApp> appender -- but not to
+  any other appender in the system.
+  
+  =head2 Composite Appenders
+  
+  Composite appenders relay their messages to sub-appenders after providing
+  some filtering or synchronizing functionality on incoming messages. 
+  Examples are 
+  Log::Log4perl::Appender::Synchronized,
+  Log::Log4perl::Appender::Limit, and
+  Log::Log4perl::Appender::Buffer. Check their manual pages for details.
+  
+  Composite appender objects are regular Log::Log4perl::Appender objects, 
+  but they have the composite flag set:
+  
+      $app->composite(1);
+  
+  and they define a post_init() method, which sets the appender it relays
+  its messages to:
+  
+      ###########################################
+      sub post_init {
+      ############################################
+          my($self) = @_;
+      
+          if(! exists $self->{appender}) {
+              die "No appender defined for " . __PACKAGE__;
+          }
+      
+          my $appenders = Log::Log4perl->appenders();
+          my $appender = Log::Log4perl->appenders()->{$self->{appender}};
+      
+          if(! defined $appender) {
+              die "Appender $self->{appender} not defined (yet) when " .
+                  __PACKAGE__ . " needed it";
+          }
+      
+          $self->{app} = $appender;
+      }
+  
+  The reason for this post-processing step is that the relay appender
+  might not be defined yet when the composite appender gets defined.
+  This can happen if Log4perl is initialized with a configuration file
+  (which is the most common way to initialize Log4perl), because
+  appenders spring into existence in unpredictable order.
+  
+  For example, if you define a Synchronized appender like
+  
+      log4perl.appender.Syncer            = Log::Log4perl::Appender::Synchronized
+      log4perl.appender.Syncer.appender   = Logfile
+  
+  then Log4perl will set the appender's C<appender> attribute to the
+  I<name> of the appender to finally relay messages to. After the
+  Log4perl configuration file has been processed, Log4perl will remember to 
+  call the composite appender's post_init() method, which will grab
+  the relay appender instance referred to by the name (Logfile) 
+  and set it in its C<app> attribute. This is exactly what the
+  code snippet above does.
+  
+  But if you initialize Log4perl by its API, you need to remember to
+  perform these steps. Here's the lineup:
+  
+      use Log::Log4perl qw(get_logger :levels);
+      
+      my $fileApp = Log::Log4perl::Appender->new(
+      		'Log::Log4perl::Appender::File',
+      		name     => 'MyFileApp',
+      		filename => 'mylog',
+      		mode     => 'append',
+      		);
+      $fileApp->layout(
+      		Log::Log4perl::Layout::PatternLayout::Multiline->new(
+      			'%d{yyyy-MM-dd HH:mm:ss} %p [%c] #%P> %m%n')
+      		);
+        # Make the appender known to the system (without assigning it to
+        # any logger
+      Log::Log4perl->add_appender( $fileApp );
+      
+      my $syncApp = Log::Log4perl::Appender->new(
+      		'Log::Log4perl::Appender::Synchronized',
+      		name       => 'MySyncApp',
+      		appender   => 'MyFileApp',
+      		key        => 'nem',
+      		);
+      $syncApp->post_init();
+      $syncApp->composite(1);
+  
+        # The Synchronized appender is now ready, assign it to a logger
+        # and start logging.
+      get_logger("")->add_appender($syncApp);
+  
+      get_logger("")->level($DEBUG);
+      get_logger("wonk")->debug("waah!");
+  
+  The composite appender's log() function will typically cache incoming 
+  messages until a certain trigger condition is met and then forward a bulk
+  of messages to the relay appender.
+  
+  Caching messages is surprisingly tricky, because you want them to look
+  like they came from the code location they were originally issued from
+  and not from the location that triggers the flush. Luckily, Log4perl
+  offers a cache mechanism for messages, all you need to do is call the
+  base class' log() function with an additional reference to a scalar,
+  and then save its content to your composite appender's message buffer
+  afterwards:
+  
+      ###########################################
+      sub log {
+      ###########################################
+          my($self, %params) = @_;
+  
+          # ... some logic to decide whether to cache or flush
+  
+              # Adjust the caller stack
+          local $Log::Log4perl::caller_depth =
+                $Log::Log4perl::caller_depth + 2;
+  
+              # We need to cache.
+              # Ask the appender to save a cached message in $cache
+          $self->{relay_app}->SUPER::log(\%params,
+                               $params{log4p_category},
+                               $params{log4p_level}, \my $cache);
+  
+              # Save it in the appender's message buffer
+          push @{ $self->{buffer} }, $cache;
+      }
+  
+  Note that before calling the log() method of the relay appender's base class
+  (and thus introducing two additional levels on the call stack), we need to
+  adjust the call stack to allow Log4perl to render cspecs like the %M or %L
+  correctly.  The cache will then contain a correctly rendered message, according
+  to the layout of the target appender.
+  
+  Later, when the time comes to flush the cached messages, a call to the relay
+  appender's base class' log_cached() method with the cached message as 
+  an argument will forward the correctly rendered message:
+  
+      ###########################################
+      sub log {
+      ###########################################
+          my($self, %params) = @_;
+  
+          # ... some logic to decide whether to cache or flush
+  
+              # Flush pending messages if we have any
+          for my $cache (@{$self->{buffer}}) {
+              $self->{relay_app}->SUPER::log_cached($cache);
+          }
+      }
+  
+  
+  =head1 SEE ALSO
+  
+  Log::Dispatch
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER
+
+$fatpacked{"Log/Log4perl/Appender/Buffer.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_BUFFER';
+  ######################################################################
+  # Buffer.pm -- 2004, Mike Schilli <m@perlmeister.com>
+  ######################################################################
+  # Composite appender buffering messages until a trigger condition is met.
+  ######################################################################
+  
+  ###########################################
+  package Log::Log4perl::Appender::Buffer;
+  ###########################################
+  
+  use strict;
+  use warnings;
+  
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  our $VERSION    = '1.53';
+  
+  ###########################################
+  sub new {
+  ###########################################
+      my($class, %options) = @_;
+  
+      my $self = {
+          appender=> undef,
+          buffer  => [],
+          options => { 
+              max_messages  => undef, 
+              trigger       => undef,
+              trigger_level => undef,
+          },
+          level   => 0,
+          %options,
+      };
+  
+      if($self->{trigger_level}) {
+          $self->{trigger} = level_trigger($self->{trigger_level});
+      }
+  
+          # Pass back the appender to be synchronized as a dependency
+          # to the configuration file parser
+      push @{$options{l4p_depends_on}}, $self->{appender};
+  
+          # Run our post_init method in the configurator after
+          # all appenders have been defined to make sure the
+          # appender we're playing 'dam' for really exists
+      push @{$options{l4p_post_config_subs}}, sub { $self->post_init() };
+  
+      bless $self, $class;
+  }
+  
+  ###########################################
+  sub log {
+  ###########################################
+      my($self, %params) = @_;
+  
+      local $Log::Log4perl::caller_depth =
+          $Log::Log4perl::caller_depth + 2;
+  
+          # Do we need to discard a message because there's already
+          # max_size messages in the buffer?
+      if(defined $self->{max_messages} and
+         @{$self->{buffer}} == $self->{max_messages}) {
+          shift @{$self->{buffer}};
+      }
+          # Ask the appender to save a cached message in $cache
+      $self->{app}->SUPER::log(\%params,
+                           $params{log4p_category},
+                           $params{log4p_level}, \my $cache);
+  
+          # Save it in the appender's message buffer, but only if
+          # it hasn't been suppressed by an appender threshold
+      if( defined $cache ) {
+          push @{ $self->{buffer} }, $cache;
+      }
+  
+      $self->flush() if $self->{trigger}->($self, \%params);
+  }
+  
+  ###########################################
+  sub flush {
+  ###########################################
+      my($self) = @_;
+  
+          # Flush pending messages if we have any
+      for my $cache (@{$self->{buffer}}) {
+          $self->{app}->SUPER::log_cached($cache);
+      }
+  
+          # Empty buffer
+      $self->{buffer} = [];
+  }
+  
+  ###########################################
+  sub post_init {
+  ###########################################
+      my($self) = @_;
+  
+      if(! exists $self->{appender}) {
+         die "No appender defined for " . __PACKAGE__;
+      }
+  
+      my $appenders = Log::Log4perl->appenders();
+      my $appender = Log::Log4perl->appenders()->{$self->{appender}};
+  
+      if(! defined $appender) {
+         die "Appender $self->{appender} not defined (yet) when " .
+             __PACKAGE__ . " needed it";
+      }
+  
+      $self->{app} = $appender;
+  }
+  
+  ###########################################
+  sub level_trigger {
+  ###########################################
+      my($level) = @_;
+  
+          # closure holding $level
+      return sub {
+          my($self, $params) = @_;
+  
+          return Log::Log4perl::Level::to_priority(
+                   $params->{log4p_level}) >= 
+                 Log::Log4perl::Level::to_priority($level);
+      };
+  }
+      
+  ###########################################
+  sub DESTROY {
+  ###########################################
+      my($self) = @_;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::Buffer - Buffering Appender
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl qw(:easy);
+  
+      my $conf = qq(
+      log4perl.category                  = DEBUG, Buffer
+  
+          # Regular Screen Appender
+      log4perl.appender.Screen           = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.stdout    = 1
+      log4perl.appender.Screen.layout    = PatternLayout
+      log4perl.appender.Screen.layout.ConversionPattern = %d %p %c %m %n
+  
+          # Buffering appender, using the appender above as outlet
+      log4perl.appender.Buffer               = Log::Log4perl::Appender::Buffer
+      log4perl.appender.Buffer.appender      = Screen
+      log4perl.appender.Buffer.trigger_level = ERROR
+      );
+  
+      Log::Log4perl->init(\$conf);
+  
+      DEBUG("This message gets buffered.");
+      INFO("This message gets buffered also.");
+  
+      # Time passes. Nothing happens. But then ...
+  
+      print "It's GO time!!!\n";
+  
+      ERROR("This message triggers a buffer flush.");
+  
+  =head1 DESCRIPTION
+  
+  C<Log::Log4perl::Appender::Buffer> takes these arguments:
+  
+  =over 4
+  
+  =item C<appender>
+  
+  Specifies the name of the appender it buffers messages for. The
+  appender specified must be defined somewhere in the configuration file,
+  not necessarily before the definition of 
+  C<Log::Log4perl::Appender::Buffer>.
+  
+  =item C<max_messages>
+  
+  Specifies the maximum number of messages the appender will hold in
+  its ring buffer. C<max_messages> is optional. By default,
+  C<Log::Log4perl::Appender::Buffer> will I<not> limit the number of
+  messages buffered. This might be undesirable in long-running processes
+  accumulating lots of messages before a flush happens. If
+  C<max_messages> is set to a numeric value,
+  C<Log::Log4perl::Appender::Buffer> will displace old messages in its
+  buffer to make room if the buffer is full.
+  
+  =item C<trigger_level>
+  
+  If trigger_level is set to one of Log4perl's levels (see
+  Log::Log4perl::Level), a C<trigger> function will be defined internally
+  to flush the buffer if a message with a priority of $level or higher
+  comes along. This is just a convenience function. Defining
+  
+      log4perl.appender.Buffer.trigger_level = ERROR
+  
+  is equivalent to creating a trigger function like
+  
+      log4perl.appender.Buffer.trigger = sub {   \
+          my($self, $params) = @_;               \
+          return $params->{log4p_level} >=       \
+                 $Log::Log4perl::Level::ERROR; }
+  
+  See the next section for defining generic trigger functions.
+  
+  =item C<trigger>
+  
+  C<trigger> holds a reference to a subroutine, which
+  C<Log::Log4perl::Appender::Buffer> will call on every incoming message
+  with the same parameters as the appender's C<log()> method:
+  
+          my($self, $params) = @_;
+  
+  C<$params> references a hash containing
+  the message priority (key C<l4p_level>), the
+  message category (key C<l4p_category>) and the content of the message
+  (key C<message>).
+  
+  If the subroutine returns 1, it will trigger a flush of buffered messages.
+  
+  Shortcut 
+  
+  =back
+  
+  =head1 DEVELOPMENT NOTES
+  
+  C<Log::Log4perl::Appender::Buffer> is a I<composite> appender.
+  Unlike other appenders, it doesn't log any messages, it just
+  passes them on to its attached sub-appender.
+  For this reason, it doesn't need a layout (contrary to regular appenders).
+  If it defines none, messages are passed on unaltered.
+  
+  Custom filters are also applied to the composite appender only.
+  They are I<not> applied to the sub-appender. Same applies to appender
+  thresholds. This behaviour might change in the future.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_BUFFER
+
+$fatpacked{"Log/Log4perl/Appender/DBI.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_DBI';
+  package Log::Log4perl::Appender::DBI;
+  
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  use Carp;
+  
+  use strict;
+  use DBI;
+  
+  sub new {
+      my($proto, %p) = @_;
+      my $class = ref $proto || $proto;
+  
+      my $self = bless {}, $class;
+  
+      $self->_init(%p);
+  
+      my %defaults = (
+          reconnect_attempts => 1,
+          reconnect_sleep    => 0,
+      );
+  
+      for (keys %defaults) {
+          if(exists $p{$_}) {
+              $self->{$_} = $p{$_};
+          } else {
+              $self->{$_} = $defaults{$_};
+          }
+      }
+  
+      #e.g.
+      #log4j.appender.DBAppndr.params.1 = %p    
+      #log4j.appender.DBAppndr.params.2 = %5.5m
+      foreach my $pnum (keys %{$p{params}}){
+          $self->{bind_value_layouts}{$pnum} = 
+                  Log::Log4perl::Layout::PatternLayout->new({
+                     ConversionPattern  => {value  => $p{params}->{$pnum}},
+                     undef_column_value => undef,
+                  });
+      }
+      #'bind_value_layouts' now contains a PatternLayout
+      #for each parameter heading for the Sql engine
+  
+      $self->{SQL} = $p{sql}; #save for error msg later on
+  
+      $self->{MAX_COL_SIZE} = $p{max_col_size};
+  
+      $self->{BUFFERSIZE} = $p{bufferSize} || 1; 
+  
+      if ($p{usePreparedStmt}) {
+          $self->{sth} = $self->create_statement($p{sql});
+          $self->{usePreparedStmt} = 1;
+      }else{
+          $self->{layout} = Log::Log4perl::Layout::PatternLayout->new({
+              ConversionPattern  => {value  => $p{sql}},
+              undef_column_value => undef,
+          });
+      }
+  
+      if ($self->{usePreparedStmt} &&  $self->{bufferSize}){
+          warn "Log4perl: you've defined both usePreparedStmt and bufferSize \n".
+          "in your appender '$p{name}'--\n".
+          "I'm going to ignore bufferSize and just use a prepared stmt\n";
+      }
+  
+      return $self;
+  }
+  
+  
+  sub _init {
+      my $self = shift;
+      my %params = @_;
+  
+      if ($params{dbh}) {
+          $self->{dbh} = $params{dbh};
+      } else {
+          $self->{connect} = sub {
+              DBI->connect(@params{qw(datasource username password)},
+                           {PrintError => 0, $params{attrs} ? %{$params{attrs}} : ()})
+                              or croak "Log4perl: $DBI::errstr";
+          };
+          $self->{dbh} = $self->{connect}->();
+          $self->{_mine} = 1;
+      }
+  }
+  
+  sub create_statement {
+      my ($self, $stmt) = @_;
+  
+      $stmt || croak "Log4perl: sql not set in Log4perl::Appender::DBI";
+  
+      return $self->{dbh}->prepare($stmt) || croak "Log4perl: DBI->prepare failed $DBI::errstr\n$stmt";
+  
+  }
+  
+  
+  sub log {
+      my $self = shift;
+      my %p = @_;
+  
+      #%p is
+      #    { name    => $appender_name,
+      #      level   => loglevel
+      #      message => $message,
+      #      log4p_category => $category,
+      #      log4p_level  => $level,);
+      #    },
+  
+          #getting log4j behavior with no specified ConversionPattern
+      chomp $p{message} unless ref $p{message}; 
+  
+          
+      my $qmarks = $self->calculate_bind_values(\%p);
+  
+  
+      if ($self->{usePreparedStmt}) {
+  
+          $self->query_execute($self->{sth}, @$qmarks);
+  
+      }else{
+  
+          #first expand any %x's in the statement
+          my $stmt = $self->{layout}->render(
+                          $p{message},
+                          $p{log4p_category},
+                          $p{log4p_level},
+                          5 + $Log::Log4perl::caller_depth,  
+                          );
+  
+          push @{$self->{BUFFER}}, $stmt, $qmarks;
+  
+          $self->check_buffer();
+      }
+  }
+  
+  sub query_execute {
+      my($self, $sth, @qmarks) = @_;
+  
+      my $errstr = "[no error]";
+  
+      for my $attempt (0..$self->{reconnect_attempts}) {
+          #warn "Exe: @qmarks"; # TODO
+          if(! $sth->execute(@qmarks)) {
+  
+                    # save errstr because ping() would override it [RT 56145]
+                  $errstr = $self->{dbh}->errstr();
+  
+                  # Exe failed -- was it because we lost the DB
+                  # connection?
+                  if($self->{dbh}->ping()) {
+                      # No, the connection is ok, we failed because there's
+                      # something wrong with the execute(): Bad SQL or 
+                      # missing parameters or some such). Abort.
+                      croak "Log4perl: DBI appender error: '$errstr'";
+                  }
+  
+                  if($attempt == $self->{reconnect_attempts}) {
+                      croak "Log4perl: DBI appender failed to " .
+                            ($self->{reconnect_attempts} == 1 ? "" : "re") .
+                            "connect " .
+                            "to database after " .
+                            "$self->{reconnect_attempts} attempt" .
+                            ($self->{reconnect_attempts} == 1 ? "" : "s") .
+                            " (last error error was [$errstr]";
+                  }
+              if(! $self->{dbh}->ping()) {
+                  # Ping failed, try to reconnect
+                  if($attempt) {
+                      #warn "Sleeping"; # TODO
+                      sleep($self->{reconnect_sleep}) if $self->{reconnect_sleep};
+                  }
+  
+                  eval {
+                      #warn "Reconnecting to DB"; # TODO
+                      $self->{dbh} = $self->{connect}->();
+                  };
+              }
+  
+              if ($self->{usePreparedStmt}) {
+                  $sth = $self->create_statement($self->{SQL});
+                  $self->{sth} = $sth if $self->{sth};
+              } else {
+                  #warn "Pending stmt: $self->{pending_stmt}"; #TODO
+                  $sth = $self->create_statement($self->{pending_stmt});
+              }
+  
+              next;
+          }
+          return 1;
+      }
+      croak "Log4perl: DBI->execute failed $errstr, \n".
+            "on $self->{SQL}\n @qmarks";
+  }
+  
+  sub calculate_bind_values {
+      my ($self, $p) = @_;
+  
+      my @qmarks;
+      my $user_ph_idx = 0;
+  
+      my $i=0;
+      
+      if ($self->{bind_value_layouts}) {
+  
+          my $prev_pnum = 0;
+          my $max_pnum = 0;
+      
+          my @pnums = sort {$a <=> $b} keys %{$self->{bind_value_layouts}};
+          $max_pnum = $pnums[-1];
+          
+          #Walk through the integers for each possible bind value.
+          #If it doesn't have a layout assigned from the config file
+          #then shift it off the array from the $log call
+          #This needs to be reworked now that we always get an arrayref? --kg 1/2003
+          foreach my $pnum (1..$max_pnum){
+              my $msg;
+      
+                  #we've got a bind_value_layout to fill the spot
+              if ($self->{bind_value_layouts}{$pnum}){
+                 $msg = $self->{bind_value_layouts}{$pnum}->render(
+                          $p->{message},
+                          $p->{log4p_category},
+                          $p->{log4p_level},
+                          5 + $Log::Log4perl::caller_depth,  
+                      );
+  
+                 #we don't have a bind_value_layout, so get
+                 #a message bit
+              }elsif (ref $p->{message} eq 'ARRAY' && @{$p->{message}}){
+                  #$msg = shift @{$p->{message}};
+                  $msg = $p->{message}->[$i++];
+  
+                 #here handle cases where we ran out of message bits
+                 #before we ran out of bind_value_layouts, just keep going
+              }elsif (ref $p->{message} eq 'ARRAY'){
+                  $msg = undef;
+                  $p->{message} = undef;
+  
+                 #here handle cases where we didn't get an arrayref
+                 #log the message in the first placeholder and nothing in the rest
+              }elsif (! ref $p->{message} ){
+                  $msg = $p->{message};
+                  $p->{message} = undef;
+  
+              }
+  
+              if ($self->{MAX_COL_SIZE} &&
+                  length($msg) > $self->{MAX_COL_SIZE}){
+                  substr($msg, $self->{MAX_COL_SIZE}) = '';
+              }
+              push @qmarks, $msg;
+          }
+      }
+  
+      #handle leftovers
+      if (ref $p->{message} eq 'ARRAY' && @{$p->{message}} ) {
+          #push @qmarks, @{$p->{message}};
+          push @qmarks, @{$p->{message}}[$i..@{$p->{message}}-1];
+  
+      }
+  
+      return \@qmarks;
+  }
+  
+  
+  sub check_buffer {
+      my $self = shift;
+  
+      return unless ($self->{BUFFER} && ref $self->{BUFFER} eq 'ARRAY');
+  
+      if (scalar @{$self->{BUFFER}} >= $self->{BUFFERSIZE} * 2) {
+  
+          my ($sth, $stmt, $prev_stmt);
+  
+          $prev_stmt = ""; # Init to avoid warning (ms 5/10/03)
+  
+          while (@{$self->{BUFFER}}) {
+              my ($stmt, $qmarks) = splice (@{$self->{BUFFER}},0,2);
+  
+              $self->{pending_stmt} = $stmt;
+  
+                  #reuse the sth if the stmt doesn't change
+              if ($stmt ne $prev_stmt) {
+                  $sth->finish if $sth;
+                  $sth = $self->create_statement($stmt);
+              }
+  
+              $self->query_execute($sth, @$qmarks);
+  
+              $prev_stmt = $stmt;
+  
+          }
+  
+          $sth->finish;
+  
+          my $dbh = $self->{dbh};
+  
+          if ($dbh && ! $dbh->{AutoCommit}) {
+              $dbh->commit;
+          }
+      }
+  }
+  
+  sub DESTROY {
+      my $self = shift;
+  
+      $self->{BUFFERSIZE} = 1;
+  
+      $self->check_buffer();
+  
+      if ($self->{_mine} && $self->{dbh}) {
+          $self->{dbh}->disconnect;
+      }
+  }
+  
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::DBI - implements appending to a DB
+  
+  =head1 SYNOPSIS
+  
+      my $config = q{
+       log4j.category = WARN, DBAppndr
+       log4j.appender.DBAppndr             = Log::Log4perl::Appender::DBI
+       log4j.appender.DBAppndr.datasource  = DBI:CSV:f_dir=t/tmp
+       log4j.appender.DBAppndr.username    = bobjones
+       log4j.appender.DBAppndr.password    = 12345
+       log4j.appender.DBAppndr.sql         = \
+          insert into log4perltest           \
+          (loglevel, custid, category, message, ipaddr) \
+          values (?,?,?,?,?)
+       log4j.appender.DBAppndr.params.1 = %p    
+                                     #2 is custid from the log() call
+       log4j.appender.DBAppndr.params.3 = %c
+                                     #4 is the message from log()
+                                     #5 is ipaddr from log()
+  
+       log4j.appender.DBAppndr.usePreparedStmt = 1
+        #--or--
+       log4j.appender.DBAppndr.bufferSize = 2
+  
+       #just pass through the array of message items in the log statement
+       log4j.appender.DBAppndr.layout    = Log::Log4perl::Layout::NoopLayout
+       log4j.appender.DBAppndr.warp_message = 0
+  
+       #driver attributes support
+       log4j.appender.DBAppndr.attrs.f_encoding = utf8
+      };
+  
+      Log::Log4perl::init ( \$config ) ;                                      
+  
+      my $logger = Log::Log4perl->get_logger () ;                             
+      $logger->warn( $custid, 'big problem!!', $ip_addr );
+  
+  =head1 CAVEAT
+  
+  This is a very young module and there are a lot of variations
+  in setups with different databases and connection methods,
+  so make sure you test thoroughly!  Any feedback is welcome!
+  
+  =head1 DESCRIPTION
+  
+  This is a specialized Log::Dispatch object customized to work with
+  log4perl and its abilities, originally based on Log::Dispatch::DBI 
+  by Tatsuhiko Miyagawa but with heavy modifications.
+  
+  It is an attempted compromise between what Log::Dispatch::DBI was 
+  doing and what log4j's JDBCAppender does.  Note the log4j docs say
+  the JDBCAppender "is very likely to be completely replaced in the future."
+  
+  The simplest usage is this:
+  
+      log4j.category = WARN, DBAppndr
+      log4j.appender.DBAppndr            = Log::Log4perl::Appender::DBI
+      log4j.appender.DBAppndr.datasource = DBI:CSV:f_dir=t/tmp
+      log4j.appender.DBAppndr.username   = bobjones
+      log4j.appender.DBAppndr.password   = 12345
+      log4j.appender.DBAppndr.sql        = \
+         INSERT INTO logtbl                \
+            (loglevel, message)            \
+            VALUES ('%c','%m')
+  
+      log4j.appender.DBAppndr.layout    = Log::Log4perl::Layout::PatternLayout
+  
+  
+      $logger->fatal('fatal message');
+      $logger->warn('warning message');
+  
+      ===============================
+      |FATAL|fatal message          |
+      |WARN |warning message        |
+      ===============================
+  
+  
+  But the downsides to that usage are:
+  
+  =over 4
+  
+  =item * 
+  
+  You'd better be darn sure there are not quotes in your log message, or your
+  insert could have unforeseen consequences!  This is a very insecure way to
+  handle database inserts, using place holders and bind values is much better, 
+  keep reading. (Note that the log4j docs warn "Be careful of quotes in your 
+  messages!") B<*>.
+  
+  =item *
+  
+  It's not terribly high-performance, a statement is created and executed
+  for each log call.
+  
+  =item *
+  
+  The only run-time parameter you get is the %m message, in reality
+  you probably want to log specific data in specific table columns.
+  
+  =back
+  
+  So let's try using placeholders, and tell the logger to create a
+  prepared statement handle at the beginning and just reuse it 
+  (just like Log::Dispatch::DBI does)
+  
+  
+      log4j.appender.DBAppndr.sql = \
+         INSERT INTO logtbl \
+            (custid, loglevel, message) \
+            VALUES (?,?,?)
+  
+      #---------------------------------------------------
+      #now the bind values:
+                                    #1 is the custid
+      log4j.appender.DBAppndr.params.2 = %p    
+                                    #3 is the message
+      #---------------------------------------------------
+  
+      log4j.appender.DBAppndr.layout    = Log::Log4perl::Layout::NoopLayout
+      log4j.appender.DBAppndr.warp_message = 0
+      
+      log4j.appender.DBAppndr.usePreparedStmt = 1
+      
+      
+      $logger->warn( 1234, 'warning message' ); 
+  
+  
+  Now see how we're using the '?' placeholders in our statement?  This
+  means we don't have to worry about messages that look like 
+  
+      invalid input: 1234';drop table custid;
+  
+  fubaring our database!
+  
+  Normally a list of things in the logging statement gets concatenated into 
+  a single string, but setting C<warp_message> to 0 and using the 
+  NoopLayout means that in
+  
+      $logger->warn( 1234, 'warning message', 'bgates' );
+  
+  the individual list values will still be available for the DBI appender later 
+  on.  (If C<warp_message> is not set to 0, the default behavior is to
+  join the list elements into a single string.   If PatternLayout or SimpleLayout
+  are used, their attempt to C<render()> your layout will result in something 
+  like "ARRAY(0x841d8dc)" in your logs.  More information on C<warp_message>
+  is in Log::Log4perl::Appender.)
+  
+  In your insert SQL you can mix up '?' placeholders with conversion specifiers 
+  (%c, %p, etc) as you see fit--the logger will match the question marks to 
+  params you've defined in the config file and populate the rest with values 
+  from your list.  If there are more '?' placeholders than there are values in 
+  your message, it will use undef for the rest.  For instance, 
+  
+  	log4j.appender.DBAppndr.sql =                 \
+  	   insert into log4perltest                   \
+  	   (loglevel, message, datestr, subpoena_id)\
+  	   values (?,?,?,?)
+  	log4j.appender.DBAppndr.params.1 = %p
+  	log4j.appender.DBAppndr.params.3 = %d
+  
+  	log4j.appender.DBAppndr.warp_message=0
+  
+  
+  	$logger->info('arrest him!', $subpoena_id);
+  
+  results in the first '?' placeholder being bound to %p, the second to
+  "arrest him!", the third to the date from "%d", and the fourth to your
+  $subpoenaid.  If you forget the $subpoena_id and just log
+  
+  	$logger->info('arrest him!');
+  
+  then you just get undef in the fourth column.
+  
+  
+  If the logger statement is also being handled by other non-DBI appenders,
+  they will just join the list into a string, joined with 
+  C<$Log::Log4perl::JOIN_MSG_ARRAY_CHAR> (default is an empty string).
+  
+  And see the C<usePreparedStmt>?  That creates a statement handle when
+  the logger object is created and just reuses it.  That, however, may
+  be problematic for long-running processes like webservers, in which case
+  you can use this parameter instead
+  
+      log4j.appender.DBAppndr.bufferSize=2
+  
+  This copies log4j's JDBCAppender's behavior, it saves up that many
+  log statements and writes them all out at once.  If your INSERT
+  statement uses only ? placeholders and no %x conversion specifiers
+  it should be quite efficient because the logger can re-use the
+  same statement handle for the inserts.
+  
+  If the program ends while the buffer is only partly full, the DESTROY
+  block should flush the remaining statements, if the DESTROY block
+  runs of course.
+  
+  * I<As I was writing this, Danko Mannhaupt was coming out with his
+  improved log4j JDBCAppender (http://www.mannhaupt.com/danko/projects/)
+  which overcomes many of the drawbacks of the original JDBCAppender.>
+  
+  =head1 DESCRIPTION 2
+  
+  Or another way to say the same thing:
+  
+  The idea is that if you're logging to a database table, you probably
+  want specific parts of your log information in certain columns.  To this
+  end, you pass an list to the log statement, like 
+  
+      $logger->warn('big problem!!',$userid,$subpoena_nr,$ip_addr);
+  
+  and the array members drop into the positions defined by the placeholders
+  in your SQL statement. You can also define information in the config
+  file like
+  
+      log4j.appender.DBAppndr.params.2 = %p    
+  
+  in which case those numbered placeholders will be filled in with
+  the specified values, and the rest of the placeholders will be
+  filled in with the values from your log statement's array.
+  
+  =head1 MISC PARAMETERS
+  
+  
+  =over 4
+  
+  =item usePreparedStmt
+  
+  See above.
+  
+  =item warp_message
+  
+  see Log::Log4perl::Appender
+  
+  =item max_col_size
+  
+  If you're used to just throwing debugging messages like huge stacktraces
+  into your logger, some databases (Sybase's DBD!!) may surprise you 
+  by choking on data size limitations.  Normally, the data would
+  just be truncated to fit in the column, but Sybases's DBD it turns out
+  maxes out at 255 characters.  Use this parameter in such a situation
+  to truncate long messages before they get to the INSERT statement.
+  
+  =back
+  
+  =head1 CHANGING DBH CONNECTIONS (POOLING)
+  
+  If you want to get your dbh from some place in particular, like
+  maybe a pool, subclass and override _init() and/or create_statement(), 
+  for instance 
+  
+      sub _init {
+          ; #no-op, no pooling at this level
+      }
+      sub create_statement {
+          my ($self, $stmt) = @_;
+      
+          $stmt || croak "Log4perl: sql not set in ".__PACKAGE__;
+      
+          return My::Connections->getConnection->prepare($stmt) 
+              || croak "Log4perl: DBI->prepare failed $DBI::errstr\n$stmt";
+      }
+  
+  
+  =head1 LIFE OF CONNECTIONS
+  
+  If you're using C<log4j.appender.DBAppndr.usePreparedStmt>
+  this module creates an sth when it starts and keeps it for the life
+  of the program.  For long-running processes (e.g. mod_perl), connections
+  might go stale, but if C<Log::Log4perl::Appender::DBI> tries to write
+  a message and figures out that the DB connection is no longer working
+  (using DBI's ping method), it will reconnect.
+  
+  The reconnection process can be controlled by two parameters,
+  C<reconnect_attempts> and C<reconnect_sleep>. C<reconnect_attempts>
+  specifies the number of reconnections attempts the DBI appender 
+  performs until it gives up and dies. C<reconnect_sleep> is the
+  time between reconnection attempts, measured in seconds.
+  C<reconnect_attempts> defaults to 1,  C<reconnect_sleep> to 0.
+  
+  Alternatively, use C<Apache::DBI> or C<Apache::DBI::Cache> and read
+  CHANGING DB CONNECTIONS above.
+  
+  Note that C<Log::Log4perl::Appender::DBI> holds one connection open
+  for every appender, which might be too many.
+  
+  =head1 SEE ALSO
+  
+  L<Log::Dispatch::DBI>
+  
+  L<Log::Log4perl::JavaMap::JDBCAppender>
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_DBI
+
+$fatpacked{"Log/Log4perl/Appender/File.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_FILE';
+  ##################################################
+  package Log::Log4perl::Appender::File;
+  ##################################################
+  
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  use warnings;
+  use strict;
+  use Log::Log4perl::Config::Watch;
+  use Fcntl;
+  use File::Path;
+  use File::Spec::Functions qw(splitpath catpath);
+  use constant _INTERNAL_DEBUG => 0;
+  use constant SYSWRITE_UTF8_OK => ( $] < 5.024 );
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, @options) = @_;
+  
+      my $self = {
+          name      => "unknown name",
+          umask     => undef,
+          owner     => undef,
+          group     => undef,
+          autoflush => 1,
+          syswrite  => 0,
+          mode      => "append",
+          binmode   => undef,
+          utf8      => 0,
+          recreate  => 0,
+          recreate_check_interval => 30,
+          recreate_check_signal   => undef,
+          recreate_pid_write      => undef,
+          create_at_logtime       => 0,
+          header_text             => undef,
+          mkpath                  => 0,
+          mkpath_umask            => 0,
+          @options,
+      };
+  
+      if($self->{create_at_logtime}) {
+          $self->{recreate}  = 1;
+      }
+      for my $param ('umask', 'mkpath_umask') {
+          if(defined $self->{$param} and $self->{$param} =~ /^0/) {
+                  # umask value is a string, meant to be an oct value
+              $self->{$param} = oct($self->{$param});
+          }
+      }
+  
+      die "Mandatory parameter 'filename' missing" unless
+          exists $self->{filename};
+  
+      bless $self, $class;
+  
+      if($self->{recreate_pid_write}) {
+          print "Creating pid file",
+                " $self->{recreate_pid_write}\n" if _INTERNAL_DEBUG;
+          open FILE, ">$self->{recreate_pid_write}" or
+              die "Cannot open $self->{recreate_pid_write}";
+          print FILE "$$\n";
+          close FILE;
+      }
+  
+      print "Calling syswrite_encoder\n" if _INTERNAL_DEBUG;
+  
+      $self->{syswrite_encoder} = $self->syswrite_encoder();
+  
+      print "syswrite_encoder returned\n" if _INTERNAL_DEBUG;
+  
+          # This will die() if it fails
+      $self->file_open() unless $self->{create_at_logtime};
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub syswrite_encoder {
+  ##################################################
+      my($self) = @_;
+  
+      if( !SYSWRITE_UTF8_OK and $self->{syswrite} and $self->{utf8} ) {
+          print "Requiring Encode\n" if _INTERNAL_DEBUG;
+          eval { require Encode };
+          print "Requiring Encode returned: $@\n" if _INTERNAL_DEBUG;
+  
+          if( $@ ) {
+              die "syswrite and utf8 requires Encode.pm";
+          } else {
+              return sub { Encode::encode_utf8($_[0]) };
+          }
+      }
+  
+      return undef;
+  }
+  
+  ##################################################
+  sub filename {
+  ##################################################
+      my($self) = @_;
+  
+      return $self->{filename};
+  }
+  
+  ##################################################
+  sub file_open {
+  ##################################################
+      my($self) = @_;
+  
+      my $arrows  = ">";
+      my $sysmode = (O_CREAT|O_WRONLY);
+  
+  
+      if($self->{mode} eq "append") {
+          $arrows   = ">>";
+          $sysmode |= O_APPEND;
+      } elsif ($self->{mode} eq "pipe") {
+          $arrows = "|";
+      } else {
+          $sysmode |= O_TRUNC;
+      }
+  
+      my $fh = do { local *FH; *FH; };
+  
+  
+      my $didnt_exist = ! -e $self->{filename};
+      if($didnt_exist && $self->{mkpath}) {
+          my ($volume, $path, $file) = splitpath($self->{filename});
+          if($path ne '' && !-e $path) {
+              my $old_umask = umask($self->{mkpath_umask}) if defined $self->{mkpath_umask};
+              my $options = {};
+              foreach my $param (qw(owner group) ) {
+                  $options->{$param} = $self->{$param} if defined $self->{$param};
+              }
+              eval {
+                  mkpath(catpath($volume, $path, ''),$options);
+              };
+              umask($old_umask) if defined $old_umask;
+              die "Can't create path ${path} ($!)" if $@;
+          }
+      }
+  
+      my $old_umask = umask($self->{umask}) if defined $self->{umask};
+  
+      eval {
+          if($self->{syswrite}) {
+              sysopen $fh, "$self->{filename}", $sysmode or
+                  die "Can't sysopen $self->{filename} ($!)";
+          } else {
+              open $fh, "$arrows$self->{filename}" or
+                  die "Can't open $self->{filename} ($!)";
+          }
+      };
+      umask($old_umask) if defined $old_umask;
+      die $@ if $@;
+  
+      if($didnt_exist and
+           ( defined $self->{owner} or defined $self->{group} )
+        ) {
+  
+          eval { $self->perms_fix() };
+  
+          if($@) {
+                # Cleanup and re-throw
+              unlink $self->{filename};
+              die $@;
+          }
+      }
+  
+      if($self->{recreate}) {
+          $self->{watcher} = Log::Log4perl::Config::Watch->new(
+              file           => $self->{filename},
+              (defined $self->{recreate_check_interval} ?
+                (check_interval => $self->{recreate_check_interval}) : ()),
+              (defined $self->{recreate_check_signal} ?
+                (signal => $self->{recreate_check_signal}) : ()),
+          );
+      }
+  
+      $self->{fh} = $fh;
+  
+      if ($self->{autoflush} and ! $self->{syswrite}) {
+          my $oldfh = select $self->{fh};
+          $| = 1;
+          select $oldfh;
+      }
+  
+      if (defined $self->{binmode}) {
+          binmode $self->{fh}, $self->{binmode};
+      }
+  
+      if ($self->{utf8}) {
+            # older perls can handle syswrite+utf8 just fine
+          if(SYSWRITE_UTF8_OK or !$self->{syswrite}) {
+              binmode $self->{fh}, ":utf8";
+          }
+      }
+  
+      if(defined $self->{header_text}) {
+          if( $self->{header_text} !~ /\n\Z/ ) {
+              $self->{header_text} .= "\n";
+          }
+  
+            # quick and dirty print/syswrite without the usual
+            # log() recreate magic.
+          local $self->{recreate} = 0;
+          $self->log( message => $self->{header_text} );
+      }
+  }
+  
+  ##################################################
+  sub file_close {
+  ##################################################
+      my($self) = @_;
+  
+      if(defined $self->{fh}) {
+          $self->close_with_care( $self->{ fh } );
+      }
+  
+      undef $self->{fh};
+  }
+  
+  ##################################################
+  sub perms_fix {
+  ##################################################
+      my($self) = @_;
+  
+      my ($uid_org, $gid_org) = (stat $self->{filename})[4,5];
+  
+      my ($uid, $gid) = ($uid_org, $gid_org);
+  
+      if(!defined $uid) {
+          die "stat of $self->{filename} failed ($!)";
+      }
+  
+      my $needs_fixing = 0;
+  
+      if(defined $self->{owner}) {
+          $uid = $self->{owner};
+          if($self->{owner} !~ /^\d+$/) {
+              $uid = (getpwnam($self->{owner}))[2];
+              die "Unknown user: $self->{owner}" unless defined $uid;
+          }
+      }
+  
+      if(defined $self->{group}) {
+          $gid = $self->{group};
+          if($self->{group} !~ /^\d+$/) {
+              $gid = getgrnam($self->{group});
+  
+              die "Unknown group: $self->{group}" unless defined $gid;
+          }
+      }
+      if($uid != $uid_org or $gid != $gid_org) {
+          chown($uid, $gid, $self->{filename}) or
+              die "chown('$uid', '$gid') on '$self->{filename}' failed: $!";
+      }
+  }
+  
+  ##################################################
+  sub file_switch {
+  ##################################################
+      my($self, $new_filename) = @_;
+  
+      print "Switching file from $self->{filename} to $new_filename\n" if
+          _INTERNAL_DEBUG;
+  
+      $self->file_close();
+      $self->{filename} = $new_filename;
+      $self->file_open();
+  }
+  
+  ##################################################
+  sub log {
+  ##################################################
+      my($self, %params) = @_;
+  
+      # Warning: this function gets called by file_open() which assumes 
+      # it can use it as a simple print/syswrite wrapper by temporary 
+      # disabling the 'recreate' entry. Add anything fancy here and 
+      # fix up file_open() accordingly.
+  
+      if($self->{recreate}) {
+          if($self->{recreate_check_signal}) {
+              if(!$self->{watcher} or
+                 $self->{watcher}->{signal_caught}) {
+                  $self->file_switch($self->{filename});
+                  $self->{watcher}->{signal_caught} = 0;
+              }
+          } else {
+              if(!$self->{watcher} or
+                  $self->{watcher}->file_has_moved()) {
+                  $self->file_switch($self->{filename});
+              }
+          }
+      }
+  
+      my $fh = $self->{fh};
+  
+      if($self->{syswrite}) {
+           my $rc = 
+             syswrite( $fh, 
+                 $self->{ syswrite_encoder } ?
+                   $self->{ syswrite_encoder }->($params{message}) :
+                   $params{message} );
+  
+           if(!defined $rc) {
+               die "Cannot syswrite to '$self->{filename}': $!";
+           }
+      } else {
+          print $fh $params{message} or
+              die "Cannot write to '$self->{filename}': $!";
+      }
+  }
+  
+  ##################################################
+  sub DESTROY {
+  ##################################################
+      my($self) = @_;
+  
+      if ($self->{fh}) {
+          my $fh = $self->{fh};
+          $self->close_with_care( $fh );
+      }
+  }
+  
+  ###########################################
+  sub close_with_care {
+  ###########################################
+      my( $self, $fh ) = @_;
+  
+      my $prev_rc = $?;
+  
+      my $rc = close $fh;
+  
+        # [rt #84723] If a sig handler is reaping the child generated
+        # by close() internally before close() gets to it, it'll
+        # result in a weird (but benign) error that we don't want to
+        # expose to the user.
+      if( !$rc ) {
+          if( $self->{ mode } eq "pipe" and
+              $!{ ECHILD } ) {
+              if( $Log::Log4perl::CHATTY_DESTROY_METHODS ) {
+                  warn "$$: pipe closed with ECHILD error -- guess that's ok";
+              }
+              $? = $prev_rc;
+          } else {
+              warn "Can't close $self->{filename} ($!)";
+          }
+      }
+  
+      return $rc;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::File - Log to file
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl::Appender::File;
+  
+      my $app = Log::Log4perl::Appender::File->new(
+        filename  => 'file.log',
+        mode      => 'append',
+        autoflush => 1,
+        umask     => 0222,
+      );
+  
+      $file->log(message => "Log me\n");
+  
+  =head1 DESCRIPTION
+  
+  This is a simple appender for writing to a file.
+  
+  The C<log()> method takes a single scalar. If a newline character
+  should terminate the message, it has to be added explicitly.
+  
+  Upon destruction of the object, the filehandle to access the
+  file is flushed and closed.
+  
+  If you want to switch over to a different logfile, use the
+  C<file_switch($newfile)> method which will first close the old
+  file handle and then open a one to the new file specified.
+  
+  =head2 OPTIONS
+  
+  =over 4
+  
+  =item filename
+  
+  Name of the log file.
+  
+  =item mode
+  
+  Messages will be append to the file if C<$mode> is set to the
+  string C<"append">. Will clobber the file
+  if set to C<"clobber">. If it is C<"pipe">, the file will be understood
+  as executable to pipe output to. Default mode is C<"append">.
+  
+  =item autoflush
+  
+  C<autoflush>, if set to a true value, triggers flushing the data
+  out to the file on every call to C<log()>. C<autoflush> is on by default.
+  
+  =item syswrite
+  
+  C<syswrite>, if set to a true value, makes sure that the appender uses
+  syswrite() instead of print() to log the message. C<syswrite()> usually
+  maps to the operating system's C<write()> function and makes sure that
+  no other process writes to the same log file while C<write()> is busy.
+  Might safe you from having to use other synchronisation measures like
+  semaphores (see: Synchronized appender).
+  
+  =item umask
+  
+  Specifies the C<umask> to use when creating the file, determining
+  the file's permission settings.
+  If set to C<0022> (default), new
+  files will be created with C<rw-r--r--> permissions.
+  If set to C<0000>, new files will be created with C<rw-rw-rw-> permissions.
+  
+  =item owner
+  
+  If set, specifies that the owner of the newly created log file should
+  be different from the effective user id of the running process.
+  Only makes sense if the process is running as root.
+  Both numerical user ids and user names are acceptable.
+  Log4perl does not attempt to change the ownership of I<existing> files.
+  
+  =item group
+  
+  If set, specifies that the group of the newly created log file should
+  be different from the effective group id of the running process.
+  Only makes sense if the process is running as root.
+  Both numerical group ids and group names are acceptable.
+  Log4perl does not attempt to change the group membership of I<existing> files.
+  
+  =item utf8
+  
+  If you're printing out Unicode strings, the output filehandle needs
+  to be set into C<:utf8> mode:
+  
+      my $app = Log::Log4perl::Appender::File->new(
+        filename  => 'file.log',
+        mode      => 'append',
+        utf8      => 1,
+      );
+  
+  =item binmode
+  
+  To manipulate the output filehandle via C<binmode()>, use the
+  binmode parameter:
+  
+      my $app = Log::Log4perl::Appender::File->new(
+        filename  => 'file.log',
+        mode      => 'append',
+        binmode   => ":utf8",
+      );
+  
+  A setting of ":utf8" for C<binmode> is equivalent to specifying
+  the C<utf8> option (see above).
+  
+  =item recreate
+  
+  Normally, if a file appender logs to a file and the file gets moved to
+  a different location (e.g. via C<mv>), the appender's open file handle
+  will automatically follow the file to the new location.
+  
+  This may be undesirable. When using an external logfile rotator,
+  for example, the appender should create a new file under the old name
+  and start logging into it. If the C<recreate> option is set to a true value,
+  C<Log::Log4perl::Appender::File> will do exactly that. It defaults to
+  false. Check the C<recreate_check_interval> option for performance
+  optimizations with this feature.
+  
+  =item recreate_check_interval
+  
+  In C<recreate> mode, the appender has to continuously check if the
+  file it is logging to is still in the same location. This check is
+  fairly expensive, since it has to call C<stat> on the file name and
+  figure out if its inode has changed. Doing this with every call
+  to C<log> can be prohibitively expensive. Setting it to a positive
+  integer value N will only check the file every N seconds. It defaults to 30.
+  
+  This obviously means that the appender will continue writing to
+  a moved file until the next check occurs, in the worst case
+  this will happen C<recreate_check_interval> seconds after the file
+  has been moved or deleted. If this is undesirable,
+  setting C<recreate_check_interval> to 0 will have the
+  appender check the file with I<every> call to C<log()>.
+  
+  =item recreate_check_signal
+  
+  In C<recreate> mode, if this option is set to a signal name
+  (e.g. "USR1"), the appender will recreate a missing logfile
+  when it receives the signal. It uses less resources than constant
+  polling. The usual limitation with perl's signal handling apply.
+  Check the FAQ for using this option with the log rotating
+  utility C<newsyslog>.
+  
+  =item recreate_pid_write
+  
+  The popular log rotating utility C<newsyslog> expects a pid file
+  in order to send the application a signal when its logs have
+  been rotated. This option expects a path to a file where the pid
+  of the currently running application gets written to.
+  Check the FAQ for using this option with the log rotating
+  utility C<newsyslog>.
+  
+  =item create_at_logtime
+  
+  The file appender typically creates its logfile in its constructor, i.e.
+  at Log4perl C<init()> time. This is desirable for most use cases, because
+  it makes sure that file permission problems get detected right away, and
+  not after days/weeks/months of operation when the appender suddenly needs
+  to log something and fails because of a problem that was obvious at
+  startup.
+  
+  However, there are rare use cases where the file shouldn't be created
+  at Log4perl C<init()> time, e.g. if the appender can't be used by the current
+  user although it is defined in the configuration file. If you set
+  C<create_at_logtime> to a true value, the file appender will try to create
+  the file at log time. Note that this setting lets permission problems
+  sit undetected until log time, which might be undesirable.
+  
+  =item header_text
+  
+  If you want Log4perl to print a header into every newly opened
+  (or re-opened) logfile, set C<header_text> to either a string
+  or a subroutine returning a string. If the message doesn't have a newline,
+  a newline at the end of the header will be provided.
+  
+  =item mkpath
+  
+  If this this option is set to true,
+  the directory path will be created if it does not exist yet.
+  
+  =item mkpath_umask
+  
+  Specifies the C<umask> to use when creating the directory, determining
+  the directory's permission settings.
+  If set to C<0022> (default), new
+  directory will be created with C<rwxr-xr-x> permissions.
+  If set to C<0000>, new directory will be created with C<rwxrwxrwx> permissions.
+  
+  =back
+  
+  Design and implementation of this module has been greatly inspired by
+  Dave Rolsky's C<Log::Dispatch> appender framework.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt>
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself.
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches):
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull,
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter,
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope,
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_FILE
+
+$fatpacked{"Log/Log4perl/Appender/Limit.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_LIMIT';
+  ######################################################################
+  # Limit.pm -- 2003, Mike Schilli <m@perlmeister.com>
+  ######################################################################
+  # Special composite appender limiting the number of messages relayed
+  # to its appender(s).
+  ######################################################################
+  
+  ###########################################
+  package Log::Log4perl::Appender::Limit;
+  ###########################################
+  
+  use strict;
+  use warnings;
+  use Storable;
+  
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  our $VERSION    = '1.53';
+  
+  ###########################################
+  sub new {
+  ###########################################
+      my($class, %options) = @_;
+  
+      my $self = {
+          max_until_flushed   => undef,
+          max_until_discarded => undef,
+          appender_method_on_flush 
+                              => undef,
+          appender            => undef,
+          accumulate          => 1,
+          persistent          => undef,
+          block_period        => 3600,
+          buffer              => [],
+          %options,
+      };
+  
+          # Pass back the appender to be limited as a dependency
+          # to the configuration file parser
+      push @{$options{l4p_depends_on}}, $self->{appender};
+  
+          # Run our post_init method in the configurator after
+          # all appenders have been defined to make sure the
+          # appenders we're connecting to really exist.
+      push @{$options{l4p_post_config_subs}}, sub { $self->post_init() };
+  
+      bless $self, $class;
+  
+      if(defined $self->{persistent}) {
+          $self->restore();
+      }
+  
+      return $self;
+  }
+  
+  ###########################################
+  sub log {
+  ###########################################
+      my($self, %params) = @_;
+      
+      local $Log::Log4perl::caller_depth =
+          $Log::Log4perl::caller_depth + 2;
+  
+          # Check if message needs to be discarded
+      my $discard = 0;
+      if(defined $self->{max_until_discarded} and
+         scalar @{$self->{buffer}} >= $self->{max_until_discarded} - 1) {
+          $discard = 1;
+      }
+  
+          # Check if we need to flush
+      my $flush = 0;
+      if(defined $self->{max_until_flushed} and
+         scalar @{$self->{buffer}} >= $self->{max_until_flushed} - 1) {
+          $flush = 1;
+      }
+  
+      if(!$flush and
+         (exists $self->{sent_last} and
+          $self->{sent_last} + $self->{block_period} > time()
+         )
+        ) {
+              # Message needs to be blocked for now.
+          return if $discard;
+  
+              # Ask the appender to save a cached message in $cache
+          $self->{app}->SUPER::log(\%params,
+                               $params{log4p_category},
+                               $params{log4p_level}, \my $cache);
+  
+              # Save message and other parameters
+          push @{$self->{buffer}}, $cache if $self->{accumulate};
+  
+          $self->save() if $self->{persistent};
+  
+          return;
+      }
+  
+      # Relay all messages we got to the SUPER class, which needs to render the
+      # messages according to the appender's layout, first.
+  
+          # Log pending messages if we have any
+      $self->flush();
+  
+          # Log current message as well
+      $self->{app}->SUPER::log(\%params,
+                               $params{log4p_category},
+                               $params{log4p_level});
+  
+      $self->{sent_last} = time();
+  
+          # We need to store the timestamp persistently, if requested
+      $self->save() if $self->{persistent};
+  }
+  
+  ###########################################
+  sub post_init {
+  ###########################################
+      my($self) = @_;
+  
+      if(! exists $self->{appender}) {
+         die "No appender defined for " . __PACKAGE__;
+      }
+  
+      my $appenders = Log::Log4perl->appenders();
+      my $appender = Log::Log4perl->appenders()->{$self->{appender}};
+  
+      if(! defined $appender) {
+         die "Appender $self->{appender} not defined (yet) when " .
+             __PACKAGE__ . " needed it";
+      }
+  
+      $self->{app} = $appender;
+  }
+  
+  ###########################################
+  sub save {
+  ###########################################
+      my($self) = @_;
+  
+      my $pdata = [$self->{buffer}, $self->{sent_last}];
+  
+          # Save the buffer if we're in persistent mode
+      store $pdata, $self->{persistent} or
+          die "Cannot save messages in $self->{persistent} ($!)";
+  }
+  
+  ###########################################
+  sub restore {
+  ###########################################
+      my($self) = @_;
+  
+      if(-f $self->{persistent}) {
+          my $pdata = retrieve $self->{persistent} or
+              die "Cannot retrieve messages from $self->{persistent} ($!)";
+          ($self->{buffer}, $self->{sent_last}) = @$pdata;
+      }
+  }
+  
+  ###########################################
+  sub flush {
+  ###########################################
+      my($self) = @_;
+  
+          # Log pending messages if we have any
+      for(@{$self->{buffer}}) {
+          $self->{app}->SUPER::log_cached($_);
+      }
+  
+        # call flush() on the attached appender if so desired.
+      if( $self->{appender_method_on_flush} ) {
+          no strict 'refs';
+          my $method = $self->{appender_method_on_flush};
+          $self->{app}->$method();
+      }
+  
+          # Empty buffer
+      $self->{buffer} = [];
+  }
+  
+  ###########################################
+  sub DESTROY {
+  ###########################################
+      my($self) = @_;
+  
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::Limit - Limit message delivery via block period
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl qw(:easy);
+  
+      my $conf = qq(
+        log4perl.category = WARN, Limiter
+      
+            # Email appender
+        log4perl.appender.Mailer          = Log::Dispatch::Email::MailSend
+        log4perl.appender.Mailer.to       = drone\@pageme.com
+        log4perl.appender.Mailer.subject  = Something's broken!
+        log4perl.appender.Mailer.buffered = 0
+        log4perl.appender.Mailer.layout   = PatternLayout
+        log4perl.appender.Mailer.layout.ConversionPattern=%d %m %n
+  
+            # Limiting appender, using the email appender above
+        log4perl.appender.Limiter              = Log::Log4perl::Appender::Limit
+        log4perl.appender.Limiter.appender     = Mailer
+        log4perl.appender.Limiter.block_period = 3600
+      );
+  
+      Log::Log4perl->init(\$conf);
+      WARN("This message will be sent immediately.");
+      WARN("This message will be delayed by one hour.");
+      sleep(3601);
+      WARN("This message plus the last one will be sent now, seperately.");
+  
+  =head1 DESCRIPTION
+  
+  =over 4
+  
+  =item C<appender>
+  
+  Specifies the name of the appender used by the limiter. The
+  appender specified must be defined somewhere in the configuration file,
+  not necessarily before the definition of 
+  C<Log::Log4perl::Appender::Limit>.
+  
+  =item C<block_period>
+  
+  Period in seconds between delivery of messages. If messages arrive in between,
+  they will be either saved (if C<accumulate> is set to a true value) or
+  discarded (if C<accumulate> isn't set).
+  
+  =item C<persistent>
+  
+  File name in which C<Log::Log4perl::Appender::Limit> persistently stores 
+  delivery times. If omitted, the appender will have no recollection of what
+  happened when the program restarts.
+  
+  =item C<max_until_flushed>
+  
+  Maximum number of accumulated messages. If exceeded, the appender flushes 
+  all messages, regardless if the interval set in C<block_period> 
+  has passed or not. Don't mix with C<max_until_discarded>.
+  
+  =item C<max_until_discarded>
+  
+  Maximum number of accumulated messages. If exceeded, the appender will
+  simply discard additional messages, waiting for C<block_period> to expire
+  to flush all accumulated messages. Don't mix with C<max_until_flushed>.
+  
+  =item C<appender_method_on_flush>
+  
+  Optional method name to be called on the appender attached to the
+  limiter when messages are flushed. For example, to have the sample code 
+  in the SYNOPSIS section bundle buffered emails into one, change the 
+  mailer's C<buffered> parameter to C<1> and set the limiters 
+  C<appender_method_on_flush> value to the string C<"flush">:
+  
+        log4perl.category = WARN, Limiter
+      
+            # Email appender
+        log4perl.appender.Mailer          = Log::Dispatch::Email::MailSend
+        log4perl.appender.Mailer.to       = drone\@pageme.com
+        log4perl.appender.Mailer.subject  = Something's broken!
+        log4perl.appender.Mailer.buffered = 1
+        log4perl.appender.Mailer.layout   = PatternLayout
+        log4perl.appender.Mailer.layout.ConversionPattern=%d %m %n
+  
+            # Limiting appender, using the email appender above
+        log4perl.appender.Limiter              = Log::Log4perl::Appender::Limit
+        log4perl.appender.Limiter.appender     = Mailer
+        log4perl.appender.Limiter.block_period = 3600
+        log4perl.appender.Limiter.appender_method_on_flush = flush
+  
+  This will cause the mailer to buffer messages and wait for C<flush()>
+  to send out the whole batch. The limiter will then call the appender's
+  C<flush()> method when it's own buffer gets flushed out.
+  
+  =back
+  
+  If the appender attached to C<Limit> uses C<PatternLayout> with a timestamp
+  specifier, you will notice that the message timestamps are reflecting the
+  original log event, not the time of the message rendering in the
+  attached appender. Major trickery has been applied to accomplish 
+  this (Cough!).
+  
+  =head1 DEVELOPMENT NOTES
+  
+  C<Log::Log4perl::Appender::Limit> is a I<composite> appender.
+  Unlike other appenders, it doesn't log any messages, it just
+  passes them on to its attached sub-appender.
+  For this reason, it doesn't need a layout (contrary to regular appenders).
+  If it defines none, messages are passed on unaltered.
+  
+  Custom filters are also applied to the composite appender only.
+  They are I<not> applied to the sub-appender. Same applies to appender
+  thresholds. This behaviour might change in the future.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_LIMIT
+
+$fatpacked{"Log/Log4perl/Appender/RRDs.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_RRDS';
+  ##################################################
+  package Log::Log4perl::Appender::RRDs;
+  ##################################################
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  use warnings;
+  use strict;
+  use RRDs;
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, @options) = @_;
+  
+      my $self = {
+          name             => "unknown name",
+          dbname           => undef,
+          rrdupd_params => [],
+          @options,
+      };
+  
+      die "Mandatory parameter 'dbname' missing" unless
+          defined $self->{dbname};
+  
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub log {
+  ##################################################
+      my($self, %params) = @_;
+  
+      #print "UPDATE: '$self->{dbname}' - '$params{message}'\n";
+  
+      RRDs::update($self->{dbname}, 
+                   @{$params{rrdupd_params}},
+                   $params{message}) or
+          die "Cannot update rrd $self->{dbname} ",
+              "with $params{message} ($!)";
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::RRDs - Log to a RRDtool Archive
+      
+  =head1 SYNOPSIS
+      
+      use Log::Log4perl qw(get_logger);
+      use RRDs;
+      
+      my $DB = "myrrddb.dat";
+      
+      RRDs::create(
+        $DB, "--step=1",
+        "DS:myvalue:GAUGE:2:U:U",
+        "RRA:MAX:0.5:1:120");
+      
+      print time(), "\n";
+      
+      Log::Log4perl->init(\qq{
+        log4perl.category = INFO, RRDapp
+        log4perl.appender.RRDapp = Log::Log4perl::Appender::RRDs
+        log4perl.appender.RRDapp.dbname = $DB
+        log4perl.appender.RRDapp.layout = Log::Log4perl::Layout::PatternLayout
+        log4perl.appender.RRDapp.layout.ConversionPattern = N:%m
+      });
+      
+      my $logger = get_logger();
+      
+      for(10, 15, 20, 25) {
+          $logger->info($_);
+          sleep 1;
+      }
+     
+  =head1 DESCRIPTION
+  
+  C<Log::Log4perl::Appender::RRDs> appenders facilitate writing data
+  to RRDtool round-robin archives via Log4perl. For documentation
+  on RRD and its Perl interface C<RRDs> (which comes with the distribution),
+  check out L<http://rrdtool.org>.
+  
+  Messages sent to Log4perl's RRDs appender are expected to be numerical values
+  (ints or floats), which then are used to run a C<rrdtool update> command
+  on an existing round-robin database. The name of this database needs to
+  be set in the appender's C<dbname> configuration parameter.
+  
+  If there's more parameters you wish to pass to the C<update> method,
+  use the C<rrdupd_params> configuration parameter:
+  
+      log4perl.appender.RRDapp.rrdupd_params = --template=in:out
+  
+  To read out the round robin database later on, use C<rrdtool fetch>
+  or C<rrdtool graph> for graphic displays.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_RRDS
+
+$fatpacked{"Log/Log4perl/Appender/Screen.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_SCREEN';
+  ##################################################
+  package Log::Log4perl::Appender::Screen;
+  ##################################################
+  
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  use warnings;
+  use strict;
+  
+  use IO::Handle;
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, @options) = @_;
+  
+      my $self = {
+          autoflush   => 0,
+          name        => "unknown name",
+          stderr      => 1,
+          utf8        => undef,
+          @options,
+      };
+  
+      if( $self->{utf8} ) {
+          if( $self->{stderr} ) {
+              binmode STDERR, ":utf8";
+          } else {
+              binmode STDOUT, ":utf8";
+          }
+      }
+  
+      if( $self->{autoflush} ) {
+          if( $self->{stderr} ) {
+              STDERR->autoflush(1);
+          } else {
+              STDOUT->autoflush(1);
+          }
+      }
+  
+      bless $self, $class;
+  }
+  
+  ##################################################
+  sub log {
+  ##################################################
+      my($self, %params) = @_;
+  
+      my $fh = \*STDOUT;
+      if (ref $self->{stderr}) {
+          $fh = \*STDERR if $self->{stderr}{ $params{'log4p_level'} }
+                              || $self->{stderr}{ lc $params{'log4p_level'} };
+      } elsif ($self->{stderr}) {
+          $fh = \*STDERR;
+      }
+  
+      print $fh $params{message};
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::Screen - Log to STDOUT/STDERR
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl::Appender::Screen;
+  
+      my $app = Log::Log4perl::Appender::Screen->new(
+        autoflush => 1,
+        stderr    => 0,
+        utf8      => 1,
+      );
+  
+      $file->log(message => "Log me\n");
+  
+  =head1 DESCRIPTION
+  
+  This is a simple appender for writing to STDOUT or STDERR.
+  
+  The constructor C<new()> takes an optional parameter C<stderr>:
+  
+  =over
+  
+  =item *
+  
+  If set to a false value, it will log all levels to STDOUT (or, more
+  accurately, whichever file handle is selected via C<select()>, STDOUT
+  by default).
+  
+  =item *
+  
+  If set to a hash, then any C<log4p_level> with a truthy value will
+  dynamically use STDERR, or STDOUT otherwise.
+  
+  =item *
+  
+  Otherwise, if a true value (the default setting is 1), messages will be
+  logged to STDERR.
+  
+  =back
+  
+      # All messages/levels to STDERR
+      my $app = Log::Log4perl::Appender::Screen->new(
+          stderr  => 1,
+      );
+  
+      # Only ERROR and FATAL to STDERR (case-sensitive)
+      my $app = Log::Log4perl::Appender::Screen->new(
+          stderr  => { ERROR => 1, FATAL => 1},
+      );
+  
+  Design and implementation of this module has been greatly inspired by
+  Dave Rolsky's C<Log::Dispatch> appender framework.
+  
+  To enable printing wide utf8 characters, set the utf8 option to a true
+  value:
+  
+      my $app = Log::Log4perl::Appender::Screen->new(
+        stderr    => 1,
+        utf8      => 1,
+      );
+  
+  This will issue the necessary binmode command to the selected output
+  channel (stderr/stdout).
+  
+  To enable L<autoflush|perlvar/"HANDLE-E<gt>autoflush( EXPR )">, set the
+  C<autoflush> option to a true value:
+  
+      my $app = Log::Log4perl::Appender::Screen->new(
+        autoflush => 1,
+      );
+  
+  This will issue the necessary autoflush command to the selected output
+  channel (stderr/stdout).
+  
+  This is required in containers, especially when the log volume is low, to
+  not buffer the log messages and cause a significant delay.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt>
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself.
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches):
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull,
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter,
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope,
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_SCREEN
+
+$fatpacked{"Log/Log4perl/Appender/ScreenColoredLevels.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_SCREENCOLOREDLEVELS';
+  ##################################################
+  package Log::Log4perl::Appender::ScreenColoredLevels;
+  ##################################################
+  use Log::Log4perl::Appender::Screen;
+  our @ISA = qw(Log::Log4perl::Appender::Screen);
+  
+  use warnings;
+  use strict;
+  
+  use Term::ANSIColor qw();
+  use Log::Log4perl::Level;
+  
+  BEGIN {
+      $Term::ANSIColor::EACHLINE="\n";
+  }
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, %options) = @_;
+  
+      my %specific_options = ( color => {} );
+  
+      for my $option ( keys %specific_options ) {
+          $specific_options{ $option } = delete $options{ $option } if
+              exists $options{ $option };
+      }
+  
+      my $self = $class->SUPER::new( %options );
+      @$self{ keys %specific_options } = values %specific_options;
+      bless $self, __PACKAGE__; # rebless
+  
+        # also accept lower/mixed case levels in config
+      for my $level ( keys %{ $self->{color} } ) {
+          my $uclevel = uc($level);
+          $self->{color}->{$uclevel} = $self->{color}->{$level};
+      }
+  
+      my %default_colors = (
+          TRACE   => 'yellow',
+          DEBUG   => '',
+          INFO    => 'green',
+          WARN    => 'blue',
+          ERROR   => 'magenta',
+          FATAL   => 'red',
+      );
+      for my $level ( keys %default_colors ) {
+          if ( ! exists $self->{ 'color' }->{ $level } ) {
+              $self->{ 'color' }->{ $level } = $default_colors{ $level };
+          }
+      }
+  
+      bless $self, $class;
+  }
+      
+  ##################################################
+  sub log {
+  ##################################################
+      my($self, %params) = @_;
+  
+      my $msg = $params{ 'message' };
+  
+      if ( my $color = $self->{ 'color' }->{ $params{ 'log4p_level' } } ) {
+          $msg = Term::ANSIColor::colored( $msg, $color );
+      }
+  
+      my $fh = \*STDOUT;
+      if (ref $self->{stderr}) {
+          $fh = \*STDERR if $self->{stderr}{ $params{'log4p_level'} }
+                              || $self->{stderr}{ lc $params{'log4p_level'} };
+      } elsif ($self->{stderr}) {
+          $fh = \*STDERR;
+      }
+  
+      print $fh $msg;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::ScreenColoredLevels - Colorize messages according to level
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->init(\ <<'EOT');
+        log4perl.category = DEBUG, Screen
+        log4perl.appender.Screen = \
+            Log::Log4perl::Appender::ScreenColoredLevels
+        log4perl.appender.Screen.layout = \
+            Log::Log4perl::Layout::PatternLayout
+        log4perl.appender.Screen.layout.ConversionPattern = \
+            %d %F{1} %L> %m %n
+      EOT
+  
+        # Appears black
+      DEBUG "Debug Message";
+  
+        # Appears green
+      INFO  "Info Message";
+  
+        # Appears blue
+      WARN  "Warn Message";
+  
+        # Appears magenta
+      ERROR "Error Message";
+  
+        # Appears red
+      FATAL "Fatal Message";
+  
+  =head1 DESCRIPTION
+  
+  This appender acts like Log::Log4perl::Appender::Screen, except that
+  it colorizes its output, based on the priority of the message sent.
+  
+  You can configure the colors and attributes used for the different
+  levels, by specifying them in your configuration:
+  
+      log4perl.appender.Screen.color.TRACE=cyan
+      log4perl.appender.Screen.color.DEBUG=bold blue
+  
+  You can also specify nothing, to indicate that level should not have
+  coloring applied, which means the text will be whatever the default
+  color for your terminal is.  This is the default for debug messages.
+  
+      log4perl.appender.Screen.color.DEBUG=
+  
+  You can use any attribute supported by L<Term::ANSIColor> as a configuration
+  option.
+  
+      log4perl.appender.Screen.color.FATAL=\
+          bold underline blink red on_white
+  
+  The commonly used colors and attributes are:
+  
+  =over 4
+  
+  =item attributes
+  
+  BOLD, DARK, UNDERLINE, UNDERSCORE, BLINK
+  
+  =item colors
+  
+  BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE
+  
+  =item background colors
+  
+  ON_BLACK, ON_RED, ON_GREEN, ON_YELLOW, ON_BLUE, ON_MAGENTA, ON_CYAN, ON_WHITE
+  
+  =back
+  
+  See L<Term::ANSIColor> for a complete list, and information on which are
+  supported by various common terminal emulators.
+  
+  The default values for these options are:
+  
+  =over 4
+  
+  =item Trace
+  
+  Yellow
+  
+  =item Debug
+  
+  None (whatever the terminal default is)
+  
+  =item Info
+  
+  Green
+  
+  =item Warn
+  
+  Blue
+  
+  =item Error
+  
+  Magenta
+  
+  =item Fatal
+  
+  Red
+  
+  =back
+  
+  The constructor C<new()> takes an optional parameter C<stderr>,
+  if set to a true value, the appender will log all levels to STDERR.
+  If C<stderr> is set to a false value, it will log all levels to
+  STDOUT. Otherwise, C<stderr> may be set to a hash, with a key for
+  each C<log4p_level> and a truthy value to dynamically use stderr.
+  The default setting for C<stderr> is 1, so all messages will be logged
+  to STDERR by default.
+  
+      # All messages/levels to STDERR
+      my $app = Log::Log4perl::Appender::Screen->new(
+          stderr  => 1,
+      );
+  
+      # Only ERROR and FATAL to STDERR (case-sensitive)
+      my $app = Log::Log4perl::Appender::Screen->new(
+          stderr  => { ERROR => 1, FATAL => 1},
+      );
+  
+  The constructor can also take an optional
+  parameter C<color>, whose value is a  hashref of color configuration
+  options, any levels that are not included in the hashref will be set
+  to their default values.
+  
+  =head2 Using ScreenColoredLevels on Windows
+  
+  Note that if you're using this appender on Windows, you need to fetch
+  Win32::Console::ANSI from CPAN and add
+  
+      use Win32::Console::ANSI;
+  
+  to your script.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_SCREENCOLOREDLEVELS
+
+$fatpacked{"Log/Log4perl/Appender/Socket.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_SOCKET';
+  ##################################################
+  package Log::Log4perl::Appender::Socket;
+  ##################################################
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  use warnings;
+  use strict;
+  
+  use IO::Socket::INET;
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, @options) = @_;
+  
+      my $self = {
+          name            => "unknown name",
+          silent_recovery => 0,
+          no_warning      => 0,
+          PeerAddr        => "localhost",
+          Proto           => 'tcp',
+          Timeout         => 5,
+          @options,
+      };
+  
+      bless $self, $class;
+  
+      unless ($self->{defer_connection}){
+          unless($self->connect(@options)) {
+              if($self->{silent_recovery}) {
+                  if( ! $self->{no_warning}) {
+                      warn "Connect to $self->{PeerAddr}:$self->{PeerPort} failed: $!";
+                  }
+                 return $self;
+              }
+              die "Connect to $self->{PeerAddr}:$self->{PeerPort} failed: $!";
+          }
+  
+          $self->{socket}->autoflush(1); 
+          #autoflush has been the default behavior since 1997
+      }
+  
+      return $self;
+  }
+      
+  ##################################################
+  sub connect {
+  ##################################################
+      my($self, @options) = @_;
+  
+      $self->{socket} = IO::Socket::INET->new(@options);
+  
+      return $self->{socket};
+  }
+  
+  ##################################################
+  sub log {
+  ##################################################
+      my($self, %params) = @_;
+  
+  
+      {
+              # If we were never able to establish
+              # a connection, try to establish one 
+              # here. If it fails, return.
+          if(($self->{silent_recovery} or $self->{defer_connection}) and 
+             !defined $self->{socket}) {
+              if(! $self->connect(%$self)) {
+                  return undef;
+              }
+          }
+    
+              # Try to send the message across
+          eval { $self->{socket}->send($params{message}); 
+               };
+  
+          if($@) {
+              warn "Send to " . ref($self) . " failed ($@), retrying once...";
+              if($self->connect(%$self)) {
+                  redo;
+              }
+              if($self->{silent_recovery}) {
+                  return undef;
+              }
+              warn "Reconnect to $self->{PeerAddr}:$self->{PeerPort} " .
+                   "failed: $!";
+              return undef;
+          }
+      };
+  
+      return 1;
+  }
+  
+  ##################################################
+  sub DESTROY {
+  ##################################################
+      my($self) = @_;
+  
+      undef $self->{socket};
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::Socket - Log to a socket
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl::Appender::Socket;
+  
+      my $appender = Log::Log4perl::Appender::Socket->new(
+        PeerAddr => "server.foo.com",
+        PeerPort => 1234,
+      );
+  
+      $appender->log(message => "Log me\n");
+  
+  =head1 DESCRIPTION
+  
+  This is a simple appender for writing to a socket. It relies on
+  L<IO::Socket::INET> and offers all parameters this module offers.
+  
+  Upon destruction of the object, pending messages will be flushed
+  and the socket will be closed.
+  
+  If the appender cannot contact the server during the initialization
+  phase (while running the constructor C<new>), it will C<die()>.
+  
+  If the appender fails to log a message because the socket's C<send()>
+  method fails (most likely because the server went down), it will
+  try to reconnect once. If it succeeds, the message will be sent.
+  If the reconnect fails, a warning is sent to STDERR and the C<log()>
+  method returns, discarding the message.
+  
+  If the option C<silent_recovery> is given to the constructor and
+  set to a true value, the behaviour is different: If the socket connection
+  can't be established at initialization time, a single warning is issued.
+  Every log attempt will then try to establish the connection and 
+  discard the message silently if it fails.
+  If you don't even want the warning, set the C<no_warning> option to
+  a true value.
+  
+  Connecting at initialization time may not be the best option when
+  running under Apache1 Apache2/prefork, because the parent process creates
+  the socket and the connections are shared among the forked children--all
+  the children writing to the same socket could intermingle messages.  So instead
+  of that, you can use C<defer_connection> which will put off making the
+  connection until the first log message is sent.
+  
+  =head1 EXAMPLE
+  
+  Write a server quickly using the IO::Socket::INET module:
+  
+      use IO::Socket::INET;
+  
+      my $sock = IO::Socket::INET->new(
+          Listen    => 5,
+          LocalAddr => 'localhost',
+          LocalPort => 12345,
+          Proto     => 'tcp');
+  
+      while(my $client = $sock->accept()) {
+          print "Client connected\n";
+          while(<$client>) {
+              print "$_\n";
+          }
+      }
+  
+  Start it and then run the following script as a client:
+  
+      use Log::Log4perl qw(:easy);
+  
+      my $conf = q{
+          log4perl.category                  = WARN, Socket
+          log4perl.appender.Socket           = Log::Log4perl::Appender::Socket
+          log4perl.appender.Socket.PeerAddr  = localhost
+          log4perl.appender.Socket.PeerPort  = 12345
+          log4perl.appender.Socket.layout    = SimpleLayout
+      };
+  
+      Log::Log4perl->init(\$conf);
+  
+      sleep(2);
+  
+      for(1..10) {
+          ERROR("Quack!");
+          sleep(5);
+      }
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_SOCKET
+
+$fatpacked{"Log/Log4perl/Appender/String.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_STRING';
+  package Log::Log4perl::Appender::String;
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  ##################################################
+  # Log dispatcher writing to a string buffer
+  ##################################################
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my $proto  = shift;
+      my $class  = ref $proto || $proto;
+      my %params = @_;
+  
+      my $self = {
+          name      => "unknown name",
+          string    => "",
+          %params,
+      };
+  
+      bless $self, $class;
+  }
+  
+  ##################################################
+  sub log {   
+  ##################################################
+      my $self = shift;
+      my %params = @_;
+  
+      $self->{string} .= $params{message};
+  }
+  
+  ##################################################
+  sub string {   
+  ##################################################
+      my($self, $new) = @_;
+  
+      if(defined $new) {
+          $self->{string} = $new;
+      }
+  
+      return $self->{string};
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::String - Append to a string
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Appender::String;
+  
+    my $appender = Log::Log4perl::Appender::String->new( 
+        name      => 'my string appender',
+    );
+  
+        # Append to the string
+    $appender->log( 
+        message => "I'm searching the city for sci-fi wasabi\n" 
+    );
+  
+        # Retrieve the result
+    my $result = $appender->string();
+  
+        # Reset the buffer to the empty string
+    $appender->string("");
+  
+  =head1 DESCRIPTION
+  
+  This is a simple appender used internally by C<Log::Log4perl>. It
+  appends messages to a scalar instance variable.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_STRING
+
+$fatpacked{"Log/Log4perl/Appender/Synchronized.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_SYNCHRONIZED';
+  ######################################################################
+  # Synchronized.pm -- 2003, 2007 Mike Schilli <m@perlmeister.com>
+  ######################################################################
+  # Special appender employing a locking strategy to synchronize
+  # access.
+  ######################################################################
+  
+  ###########################################
+  package Log::Log4perl::Appender::Synchronized;
+  ###########################################
+  
+  use strict;
+  use warnings;
+  use Log::Log4perl::Util::Semaphore;
+  
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  our $VERSION    = '1.53';
+  
+  ###########################################
+  sub new {
+  ###########################################
+      my($class, %options) = @_;
+  
+      my $self = {
+          appender=> undef,
+          key     => '_l4p',
+          level   => 0,
+          %options,
+      };
+  
+      my @values = ();
+      for my $param (qw(uid gid mode destroy key)) {
+          push @values, $param, $self->{$param} if defined $self->{$param};
+      }
+  
+      $self->{sem} = Log::Log4perl::Util::Semaphore->new(
+          @values
+      );
+  
+          # Pass back the appender to be synchronized as a dependency
+          # to the configuration file parser
+      push @{$options{l4p_depends_on}}, $self->{appender};
+  
+          # Run our post_init method in the configurator after
+          # all appenders have been defined to make sure the
+          # appender we're synchronizing really exists
+      push @{$options{l4p_post_config_subs}}, sub { $self->post_init() };
+  
+      bless $self, $class;
+  }
+  
+  ###########################################
+  sub log {
+  ###########################################
+      my($self, %params) = @_;
+      
+      $self->{sem}->semlock();
+  
+      # Relay that to the SUPER class which needs to render the
+      # message according to the appender's layout, first.
+      $Log::Log4perl::caller_depth +=2;
+      $self->{app}->SUPER::log(\%params, 
+                               $params{log4p_category},
+                               $params{log4p_level});
+      $Log::Log4perl::caller_depth -=2;
+  
+      $self->{sem}->semunlock();
+  }
+  
+  ###########################################
+  sub post_init {
+  ###########################################
+      my($self) = @_;
+  
+      if(! exists $self->{appender}) {
+         die "No appender defined for " . __PACKAGE__;
+      }
+  
+      my $appenders = Log::Log4perl->appenders();
+      my $appender = Log::Log4perl->appenders()->{$self->{appender}};
+  
+      if(! defined $appender) {
+         die "Appender $self->{appender} not defined (yet) when " .
+             __PACKAGE__ . " needed it";
+      }
+  
+      $self->{app} = $appender;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::Synchronized - Synchronizing other appenders
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl qw(:easy);
+  
+      my $conf = qq(
+      log4perl.category                   = WARN, Syncer
+      
+          # File appender (unsynchronized)
+      log4perl.appender.Logfile           = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile.autoflush = 1
+      log4perl.appender.Logfile.filename  = test.log
+      log4perl.appender.Logfile.mode      = truncate
+      log4perl.appender.Logfile.layout    = SimpleLayout
+      
+          # Synchronizing appender, using the file appender above
+      log4perl.appender.Syncer            = Log::Log4perl::Appender::Synchronized
+      log4perl.appender.Syncer.appender   = Logfile
+  );
+  
+      Log::Log4perl->init(\$conf);
+      WARN("This message is guaranteed to be complete.");
+  
+  =head1 DESCRIPTION
+  
+  If multiple processes are using the same C<Log::Log4perl> appender 
+  without synchronization, overwrites might happen. A typical scenario
+  for this would be a process spawning children, each of which inherits
+  the parent's Log::Log4perl configuration.
+  
+  In most cases, you won't need an external synchronisation tool like
+  Log::Log4perl::Appender::Synchronized at all. Log4perl's file appender, 
+  Log::Log4perl::Appender::File, for example, provides the C<syswrite>
+  mechanism for making sure that even long log lines won't interleave.
+  Short log lines won't interleave anyway, because the operating system
+  makes sure the line gets written before a task switch occurs.
+  
+  In cases where you need additional synchronization, however, you can use
+  C<Log::Log4perl::Appender::Synchronized> as a gateway between your
+  loggers and your appenders. An appender itself, 
+  C<Log::Log4perl::Appender::Synchronized> just takes two additional
+  arguments:
+  
+  =over 4
+  
+  =item C<appender>
+  
+  Specifies the name of the appender it synchronizes access to. The
+  appender specified must be defined somewhere in the configuration file,
+  not necessarily before the definition of 
+  C<Log::Log4perl::Appender::Synchronized>.
+  
+  =item C<key>
+  
+  This optional argument specifies the key for the semaphore that
+  C<Log::Log4perl::Appender::Synchronized> uses internally to ensure
+  atomic operations. It defaults to C<_l4p>. If you define more than
+  one C<Log::Log4perl::Appender::Synchronized> appender, it is 
+  important to specify different keys for them, as otherwise every
+  new C<Log::Log4perl::Appender::Synchronized> appender will nuke
+  previously defined semaphores. The maximum key length is four
+  characters, longer keys will be truncated to 4 characters -- 
+  C<mylongkey1> and C<mylongkey2> are interpreted to be the same:
+  C<mylo> (thanks to David Viner E<lt>dviner@yahoo-inc.comE<gt> for
+  pointing this out).
+  
+  =back
+  
+  C<Log::Log4perl::Appender::Synchronized> uses Log::Log4perl::Util::Semaphore
+  internally to perform locking with semaphores provided by the
+  operating system used.
+  
+  =head2 Performance tips
+  
+  The C<Log::Log4perl::Appender::Synchronized> serializes access to a
+  protected resource globally, slowing down actions otherwise performed in
+  parallel.
+  
+  Unless specified otherwise, all instances of 
+  C<Log::Log4perl::Appender::Synchronized> objects in the system will
+  use the same global IPC key C<_l4p>.
+  
+  To control access to different appender instances, it often makes sense
+  to define different keys for different synchronizing appenders. In this
+  way, Log::Log4perl serializes access to each appender instance separately:
+  
+      log4perl.category                   = WARN, Syncer1, Syncer2
+      
+          # File appender 1 (unsynchronized)
+      log4perl.appender.Logfile1           = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile1.filename  = test1.log
+      log4perl.appender.Logfile1.layout    = SimpleLayout
+      
+          # File appender 2 (unsynchronized)
+      log4perl.appender.Logfile2           = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile2.filename  = test2.log
+      log4perl.appender.Logfile2.layout    = SimpleLayout
+      
+          # Synchronizing appender, using the file appender above
+      log4perl.appender.Syncer1            = Log::Log4perl::Appender::Synchronized
+      log4perl.appender.Syncer1.appender   = Logfile1
+      log4perl.appender.Syncer1.key        = l4p1
+  
+          # Synchronizing appender, using the file appender above
+      log4perl.appender.Syncer2            = Log::Log4perl::Appender::Synchronized
+      log4perl.appender.Syncer2.appender   = Logfile2
+      log4perl.appender.Syncer2.key        = l4p2
+  
+  Without the C<.key = l4p1> and C<.key = l4p2> lines, both Synchronized 
+  appenders would be using the default C<_l4p> key, causing unnecessary
+  serialization of output written to different files.
+  
+  =head2 Advanced configuration
+  
+  To configure the underlying Log::Log4perl::Util::Semaphore module in 
+  a different way than with the default settings provided by 
+  Log::Log4perl::Appender::Synchronized, use the following parameters:
+  
+      log4perl.appender.Syncer1.destroy  = 1
+      log4perl.appender.Syncer1.mode     = sub { 0775 }
+      log4perl.appender.Syncer1.uid      = hugo
+      log4perl.appender.Syncer1.gid      = 100
+  
+  Valid options are 
+  C<destroy> (Remove the semaphore on exit), 
+  C<mode> (permissions on the semaphore), 
+  C<uid> (uid or user name the semaphore is owned by), 
+  and
+  C<gid> (group id the semaphore is owned by), 
+  
+  Note that C<mode> is usually given in octal and therefore needs to be
+  specified as a perl sub {}, unless you want to calculate what 0755 means
+  in decimal.
+  
+  Changing ownership or group settings for a semaphore will obviously only
+  work if the current user ID owns the semaphore already or if the current
+  user is C<root>. The C<destroy> option causes the current process to 
+  destroy the semaphore on exit. Spawned children of the process won't
+  inherit this behavior.
+  
+  =head2 Semaphore user and group IDs with mod_perl
+  
+  Setting user and group IDs is especially important when the Synchronized
+  appender is used with mod_perl. If Log4perl gets initialized by a startup
+  handler, which runs as root, and not as the user who will later use
+  the semaphore, the settings for uid, gid, and mode can help establish 
+  matching semaphore ownership and access rights.
+  
+  =head1 DEVELOPMENT NOTES
+  
+  C<Log::Log4perl::Appender::Synchronized> is a I<composite> appender.
+  Unlike other appenders, it doesn't log any messages, it just
+  passes them on to its attached sub-appender.
+  For this reason, it doesn't need a layout (contrary to regular appenders).
+  If it defines none, messages are passed on unaltered.
+  
+  Custom filters are also applied to the composite appender only.
+  They are I<not> applied to the sub-appender. Same applies to appender
+  thresholds. This behaviour might change in the future.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_SYNCHRONIZED
+
+$fatpacked{"Log/Log4perl/Appender/TestArrayBuffer.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_TESTARRAYBUFFER';
+  ##################################################
+  package Log::Log4perl::Appender::TestArrayBuffer;
+  ##################################################
+  # Like Log::Log4perl::Appender::TestBuffer, just with 
+  # array capability.
+  # For testing only.
+  ##################################################
+  
+  use base qw( Log::Log4perl::Appender::TestBuffer );
+  
+  ##################################################
+  sub log {   
+  ##################################################
+      my $self = shift;
+      my %params = @_;
+  
+      $self->{buffer} .= "[$params{level}]: " if $LOG_PRIORITY;
+  
+      if(ref($params{message}) eq "ARRAY") {
+          $self->{buffer} .= "[" . join(',', @{$params{message}}) . "]";
+      } else {
+          $self->{buffer} .= $params{message};
+      }
+  }
+  
+  1;
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::TestArrayBuffer - Subclass of Appender::TestBuffer
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Appender::TestArrayBuffer;
+  
+    my $appender = Log::Log4perl::Appender::TestArrayBuffer->new( 
+        name      => 'buffer',
+    );
+  
+        # Append to the buffer
+    $appender->log( 
+        level =  > 'alert', 
+        message => ['first', 'second', 'third'],
+    );
+  
+        # Retrieve the result
+    my $result = $appender->buffer();
+  
+        # Reset the buffer to the empty string
+    $appender->reset();
+  
+  =head1 DESCRIPTION
+  
+  This class is a subclass of Log::Log4perl::Appender::TestBuffer and
+  just provides message array refs as an additional feature. 
+  
+  Just like Log::Log4perl::Appender::TestBuffer, 
+  Log::Log4perl::Appender::TestArrayBuffer is used for internal
+  Log::Log4perl testing only.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_TESTARRAYBUFFER
+
+$fatpacked{"Log/Log4perl/Appender/TestBuffer.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_TESTBUFFER';
+  package Log::Log4perl::Appender::TestBuffer;
+  our @ISA = qw(Log::Log4perl::Appender);
+  
+  ##################################################
+  # Log dispatcher writing to a string buffer
+  # For testing.
+  # This is like having a Log::Log4perl::Appender::TestBuffer
+  ##################################################
+  
+  our %POPULATION       = ();
+  our $LOG_PRIORITY     = 0;
+  our $DESTROY_MESSAGES = "";
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my $proto  = shift;
+      my $class  = ref $proto || $proto;
+      my %params = @_;
+  
+      my $self = {
+          name      => "unknown name",
+          %params,
+      };
+  
+      bless $self, $class;
+  
+      $self->{stderr} = exists $params{stderr} ? $params{stderr} : 1;
+      $self->{buffer} = "";
+  
+      $POPULATION{$self->{name}} = $self;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub log {   
+  ##################################################
+      my $self = shift;
+      my %params = @_;
+  
+      if( !defined $params{level} ) {
+          die "No level defined in log() call of " . __PACKAGE__;
+      }
+      $self->{buffer} .= "[$params{level}]: " if $LOG_PRIORITY;
+      $self->{buffer} .= $params{message};
+  }
+  
+  ###########################################
+  sub clear {
+  ###########################################
+      my($self) = @_;
+  
+      $self->{buffer} = "";
+  }
+  
+  ##################################################
+  sub buffer {   
+  ##################################################
+      my($self, $new) = @_;
+  
+      if(defined $new) {
+          $self->{buffer} = $new;
+      }
+  
+      return $self->{buffer};
+  }
+  
+  ##################################################
+  sub reset {   
+  ##################################################
+      my($self) = @_;
+  
+      %POPULATION = ();
+      $self->{buffer} = "";
+  }
+  
+  ##################################################
+  sub DESTROY {   
+  ##################################################
+      my($self) = @_;
+  
+      $DESTROY_MESSAGES .= __PACKAGE__ . " destroyed";
+  
+      #this delete() along with &reset() above was causing
+      #Attempt to free unreferenced scalar at 
+      #blib/lib/Log/Log4perl/TestBuffer.pm line 69.
+      #delete $POPULATION{$self->name};
+  }
+  
+  ##################################################
+  sub by_name {   
+  ##################################################
+      my($self, $name) = @_;
+  
+      # Return a TestBuffer by appender name. This is useful if
+      # test buffers are created behind our back (e.g. via the
+      # Log4perl config file) and later on we want to 
+      # retrieve an instance to query its content.
+  
+      die "No name given"  unless defined $name;
+  
+      return $POPULATION{$name};
+  
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::TestBuffer - Appender class for testing
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Appender::TestBuffer;
+  
+    my $appender = Log::Log4perl::Appender::TestBuffer->new( 
+        name      => 'mybuffer',
+    );
+  
+        # Append to the buffer
+    $appender->log( 
+        level =  > 'alert', 
+        message => "I'm searching the city for sci-fi wasabi\n" 
+    );
+  
+        # Retrieve the result
+    my $result = $appender->buffer();
+  
+        # Clear the buffer to the empty string
+    $appender->clear();
+  
+  =head1 DESCRIPTION
+  
+  This class is used for internal testing of C<Log::Log4perl>. It
+  is a C<Log::Dispatch>-style appender, which writes to a buffer 
+  in memory, from where actual results can be easily retrieved later
+  to compare with expected results.
+  
+  Every buffer created is stored in an internal global array, and can
+  later be referenced by name:
+  
+      my $app = Log::Log4perl::Appender::TestBuffer->by_name("mybuffer");
+  
+  retrieves the appender object of a previously created buffer "mybuffer".
+  To reset this global array and have it forget all of the previously 
+  created testbuffer appenders (external references to those appenders
+  nonwithstanding), use
+  
+      Log::Log4perl::Appender::TestBuffer->reset();
+  
+  =head1 SEE ALSO
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_TESTBUFFER
+
+$fatpacked{"Log/Log4perl/Appender/TestFileCreeper.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_APPENDER_TESTFILECREEPER';
+  ##################################################
+  package Log::Log4perl::Appender::TestFileCreeper;
+  ##################################################
+  # Test appender, intentionally slow. It writes 
+  # out one byte at a time to provoke sync errors.
+  # Don't use it, unless for testing.
+  ##################################################
+  
+  use warnings;
+  use strict;
+  
+  use Log::Log4perl::Appender::File;
+  
+  our @ISA = qw(Log::Log4perl::Appender::File);
+  
+  ##################################################
+  sub log {
+  ##################################################
+      my($self, %params) = @_;
+  
+      my $fh = $self->{fh};
+  
+      for (split //, $params{message}) {
+          print $fh $_;
+          my $oldfh = select $self->{fh}; 
+          $| = 1; 
+          select $oldfh;
+      }
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Appender::TestFileCreeper - Intentionally slow test appender
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl::Appender::TestFileCreeper;
+  
+      my $app = Log::Log4perl::Appender::TestFileCreeper->new(
+        filename  => 'file.log',
+        mode      => 'append',
+      );
+  
+      $file->log(message => "Log me\n");
+  
+  =head1 DESCRIPTION
+  
+  This is a test appender, and it is intentionally slow. It writes 
+  out one byte at a time to provoke sync errors. Don't use it, unless 
+  for testing.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_APPENDER_TESTFILECREEPER
+
+$fatpacked{"Log/Log4perl/Catalyst.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_CATALYST';
+  package Log::Log4perl::Catalyst;
+  
+  use strict;
+  use Log::Log4perl qw(:levels);
+  use Log::Log4perl::Logger;
+  
+  our $VERSION                  = '1.53';
+  our $CATALYST_APPENDER_SUFFIX = "catalyst_buffer";
+  our $LOG_LEVEL_ADJUSTMENT     = 1;
+  
+  init();
+  
+  ##################################################
+  sub init {
+  ##################################################
+  
+      my @levels = qw[ trace debug info warn error fatal ];
+  
+      Log::Log4perl->wrapper_register(__PACKAGE__);
+  
+      for my $level (@levels) {
+          no strict 'refs';
+  
+          *{$level} = sub {
+              my ( $self, @message ) = @_;
+  
+              local $Log::Log4perl::caller_depth =
+                    $Log::Log4perl::caller_depth +
+                       $LOG_LEVEL_ADJUSTMENT;
+  
+              my $logger = Log::Log4perl->get_logger();
+              $logger->$level(@message);
+              return 1;
+          };
+  
+          *{"is_$level"} = sub {
+              my ( $self, @message ) = @_;
+  
+              local $Log::Log4perl::caller_depth =
+                    $Log::Log4perl::caller_depth +
+                       $LOG_LEVEL_ADJUSTMENT;
+  
+              my $logger = Log::Log4perl->get_logger();
+              my $func   = "is_" . $level;
+              return $logger->$func;
+          };
+      }
+  }
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, $config, %options) = @_;
+  
+      my $self = {
+          autoflush   => 0,
+          abort       => 0,
+          watch_delay => 0,
+          %options,
+      };
+  
+      if( !Log::Log4perl->initialized() ) {
+          if( defined $config ) {
+              if( $self->{watch_delay} ) {
+                  Log::Log4perl::init_and_watch( $config, $self->{watch_delay} );
+              } else {
+                  Log::Log4perl::init( $config );
+              }
+          } else {
+               Log::Log4perl->easy_init({
+                   level  => $DEBUG,
+                   layout => "[%d] [catalyst] [%p] %m%n",
+               });
+          }
+      }
+  
+        # Unless we have autoflush, Catalyst likes to buffer all messages
+        # until it calls flush(). This is somewhat unusual for Log4perl,
+        # but we just put an army of buffer appenders in front of all 
+        # appenders defined in the system.
+  
+      if(! $options{autoflush} ) {
+          for my $appender (values %Log::Log4perl::Logger::APPENDER_BY_NAME) {
+              next if $appender->{name} =~ /_$CATALYST_APPENDER_SUFFIX$/;
+  
+              # put a buffering appender in front of every appender
+              # defined so far
+  
+              my $buf_app_name = "$appender->{name}_$CATALYST_APPENDER_SUFFIX";
+  
+              my $buf_app = Log::Log4perl::Appender->new(
+                  'Log::Log4perl::Appender::Buffer',
+                  name       => $buf_app_name,
+                  appender   => $appender->{name},
+                  trigger    => sub { 0 },    # only trigger on explicit flush()
+              );
+  
+              Log::Log4perl->add_appender($buf_app);
+              $buf_app->post_init();
+              $buf_app->composite(1);
+  
+              # Point all loggers currently connected to the previously defined
+              # appenders to the chained buffer appenders instead.
+  
+              foreach my $logger (
+                             values %$Log::Log4perl::Logger::LOGGERS_BY_NAME){
+                  if(defined $logger->remove_appender( $appender->{name}, 0, 1)) {
+                      $logger->add_appender( $buf_app );
+                  }
+              }
+          }
+      }
+  
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub _flush {
+  ##################################################
+      my ($self) = @_;
+  
+      for my $appender (values %Log::Log4perl::Logger::APPENDER_BY_NAME) {
+          next if $appender->{name} !~ /_$CATALYST_APPENDER_SUFFIX$/;
+  
+          if ($self->abort) {
+              $appender->{appender}{buffer} = [];
+          }
+          else {
+              $appender->flush();
+          }
+      }
+  
+      $self->abort(undef);
+  }
+  
+  ##################################################
+  sub abort {
+  ##################################################
+      my $self = shift;
+  
+      $self->{abort} = $_[0] if @_;
+  
+      return $self->{abort};
+  }
+  
+  ##################################################
+  sub levels {
+  ##################################################
+        # stub function, until we have something meaningful
+      return 0;
+  }
+  
+  ##################################################
+  sub enable {
+  ##################################################
+        # stub function, until we have something meaningful
+      return 0;
+  }
+  
+  ##################################################
+  sub disable {
+  ##################################################
+        # stub function, until we have something meaningful
+      return 0;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Catalyst - Log::Log4perl Catalyst Module
+  
+  =head1 SYNOPSIS
+  
+  In your main Catalyst application module:
+  
+    use Log::Log4perl::Catalyst;
+  
+      # Either make Log4perl act like the Catalyst default logger:
+    __PACKAGE__->log(Log::Log4perl::Catalyst->new());
+  
+      # or use a Log4perl configuration file, utilizing the full 
+      # functionality of Log4perl
+    __PACKAGE__->log(Log::Log4perl::Catalyst->new('l4p.conf'));
+    
+  ... and then sprinkle logging statements all over any code executed
+  by Catalyst:
+  
+      $c->log->debug("This is using log4perl!");
+  
+  =head1 DESCRIPTION
+  
+  This module provides Log4perl functions to Catalyst applications. It was
+  inspired by Catalyst::Log::Log4perl on CPAN, but has been completely 
+  rewritten and uses a different approach to unite Catalyst and Log4perl.
+  
+  Log4perl provides loggers, usually associated with the current
+  package, which can then be remote-controlled by a central
+  configuration. This means that if you have a controller function like
+  
+      package MyApp::Controller::User;
+  
+      sub add : Chained('base'): PathPart('add'): Args(0) {
+          my ( $self, $c ) = @_;
+  
+          $c->log->info("Adding a user");
+          # ...
+      }
+  
+  Level-based control is available via the following methods:
+  
+     $c->log->debug("Reading configuration");
+     $c->log->info("Adding a user");
+     $c->log->warn("Can't read configuration ($!)");
+     $c->log->error("Can't add user ", $user);
+     $c->log->fatal("Database down, aborting request");
+  
+  But that's not all, Log4perl is much more powerful.
+  
+  The logging statement can be suppressed or activated based on a Log4perl
+  file that looks like
+  
+        # All MyApp loggers opened up for DEBUG and above
+      log4perl.logger.MyApp = DEBUG, Screen
+      # ...
+  
+  or 
+  
+        # All loggers block messages below INFO
+      log4perl.logger=INFO, Screen
+      # ...
+  
+  respectively. See the Log4perl manpage on how to perform fine-grained 
+  log-level and location filtering, and how to forward messages not only
+  to the screen or to log files, but also to databases, email appenders,
+  and much more.
+  
+  Also, you can change the message layout. For example if you want
+  to know where a particular statement was logged, turn on file names and 
+  line numbers:
+  
+      # Log4perl configuration file
+      # ...
+      log4perl.appender.Screen.layout.ConversionPattern = \
+            %F{1}-%L: %p %m%n
+  
+  Messages will then look like
+  
+      MyApp.pm-1869: INFO Saving user profile for user "wonko"
+  
+  Or want to log a request's IP address with every log statement? No problem 
+  with Log4perl, just call
+  
+      Log::Log4perl::MDC->put( "ip", $c->req->address() );
+  
+  at the beginning of the request cycle and use
+  
+      # Log4perl configuration file
+      # ...
+      log4perl.appender.Screen.layout.ConversionPattern = \
+            [%d]-%X{ip} %F{1}-%L: %p %m%n
+  
+  as a Log4perl layout. Messages will look like
+  
+      [2010/02/22 23:25:55]-123.122.108.10 MyApp.pm-1953: INFO Reading profile for user "wonko"
+  
+  Again, check the Log4perl manual page, there's a plethora of configuration
+  options.
+  
+  =head1 METHODS
+  
+  =over 4
+  
+  =item new($config, [%options])
+  
+  If called without parameters, new() initializes Log4perl in a way 
+  so that messages are logged similarly to Catalyst's default logging
+  mechanism. If you provide a configuration, either the name of a configuration
+  file or a reference to a scalar string containing the configuration, it
+  will call Log4perl with these parameters.
+  
+  The second (optional) parameter is a list of key/value pairs:
+  
+    'autoflush'   =>  1   # Log without buffering ('abort' not supported)
+    'watch_delay' => 30   # If set, use L<Log::Log4perl>'s init_and_watch
+  
+  =item _flush()
+  
+  Flushes the cache.
+  
+  =item abort($abort)
+  
+  Clears the logging system's internal buffers without logging anything.
+  
+  =back
+  
+  =head2 Using :easy Macros with Catalyst
+  
+  If you're tired of typing
+  
+      $c->log->debug("...");
+  
+  and would prefer to use Log4perl's convenient :easy mode macros like
+  
+      DEBUG "...";
+  
+  then just pull those macros in via Log::Log4perl's :easy mode and start
+  cranking:
+  
+      use Log::Log4perl qw(:easy);
+  
+        # ... use macros later on
+      sub base :Chained('/') :PathPart('apples') :CaptureArgs(0) {
+          my ( $self, $c ) = @_;
+  
+          DEBUG "Handling apples";
+      }
+  
+  Note the difference between Log4perl's initialization in Catalyst, which
+  uses the Catalyst-specific Log::Log4perl::Catalyst module (top of this
+  page), and making use of Log4perl's loggers with the standard 
+  Log::Log4perl loggers and macros. While initialization requires Log4perl
+  to perform dark magic to conform to Catalyst's different logging strategy,
+  obtaining Log4perl's logger objects or calling its macros are unchanged.
+  
+  Instead of using Catalyst's way of referencing the "context" object $c to 
+  obtain logger references via its log() method, you can just as well use 
+  Log4perl's get_logger() or macros to access Log4perl's logger singletons. 
+  The result is the same.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_CATALYST
+
+$fatpacked{"Log/Log4perl/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_CONFIG';
+  ##################################################
+  package Log::Log4perl::Config;
+  ##################################################
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Logger;
+  use Log::Log4perl::Level;
+  use Log::Log4perl::Config::PropertyConfigurator;
+  use Log::Log4perl::JavaMap;
+  use Log::Log4perl::Filter;
+  use Log::Log4perl::Filter::Boolean;
+  use Log::Log4perl::Config::Watch;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  our $CONFIG_FILE_READS       = 0;
+  our $CONFIG_INTEGRITY_CHECK  = 1;
+  our $CONFIG_INTEGRITY_ERROR  = undef;
+  
+  our $WATCHER;
+  our $DEFAULT_WATCH_DELAY = 60; # seconds
+  our $OPTS = {};
+  our $OLD_CONFIG;
+  our $LOGGERS_DEFINED;
+  our $UTF8 = 0;
+  
+  ###########################################
+  sub init {
+  ###########################################
+      Log::Log4perl::Logger->reset();
+  
+      undef $WATCHER; # just in case there's a one left over (e.g. test cases)
+  
+      return _init(@_);
+  }
+  
+  ###########################################
+  sub utf8 {
+  ###########################################
+      my( $class, $flag ) = @_;
+  
+      $UTF8 = $flag if defined $flag;
+  
+      return $UTF8;
+  }
+  
+  ###########################################
+  sub watcher {
+  ###########################################
+      return $WATCHER;
+  }
+  
+  ###########################################
+  sub init_and_watch {
+  ###########################################
+      my ($class, $config, $delay, $opts) = @_;
+          # delay can be a signal name - in this case we're gonna
+          # set up a signal handler.
+  
+      if(defined $WATCHER) {
+          $config = $WATCHER->file();
+          if(defined $Log::Log4perl::Config::Watch::SIGNAL_CAUGHT) {
+              $delay  = $WATCHER->signal();
+          } else {
+              $delay  = $WATCHER->check_interval();
+          }
+      }
+  
+      print "init_and_watch ($config-$delay). Resetting.\n" if _INTERNAL_DEBUG;
+  
+      Log::Log4perl::Logger->reset();
+  
+      defined ($delay) or $delay = $DEFAULT_WATCH_DELAY;  
+  
+      if (ref $config) {
+          die "Log4perl can only watch a file, not a string of " .
+              "configuration information";
+      }elsif ($config =~ m!^(https?|ftp|wais|gopher|file):!){
+          die "Log4perl can only watch a file, not a url like $config";
+      }
+  
+      if($delay =~ /\D/) {
+          $WATCHER = Log::Log4perl::Config::Watch->new(
+                            file         => $config,
+                            signal       => $delay,
+                            l4p_internal => 1,
+                     );
+      } else {
+          $WATCHER = Log::Log4perl::Config::Watch->new(
+                            file           => $config,
+                            check_interval => $delay,
+                            l4p_internal   => 1,
+                     );
+      }
+  
+      if(defined $opts) {
+          die "Parameter $opts needs to be a hash ref" if ref($opts) ne "HASH";
+          $OPTS = $opts;
+      }
+  
+      eval { _init($class, $config); };
+  
+      if($@) {
+          die "$@" unless defined $OLD_CONFIG;
+              # Call _init with a pre-parsed config to go back to old setting
+          _init($class, undef, $OLD_CONFIG);
+          warn "Loading new config failed, reverted to old one\n";
+      }
+  }
+  
+  ##################################################
+  sub _init {
+  ##################################################
+      my($class, $config, $data) = @_;
+  
+      my %additivity = ();
+  
+      $LOGGERS_DEFINED = 0;
+  
+      print "Calling _init\n" if _INTERNAL_DEBUG;
+  
+      #keep track so we don't create the same one twice
+      my %appenders_created = ();
+  
+      #some appenders need to run certain subroutines right at the
+      #end of the configuration phase, when all settings are in place.
+      my @post_config_subs  = ();
+  
+      # This logic is probably suited to win an obfuscated programming
+      # contest. It desperately needs to be rewritten.
+      # Basically, it works like this:
+      # config_read() reads the entire config file into a hash of hashes:
+      #     log4j.logger.foo.bar.baz: WARN, A1
+      # gets transformed into
+      #     $data->{log4j}->{logger}->{foo}->{bar}->{baz} = "WARN, A1";
+      # The code below creates the necessary loggers, sets the appenders
+      # and the layouts etc.
+      # In order to transform parts of this tree back into identifiers
+      # (like "foo.bar.baz"), we're using the leaf_paths functions below.
+      # Pretty scary. But it allows the lines of the config file to be
+      # in *arbitrary* order.
+  
+      $data = config_read($config) unless defined $data;
+      
+      if(_INTERNAL_DEBUG) {
+          require Data::Dumper;
+          Data::Dumper->import();
+          print Data::Dumper::Dumper($data);
+      }
+  
+      my @loggers      = ();
+      my %filter_names = ();
+  
+      my $system_wide_threshold;
+  
+        # Autocorrect the rootlogger/rootLogger typo
+      if(exists $data->{rootlogger} and 
+         ! exists $data->{rootLogger}) {
+           $data->{rootLogger} = $data->{rootlogger};
+      }
+  
+          # Find all logger definitions in the conf file. Start
+          # with root loggers.
+      if(exists $data->{rootLogger}) {
+          $LOGGERS_DEFINED++;
+          push @loggers, ["", $data->{rootLogger}->{value}];
+      }
+          
+          # Check if we've got a system-wide threshold setting
+      if(exists $data->{threshold}) {
+              # yes, we do.
+          $system_wide_threshold = $data->{threshold}->{value};
+      }
+  
+      if (exists $data->{oneMessagePerAppender}){
+                      $Log::Log4perl::one_message_per_appender = 
+                          $data->{oneMessagePerAppender}->{value};
+      }
+  
+      if(exists $data->{utcDateTimes}) {
+          require Log::Log4perl::DateFormat;
+            # Need to split this up in two lines, or CVS will
+            # mess it up.
+          $Log::Log4perl::DateFormat::GMTIME = 
+            !!$data->{utcDateTimes}->{value};
+      }
+  
+          # Boolean filters 
+      my %boolean_filters = ();
+  
+          # Continue with lower level loggers. Both 'logger' and 'category'
+          # are valid keywords. Also 'additivity' is one, having a logger
+          # attached. We'll differentiate between the two further down.
+      for my $key (qw(logger category additivity PatternLayout filter)) {
+  
+          if(exists $data->{$key}) {
+  
+              for my $path (@{leaf_paths($data->{$key})}) {
+  
+                  print "Path before: @$path\n" if _INTERNAL_DEBUG;
+  
+                  my $value = boolean_to_perlish(pop @$path);
+  
+                  pop @$path; # Drop the 'value' keyword part
+  
+                  if($key eq "additivity") {
+                      # This isn't a logger but an additivity setting.
+                      # Save it in a hash under the logger's name for later.
+                      $additivity{join('.', @$path)} = $value;
+  
+                      #a global user-defined conversion specifier (cspec)
+                  }elsif ($key eq "PatternLayout"){
+                      &add_global_cspec(@$path[-1], $value);
+  
+                  }elsif ($key eq "filter"){
+                      print "Found entry @$path\n" if _INTERNAL_DEBUG;
+                      $filter_names{@$path[0]}++;
+                  } else {
+  
+                      if (ref($value) eq "ARRAY") {
+                        die "Multiple definitions of logger ".join('.',@$path)." in log4perl config";
+                      }
+  
+                      # This is a regular logger
+                      $LOGGERS_DEFINED++;
+                      push @loggers, [join('.', @$path), $value];
+                  }
+              }
+          }
+      }
+  
+          # Now go over all filters found by name
+      for my $filter_name (sort keys %filter_names) {
+  
+          print "Checking filter $filter_name\n" if _INTERNAL_DEBUG;
+  
+              # The boolean filter needs all other filters already
+              # initialized, defer its initialization
+          if($data->{filter}->{$filter_name}->{value} eq
+             "Log::Log4perl::Filter::Boolean") {
+              print "Boolean filter ($filter_name)\n" if _INTERNAL_DEBUG;
+              $boolean_filters{$filter_name}++;
+              next;
+          }
+  
+          my $type = $data->{filter}->{$filter_name}->{value};
+          if(my $code = compile_if_perl($type)) {
+              $type = $code;
+          }
+          
+          print "Filter $filter_name is of type $type\n" if _INTERNAL_DEBUG;
+  
+          my $filter;
+  
+          if(ref($type) eq "CODE") {
+                  # Subroutine - map into generic Log::Log4perl::Filter class
+              $filter = Log::Log4perl::Filter->new($filter_name, $type);
+          } else {
+                  # Filter class
+                  die "Filter class '$type' doesn't exist" unless
+                       Log::Log4perl::Util::module_available($type);
+                  eval "require $type" or die "Require of $type failed ($!)";
+  
+                  # Invoke with all defined parameter
+                  # key/values (except the key 'value' which is the entry 
+                  # for the class)
+              $filter = $type->new(name => $filter_name,
+                  map { $_ => $data->{filter}->{$filter_name}->{$_}->{value} } 
+                  grep { $_ ne "value" } 
+                  sort keys %{$data->{filter}->{$filter_name}});
+          }
+              # Register filter with the global filter registry
+          $filter->register();
+      }
+  
+          # Initialize boolean filters (they need the other filters to be
+          # initialized to be able to compile their logic)
+      for my $name (sort keys %boolean_filters) {
+          my $logic = $data->{filter}->{$name}->{logic}->{value};
+          die "No logic defined for boolean filter $name" unless defined $logic;
+          my $filter = Log::Log4perl::Filter::Boolean->new(
+                           name  => $name, 
+                           logic => $logic);
+          $filter->register();
+      }
+  
+      for (@loggers) {
+          my($name, $value) = @$_;
+  
+          my $logger = Log::Log4perl::Logger->get_logger($name);
+          my ($level, @appnames) = split /\s*,\s*/, $value;
+  
+          $logger->level(
+              Log::Log4perl::Level::to_priority($level),
+              'dont_reset_all');
+  
+          if(exists $additivity{$name}) {
+              $logger->additivity($additivity{$name}, 1);
+          }
+  
+          for my $appname (@appnames) {
+  
+              my $appender = create_appender_instance(
+                  $data, $appname, \%appenders_created, \@post_config_subs,
+                  $system_wide_threshold);
+  
+              $logger->add_appender($appender, 'dont_reset_all');
+              set_appender_by_name($appname, $appender, \%appenders_created);
+          }
+      }
+  
+      #run post_config subs
+      for(@post_config_subs) {
+          $_->();
+      }
+  
+      #now we're done, set up all the output methods (e.g. ->debug('...'))
+      Log::Log4perl::Logger::reset_all_output_methods();
+  
+      #Run a sanity test on the config not disabled
+      if($Log::Log4perl::Config::CONFIG_INTEGRITY_CHECK and
+         !config_is_sane()) {
+          warn "Log::Log4perl configuration looks suspicious: ",
+               "$CONFIG_INTEGRITY_ERROR";
+      }
+  
+          # Successful init(), save config for later
+      $OLD_CONFIG = $data;
+  
+      $Log::Log4perl::Logger::INITIALIZED = 1;
+  }
+  
+  ##################################################
+  sub config_is_sane {
+  ##################################################
+      if(! $LOGGERS_DEFINED) {
+          $CONFIG_INTEGRITY_ERROR = "No loggers defined";
+          return 0;
+      }    
+  
+      if(scalar keys %Log::Log4perl::Logger::APPENDER_BY_NAME == 0) {
+          $CONFIG_INTEGRITY_ERROR = "No appenders defined";
+          return 0;
+      }
+  
+      return 1;
+  }
+  
+  ##################################################
+  sub create_appender_instance {
+  ##################################################
+      my($data, $appname, $appenders_created, $post_config_subs,
+         $system_wide_threshold) = @_;
+  
+      my $appenderclass = get_appender_by_name(
+              $data, $appname, $appenders_created);
+  
+      print "appenderclass=$appenderclass\n" if _INTERNAL_DEBUG;
+  
+      my $appender;
+  
+      if (ref $appenderclass) {
+          $appender = $appenderclass;
+      } else {
+          die "ERROR: you didn't tell me how to " .
+              "implement your appender '$appname'"
+                  unless $appenderclass;
+  
+          if (Log::Log4perl::JavaMap::translate($appenderclass)){
+              # It's Java. Try to map
+              print "Trying to map Java $appname\n" if _INTERNAL_DEBUG;
+              $appender = Log::Log4perl::JavaMap::get($appname, 
+                                          $data->{appender}->{$appname});
+  
+          }else{
+              # It's Perl
+              my @params = grep { $_ ne "layout" and
+                                  $_ ne "value"
+                                } sort keys %{$data->{appender}->{$appname}};
+      
+              my %param = ();
+              foreach my $pname (@params){
+                  #this could be simple value like 
+                  #{appender}{myAppender}{file}{value} => 'log.txt'
+                  #or a structure like
+                  #{appender}{myAppender}{login} => 
+                  #                         { name => {value => 'bob'},
+                  #                           pwd  => {value => 'xxx'},
+                  #                         }
+                  #in the latter case we send a hashref to the appender
+                  if (exists $data->{appender}{$appname}
+                                    {$pname}{value}      ) {
+                      $param{$pname} = $data->{appender}{$appname}
+                                              {$pname}{value};
+                  }else{
+                      $param{$pname} = {map {$_ => $data->{appender}
+                                                          {$appname}
+                                                          {$pname}
+                                                          {$_}
+                                                          {value}} 
+                                       sort keys %{$data->{appender}
+                                                     {$appname}
+                                                     {$pname}}
+                                       };
+                  }
+      
+              }
+  
+              my $depends_on = [];
+      
+              $appender = Log::Log4perl::Appender->new(
+                  $appenderclass, 
+                  name                 => $appname,
+                  l4p_post_config_subs => $post_config_subs,
+                  l4p_depends_on       => $depends_on,
+                  %param,
+              ); 
+      
+              for my $dependency (@$depends_on) {
+                  # If this appender indicates that it needs other appenders
+                  # to exist (e.g. because it's a composite appender that
+                  # relays messages on to its appender-refs) then we're 
+                  # creating their instances here. Reason for this is that 
+                  # these appenders are not attached to any logger and are
+                  # therefore missed by the config parser which goes through
+                  # the defined loggers and just creates *their* attached
+                  # appenders.
+                  $appender->composite(1);
+                  next if exists $appenders_created->{$appname};
+                  my $app = create_appender_instance($data, $dependency, 
+                               $appenders_created,
+                               $post_config_subs);
+                  # If the appender appended a subroutine to $post_config_subs
+                  # (a reference to an array of subroutines)
+                  # here, the configuration parser will later execute this
+                  # method. This is used by a composite appender which needs
+                  # to make sure all of its appender-refs are available when
+                  # all configuration settings are done.
+  
+                  # Smuggle this sub-appender into the hash of known appenders 
+                  # without attaching it to any logger directly.
+                  $
+                  Log::Log4perl::Logger::APPENDER_BY_NAME{$dependency} = $app;
+              }
+          }
+      }
+  
+      add_layout_by_name($data, $appender, $appname) unless
+          $appender->composite();
+  
+         # Check for appender thresholds
+      my $threshold = 
+         $data->{appender}->{$appname}->{Threshold}->{value};
+  
+      if(defined $system_wide_threshold and
+         !defined $threshold) {
+          $threshold = $system_wide_threshold;
+      }
+  
+      if(defined $threshold) {
+              # Need to split into two lines because of CVS
+          $appender->threshold($
+              Log::Log4perl::Level::PRIORITY{$threshold});
+      }
+  
+          # Check for custom filters attached to the appender
+      my $filtername = 
+         $data->{appender}->{$appname}->{Filter}->{value};
+      if(defined $filtername) {
+              # Need to split into two lines because of CVS
+          my $filter = Log::Log4perl::Filter::by_name($filtername);
+          die "Filter $filtername doesn't exist" unless defined $filter;
+          $appender->filter($filter);
+      }
+  
+      if(defined $system_wide_threshold and
+         defined $threshold and
+         $
+          Log::Log4perl::Level::PRIORITY{$system_wide_threshold} > 
+         $
+           Log::Log4perl::Level::PRIORITY{$threshold}
+        ) {
+          $appender->threshold($
+              Log::Log4perl::Level::PRIORITY{$system_wide_threshold});
+      }
+  
+      if(exists $data->{appender}->{$appname}->{threshold}) {
+          die "invalid keyword 'threshold' - perhaps you meant 'Threshold'?";
+      }
+  
+      return $appender;
+  }
+  
+  ###########################################
+  sub add_layout_by_name {
+  ###########################################
+      my($data, $appender, $appender_name) = @_;
+  
+      my $layout_class = $data->{appender}->{$appender_name}->{layout}->{value};
+  
+      die "Layout not specified for appender $appender_name" unless $layout_class;
+  
+      $layout_class =~ s/org.apache.log4j./Log::Log4perl::Layout::/;
+  
+          # Check if we have this layout class
+      if(!Log::Log4perl::Util::module_available($layout_class)) {
+          if(Log::Log4perl::Util::module_available(
+             "Log::Log4perl::Layout::$layout_class")) {
+              # Someone used the layout shortcut, use the fully qualified
+              # module name instead.
+              $layout_class = "Log::Log4perl::Layout::$layout_class";
+          } else {
+              die "ERROR: trying to set layout for $appender_name to " .
+                  "'$layout_class' failed ($@)";
+          }
+      }
+      Log::Log4perl::Util::module_available($layout_class) or
+          die "Require to $layout_class failed ($@)";
+  
+      $appender->layout($layout_class->new(
+          $data->{appender}->{$appender_name}->{layout},
+          ));
+  }
+  
+  ###########################################
+  sub get_appender_by_name {
+  ###########################################
+      my($data, $name, $appenders_created) = @_;
+  
+      if (exists $appenders_created->{$name}) {
+          return $appenders_created->{$name};
+      } else {
+          return $data->{appender}->{$name}->{value};
+      }
+  }
+  
+  ###########################################
+  sub set_appender_by_name {
+  ###########################################
+  # keep track of appenders we've already created
+  ###########################################
+      my($appname, $appender, $appenders_created) = @_;
+  
+      $appenders_created->{$appname} ||= $appender;
+  }
+  
+  ##################################################
+  sub add_global_cspec {
+  ##################################################
+  # the config file said
+  # log4j.PatternLayout.cspec.Z=sub {return $$*2}
+  ##################################################
+      my ($letter, $perlcode) = @_;
+  
+      die "error: only single letters allowed in log4j.PatternLayout.cspec.$letter"
+          unless ($letter =~ /^[a-zA-Z]$/);
+  
+      Log::Log4perl::Layout::PatternLayout::add_global_cspec($letter, $perlcode);
+  }
+  
+  my $LWP_USER_AGENT;
+  sub set_LWP_UserAgent
+  {
+      $LWP_USER_AGENT = shift;
+  }
+  
+  
+  ###########################################
+  sub config_read {
+  ###########################################
+  # Read the lib4j configuration and store the
+  # values into a nested hash structure.
+  ###########################################
+      my($config) = @_;
+  
+      die "Configuration not defined" unless defined $config;
+  
+      my @text;
+      my $parser;
+  
+      $CONFIG_FILE_READS++;  # Count for statistical purposes
+  
+      my $base_configurator = Log::Log4perl::Config::BaseConfigurator->new(
+          utf8 => $UTF8,
+      );
+  
+      my $data = {};
+  
+      if (ref($config) eq 'HASH') {   # convert the hashref into a list 
+                                      # of name/value pairs
+          print "Reading config from hash\n" if _INTERNAL_DEBUG;
+          @text = ();
+          for my $key ( sort keys %$config ) {
+              if( ref( $config->{$key} ) eq "CODE" ) {
+                  $config->{$key} = $config->{$key}->();
+              }
+              push @text, $key . '=' . $config->{$key} . "\n";
+          }
+      } elsif (ref $config eq 'SCALAR') {
+          print "Reading config from scalar\n" if _INTERNAL_DEBUG;
+          @text = split(/\n/,$$config);
+  
+      } elsif (ref $config eq 'GLOB' or 
+               ref $config eq 'IO::File') {
+              # If we have a file handle, just call the reader
+          print "Reading config from file handle\n" if _INTERNAL_DEBUG;
+          @text = @{ $base_configurator->file_h_read( $config ) };
+  
+      } elsif (ref $config) {
+              # Caller provided a config parser object, which already
+              # knows which file (or DB or whatever) to parse.
+          print "Reading config from parser object\n" if _INTERNAL_DEBUG;
+          $data = $config->parse();
+          return $data;
+  
+      } elsif ($config =~ m|^ldap://|){
+         if(! Log::Log4perl::Util::module_available("Net::LDAP")) {
+             die "Log4perl: missing Net::LDAP needed to parse LDAP urls\n$@\n";
+         }
+  
+         require Net::LDAP;
+         require Log::Log4perl::Config::LDAPConfigurator;
+  
+         return Log::Log4perl::Config::LDAPConfigurator->new->parse($config);
+  
+      } else {
+  
+          if ($config =~ /^(https?|ftp|wais|gopher|file):/){
+              my ($result, $ua);
+      
+              die "LWP::UserAgent not available" unless
+                  Log::Log4perl::Util::module_available("LWP::UserAgent");
+  
+              require LWP::UserAgent;
+              unless (defined $LWP_USER_AGENT) {
+                  $LWP_USER_AGENT = LWP::UserAgent->new;
+      
+                  # Load proxy settings from environment variables, i.e.:
+                  # http_proxy, ftp_proxy, no_proxy etc (see LWP::UserAgent)
+                  # You need these to go thru firewalls.
+                  $LWP_USER_AGENT->env_proxy;
+              }
+              $ua = $LWP_USER_AGENT;
+  
+              my $req = new HTTP::Request GET => $config;
+              my $res = $ua->request($req);
+  
+              if ($res->is_success) {
+                  @text = split(/\n/, $res->content);
+              } else {
+                  die "Log4perl couln't get $config, ".
+                       $res->message." ";
+              }
+          } else {
+              print "Reading config from file '$config'\n" if _INTERNAL_DEBUG;
+              print "Reading ", -s $config, " bytes.\n" if _INTERNAL_DEBUG;
+                # Use the BaseConfigurator's file reader to avoid duplicating
+                # utf8 handling here.
+              $base_configurator->file( $config );
+              @text = @{ $base_configurator->text() };
+          }
+      }
+      
+      print "Reading $config: [@text]\n" if _INTERNAL_DEBUG;
+  
+      if(! grep /\S/, @text) {
+          return $data;
+      }
+  
+      if ($text[0] =~ /^<\?xml /) {
+  
+          die "XML::DOM not available" unless
+                  Log::Log4perl::Util::module_available("XML::DOM");
+  
+          require XML::DOM; 
+          require Log::Log4perl::Config::DOMConfigurator;
+  
+          XML::DOM->VERSION($Log::Log4perl::DOM_VERSION_REQUIRED);
+          $parser = Log::Log4perl::Config::DOMConfigurator->new();
+          $data = $parser->parse(\@text);
+      } else {
+          $parser = Log::Log4perl::Config::PropertyConfigurator->new();
+          $data = $parser->parse(\@text);
+      }
+  
+      $data = $parser->parse_post_process( $data, leaf_paths($data) );
+  
+      return $data;
+  }
+  
+  ###########################################
+  sub unlog4j {
+  ###########################################
+      my ($string) = @_;
+  
+      $string =~ s#^org\.apache\.##;
+      $string =~ s#^log4j\.##;
+      $string =~ s#^l4p\.##;
+      $string =~ s#^log4perl\.##i;
+  
+      $string =~ s#\.#::#g;
+  
+      return $string;
+  }
+  
+  ############################################################
+  sub leaf_paths {
+  ############################################################
+  # Takes a reference to a hash of hashes structure of 
+  # arbitrary depth, walks the tree and returns a reference
+  # to an array of all possible leaf paths (each path is an 
+  # array again).
+  # Example: { a => { b => { c => d }, e => f } } would generate
+  #          [ [a, b, c, d], [a, e, f] ]
+  ############################################################
+      my ($root) = @_;
+  
+      my @stack  = ();
+      my @result = ();
+  
+      push @stack, [$root, []];  
+      
+      while(@stack) {
+          my $item = pop @stack;
+  
+          my($node, $path) = @$item;
+  
+          if(ref($node) eq "HASH") { 
+              for(sort keys %$node) {
+                  push @stack, [$node->{$_}, [@$path, $_]];
+              }
+          } else {
+              push @result, [@$path, $node];
+          }
+      }
+      return \@result;
+  }
+  
+  ###########################################
+  sub leaf_path_to_hash {
+  ###########################################
+      my($leaf_path, $data) = @_;
+  
+      my $ref = \$data;
+  
+      for my $part ( @$leaf_path[0..$#$leaf_path-1] ) {
+          $ref = \$$ref->{ $part };
+      }
+  
+      return $ref;
+  }
+  
+  ###########################################
+  sub eval_if_perl {
+  ###########################################
+      my($value) = @_;
+  
+      if(my $cref = compile_if_perl($value)) {
+          return $cref->();
+      }
+  
+      return $value;
+  }
+  
+  ###########################################
+  sub compile_if_perl {
+  ###########################################
+      my($value) = @_;
+  
+      if($value =~ /^\s*sub\s*{/ ) {
+          my $mask;
+          unless( Log::Log4perl::Config->allow_code() ) {
+              die "\$Log::Log4perl::Config->allow_code() setting " .
+                  "prohibits Perl code in config file";
+          }
+          if( defined( $mask = Log::Log4perl::Config->allowed_code_ops() ) ) {
+              return compile_in_safe_cpt($value, $mask );
+          }
+          elsif( $mask = Log::Log4perl::Config->allowed_code_ops_convenience_map(
+                               Log::Log4perl::Config->allow_code()
+                            ) ) {
+              return compile_in_safe_cpt($value, $mask );
+          }
+          elsif( Log::Log4perl::Config->allow_code() == 1 ) {
+  
+              # eval without restriction
+              my $cref = eval "package main; $value" or 
+                  die "Can't evaluate '$value' ($@)";
+              return $cref;
+          }
+          else {
+              die "Invalid value for \$Log::Log4perl::Config->allow_code(): '".
+                  Log::Log4perl::Config->allow_code() . "'";
+          }
+      }
+  
+      return undef;
+  }
+  
+  ###########################################
+  sub compile_in_safe_cpt {
+  ###########################################
+      my($value, $allowed_ops) = @_;
+  
+      # set up a Safe compartment
+      require Safe;
+      my $safe = Safe->new();
+      $safe->permit_only( @{ $allowed_ops } );
+   
+      # share things with the compartment
+      for( sort keys %{ Log::Log4perl::Config->vars_shared_with_safe_compartment() } ) {
+          my $toshare = Log::Log4perl::Config->vars_shared_with_safe_compartment($_);
+          $safe->share_from( $_, $toshare )
+              or die "Can't share @{ $toshare } with Safe compartment";
+      }
+      
+      # evaluate with restrictions
+      my $cref = $safe->reval("package main; $value") or
+          die "Can't evaluate '$value' in Safe compartment ($@)";
+      return $cref;
+      
+  }
+  
+  ###########################################
+  sub boolean_to_perlish {
+  ###########################################
+      my($value) = @_;
+  
+          # Translate boolean to perlish
+      $value = 1 if $value =~ /^true$/i;
+      $value = 0 if $value =~ /^false$/i;
+  
+      return $value;
+  }
+  
+  ###########################################
+  sub vars_shared_with_safe_compartment {
+  ###########################################
+      my($class, @args) = @_;
+  
+          # Allow both for ...::Config::foo() and ...::Config->foo()
+      if(defined $class and $class ne __PACKAGE__) {
+          unshift @args, $class;
+      }
+     
+      # handle different invocation styles
+      if(@args == 1 && ref $args[0] eq 'HASH' ) {
+          # replace entire hash of vars
+          %Log::Log4perl::VARS_SHARED_WITH_SAFE_COMPARTMENT = %{$args[0]};
+      }
+      elsif( @args == 1 ) {
+          # return vars for given package
+          return $Log::Log4perl::VARS_SHARED_WITH_SAFE_COMPARTMENT{
+                 $args[0]};
+      }
+      elsif( @args == 2 ) {
+          # add/replace package/var pair
+          $Log::Log4perl::VARS_SHARED_WITH_SAFE_COMPARTMENT{
+             $args[0]} = $args[1];
+      }
+  
+      return wantarray ? %Log::Log4perl::VARS_SHARED_WITH_SAFE_COMPARTMENT
+                       : \%Log::Log4perl::VARS_SHARED_WITH_SAFE_COMPARTMENT;
+      
+  }
+  
+  ###########################################
+  sub allowed_code_ops {
+  ###########################################
+      my($class, @args) = @_;
+  
+          # Allow both for ...::Config::foo() and ...::Config->foo()
+      if(defined $class and $class ne __PACKAGE__) {
+          unshift @args, $class;
+      }
+     
+      if(@args) {
+          @Log::Log4perl::ALLOWED_CODE_OPS_IN_CONFIG_FILE = @args;
+      }
+      else {
+          # give back 'undef' instead of an empty arrayref
+          unless( @Log::Log4perl::ALLOWED_CODE_OPS_IN_CONFIG_FILE ) {
+              return;
+          }
+      }
+  
+      return wantarray ? @Log::Log4perl::ALLOWED_CODE_OPS_IN_CONFIG_FILE
+                       : \@Log::Log4perl::ALLOWED_CODE_OPS_IN_CONFIG_FILE;
+  }
+  
+  ###########################################
+  sub allowed_code_ops_convenience_map {
+  ###########################################
+      my($class, @args) = @_;
+  
+          # Allow both for ...::Config::foo() and ...::Config->foo()
+      if(defined $class and $class ne __PACKAGE__) {
+          unshift @args, $class;
+      }
+  
+      # handle different invocation styles
+      if( @args == 1 && ref $args[0] eq 'HASH' ) {
+          # replace entire map
+          %Log::Log4perl::ALLOWED_CODE_OPS = %{$args[0]};
+      }
+      elsif( @args == 1 ) {
+          # return single opcode mask
+          return $Log::Log4perl::ALLOWED_CODE_OPS{
+                     $args[0]};
+      }
+      elsif( @args == 2 ) {
+          # make sure the mask is an array ref
+          if( ref $args[1] ne 'ARRAY' ) {
+              die "invalid mask (not an array ref) for convenience name '$args[0]'";
+          }
+          # add name/mask pair
+          $Log::Log4perl::ALLOWED_CODE_OPS{
+              $args[0]} = $args[1];
+      }
+  
+      return wantarray ? %Log::Log4perl::ALLOWED_CODE_OPS
+                       : \%Log::Log4perl::ALLOWED_CODE_OPS
+  }
+  
+  ###########################################
+  sub allow_code {
+  ###########################################
+      my($class, @args) = @_;
+  
+          # Allow both for ...::Config::foo() and ...::Config->foo()
+      if(defined $class and $class ne __PACKAGE__) {
+          unshift @args, $class;
+      }
+     
+      if(@args) {
+          $Log::Log4perl::ALLOW_CODE_IN_CONFIG_FILE = 
+              $args[0];
+      }
+  
+      return $Log::Log4perl::ALLOW_CODE_IN_CONFIG_FILE;
+  }
+  
+  ################################################
+  sub var_subst {
+  ################################################
+      my($varname, $subst_hash) = @_;
+  
+          # Throw out blanks
+      $varname =~ s/\s+//g;
+  
+      if(exists $subst_hash->{$varname}) {
+          print "Replacing variable: '$varname' => '$subst_hash->{$varname}'\n" 
+              if _INTERNAL_DEBUG;
+          return $subst_hash->{$varname};
+  
+      } elsif(exists $ENV{$varname}) {
+          print "Replacing ENV variable: '$varname' => '$ENV{$varname}'\n" 
+              if _INTERNAL_DEBUG;
+          return $ENV{$varname};
+  
+      }
+  
+      die "Undefined Variable '$varname'";
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Config - Log4perl configuration file syntax
+  
+  =head1 DESCRIPTION
+  
+  In C<Log::Log4perl>, configuration files are used to describe how the
+  system's loggers ought to behave. 
+  
+  The format is the same as the one as used for C<log4j>, just with
+  a few perl-specific extensions, like enabling the C<Bar::Twix>
+  syntax instead of insisting on the Java-specific C<Bar.Twix>.
+  
+  Comment lines and blank lines (all whitespace or empty) are ignored.
+  
+  Comment lines may start with arbitrary whitespace followed by one of:
+  
+  =over 4
+  
+  =item # - Common comment delimiter
+  
+  =item ! - Java .properties file comment delimiter accepted by log4j
+  
+  =item ; - Common .ini file comment delimiter
+  
+  =back
+  
+  Comments at the end of a line are not supported. So if you write
+  
+      log4perl.appender.A1.filename=error.log #in current dir
+  
+  you will find your messages in a file called C<error.log #in current dir>.
+  
+  Also, blanks between syntactical entities are ignored, it doesn't 
+  matter if you write
+  
+      log4perl.logger.Bar.Twix=WARN,Screen
+  
+  or 
+  
+      log4perl.logger.Bar.Twix = WARN, Screen
+  
+  C<Log::Log4perl> will strip the blanks while parsing your input.
+  
+  Assignments need to be on a single line. However, you can break the
+  line if you want to by using a continuation character at the end of the
+  line. Instead of writing
+  
+      log4perl.appender.A1.layout=Log::Log4perl::Layout::SimpleLayout
+  
+  you can break the line at any point by putting a backslash at the very (!)
+  end of the line to be continued:
+  
+      log4perl.appender.A1.layout=\
+          Log::Log4perl::Layout::SimpleLayout
+  
+  Watch out for trailing blanks after the backslash, which would prevent
+  the line from being properly concatenated.
+  
+  =head2 Loggers
+  
+  Loggers are addressed by category:
+  
+      log4perl.logger.Bar.Twix      = WARN, Screen
+  
+  This sets all loggers under the C<Bar::Twix> hierarchy on priority
+  C<WARN> and attaches a later-to-be-defined C<Screen> appender to them.
+  Settings for the root appender (which doesn't have a name) can be
+  accomplished by simply omitting the name:
+  
+      log4perl.logger = FATAL, Database, Mailer 
+  
+  This sets the root appender's level to C<FATAL> and also attaches the 
+  later-to-be-defined appenders C<Database> and C<Mailer> to it. Alternatively,
+  the root logger can be addressed as C<rootLogger>:
+  
+      log4perl.rootLogger = FATAL, Database, Mailer
+  
+  The additivity flag of a logger is set or cleared via the 
+  C<additivity> keyword:
+  
+      log4perl.additivity.Bar.Twix = 0|1
+  
+  (Note the reversed order of keyword and logger name, resulting
+  from the dilemma that a logger name could end in C<.additivity>
+  according to the log4j documentation).
+  
+  =head2 Appenders and Layouts
+  
+  Appender names used in Log4perl configuration file
+  lines need to be resolved later on, in order to
+  define the appender's properties and its layout. To specify properties
+  of an appender, just use the C<appender> keyword after the
+  C<log4perl> intro and the appender's name:
+  
+          # The Bar::Twix logger and its appender
+      log4perl.logger.Bar.Twix = DEBUG, A1
+      log4perl.appender.A1=Log::Log4perl::Appender::File
+      log4perl.appender.A1.filename=test.log
+      log4perl.appender.A1.mode=append
+      log4perl.appender.A1.layout=Log::Log4perl::Layout::SimpleLayout
+  
+  This sets a priority of C<DEBUG> for loggers in the C<Bar::Twix>
+  hierarchy and assigns the C<A1> appender to it, which is later on
+  resolved to be an appender of type C<Log::Log4perl::Appender::File>, simply
+  appending to a log file. According to the C<Log::Log4perl::Appender::File>
+  manpage, the C<filename> parameter specifies the name of the log file
+  and the C<mode> parameter can be set to C<append> or C<write> (the
+  former will append to the logfile if one with the specified name
+  already exists while the latter would clobber and overwrite it).
+  
+  The order of the entries in the configuration file is not important,
+  C<Log::Log4perl> will read in the entire file first and try to make
+  sense of the lines after it knows the entire context.
+  
+  You can very well define all loggers first and then their appenders
+  (you could even define your appenders first and then your loggers,
+  but let's not go there):
+  
+      log4perl.logger.Bar.Twix = DEBUG, A1
+      log4perl.logger.Bar.Snickers = FATAL, A2
+  
+      log4perl.appender.A1=Log::Log4perl::Appender::File
+      log4perl.appender.A1.filename=test.log
+      log4perl.appender.A1.mode=append
+      log4perl.appender.A1.layout=Log::Log4perl::Layout::SimpleLayout
+  
+      log4perl.appender.A2=Log::Log4perl::Appender::Screen
+      log4perl.appender.A2.stderr=0
+      log4perl.appender.A2.layout=Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.A2.layout.ConversionPattern = %d %m %n
+  
+  Note that you have to specify the full path to the layout class
+  and that C<ConversionPattern> is the keyword to specify the printf-style
+  formatting instructions.
+  
+  =head1 Configuration File Cookbook
+  
+  Here's some examples of often-used Log4perl configuration files:
+  
+  =head2 Append to STDERR
+  
+      log4perl.category.Bar.Twix      = WARN, Screen
+      log4perl.appender.Screen        = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.layout = \
+          Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.Screen.layout.ConversionPattern = %d %m %n
+  
+  =head2 Append to STDOUT
+  
+      log4perl.category.Bar.Twix      = WARN, Screen
+      log4perl.appender.Screen        = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.stderr = 0
+      log4perl.appender.Screen.layout = \
+          Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.Screen.layout.ConversionPattern = %d %m %n
+  
+  =head2 Append to a log file
+  
+      log4perl.logger.Bar.Twix = DEBUG, A1
+      log4perl.appender.A1=Log::Log4perl::Appender::File
+      log4perl.appender.A1.filename=test.log
+      log4perl.appender.A1.mode=append
+      log4perl.appender.A1.layout = \
+          Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.A1.layout.ConversionPattern = %d %m %n
+  
+  Note that you could even leave out 
+  
+      log4perl.appender.A1.mode=append
+  
+  and still have the logger append to the logfile by default, although
+  the C<Log::Log4perl::Appender::File> module does exactly the opposite.
+  This is due to some nasty trickery C<Log::Log4perl> performs behind 
+  the scenes to make sure that beginner's CGI applications don't clobber 
+  the log file every time they're called.
+  
+  =head2 Write a log file from scratch
+  
+  If you loathe the Log::Log4perl's append-by-default strategy, you can
+  certainly override it:
+  
+      log4perl.logger.Bar.Twix = DEBUG, A1
+      log4perl.appender.A1=Log::Log4perl::Appender::File
+      log4perl.appender.A1.filename=test.log
+      log4perl.appender.A1.mode=write
+      log4perl.appender.A1.layout=Log::Log4perl::Layout::SimpleLayout
+  
+  C<write> is the C<mode> that has C<Log::Log4perl::Appender::File>
+  explicitly clobber the log file if it exists.
+  
+  =head2 Configuration files encoded in utf-8
+  
+  If your configuration file is encoded in utf-8 (which matters if you 
+  e.g. specify utf8-encoded appender filenames in it), then you need to 
+  tell Log4perl before running init():
+  
+      use Log::Log4perl::Config;
+      Log::Log4perl::Config->utf( 1 );
+  
+      Log::Log4perl->init( ... );
+  
+  This makes sure Log4perl interprets utf8-encoded config files correctly.
+  This setting might become the default at some point.
+  
+  =head1 SEE ALSO
+  
+  Log::Log4perl::Config::PropertyConfigurator
+  
+  Log::Log4perl::Config::DOMConfigurator
+  
+  Log::Log4perl::Config::LDAPConfigurator (coming soon!)
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_CONFIG
+
+$fatpacked{"Log/Log4perl/Config/BaseConfigurator.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_CONFIG_BASECONFIGURATOR';
+  package Log::Log4perl::Config::BaseConfigurator;
+  
+  use warnings;
+  use strict;
+  use constant _INTERNAL_DEBUG => 0;
+  
+  *eval_if_perl      = \&Log::Log4perl::Config::eval_if_perl;
+  *compile_if_perl   = \&Log::Log4perl::Config::compile_if_perl;
+  *leaf_path_to_hash = \&Log::Log4perl::Config::leaf_path_to_hash;
+  
+  ################################################
+  sub new {
+  ################################################
+      my($class, %options) = @_;
+  
+      my $self = { 
+          utf8 => 0,
+          %options,
+      };
+  
+      bless $self, $class;
+  
+      $self->file($self->{file}) if exists $self->{file};
+      $self->text($self->{text}) if exists $self->{text};
+  
+      return $self;
+  }
+  
+  ################################################
+  sub text {
+  ################################################
+      my($self, $text) = @_;
+  
+          # $text is an array of scalars (lines)
+      if(defined $text) {
+          if(ref $text eq "ARRAY") {
+              $self->{text} = $text;
+          } else {
+              $self->{text} = [split "\n", $text];
+          }
+      }
+  
+      return $self->{text};
+  }
+  
+  ################################################
+  sub file {
+  ################################################
+      my($self, $filename) = @_;
+  
+      open my $fh, "$filename" or die "Cannot open $filename ($!)";
+  
+      if( $self->{ utf8 } ) {
+          binmode $fh, ":utf8";
+      }
+  
+      $self->file_h_read( $fh );
+      close $fh;
+  }
+  
+  ################################################
+  sub file_h_read {
+  ################################################
+      my($self, $fh) = @_;
+  
+          # Dennis Gregorovic <dgregor@redhat.com> added this
+          # to protect apps which are tinkering with $/ globally.
+      local $/ = "\n";
+  
+      $self->{text} = [<$fh>];
+  }
+  
+  ################################################
+  sub parse {
+  ################################################
+      die __PACKAGE__ . "::parse() is a virtual method. " .
+          "It must be implemented " .
+          "in a derived class (currently: ", ref(shift), ")";
+  }
+  
+  ################################################
+  sub parse_post_process {
+  ################################################
+      my($self, $data, $leaf_paths) = @_;
+      
+      #   [
+      #     'category',
+      #     'value',
+      #     'WARN, Logfile'
+      #   ],
+      #   [
+      #     'appender',
+      #     'Logfile',
+      #     'value',
+      #     'Log::Log4perl::Appender::File'
+      #   ],
+      #   [
+      #     'appender',
+      #     'Logfile',
+      #     'filename',
+      #     'value',
+      #     'test.log'
+      #   ],
+      #   [
+      #     'appender',
+      #     'Logfile',
+      #     'layout',
+      #     'value',
+      #     'Log::Log4perl::Layout::PatternLayout'
+      #   ],
+      #   [
+      #     'appender',
+      #     'Logfile',
+      #     'layout',
+      #     'ConversionPattern',
+      #     'value',
+      #     '%d %F{1} %L> %m %n'
+      #   ]
+  
+      for my $path ( @{ Log::Log4perl::Config::leaf_paths( $data )} ) {
+  
+          print "path=@$path\n" if _INTERNAL_DEBUG;
+  
+          if(0) {
+          } elsif( 
+              $path->[0] eq "appender" and
+              $path->[2] eq "trigger"
+            ) {
+              my $ref = leaf_path_to_hash( $path, $data );
+              my $code = compile_if_perl( $$ref );
+  
+              if(_INTERNAL_DEBUG) {
+                  if($code) {
+                      print "Code compiled: $$ref\n";
+                  } else {
+                      print "Not compiled: $$ref\n";
+                  }
+              }
+  
+              $$ref = $code if defined $code;
+          } elsif (
+              $path->[0] eq "filter"
+            ) {
+              # do nothing
+          } elsif (
+              $path->[0] eq "appender" and
+              $path->[2] eq "warp_message"
+            ) {
+              # do nothing
+          } elsif (
+              $path->[0] eq "appender" and
+              $path->[3] eq "cspec" or
+              $path->[1] eq "cspec"
+            ) {
+                # could be either
+                #    appender appndr layout cspec
+                # or 
+                #    PatternLayout cspec U value ...
+                #
+              # do nothing
+          } else {
+              my $ref = leaf_path_to_hash( $path, $data );
+  
+              if(_INTERNAL_DEBUG) {
+                  print "Calling eval_if_perl on $$ref\n";
+              }
+  
+              $$ref = eval_if_perl( $$ref );
+          }
+      }
+  
+      return $data;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Config::BaseConfigurator - Configurator Base Class
+  
+  =head1 SYNOPSIS
+  
+  This is a virtual base class, all configurators should be derived from it.
+  
+  =head1 DESCRIPTION
+  
+  =head2 METHODS
+  
+  =over 4
+  
+  =item C<< new >>
+  
+  Constructor, typically called like
+  
+      my $config_parser = SomeConfigParser->new(
+          file => $file,
+      );
+  
+      my $data = $config_parser->parse();
+  
+  Instead of C<file>, the derived class C<SomeConfigParser> may define any 
+  type of configuration input medium (e.g. C<url =E<gt> 'http://foobar'>).
+  It just has to make sure its C<parse()> method will later pull the input
+  data from the medium specified.
+  
+  The base class accepts a filename or a reference to an array
+  of text lines:
+  
+  =over 4
+  
+  =item C<< file >>
+  
+  Specifies a file which the C<parse()> method later parses.
+  
+  =item C<< text >>
+  
+  Specifies a reference to an array of scalars, representing configuration
+  records (typically lines of a file). Also accepts a simple scalar, which it 
+  splits at its newlines and transforms it into an array:
+  
+      my $config_parser = MyYAMLParser->new(
+          text => ['foo: bar',
+                   'baz: bam',
+                  ],
+      );
+  
+      my $data = $config_parser->parse();
+  
+  =back
+  
+  If either C<file> or C<text> parameters have been specified in the 
+  constructor call, a later call to the configurator's C<text()> method
+  will return a reference to an array of configuration text lines.
+  This will typically be used by the C<parse()> method to process the 
+  input.
+  
+  =item C<< parse >>
+  
+  Virtual method, needs to be defined by the derived class.
+  
+  =back
+  
+  =head2 Parser requirements
+  
+  =over 4
+  
+  =item *
+  
+  If the parser provides variable substitution functionality, it has
+  to implement it.
+  
+  =item *
+  
+  The parser's C<parse()> method returns a reference to a hash of hashes (HoH). 
+  The top-most hash contains the
+  top-level keywords (C<category>, C<appender>) as keys, associated
+  with values which are references to more deeply nested hashes.
+  
+  =item *
+  
+  The C<log4perl.> prefix (e.g. as used in the PropertyConfigurator class)
+  is stripped, it's not part in the HoH structure.
+  
+  =item *
+  
+  Each Log4perl config value is indicated by the C<value> key, as in
+  
+      $data->{category}->{Bar}->{Twix}->{value} = "WARN, Logfile"
+  
+  =back
+  
+  =head2 EXAMPLES
+  
+  The following Log::Log4perl configuration:
+  
+      log4perl.category.Bar.Twix        = WARN, Screen
+      log4perl.appender.Screen          = Log::Log4perl::Appender::File
+      log4perl.appender.Screen.filename = test.log
+      log4perl.appender.Screen.layout   = Log::Log4perl::Layout::SimpleLayout
+  
+  needs to be transformed by the parser's C<parse()> method 
+  into this data structure:
+  
+      { appender => {
+          Screen  => {
+            layout => { 
+              value  => "Log::Log4perl::Layout::SimpleLayout" },
+              value  => "Log::Log4perl::Appender::Screen",
+          },
+        },
+        category => { 
+          Bar => { 
+            Twix => { 
+              value => "WARN, Screen" } 
+          } }
+      }
+  
+  For a full-fledged example, check out the sample YAML parser implementation 
+  in C<eg/yamlparser>. It uses a simple YAML syntax to specify the Log4perl 
+  configuration to illustrate the concept.
+  
+  =head1 SEE ALSO
+  
+  Log::Log4perl::Config::PropertyConfigurator
+  
+  Log::Log4perl::Config::DOMConfigurator
+  
+  Log::Log4perl::Config::LDAPConfigurator (tbd!)
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_CONFIG_BASECONFIGURATOR
+
+$fatpacked{"Log/Log4perl/Config/DOMConfigurator.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_CONFIG_DOMCONFIGURATOR';
+  package Log::Log4perl::Config::DOMConfigurator;
+  use Log::Log4perl::Config::BaseConfigurator;
+  
+  our @ISA = qw(Log::Log4perl::Config::BaseConfigurator);
+  
+  #todo
+  # DONE(param-text) some params not attrs but values, like <sql>...</sql>
+  # DONE see DEBUG!!!  below
+  # NO, (really is only used for AsyncAppender) appender-ref in <appender>
+  # DONE check multiple appenders in a category
+  # DONE in Config.pm re URL loading, steal from XML::DOM
+  # DONE, OK see PropConfigurator re importing unlog4j, eval_if_perl
+  # NO (is specified in DTD) - need to handle 0/1, true/false?
+  # DONE see Config, need to check version of XML::DOM
+  # OK user defined levels? see parse_level
+  # OK make sure 2nd test is using log4perl constructs, not log4j
+  # OK handle new filter stuff
+  # make sure sample code actually works
+  # try removing namespace prefixes in the xml
+  
+  use XML::DOM;
+  use Log::Log4perl::Level;
+  use strict;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  our $VERSION = 0.03;
+  
+  our $APPENDER_TAG = qr/^((log4j|log4perl):)?appender$/;
+  
+  our $FILTER_TAG = qr/^(log4perl:)?filter$/;
+  our $FILTER_REF_TAG = qr/^(log4perl:)?filter-ref$/;
+  
+  #can't use ValParser here because we're using namespaces? 
+  #doesn't seem to work - kg 3/2003 
+  our $PARSER_CLASS = 'XML::DOM::Parser';
+  
+  our $LOG4J_PREFIX = 'log4j';
+  our $LOG4PERL_PREFIX = 'log4perl';
+      
+  
+  #poor man's export
+  *eval_if_perl = \&Log::Log4perl::Config::eval_if_perl;
+  *unlog4j      = \&Log::Log4perl::Config::unlog4j;
+  
+  
+  ###################################################
+  sub parse {
+  ###################################################
+      my($self, $newtext) = @_;
+  
+      $self->text($newtext) if defined $newtext;
+      my $text = $self->{text};
+  
+      my $parser = $PARSER_CLASS->new;
+      my $doc = $parser->parse (join('',@$text));
+  
+  
+      my $l4p_tree = {};
+      
+      my $config = $doc->getElementsByTagName("$LOG4J_PREFIX:configuration")->item(0)||
+                   $doc->getElementsByTagName("$LOG4PERL_PREFIX:configuration")->item(0);
+  
+      my $threshold = uc(subst($config->getAttribute('threshold')));
+      if ($threshold) {
+          $l4p_tree->{threshold}{value} = $threshold;
+      }
+  
+      if (subst($config->getAttribute('oneMessagePerAppender')) eq 'true') {
+          $l4p_tree->{oneMessagePerAppender}{value} = 1;
+      }
+  
+      for my $kid ($config->getChildNodes){
+  
+          next unless $kid->getNodeType == ELEMENT_NODE;
+  
+          my $tag_name = $kid->getTagName;
+  
+          if ($tag_name =~ $APPENDER_TAG) {
+              &parse_appender($l4p_tree, $kid);
+  
+          }elsif ($tag_name eq 'category' || $tag_name eq 'logger'){
+              &parse_category($l4p_tree, $kid);
+              #Treating them the same is not entirely accurate, 
+              #the dtd says 'logger' doesn't accept
+              #a 'class' attribute while 'category' does.
+              #But that's ok, log4perl doesn't do anything with that attribute
+  
+          }elsif ($tag_name eq 'root'){
+              &parse_root($l4p_tree, $kid);
+  
+          }elsif ($tag_name =~ $FILTER_TAG){
+              #parse log4perl's chainable boolean filters
+              &parse_l4p_filter($l4p_tree, $kid);
+  
+          }elsif ($tag_name eq 'renderer'){
+              warn "Log4perl: ignoring renderer tag in config, unimplemented";
+              #"log4j will render the content of the log message according to 
+              # user specified criteria. For example, if you frequently need 
+              # to log Oranges, an object type used in your current project, 
+              # then you can register an OrangeRenderer that will be invoked 
+              # whenever an orange needs to be logged. "
+           
+          }elsif ($tag_name eq 'PatternLayout'){#log4perl only
+              &parse_patternlayout($l4p_tree, $kid);
+          }
+      }
+      $doc->dispose;
+  
+      return $l4p_tree;
+  }
+  
+  #this is just for toplevel log4perl.PatternLayout tags
+  #holding the custom cspecs
+  sub parse_patternlayout {
+      my ($l4p_tree, $node) = @_;
+  
+      my $l4p_branch = {};
+  
+      for my $child ($node->getChildNodes) {
+          next unless $child->getNodeType == ELEMENT_NODE;
+  
+          my $name = subst($child->getAttribute('name'));
+          my $value;
+  
+          foreach my $grandkid ($child->getChildNodes){
+              if ($grandkid->getNodeType == TEXT_NODE) {
+                  $value .= $grandkid->getData;
+              }
+          }
+          $value =~ s/^ +//;  #just to make the unit tests pass
+          $value =~ s/ +$//;
+          $l4p_branch->{$name}{value} = subst($value);
+      }
+      $l4p_tree->{PatternLayout}{cspec} = $l4p_branch;
+  }
+  
+  
+  #for parsing the root logger, if any
+  sub parse_root {
+      my ($l4p_tree, $node) = @_;
+  
+      my $l4p_branch = {};
+  
+      &parse_children_of_logger_element($l4p_branch, $node);
+  
+      $l4p_tree->{category}{value} = $l4p_branch->{value};
+  
+  }
+  
+  
+  #this parses a custom log4perl-specific filter set up under
+  #the root element, as opposed to children of the appenders
+  sub parse_l4p_filter {
+      my ($l4p_tree, $node) = @_;
+  
+      my $l4p_branch = {};
+  
+      my $name = subst($node->getAttribute('name'));
+  
+      my $class = subst($node->getAttribute('class'));
+      my $value = subst($node->getAttribute('value'));
+  
+      if ($class && $value) {
+          die "Log4perl: only one of class or value allowed, not both, "
+              ."in XMLConfig filter '$name'";
+      }elsif ($class || $value){
+          $l4p_branch->{value} = ($value || $class);
+  
+      }
+  
+      for my $child ($node->getChildNodes) {
+  
+          if ($child->getNodeType == ELEMENT_NODE){
+  
+              my $tag_name = $child->getTagName();
+  
+              if ($tag_name =~ /^(param|param-nested|param-text)$/) {
+                  &parse_any_param($l4p_branch, $child);
+              }
+          }elsif ($child->getNodeType == TEXT_NODE){
+              my $text = $child->getData;
+              next unless $text =~ /\S/;
+              if ($class && $value) {
+                  die "Log4perl: only one of class, value or PCDATA allowed, "
+                      ."in XMLConfig filter '$name'";
+              }
+              $l4p_branch->{value} .= subst($text); 
+          }
+      }
+  
+      $l4p_tree->{filter}{$name} = $l4p_branch;
+  }
+  
+     
+  #for parsing a category/logger element
+  sub parse_category {
+      my ($l4p_tree, $node) = @_;
+  
+      my $name = subst($node->getAttribute('name'));
+  
+      $l4p_tree->{category} ||= {};
+   
+      my $ptr = $l4p_tree->{category};
+  
+      for my $part (split /\.|::/, $name) {
+          $ptr->{$part} = {} unless exists $ptr->{$part};
+          $ptr = $ptr->{$part};
+      }
+  
+      my $l4p_branch = $ptr;
+  
+      my $class = subst($node->getAttribute('class'));
+      $class                       && 
+         $class ne 'Log::Log4perl' &&
+         $class ne 'org.apache.log4j.Logger' &&
+         warn "setting category $name to class $class ignored, only Log::Log4perl implemented";
+  
+      #this is kind of funky, additivity has its own spot in the tree
+      my $additivity = subst(subst($node->getAttribute('additivity')));
+      if (length $additivity > 0) {
+          $l4p_tree->{additivity} ||= {};
+          my $add_ptr = $l4p_tree->{additivity};
+  
+          for my $part (split /\.|::/, $name) {
+              $add_ptr->{$part} = {} unless exists $add_ptr->{$part};
+              $add_ptr = $add_ptr->{$part};
+          }
+          $add_ptr->{value} = &parse_boolean($additivity);
+      }
+  
+      &parse_children_of_logger_element($l4p_branch, $node);
+  }
+  
+  # parses the children of a category element
+  sub parse_children_of_logger_element {
+      my ($l4p_branch, $node) = @_;
+  
+      my (@appenders, $priority);
+  
+      for my $child ($node->getChildNodes) {
+          next unless $child->getNodeType == ELEMENT_NODE;
+              
+          my $tag_name = $child->getTagName();
+  
+          if ($tag_name eq 'param') {
+              my $name = subst($child->getAttribute('name'));
+              my $value = subst($child->getAttribute('value'));
+              if ($value =~ /^(all|debug|info|warn|error|fatal|off|null)^/) {
+                  $value = uc $value;
+              }
+              $l4p_branch->{$name} = {value => $value};
+          
+          }elsif ($tag_name eq 'appender-ref'){
+              push @appenders, subst($child->getAttribute('ref'));
+              
+          }elsif ($tag_name eq 'level' || $tag_name eq 'priority'){
+              $priority = &parse_level($child);
+          }
+      }
+      $l4p_branch->{value} = $priority.', '.join(',', @appenders);
+      
+      return;
+  }
+  
+  
+  sub parse_level {
+      my $node = shift;
+  
+      my $level = uc (subst($node->getAttribute('value')));
+  
+      die "Log4perl: invalid level in config: $level"
+          unless Log::Log4perl::Level::is_valid($level);
+  
+      return $level;
+  }
+  
+  
+  
+  sub parse_appender {
+      my ($l4p_tree, $node) = @_;
+  
+      my $name = subst($node->getAttribute("name"));
+  
+      my $l4p_branch = {};
+  
+      my $class = subst($node->getAttribute("class"));
+  
+      $l4p_branch->{value} = $class;
+  
+      print "looking at $name----------------------\n"  if _INTERNAL_DEBUG;
+  
+      for my $child ($node->getChildNodes) {
+          next unless $child->getNodeType == ELEMENT_NODE;
+  
+          my $tag_name = $child->getTagName();
+  
+          my $name = unlog4j(subst($child->getAttribute('name')));
+  
+          if ($tag_name =~ /^(param|param-nested|param-text)$/) {
+  
+              &parse_any_param($l4p_branch, $child);
+  
+              my $value;
+  
+          }elsif ($tag_name =~ /($LOG4PERL_PREFIX:)?layout/){
+              $l4p_branch->{layout} = parse_layout($child);
+  
+          }elsif ($tag_name =~  $FILTER_TAG){
+              $l4p_branch->{Filter} = parse_filter($child);
+  
+          }elsif ($tag_name =~ $FILTER_REF_TAG){
+              $l4p_branch->{Filter} = parse_filter_ref($child);
+  
+          }elsif ($tag_name eq 'errorHandler'){
+              die "errorHandlers not supported yet";
+  
+          }elsif ($tag_name eq 'appender-ref'){
+              #dtd: Appenders may also reference (or include) other appenders. 
+              #This feature in log4j is only for appenders who implement the 
+              #AppenderAttachable interface, and the only one that does that
+              #is the AsyncAppender, which writes logs in a separate thread.
+              #I don't see the need to support this on the perl side any 
+              #time soon.  --kg 3/2003
+              die "Log4perl: in config file, <appender-ref> tag is unsupported in <appender>";
+          }else{
+              die "Log4perl: in config file, <$tag_name> is unsupported\n";
+          }
+      }
+      $l4p_tree->{appender}{$name} = $l4p_branch;
+  }
+  
+  sub parse_any_param {
+      my ($l4p_branch, $child) = @_;
+  
+      my $tag_name = $child->getTagName();
+      my $name = subst($child->getAttribute('name'));
+      my $value;
+  
+      print "parse_any_param: <$tag_name name=$name\n" if _INTERNAL_DEBUG;
+  
+      #<param-nested>
+      #note we don't set it to { value => $value }
+      #and we don't test for multiple values
+      if ($tag_name eq 'param-nested'){
+          
+          if ($l4p_branch->{$name}){
+              die "Log4perl: in config file, multiple param-nested tags for $name not supported";
+          }
+          $l4p_branch->{$name} = &parse_param_nested($child); 
+  
+          return;
+  
+      #<param>
+      }elsif ($tag_name eq 'param') {
+  
+           $value = subst($child->getAttribute('value'));
+  
+           print "parse_param_nested: got param $name = $value\n"  
+               if _INTERNAL_DEBUG;
+          
+           if ($value =~ /^(all|debug|info|warn|error|fatal|off|null)$/) {
+               $value = uc $value;
+           }
+  
+           if ($name !~ /warp_message|filter/ &&
+              $child->getParentNode->getAttribute('name') ne 'cspec') {
+              $value = eval_if_perl($value);
+           }
+      #<param-text>
+      }elsif ($tag_name eq 'param-text'){
+  
+          foreach my $grandkid ($child->getChildNodes){
+              if ($grandkid->getNodeType == TEXT_NODE) {
+                  $value .= $grandkid->getData;
+              }
+          }
+          if ($name !~ /warp_message|filter/ &&
+              $child->getParentNode->getAttribute('name') ne 'cspec') {
+              $value = eval_if_perl($value);
+          }
+      }
+  
+      $value = subst($value);
+  
+       #multiple values for the same param name
+       if (defined $l4p_branch->{$name}{value} ) {
+           if (ref $l4p_branch->{$name}{value} ne 'ARRAY'){
+               my $temp = $l4p_branch->{$name}{value};
+               $l4p_branch->{$name}{value} = [$temp];
+           }
+           push @{$l4p_branch->{$name}{value}}, $value;
+       }else{
+           $l4p_branch->{$name} = {value => $value};
+       }
+  }
+  
+  #handles an appender's <param-nested> elements
+  sub parse_param_nested {
+      my ($node) = shift;
+  
+      my $l4p_branch = {};
+  
+      for my $child ($node->getChildNodes) {
+          next unless $child->getNodeType == ELEMENT_NODE;
+  
+          my $tag_name = $child->getTagName();
+  
+          if ($tag_name =~ /^param|param-nested|param-text$/) {
+              &parse_any_param($l4p_branch, $child);
+          }
+      }
+  
+      return $l4p_branch;
+  }
+  
+  #this handles filters that are children of appenders, as opposed
+  #to the custom filters that go under the root element
+  sub parse_filter {
+      my $node = shift;
+  
+      my $filter_tree = {};
+  
+      my $class_name = subst($node->getAttribute('class'));
+  
+      $filter_tree->{value} = $class_name;
+  
+      print "\tparsing filter on class $class_name\n"  if _INTERNAL_DEBUG;  
+  
+      for my $child ($node->getChildNodes) {
+          next unless $child->getNodeType == ELEMENT_NODE;
+  
+          my $tag_name = $child->getTagName();
+  
+          if ($tag_name =~ 'param|param-nested|param-text') {
+              &parse_any_param($filter_tree, $child);
+          
+          }else{
+              die "Log4perl: don't know what to do with a ".$child->getTagName()
+                  ."inside a filter element";
+          }
+      }
+      return $filter_tree;
+  }
+  
+  sub parse_filter_ref {
+      my $node = shift;
+  
+      my $filter_tree = {};
+  
+      my $filter_id = subst($node->getAttribute('id'));
+  
+      $filter_tree->{value} = $filter_id;
+  
+      return $filter_tree;
+  }
+  
+  
+  
+  sub parse_layout {
+      my $node = shift;
+  
+      my $layout_tree = {};
+  
+      my $class_name = subst($node->getAttribute('class'));
+      
+      $layout_tree->{value} = $class_name;
+      #
+      print "\tparsing layout $class_name\n"  if _INTERNAL_DEBUG;  
+      for my $child ($node->getChildNodes) {
+          next unless $child->getNodeType == ELEMENT_NODE;
+          if ($child->getTagName() eq 'param') {
+              my $name = subst($child->getAttribute('name'));
+              my $value = subst($child->getAttribute('value'));
+              if ($value =~ /^(all|debug|info|warn|error|fatal|off|null)$/) {
+                  $value = uc $value;
+              }
+              print "\tparse_layout: got param $name = $value\n"
+                  if _INTERNAL_DEBUG;
+              $layout_tree->{$name}{value} = $value;  
+  
+          }elsif ($child->getTagName() eq 'cspec') {
+              my $name = subst($child->getAttribute('name'));
+              my $value;
+              foreach my $grandkid ($child->getChildNodes){
+                  if ($grandkid->getNodeType == TEXT_NODE) {
+                      $value .= $grandkid->getData;
+                  }
+              }
+              $value =~ s/^ +//;
+              $value =~ s/ +$//;
+              $layout_tree->{cspec}{$name}{value} = subst($value);  
+          }
+      }
+      return $layout_tree;
+  }
+  
+  sub parse_boolean {
+      my $a = shift;
+  
+      if ($a eq '0' || lc $a eq 'false') {
+          return '0';
+      }elsif ($a eq '1' || lc $a eq 'true'){
+          return '1';
+      }else{
+          return $a; #probably an error, punt
+      }
+  }
+  
+  
+  #this handles variable substitution
+  sub subst {
+      my $val = shift;
+  
+      $val =~ s/\$\{(.*?)}/
+                        Log::Log4perl::Config::var_subst($1, {})/gex;
+      return $val;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Config::DOMConfigurator - reads xml config files
+  
+  =head1 SYNOPSIS
+  
+      --------------------------
+      --using the log4j DTD--
+      --------------------------
+  
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+  
+      <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+  
+      <appender name="FileAppndr1" class="org.apache.log4j.FileAppender">
+          <layout class="Log::Log4perl::Layout::PatternLayout">
+                  <param name="ConversionPattern"
+                         value="%d %4r [%t] %-5p %c %t - %m%n"/>
+          </layout>
+          <param name="File" value="t/tmp/DOMtest"/>
+          <param name="Append" value="false"/>
+      </appender>
+  
+      <category name="a.b.c.d" additivity="false">
+          <level value="warn"/>  <!-- note lowercase! -->
+          <appender-ref ref="FileAppndr1"/>
+      </category>
+  
+     <root>
+          <priority value="warn"/>
+          <appender-ref ref="FileAppndr1"/>
+     </root>
+  
+     </log4j:configuration>
+     
+     
+     
+     --------------------------
+     --using the log4perl DTD--
+     --------------------------
+     
+     <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE log4perl:configuration SYSTEM "log4perl.dtd">
+  
+      <log4perl:configuration xmlns:log4perl="http://log4perl.sourceforge.net/"
+          threshold="debug" oneMessagePerAppender="true">
+  
+      <log4perl:appender name="jabbender" class="Log::Dispatch::Jabber">
+  
+              <param-nested name="login">
+                     <param name="hostname" value="a.jabber.server"/>
+                     <param name="password" value="12345"/>
+                     <param name="port"     value="5222"/>
+                     <param name="resource" value="logger"/>
+                     <param name="username" value="bobjones"/>
+              </param-nested>
+  
+              <param name="to" value="bob@a.jabber.server"/>
+  
+              <param-text name="to">
+                    mary@another.jabber.server
+              </param-text>
+  
+              <log4perl:layout class="org.apache.log4j.PatternLayout">
+                  <param name="ConversionPattern" value = "%K xx %G %U"/>
+                  <cspec name="K">
+                      sub { return sprintf "%1x", $$}
+                  </cspec>
+                  <cspec name="G">
+                      sub {return 'thisistheGcspec'}
+                  </cspec>
+              </log4perl:layout>
+      </log4perl:appender>
+  
+      <log4perl:appender name="DBAppndr2" class="Log::Log4perl::Appender::DBI">
+                <param name="warp_message" value="0"/>
+                <param name="datasource" value="DBI:CSV:f_dir=t/tmp"/>
+                <param name="bufferSize" value="2"/>
+                <param name="password" value="sub { $ENV{PWD} }"/>
+                <param name="username" value="bobjones"/>
+  
+                <param-text name="sql">
+                    INSERT INTO log4perltest
+                              (loglevel, message, shortcaller, thingid,
+                              category, pkg, runtime1, runtime2)
+                    VALUES
+                               (?,?,?,?,?,?,?,?)
+                </param-text>
+  
+                 <param-nested name="params">
+                      <param name="1" value="%p"/>
+                      <param name="3" value="%5.5l"/>
+                      <param name="5" value="%c"/>
+                      <param name="6" value="%C"/>
+                 </param-nested>
+  
+                 <layout class="Log::Log4perl::Layout::NoopLayout"/>
+      </log4perl:appender>
+  
+      <category name="animal.dog">
+                 <priority value="info"/>
+                 <appender-ref ref="jabbender"/>
+                 <appender-ref ref="DBAppndr2"/>
+      </category>
+  
+      <category name="plant">
+              <priority value="debug"/>
+              <appender-ref ref="DBAppndr2"/>
+      </category>
+  
+      <PatternLayout>
+          <cspec name="U"><![CDATA[
+              sub {
+                  return "UID $< GID $(";
+              }
+          ]]></cspec>
+      </PatternLayout>
+  
+      </log4perl:configuration>
+      
+  
+  
+  
+  =head1 DESCRIPTION
+  
+  This module implements an XML config, complementing the properties-style
+  config described elsewhere.
+  
+  =head1 WHY
+  
+  "Why would I want my config in XML?" you ask.  Well, there are a couple
+  reasons you might want to.  Maybe you have a personal preference
+  for XML.  Maybe you manage your config with other tools that have an
+  affinity for XML, like XML-aware editors or automated config
+  generators.  Or maybe (and this is the big one) you don't like
+  having to run your application just to check the syntax of your
+  config file.
+  
+  By using an XML config and referencing a DTD, you can use a namespace-aware
+  validating parser to see if your XML config at least follows the rules set 
+  in the DTD. 
+  
+  =head1 HOW
+  
+  To reference a DTD, drop this in after the <?xml...> declaration
+  in your config file:
+  
+      <!DOCTYPE log4perl:configuration SYSTEM "log4perl.dtd">
+  
+  That tells the parser to validate your config against the DTD in
+  "log4perl.dtd", which is available in the xml/ directory of
+  the log4perl distribution.  Note that you'll also need to grab
+  the log4j-1.2.dtd from there as well, since the it's included
+  by log4perl.dtd.
+  
+  Namespace-aware validating parsers are not the norm in Perl.  
+  But the Xerces project 
+  (http://xml.apache.org/xerces-c/index.html --lots of binaries available, 
+  even rpm's)  does provide just such a parser
+  that you can use like this:
+  
+      StdInParse -ns -v < my-log4perl-config.xml
+  
+  This module itself does not use a validating parser, the obvious
+  one XML::DOM::ValParser doesn't seem to handle namespaces.
+  
+  =head1 WHY TWO DTDs
+  
+  The log4j DTD is from the log4j project, they designed it to 
+  handle their needs.  log4perl has added some extensions to the 
+  original log4j functionality which needed some extensions to the
+  log4j DTD.  If you aren't using these features then you can validate
+  your config against the log4j dtd and know that you're using
+  unadulterated log4j config tags.   
+  
+  The features added by the log4perl dtd are:
+  
+  =over 4
+  
+  =item 1 oneMessagePerAppender global setting
+  
+      log4perl.oneMessagePerAppender=1
+  
+  =item 2 globally defined user conversion specifiers
+  
+      log4perl.PatternLayout.cspec.G=sub { return "UID $< GID $("; }
+  
+  =item 3 appender-local custom conversion specifiers
+  
+       log4j.appender.appndr1.layout.cspec.K = sub {return sprintf "%1x", $$ }
+  
+  =item 4 nested options
+  
+       log4j.appender.jabbender          = Log::Dispatch::Jabber
+       #(note how these are nested under 'login')
+       log4j.appender.jabbender.login.hostname = a.jabber.server
+       log4j.appender.jabbender.login.port     = 5222
+       log4j.appender.jabbender.login.username = bobjones
+  
+  =item 5 the log4perl-specific filters, see L<Log::Log4perl::Filter>,
+  lots of examples in t/044XML-Filter.t, here's a short one:
+  
+  
+    <?xml version="1.0" encoding="UTF-8"?> 
+    <!DOCTYPE log4perl:configuration SYSTEM "log4perl.dtd">
+  
+    <log4perl:configuration xmlns:log4perl="http://log4perl.sourceforge.net/">
+     
+    <appender name="A1" class="Log::Log4perl::Appender::TestBuffer">
+          <layout class="Log::Log4perl::Layout::SimpleLayout"/>
+          <filter class="Log::Log4perl::Filter::Boolean">
+              <param name="logic" value="!Match3 &amp;&amp; (Match1 || Match2)"/> 
+          </filter>
+    </appender>   
+    
+    <appender name="A2" class="Log::Log4perl::Appender::TestBuffer">
+          <layout class="Log::Log4perl::Layout::SimpleLayout"/>
+          <filter-ref id="Match1"/>
+    </appender>   
+    
+    <log4perl:filter name="Match1" value="sub { /let this through/ }" />
+    
+    <log4perl:filter name="Match2">
+          sub { 
+              /and that, too/ 
+          }
+     </log4perl:filter>
+    
+    <log4perl:filter name="Match3" class="Log::Log4perl::Filter::StringMatch">
+      <param name="StringToMatch" value="suppress"/>
+      <param name="AcceptOnMatch" value="true"/>
+    </log4perl:filter>
+    
+    <log4perl:filter name="MyBoolean" class="Log::Log4perl::Filter::Boolean">
+      <param name="logic" value="!Match3 &amp;&amp; (Match1 || Match2)"/>
+    </log4perl:filter>
+    
+     
+     <root>
+             <priority value="info"/>
+             <appender-ref ref="A1"/>
+     </root>
+     
+     </log4perl:configuration>
+  
+  
+  =back
+  
+  
+  So we needed to extend the log4j dtd to cover these additions.
+  Now I could have just taken a 'steal this code' approach and mixed
+  parts of the log4j dtd into a log4perl dtd, but that would be
+  cut-n-paste programming.  So I've used namespaces and
+  
+  =over 4
+  
+  =item * 
+  
+  replaced three elements:
+  
+  =over 4
+  
+  =item <log4perl:configuration>
+  
+  handles #1) and accepts <PatternLayout>
+  
+  =item <log4perl:appender> 
+  
+  accepts <param-nested> and <param-text>
+  
+  =item <log4perl:layout> 
+  
+  accepts custom cspecs for #3)
+  
+  =back
+  
+  =item * 
+  
+  added a <param-nested> element (complementing the <param> element)
+      to handle #4)
+  
+  =item * 
+  
+  added a root <PatternLayout> element to handle #2)
+  
+  =item * 
+  
+  added <param-text> which lets you put things like perl code
+      into escaped CDATA between the tags, so you don't have to worry
+      about escaping characters and quotes
+  
+  =item * 
+  
+  added <cspec>
+  
+  =back
+  
+  See the examples up in the L<"SYNOPSIS"> for how all that gets used.
+  
+  =head1 WHY NAMESPACES
+  
+  I liked the idea of using the log4j DTD I<in situ>, so I used namespaces
+  to extend it.  If you really don't like having to type <log4perl:appender>
+  instead of just <appender>, you can make your own DTD combining
+  the two DTDs and getting rid of the namespace prefixes.  Then you can
+  validate against that, and log4perl should accept it just fine.
+  
+  =head1 VARIABLE SUBSTITUTION
+  
+  This supports variable substitution like C<${foobar}> in text and in 
+  attribute values except for appender-ref.  If an environment variable is defined
+  for that name, its value is substituted. So you can do stuff like
+  
+          <param name="${hostname}" value="${hostnameval}.foo.com"/>
+          <param-text name="to">${currentsysadmin}@foo.com</param-text>
+  
+  
+  =head1 REQUIRES
+  
+  To use this module you need XML::DOM installed.  
+  
+  To use the log4perl.dtd, you'll have to reference it in your XML config,
+  and you'll also need to note that log4perl.dtd references the 
+  log4j dtd as "log4j-1.2.dtd", so your validator needs to be able
+  to find that file as well.  If you don't like having to schlep two
+  files around, feel free
+  to dump the contents of "log4j-1.2.dtd" into your "log4perl.dtd" file.
+  
+  =head1 CAVEATS
+  
+  You can't mix a multiple param-nesteds with the same name, I'm going to
+  leave that for now, there's presently no need for a list of structs
+  in the config.
+  
+  =head1 CHANGES
+  
+  0.03 2/26/2003 Added support for log4perl extensions to the log4j dtd
+  
+  =head1 SEE ALSO
+  
+  t/038XML-DOM1.t, t/039XML-DOM2.t for examples
+  
+  xml/log4perl.dtd, xml/log4j-1.2.dtd
+  
+  Log::Log4perl::Config
+  
+  Log::Log4perl::Config::PropertyConfigurator
+  
+  Log::Log4perl::Config::LDAPConfigurator (coming soon!)
+  
+  The code is brazenly modeled on log4j's DOMConfigurator class, (by 
+  Christopher Taylor, Ceki Gülcü, and Anders Kristensen) and any
+  perceived similarity is not coincidental.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_CONFIG_DOMCONFIGURATOR
+
+$fatpacked{"Log/Log4perl/Config/PropertyConfigurator.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_CONFIG_PROPERTYCONFIGURATOR';
+  package Log::Log4perl::Config::PropertyConfigurator;
+  use Log::Log4perl::Config::BaseConfigurator;
+  
+  use warnings;
+  use strict;
+  
+  our @ISA = qw(Log::Log4perl::Config::BaseConfigurator);
+  
+  our %NOT_A_MULT_VALUE = map { $_ => 1 }
+      qw(conversionpattern);
+  
+  #poor man's export
+  *eval_if_perl = \&Log::Log4perl::Config::eval_if_perl;
+  *compile_if_perl = \&Log::Log4perl::Config::compile_if_perl;
+  *unlog4j      = \&Log::Log4perl::Config::unlog4j;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  our $COMMENT_REGEX = qr/[#;!]/;
+  
+  ################################################
+  sub parse {
+  ################################################
+      my($self, $newtext) = @_;
+  
+      $self->text($newtext) if defined $newtext;
+  
+      my $text = $self->{text};
+  
+      die "Config parser has nothing to parse" unless defined $text;
+  
+      my $data = {};
+      my %var_subst = ();
+  
+      while (@$text) {
+          local $_ = shift @$text;
+          s/^\s*$COMMENT_REGEX.*//;
+          next unless /\S/;
+      
+          my @parts = ();
+  
+          while (/(.+?)\\\s*$/) {
+              my $prev = $1;
+              my $next = shift(@$text);
+              $next =~ s/^ +//g;  #leading spaces
+              $next =~ s/^$COMMENT_REGEX.*//;
+              $_ = $prev. $next;
+              chomp;
+          }
+  
+          if(my($key, $val) = /(\S+?)\s*=\s*(.*)/) {
+  
+              my $key_org = $key;
+  
+              $val =~ s/\s+$//;
+  
+                  # Everything could potentially be a variable assignment
+              $var_subst{$key} = $val;
+  
+                  # Substitute any variables
+              $val =~ s/\$\{(.*?)\}/
+                        Log::Log4perl::Config::var_subst($1, \%var_subst)/gex;
+  
+              $key = unlog4j($key);
+  
+              my $how_deep = 0;
+              my $ptr = $data;
+              for my $part (split /\.|::/, $key) {
+                  push @parts, $part;
+                  $ptr->{$part} = {} unless exists $ptr->{$part};
+                  $ptr = $ptr->{$part};
+                  ++$how_deep;
+              }
+  
+              #here's where we deal with turning multiple values like this:
+              # log4j.appender.jabbender.to = him@a.jabber.server
+              # log4j.appender.jabbender.to = her@a.jabber.server
+              #into an arrayref like this:
+              #to => { value => 
+              #       ["him\@a.jabber.server", "her\@a.jabber.server"] },
+              # 
+              # This only is allowed for properties of appenders
+              # not listed in %NOT_A_MULT_VALUE (see top of file).
+              if (exists $ptr->{value} && 
+                  $how_deep > 2 &&
+                  defined $parts[0] && lc($parts[0]) eq "appender" && 
+                  defined $parts[2] && ! exists $NOT_A_MULT_VALUE{lc($parts[2])}
+                 ) {
+                  if (ref ($ptr->{value}) ne 'ARRAY') {
+                      my $temp = $ptr->{value};
+                      $ptr->{value} = [];
+                      push (@{$ptr->{value}}, $temp);
+                  }
+                  push (@{$ptr->{value}}, $val);
+              }else{
+                  if(defined $ptr->{value}) {
+                      if(! $Log::Log4perl::Logger::NO_STRICT) {
+                          die "$key_org redefined";
+                      }
+                  }
+                  $ptr->{value} = $val;
+              }
+          }
+      }
+      $self->{data} = $data;
+      return $data;
+  }
+  
+  ################################################
+  sub value {
+  ################################################
+    my($self, $path) = @_;
+  
+    $path = unlog4j($path);
+  
+    my @p = split /::/, $path;
+  
+    my $found = 0;
+    my $r = $self->{data};
+  
+    while (my $n = shift @p) {
+        if (exists $r->{$n}) {
+            $r = $r->{$n};
+            $found = 1;
+        } else {
+            $found = 0;
+        }
+    }
+  
+    if($found and exists $r->{value}) {
+        return $r->{value};
+    } else {
+        return undef;
+    }
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Config::PropertyConfigurator - reads properties file
+  
+  =head1 SYNOPSIS
+  
+      # This class is used internally by Log::Log4perl
+  
+      use Log::Log4perl::Config::PropertyConfigurator;
+  
+      my $conf = Log::Log4perl::Config::PropertyConfigurator->new();
+      $conf->file("l4p.conf");
+      $conf->parse(); # will die() on error
+  
+      my $value = $conf->value("log4perl.appender.LOGFILE.filename");
+     
+      if(defined $value) {
+          printf("The appender's file name is $value\n");
+      } else {
+          printf("The appender's file name is not defined.\n");
+      }
+  
+  =head1 DESCRIPTION
+  
+  Initializes log4perl from a properties file, stuff like
+  
+      log4j.category.a.b.c.d = WARN, A1
+      log4j.category.a.b = INFO, A1
+  
+  It also understands variable substitution, the following
+  configuration is equivalent to the previous one:
+  
+      settings = WARN, A1
+      log4j.category.a.b.c.d = ${settings}
+      log4j.category.a.b = INFO, A1
+  
+  =head1 SEE ALSO
+  
+  Log::Log4perl::Config
+  
+  Log::Log4perl::Config::BaseConfigurator
+  
+  Log::Log4perl::Config::DOMConfigurator
+  
+  Log::Log4perl::Config::LDAPConfigurator (tbd!)
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_CONFIG_PROPERTYCONFIGURATOR
+
+$fatpacked{"Log/Log4perl/Config/Watch.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_CONFIG_WATCH';
+  package Log::Log4perl::Config::Watch;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  our $NEXT_CHECK_TIME;
+  our $SIGNAL_CAUGHT;
+  
+  our $L4P_TEST_CHANGE_DETECTED;
+  our $L4P_TEST_CHANGE_CHECKED;
+  
+  ###########################################
+  sub new {
+  ###########################################
+      my($class, %options) = @_;
+  
+      my $self = { file            => "",
+                   check_interval  => 30,
+                   l4p_internal    => 0,
+                   signal          => undef,
+                   %options,
+                   _last_checked_at => 0,
+                   _last_timestamp  => 0,
+                 };
+  
+      bless $self, $class;
+  
+      if($self->{signal}) {
+              # We're in signal mode, set up the handler
+          print "Setting up signal handler for '$self->{signal}'\n" if
+              _INTERNAL_DEBUG;
+  
+          # save old signal handlers; they belong to other appenders or
+          # possibly something else in the consuming application
+          my $old_sig_handler = $SIG{$self->{signal}};
+          $SIG{$self->{signal}} = sub { 
+              print "Caught $self->{signal} signal\n" if _INTERNAL_DEBUG;
+              $self->force_next_check();
+              $old_sig_handler->(@_) if $old_sig_handler and ref $old_sig_handler eq 'CODE';
+          };
+              # Reset the marker. The handler is going to modify it.
+          $self->{signal_caught} = 0;
+          $SIGNAL_CAUGHT = 0 if $self->{l4p_internal};
+      } else {
+              # Just called to initialize
+          $self->change_detected(undef, 1);
+          $self->file_has_moved(undef, 1);
+      }
+  
+      return $self;
+  }
+  
+  ###########################################
+  sub force_next_check {
+  ###########################################
+      my($self) = @_;
+  
+      $self->{signal_caught}   = 1;
+      $self->{next_check_time} = 0;
+  
+      if( $self->{l4p_internal} ) {
+          $SIGNAL_CAUGHT = 1;
+          $NEXT_CHECK_TIME = 0;
+      }
+  }
+  
+  ###########################################
+  sub force_next_check_reset {
+  ###########################################
+      my($self) = @_;
+  
+      $self->{signal_caught} = 0;
+      $SIGNAL_CAUGHT = 0 if $self->{l4p_internal};
+  }
+  
+  ###########################################
+  sub file {
+  ###########################################
+      my($self) = @_;
+  
+      return $self->{file};
+  }
+  
+  ###########################################
+  sub signal {
+  ###########################################
+      my($self) = @_;
+  
+      return $self->{signal};
+  }
+  
+  ###########################################
+  sub check_interval {
+  ###########################################
+      my($self) = @_;
+  
+      return $self->{check_interval};
+  }
+  
+  ###########################################
+  sub file_has_moved {
+  ###########################################
+      my($self, $time, $force) = @_;
+  
+      my $task = sub {
+          my @stat = stat($self->{file});
+  
+          my $has_moved = 0;
+  
+          if(! $stat[0]) {
+              # The file's gone, obviously it got moved or deleted.
+              print "File is gone\n" if _INTERNAL_DEBUG;
+              return 1;
+          }
+  
+          my $current_inode = "$stat[0]:$stat[1]";
+          print "Current inode: $current_inode\n" if _INTERNAL_DEBUG;
+  
+          if(exists $self->{_file_inode} and 
+              $self->{_file_inode} ne $current_inode) {
+              print "Inode changed from $self->{_file_inode} to ",
+                    "$current_inode\n" if _INTERNAL_DEBUG;
+              $has_moved = 1;
+          }
+  
+          $self->{_file_inode} = $current_inode;
+          return $has_moved;
+      };
+  
+      return $self->check($time, $task, $force);
+  }
+  
+  ###########################################
+  sub change_detected {
+  ###########################################
+      my($self, $time, $force) = @_;
+  
+      my $task = sub {
+          my @stat = stat($self->{file});
+          my $new_timestamp = $stat[9];
+  
+          $L4P_TEST_CHANGE_CHECKED = 1;
+  
+          if(! defined $new_timestamp) {
+              if($self->{l4p_internal}) {
+                  # The file is gone? Let it slide, we don't want L4p to re-read
+                  # the config now, it's gonna die.
+                  return undef;
+              }
+              $L4P_TEST_CHANGE_DETECTED = 1;
+              return 1;
+          }
+  
+          if($new_timestamp > $self->{_last_timestamp}) {
+              $self->{_last_timestamp} = $new_timestamp;
+              print "Change detected (file=$self->{file} store=$new_timestamp)\n"
+                    if _INTERNAL_DEBUG;
+              $L4P_TEST_CHANGE_DETECTED = 1;
+              return 1; # Has changed
+          }
+             
+          print "$self->{file} unchanged (file=$new_timestamp ",
+                "stored=$self->{_last_timestamp})!\n" if _INTERNAL_DEBUG;
+          return "";  # Hasn't changed
+      };
+  
+      return $self->check($time, $task, $force);
+  }
+  
+  ###########################################
+  sub check {
+  ###########################################
+      my($self, $time, $task, $force) = @_;
+  
+      $time = time() unless defined $time;
+  
+      if( $self->{signal_caught} or $SIGNAL_CAUGHT ) {
+         $force = 1;
+         $self->force_next_check_reset();
+         print "Caught signal, forcing check\n" if _INTERNAL_DEBUG;
+  
+      }
+  
+      print "Soft check (file=$self->{file} time=$time)\n" if _INTERNAL_DEBUG;
+  
+          # Do we need to check?
+      if(!$force and
+         $self->{_last_checked_at} + 
+         $self->{check_interval} > $time) {
+          print "No need to check\n" if _INTERNAL_DEBUG;
+          return ""; # don't need to check, return false
+      }
+         
+      $self->{_last_checked_at} = $time;
+  
+      # Set global var for optimizations in case we just have one watcher
+      # (like in Log::Log4perl)
+      $self->{next_check_time} = $time + $self->{check_interval};
+      $NEXT_CHECK_TIME = $self->{next_check_time} if $self->{l4p_internal};
+  
+      print "Hard check (file=$self->{file} time=$time)\n" if _INTERNAL_DEBUG;
+      return $task->($time);
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Config::Watch - Detect file changes
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl::Config::Watch;
+  
+      my $watcher = Log::Log4perl::Config::Watch->new(
+                            file            => "/data/my.conf",
+                            check_interval  => 30,
+                    );
+  
+      while(1) {
+          if($watcher->change_detected()) {
+              print "Change detected!\n";
+          }
+          sleep(1);
+      }
+  
+  =head1 DESCRIPTION
+  
+  This module helps detecting changes in files. Although it comes with the
+  C<Log::Log4perl> distribution, it can be used independently.
+  
+  The constructor defines the file to be watched and the check interval 
+  in seconds. Subsequent calls to C<change_detected()> will 
+  
+  =over 4
+  
+  =item *
+  
+  return a false value immediately without doing physical file checks
+  if C<check_interval> hasn't elapsed.
+  
+  =item *
+  
+  perform a physical test on the specified file if the number
+  of seconds specified in C<check_interval> 
+  have elapsed since the last physical check. If the file's modification
+  date has changed since the last physical check, it will return a true 
+  value, otherwise a false value is returned.
+  
+  =back
+  
+  Bottom line: C<check_interval> allows you to call the function
+  C<change_detected()> as often as you like, without paying the performing
+  a significant performance penalty because file system operations 
+  are being performed (however, you pay the price of not knowing about
+  file changes until C<check_interval> seconds have elapsed).
+  
+  The module clearly distinguishes system time from file system time. 
+  If your (e.g. NFS mounted) file system is off by a constant amount
+  of time compared to the executing computer's clock, it'll just
+  work fine.
+  
+  To disable the resource-saving delay feature, just set C<check_interval> 
+  to 0 and C<change_detected()> will run a physical file test on
+  every call.
+  
+  If you already have the current time available, you can pass it
+  on to C<change_detected()> as an optional parameter, like in
+  
+      change_detected($time)
+  
+  which then won't trigger a call to C<time()>, but use the value
+  provided.
+  
+  =head2 SIGNAL MODE
+  
+  Instead of polling time and file changes, C<new()> can be instructed 
+  to set up a signal handler. If you call the constructor like
+  
+      my $watcher = Log::Log4perl::Config::Watch->new(
+                            file    => "/data/my.conf",
+                            signal  => 'HUP'
+                    );
+  
+  then a signal handler will be installed, setting the object's variable 
+  C<$self-E<gt>{signal_caught}> to a true value when the signal arrives.
+  Comes with all the problems that signal handlers go along with.
+  
+  =head2 TRIGGER CHECKS
+  
+  To trigger a physical file check on the next call to C<change_detected()>
+  regardless if C<check_interval> has expired or not, call
+  
+      $watcher->force_next_check();
+  
+  on the watcher object.
+  
+  =head2 DETECT MOVED FILES
+  
+  The watcher can also be used to detect files that have moved. It will 
+  not only detect if a watched file has disappeared, but also if it has
+  been replaced by a new file in the meantime.
+  
+      my $watcher = Log::Log4perl::Config::Watch->new(
+          file           => "/data/my.conf",
+          check_interval => 30,
+      );
+  
+      while(1) {
+          if($watcher->file_has_moved()) {
+              print "File has moved!\n";
+          }
+          sleep(1);
+      }
+  
+  The parameters C<check_interval> and C<signal> limit the number of physical 
+  file system checks, similarily as with C<change_detected()>.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_CONFIG_WATCH
+
+$fatpacked{"Log/Log4perl/DateFormat.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_DATEFORMAT';
+  ###########################################
+  package Log::Log4perl::DateFormat;
+  ###########################################
+  use warnings;
+  use strict;
+  
+  use Carp qw( croak );
+  
+  our $GMTIME = 0;
+  
+  my @MONTH_NAMES = qw(
+  January February March April May June July
+  August September October November December);
+  
+  my @WEEK_DAYS = qw(
+  Sunday Monday Tuesday Wednesday Thursday Friday Saturday);
+  
+  ###########################################
+  sub new {
+  ###########################################
+      my($class, $format) = @_;
+  
+      my $self = { 
+                    stack => [],
+                    fmt   => undef,
+                 };
+  
+      bless $self, $class;
+  
+          # Predefined formats
+      if($format eq "ABSOLUTE") {
+          $format = "HH:mm:ss,SSS";
+      } elsif($format eq "DATE") {
+          $format = "dd MMM yyyy HH:mm:ss,SSS";
+      } elsif($format eq "ISO8601") {
+          $format = "yyyy-MM-dd HH:mm:ss,SSS";
+      } elsif($format eq "APACHE") {
+          $format = "[EEE MMM dd HH:mm:ss yyyy]";
+      }
+  
+      if($format) { 
+          $self->prepare($format);
+      }
+  
+      return $self;
+  }
+  
+  ###########################################
+  sub prepare {
+  ###########################################
+      my($self, $format) = @_;
+  
+      # the actual DateTime spec allows for literal text delimited by
+      # single quotes; a single quote can be embedded in the literal
+      # text by using two single quotes.
+      #
+      # my strategy here is to split the format into active and literal
+      # "chunks"; active chunks are prepared using $self->rep() as
+      # before, while literal chunks get transformed to accommodate
+      # single quotes and to protect percent signs.
+      #
+      # motivation: the "recommended" ISO-8601 date spec for a time in
+      # UTC is actually:
+      #
+      #     YYYY-mm-dd'T'hh:mm:ss.SSS'Z'
+  
+      my $fmt = "";
+  
+      foreach my $chunk ( split /('(?:''|[^'])*')/, $format ) {
+          if ( $chunk =~ /\A'(.*)'\z/ ) {
+                # literal text
+              my $literal = $1;
+              $literal =~ s/''/'/g;
+              $literal =~ s/\%/\%\%/g;
+              $fmt .= $literal;
+          } elsif ( $chunk =~ /'/ ) {
+                # single quotes should always be in a literal
+              croak "bad date format \"$format\": " .
+                    "unmatched single quote in chunk \"$chunk\"";
+          } else {
+              # handle active chunks just like before
+              $chunk =~ s/(([GyMdhHmsSEeDFwWakKzZ])\2*)/$self->rep($1)/ge;
+              $fmt .= $chunk;
+          }
+      }
+  
+      return $self->{fmt} = $fmt;
+  }
+  
+  ###########################################
+  sub rep {
+  ###########################################
+      my ($self, $string) = @_;
+  
+      my $first = substr $string, 0, 1;
+      my $len   = length $string;
+  
+      my $time=time();
+      my @g = gmtime($time);
+      my @t = localtime($time);
+      my $z = $t[1]-$g[1]+($t[2]-$g[2])*60+($t[7]-$g[7])*1440+
+              ($t[5]-$g[5])*(525600+(abs($t[7]-$g[7])>364)*1440);
+      my $offset = sprintf("%+.2d%.2d", $z/60, "00");
+  
+      #my ($s,$mi,$h,$d,$mo,$y,$wd,$yd,$dst) = localtime($time);
+  
+      # Here's how this works:
+      # Detect what kind of parameter we're dealing with and determine
+      # what type of sprintf-placeholder to return (%d, %02d, %s or whatever).
+      # Then, we're setting up an array, specific to the current format,
+      # that can be used later on to compute the components of the placeholders
+      # one by one when we get the components of the current time later on
+      # via localtime.
+      
+      # So, we're parsing the "yyyy/MM" format once, replace it by, say
+      # "%04d:%02d" and store an array that says "for the first placeholder,
+      # get the localtime-parameter on index #5 (which is years since the
+      # epoch), add 1900 to it and pass it on to sprintf(). For the 2nd 
+      # placeholder, get the localtime component at index #2 (which is hours)
+      # and pass it on unmodified to sprintf.
+      
+      # So, the array to compute the time format at logtime contains
+      # as many elements as the original SimpleDateFormat contained. Each
+      # entry is a array ref, holding an array with 2 elements: The index
+      # into the localtime to obtain the value and a reference to a subroutine
+      # to do computations eventually. The subroutine expects the original
+      # localtime() time component (like year since the epoch) and returns
+      # the desired value for sprintf (like y+1900).
+  
+      # This way, we're parsing the original format only once (during system
+      # startup) and during runtime all we do is call localtime *once* and
+      # run a number of blazingly fast computations, according to the number
+      # of placeholders in the format.
+  
+  ###########
+  #G - epoch#
+  ###########
+      if($first eq "G") {
+          # Always constant
+          return "AD";
+  
+  ###################
+  #e - epoch seconds#
+  ###################
+      } elsif($first eq "e") {
+            # index (0) irrelevant, but we return time() which 
+            # comes in as 2nd parameter
+          push @{$self->{stack}}, [0, sub { return $_[1] }];
+          return "%d";
+  
+  ##########
+  #y - year#
+  ##########
+      } elsif($first eq "y") {
+          if($len >= 4) {
+              # 4-digit year
+              push @{$self->{stack}}, [5, sub { return $_[0] + 1900 }];
+              return "%04d";
+          } else {
+              # 2-digit year
+              push @{$self->{stack}}, [5, sub { $_[0] % 100 }];
+              return "%02d";
+          }
+  
+  ###########
+  #M - month#
+  ###########
+      } elsif($first eq "M") {
+          if($len >= 3) {
+              # Use month name
+              push @{$self->{stack}}, [4, sub { return $MONTH_NAMES[$_[0]] }];
+             if($len >= 4) {
+                  return "%s";
+              } else {
+                 return "%.3s";
+              }
+          } elsif($len == 2) {
+              # Use zero-padded month number
+              push @{$self->{stack}}, [4, sub { $_[0]+1 }];
+              return "%02d";
+          } else {
+              # Use zero-padded month number
+              push @{$self->{stack}}, [4, sub { $_[0]+1 }];
+              return "%d";
+          }
+  
+  ##################
+  #d - day of month#
+  ##################
+      } elsif($first eq "d") {
+          push @{$self->{stack}}, [3, sub { return $_[0] }];
+          return "%0" . $len . "d";
+  
+  ##################
+  #h - am/pm hour#
+  ##################
+      } elsif($first eq "h") {
+          push @{$self->{stack}}, [2, sub { ($_[0] % 12) || 12 }];
+          return "%0" . $len . "d";
+  
+  ##################
+  #H - 24 hour#
+  ##################
+      } elsif($first eq "H") {
+          push @{$self->{stack}}, [2, sub { return $_[0] }];
+          return "%0" . $len . "d";
+  
+  ##################
+  #m - minute#
+  ##################
+      } elsif($first eq "m") {
+          push @{$self->{stack}}, [1, sub { return $_[0] }];
+          return "%0" . $len . "d";
+  
+  ##################
+  #s - second#
+  ##################
+      } elsif($first eq "s") {
+          push @{$self->{stack}}, [0, sub { return $_[0] }];
+          return "%0" . $len . "d";
+  
+  ##################
+  #E - day of week #
+  ##################
+      } elsif($first eq "E") {
+          push @{$self->{stack}}, [6, sub { $WEEK_DAYS[$_[0]] }];
+         if($len >= 4) {
+              return "%${len}s";
+          } else {
+             return "%.3s";
+          }
+  
+  ######################
+  #D - day of the year #
+  ######################
+      } elsif($first eq "D") {
+          push @{$self->{stack}}, [7, sub { $_[0] + 1}];
+          return "%0" . $len . "d";
+  
+  ######################
+  #a - am/pm marker    #
+  ######################
+      } elsif($first eq "a") {
+          push @{$self->{stack}}, [2, sub { $_[0] < 12 ? "AM" : "PM" }];
+          return "%${len}s";
+  
+  ######################
+  #S - milliseconds    #
+  ######################
+      } elsif($first eq "S") {
+          push @{$self->{stack}}, 
+               [9, sub { substr sprintf("%06d", $_[0]), 0, $len }];
+          return "%s";
+  
+  ###############################
+  #Z - RFC 822 time zone  -0800 #
+  ###############################
+      } elsif($first eq "Z") {
+          push @{$self->{stack}}, [10, sub { $offset }];
+          return "%s";
+  
+  #############################
+  #Something that's not defined
+  #(F=day of week in month
+  # w=week in year W=week in month
+  # k=hour in day K=hour in am/pm
+  # z=timezone
+  #############################
+      } else {
+          return "-- '$first' not (yet) implemented --";
+      }
+  
+      return $string;
+  }
+  
+  ###########################################
+  sub format {
+  ###########################################
+      my($self, $secs, $msecs) = @_;
+  
+      $msecs = 0 unless defined $msecs;
+  
+      my @time; 
+  
+      if($GMTIME) {
+          @time = gmtime($secs);
+      } else {
+          @time = localtime($secs);
+      }
+  
+          # add milliseconds
+      push @time, $msecs;
+  
+      my @values = ();
+  
+      for(@{$self->{stack}}) {
+          my($val, $code) = @$_;
+          if($code) {
+              push @values, $code->($time[$val], $secs);
+          } else {
+              push @values, $time[$val];
+          }
+      }
+  
+      return sprintf($self->{fmt}, @values);
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::DateFormat - Log4perl advanced date formatter helper class
+  
+  =head1 SYNOPSIS
+  
+  
+        # Either in a log4j.conf file ...
+      log4perl.appender.Logfile.layout = \
+          Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.Logfile.layout.ConversionPattern = %d{MM/dd HH:mm} %m
+  
+        # ... or via the PatternLayout class ...
+      use Log::Log4perl::Layout::PatternLayout;
+      my $layout = Log::Log4perl::Layout::PatternLayout->new(
+          "%d{HH:mm:ss,SSS} %m");
+  
+        # ... or even directly with this helper class:
+      use Log::Log4perl::DateFormat;
+      my $format = Log::Log4perl::DateFormat->new("HH:mm:ss,SSS");
+      my $time = time();
+      print $format->format($time), "\n";
+          # => "17:02:39,000"
+  
+  =head1 DESCRIPTION
+  
+  C<Log::Log4perl::DateFormat> is a helper class for the 
+  advanced date formatting functions in C<Log::Log4perl::Layout::PatternLayout>,
+  and adheres (mostly) to the log4j SimpleDateFormat spec available on
+  
+      http://download.oracle.com/javase/1.4.2/docs/api/java/text/SimpleDateFormat.html
+  
+  It supports the following placeholders:
+  
+      Symbol Meaning              Presentation    Example
+      ------ -------              ------------    -------
+      G      era designator       (Text)          AD
+      e      epoch seconds        (Number)        1315011604
+      y      year                 (Number)        1996
+      M      month in year        (Text & Number) July & 07
+      d      day in month         (Number)        10
+      h      hour in am/pm (1~12) (Number)        12
+      H      hour in day (0~23)   (Number)        0
+      m      minute in hour       (Number)        30
+      s      second in minute     (Number)        55
+      S      millisecond          (Number)        978
+      E      day in week          (Text)          Tuesday
+      D      day in year          (Number)        189
+      F      day of week in month (Number)        2 (2nd Wed in July)
+      w      week in year         (Number)        27
+      W      week in month        (Number)        2
+      a      am/pm marker         (Text)          PM
+      k      hour in day (1~24)   (Number)        24
+      K      hour in am/pm (0~11) (Number)        0
+      z      time zone            (Text)          Pacific Standard Time
+      Z      RFC 822 time zone    (Text)          -0800
+      '      escape for text      (Delimiter)
+      ''     single quote         (Literal)       '
+  
+      Presentation explanation:
+  
+      (Text): 4 or more pattern letters--use full form, < 4--use short or 
+              abbreviated form if one exists. 
+  
+      (Number): the minimum number of digits. Shorter numbers are 
+                zero-padded to this amount. Year is handled 
+                specially; that is, if the count of 'y' is 2, the 
+                Year will be truncated to 2 digits. 
+  
+      (Text & Number): 3 or over, use text, otherwise use number. 
+  
+  For example, if you want to format the current Unix time in C<"MM/dd HH:mm">
+  format, all you have to do is specify it in the %d{...} section of the
+  PatternLayout in a Log4perl configuration file:
+  
+      # log4j.conf
+      # ...
+      log4perl.appender.Logfile.layout = \
+          Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.Logfile.layout.ConversionPattern = %d{MM/dd HH:mm} %m
+  
+  Same goes for Perl code defining a PatternLayout for Log4perl:
+  
+      use Log::Log4perl::Layout::PatternLayout;
+      my $layout = Log::Log4perl::Layout::PatternLayout->new(
+          "%d{MM/dd HH:mm} %m");
+  
+  Or, on a lower level, you can use the class directly:
+  
+      use Log::Log4perl::DateFormat;
+      my $format = Log::Log4perl::DateFormat->new("MM/dd HH:mm");
+      my $time = time();
+      print $format->format($time), "\n";
+  
+  While the C<new()> method is expensive, because it parses the format
+  strings and sets up all kinds of structures behind the scenes, 
+  followup calls to C<format()> are fast, because C<DateFormat> will
+  just call C<localtime()> and C<sprintf()> once to return the formatted
+  date/time string.
+  
+  So, typically, you would initialize the formatter once and then reuse
+  it over and over again to display all kinds of time values.
+  
+  Also, for your convenience, 
+  the following predefined formats are available, just as outlined in the
+  log4j spec:
+  
+      Format   Equivalent                     Example
+      ABSOLUTE "HH:mm:ss,SSS"                 "15:49:37,459"
+      DATE     "dd MMM yyyy HH:mm:ss,SSS"     "06 Nov 1994 15:49:37,459"
+      ISO8601  "yyyy-MM-dd HH:mm:ss,SSS"      "1999-11-27 15:49:37,459"
+      APACHE   "[EEE MMM dd HH:mm:ss yyyy]"   "[Wed Mar 16 15:49:37 2005]"
+  
+  So, instead of passing 
+  
+      Log::Log4perl::DateFormat->new("HH:mm:ss,SSS");
+  
+  you could just as well say
+  
+      Log::Log4perl::DateFormat->new("ABSOLUTE");
+  
+  and get the same result later on.
+  
+  =head2 Known Shortcomings
+   
+  The following placeholders are currently I<not> recognized, unless
+  someone (and that could be you :) implements them:
+  
+      F day of week in month
+      w week in year 
+      W week in month
+      k hour in day 
+      K hour in am/pm
+      z timezone (but we got 'Z' for the numeric time zone value)
+  
+  Also, C<Log::Log4perl::DateFormat> just knows about English week and
+  month names, internationalization support has to be added.
+  
+  =head1 Millisecond Times
+  
+  More granular timestamps down to the millisecond are also supported,
+  just provide the millsecond count as a second argument:
+  
+      # Advanced time, resultion in milliseconds
+      use Time::HiRes;
+      my ($secs, $msecs) = Time::HiRes::gettimeofday();
+      print $format->format($secs, $msecs), "\n";
+          # => "17:02:39,959"
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2016 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_DATEFORMAT
+
+$fatpacked{"Log/Log4perl/FAQ.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_FAQ';
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::FAQ - Frequently Asked Questions on Log::Log4perl
+  
+  =head1 DESCRIPTION
+  
+  This FAQ shows a wide variety of
+  commonly encountered logging tasks and how to solve them
+  in the most elegant way with Log::Log4perl. Most of the time, this will
+  be just a matter of smartly configuring your Log::Log4perl configuration files.
+  
+  =head2 Why use Log::Log4perl instead of any other logging module on CPAN?
+  
+  That's a good question. There's dozens of logging modules on CPAN.
+  When it comes to logging, people typically think: "Aha. Writing out
+  debug and error messages. Debug is lower than error. Easy. I'm gonna
+  write my own." Writing a logging module is like a rite of passage for
+  every Perl programmer, just like writing your own templating system.
+  
+  Of course, after getting the basics right, features need to
+  be added. You'd like to write a timestamp with every message. Then
+  timestamps with microseconds. Then messages need to be written to both
+  the screen and a log file.
+  
+  And, as your application grows in size you might wonder: Why doesn't
+  my logging system scale along with it? You would like to switch on
+  logging in selected parts of the application, and not all across the
+  board, because this kills performance. This is when people turn to
+  Log::Log4perl, because it handles all of that.
+  
+  Avoid this costly switch.
+  
+  Use C<Log::Log4perl> right from the start. C<Log::Log4perl>'s C<:easy>
+  mode supports easy logging in simple scripts:
+  
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($DEBUG);
+  
+      DEBUG "A low-level message";
+      ERROR "Won't make it until level gets increased to ERROR";
+  
+  And when your application inevitably grows, your logging system grows
+  with it without you having to change any code.
+  
+  Please, don't re-invent logging. C<Log::Log4perl> is here, it's easy
+  to use, it scales, and covers many areas you haven't thought of yet,
+  but will enter soon.
+  
+  =head2 What's the easiest way to use Log4perl?
+  
+  If you just want to get all the comfort of logging, without much
+  overhead, use I<Stealth Loggers>. If you use Log::Log4perl in
+  C<:easy> mode like
+  
+      use Log::Log4perl qw(:easy);
+  
+  you'll have the following functions available in the current package:
+  
+      DEBUG("message");
+      INFO("message");
+      WARN("message");
+      ERROR("message");
+      FATAL("message");
+  
+  Just make sure that every package of your code where you're using them in
+  pulls in C<use Log::Log4perl qw(:easy)> first, then you're set.
+  Every stealth logger's category will be equivalent to the name of the
+  package it's located in.
+  
+  These stealth loggers
+  will be absolutely silent until you initialize Log::Log4perl in
+  your main program with either
+  
+          # Define any Log4perl behavior
+      Log::Log4perl->init("foo.conf");
+  
+  (using a full-blown Log4perl config file) or the super-easy method
+  
+          # Just log to STDERR
+      Log::Log4perl->easy_init($DEBUG);
+  
+  or the parameter-style method with a complexity somewhat in between:
+  
+          # Append to a log file
+      Log::Log4perl->easy_init( { level   => $DEBUG,
+                                  file    => ">>test.log" } );
+  
+  For more info, please check out L<Log::Log4perl/"Stealth Loggers">.
+  
+  =head2 How can I simply log all my ERROR messages to a file?
+  
+  After pulling in the C<Log::Log4perl> module, just initialize its
+  behavior by passing in a configuration to its C<init> method as a string
+  reference. Then, obtain a logger instance and write out a message
+  with its C<error()> method:
+  
+      use Log::Log4perl qw(get_logger);
+  
+          # Define configuration
+      my $conf = q(
+          log4perl.logger                    = ERROR, FileApp
+          log4perl.appender.FileApp          = Log::Log4perl::Appender::File
+          log4perl.appender.FileApp.filename = test.log
+          log4perl.appender.FileApp.layout   = PatternLayout
+          log4perl.appender.FileApp.layout.ConversionPattern = %d> %m%n
+      );
+  
+          # Initialize logging behavior
+      Log::Log4perl->init( \$conf );
+  
+          # Obtain a logger instance
+      my $logger = get_logger("Bar::Twix");
+      $logger->error("Oh my, a dreadful error!");
+      $logger->warn("Oh my, a dreadful warning!");
+  
+  This will append something like
+  
+      2002/10/29 20:11:55> Oh my, a dreadful error!
+  
+  to the log file C<test.log>. How does this all work?
+  
+  While the Log::Log4perl C<init()> method typically
+  takes the name of a configuration file as its input parameter like
+  in
+  
+      Log::Log4perl->init( "/path/mylog.conf" );
+  
+  the example above shows how to pass in a configuration as text in a
+  scalar reference.
+  
+  The configuration as shown
+  defines a logger of the root category, which has an appender of type
+  C<Log::Log4perl::Appender::File> attached. The line
+  
+      log4perl.logger = ERROR, FileApp
+  
+  doesn't list a category, defining a root logger. Compare that with
+  
+      log4perl.logger.Bar.Twix = ERROR, FileApp
+  
+  which would define a logger for the category C<Bar::Twix>,
+  showing probably different behavior. C<FileApp> on
+  the right side of the assignment is
+  an arbitrarily defined variable name, which is only used to somehow
+  reference an appender defined later on.
+  
+  Appender settings in the configuration are defined as follows:
+  
+      log4perl.appender.FileApp          = Log::Log4perl::Appender::File
+      log4perl.appender.FileApp.filename = test.log
+  
+  It selects the file appender of the C<Log::Log4perl::Appender>
+  hierarchy, which will append to the file C<test.log> if it already
+  exists. If we wanted to overwrite a potentially existing file, we would
+  have to explicitly set the appropriate C<Log::Log4perl::Appender::File>
+  parameter C<mode>:
+  
+      log4perl.appender.FileApp          = Log::Log4perl::Appender::File
+      log4perl.appender.FileApp.filename = test.log
+      log4perl.appender.FileApp.mode     = write
+  
+  Also, the configuration defines a PatternLayout format, adding
+  the nicely formatted current date and time, an arrow (E<gt>) and
+  a space before the messages, which is then followed by a newline:
+  
+      log4perl.appender.FileApp.layout   = PatternLayout
+      log4perl.appender.FileApp.layout.ConversionPattern = %d> %m%n
+  
+  Obtaining a logger instance and actually logging something is typically
+  done in a different system part as the Log::Log4perl initialisation section,
+  but in this example, it's just done right after init for the
+  sake of compactness:
+  
+          # Obtain a logger instance
+      my $logger = get_logger("Bar::Twix");
+      $logger->error("Oh my, a dreadful error!");
+  
+  This retrieves an instance of the logger of the category C<Bar::Twix>,
+  which, as all other categories, inherits behavior from the root logger if no
+  other loggers are defined in the initialization section.
+  
+  The C<error()>
+  method fires up a message, which the root logger catches. Its
+  priority is equal to
+  or higher than the root logger's priority (ERROR), which causes the root logger
+  to forward it to its attached appender. By contrast, the following
+  
+      $logger->warn("Oh my, a dreadful warning!");
+  
+  doesn't make it through, because the root logger sports a higher setting
+  (ERROR and up) than the WARN priority of the message.
+  
+  =head2 How can I install Log::Log4perl on Microsoft Windows?
+  
+  You can install Log::Log4perl using the CPAN client.
+  
+  Alternatively you can install it using
+  
+      ppm install Log-Log4perl
+  
+  if you're using ActiveState perl.
+  
+  
+  That's it! Afterwards, just create a Perl script like
+  
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($DEBUG);
+  
+      my $logger = get_logger("Twix::Bar");
+      $logger->debug("Watch me!");
+  
+  and run it. It should print something like
+  
+      2002/11/06 01:22:05 Watch me!
+  
+  If you find that something doesn't work, please let us know at
+  log4perl-devel@lists.sourceforge.net -- we'll appreciate it. Have fun!
+  
+  =head2 How can I include global (thread-specific) data in my log messages?
+  
+  Say, you're writing a web application and want all your
+  log messages to include the current client's IP address. Most certainly,
+  you don't want to include it in each and every log message like in
+  
+      $logger->debug( $r->connection->remote_ip,
+                      " Retrieving user data from DB" );
+  
+  do you? Instead, you want to set it in a global data structure and
+  have Log::Log4perl include it automatically via a PatternLayout setting
+  in the configuration file:
+  
+      log4perl.appender.FileApp.layout.ConversionPattern = %X{ip} %m%n
+  
+  The conversion specifier C<%X{ip}> references an entry under the key
+  C<ip> in the global C<MDC> (mapped diagnostic context) table, which
+  you've set once via
+  
+      Log::Log4perl::MDC->put("ip", $r->connection->remote_ip);
+  
+  at the start of the request handler. Note that this is a
+  I<static> (class) method, there's no logger object involved.
+  You can use this method with as many key/value pairs as you like as long
+  as you reference them under different names.
+  
+  The mappings are stored in a global hash table within Log::Log4perl.
+  Luckily, because the thread
+  model in 5.8.0 doesn't share global variables between threads unless
+  they're explicitly marked as such, there's no problem with multi-threaded
+  environments.
+  
+  For more details on the MDC, please refer to
+  L<Log::Log4perl/"Mapped Diagnostic Context (MDC)"> and
+  L<Log::Log4perl::MDC>.
+  
+  =head2 My application is already logging to a file. How can I duplicate all messages to also go to the screen?
+  
+  Assuming that you already have a Log4perl configuration file like
+  
+      log4perl.logger                    = DEBUG, FileApp
+  
+      log4perl.appender.FileApp          = Log::Log4perl::Appender::File
+      log4perl.appender.FileApp.filename = test.log
+      log4perl.appender.FileApp.layout   = PatternLayout
+      log4perl.appender.FileApp.layout.ConversionPattern = %d> %m%n
+  
+  and log statements all over your code,
+  it's very easy with Log4perl to have the same messages both printed to
+  the logfile and the screen. No reason to change your code, of course,
+  just add another appender to the configuration file and you're done:
+  
+      log4perl.logger                    = DEBUG, FileApp, ScreenApp
+  
+      log4perl.appender.FileApp          = Log::Log4perl::Appender::File
+      log4perl.appender.FileApp.filename = test.log
+      log4perl.appender.FileApp.layout   = PatternLayout
+      log4perl.appender.FileApp.layout.ConversionPattern = %d> %m%n
+  
+      log4perl.appender.ScreenApp          = Log::Log4perl::Appender::Screen
+      log4perl.appender.ScreenApp.stderr   = 0
+      log4perl.appender.ScreenApp.layout   = PatternLayout
+      log4perl.appender.ScreenApp.layout.ConversionPattern = %d> %m%n
+  
+  The configuration file above is assuming that both appenders are
+  active in the same logger hierarchy, in this case the C<root> category.
+  But even if you've got file loggers defined in several parts of your system,
+  belonging to different logger categories,
+  each logging to different files, you can gobble up all logged messages
+  by defining a root logger with a screen appender, which would duplicate
+  messages from all your file loggers to the screen due to Log4perl's
+  appender inheritance. Check
+  
+      http://www.perl.com/pub/a/2002/09/11/log4perl.html
+  
+  for details. Have fun!
+  
+  =head2 How can I make sure my application logs a message when it dies unexpectedly?
+  
+  Whenever you encounter a fatal error in your application, instead of saying
+  something like
+  
+      open FILE, "<blah" or die "Can't open blah -- bailing out!";
+  
+  just use Log::Log4perl's fatal functions instead:
+  
+      my $log = get_logger("Some::Package");
+      open FILE, "<blah" or $log->logdie("Can't open blah -- bailing out!");
+  
+  This will both log the message with priority FATAL according to your current
+  Log::Log4perl configuration and then call Perl's C<die()>
+  afterwards to terminate the program. It works the same with
+  stealth loggers (see L<Log::Log4perl/"Stealth Loggers">),
+  all you need to do is call
+  
+      use Log::Log4perl qw(:easy);
+      open FILE, "<blah" or LOGDIE "Can't open blah -- bailing out!";
+  
+  What can you do if you're using some library which doesn't use Log::Log4perl
+  and calls C<die()> internally if something goes wrong? Use a
+  C<$SIG{__DIE__}> pseudo signal handler
+  
+      use Log::Log4perl qw(get_logger);
+  
+      $SIG{__DIE__} = sub {
+          if($^S) {
+              # We're in an eval {} and don't want log
+              # this message but catch it later
+              return;
+          }
+          local $Log::Log4perl::caller_depth =
+                $Log::Log4perl::caller_depth + 1;
+          my $logger = get_logger("");
+          $logger->fatal(@_);
+          die @_; # Now terminate really
+      };
+  
+  This will catch every C<die()>-Exception of your
+  application or the modules it uses. In case you want to
+  It
+  will fetch a root logger and pass on the C<die()>-Message to it.
+  If you make sure you've configured with a root logger like this:
+  
+      Log::Log4perl->init(\q{
+          log4perl.category         = FATAL, Logfile
+          log4perl.appender.Logfile = Log::Log4perl::Appender::File
+          log4perl.appender.Logfile.filename = fatal_errors.log
+          log4perl.appender.Logfile.layout = \
+                     Log::Log4perl::Layout::PatternLayout
+          log4perl.appender.Logfile.layout.ConversionPattern = %F{1}-%L (%M)> %m%n
+      });
+  
+  then all C<die()> messages will be routed to a file properly. The line
+  
+       local $Log::Log4perl::caller_depth =
+             $Log::Log4perl::caller_depth + 1;
+  
+  in the pseudo signal handler above merits a more detailed explanation. With
+  the setup above, if a module calls C<die()> in one of its functions,
+  the fatal message will be logged in the signal handler and not in the
+  original function -- which will cause the %F, %L and %M placeholders
+  in the pattern layout to be replaced by the filename, the line number
+  and the function/method name of the signal handler, not the error-throwing
+  module. To adjust this, Log::Log4perl has the C<$caller_depth> variable,
+  which defaults to 0, but can be set to positive integer values
+  to offset the caller level. Increasing
+  it by one will cause it to log the calling function's parameters, not
+  the ones of the signal handler.
+  See L<Log::Log4perl/"Using Log::Log4perl from wrapper classes"> for more
+  details.
+  
+  =head2 How can I hook up the LWP library with Log::Log4perl?
+  
+  Or, to put it more generally: How can you utilize a third-party
+  library's embedded logging and debug statements in Log::Log4perl?
+  How can you make them print
+  to configurable appenders, turn them on and off, just as if they
+  were regular Log::Log4perl logging statements?
+  
+  The easiest solution is to map the third-party library logging statements
+  to Log::Log4perl's stealth loggers via a typeglob assignment.
+  
+  As an example, let's take LWP, one of the most popular Perl modules,
+  which makes handling WWW requests and responses a breeze.
+  Internally, LWP uses its own logging and debugging system,
+  utilizing the following calls
+  inside the LWP code (from the LWP::Debug man page):
+  
+          # Function tracing
+      LWP::Debug::trace('send()');
+  
+          # High-granular state in functions
+      LWP::Debug::debug('url ok');
+  
+          # Data going over the wire
+      LWP::Debug::conns("read $n bytes: $data");
+  
+  First, let's assign Log::Log4perl priorities
+  to these functions: I'd suggest that
+  C<debug()> messages have priority C<INFO>,
+  C<trace()> uses C<DEBUG> and C<conns()> also logs with C<DEBUG> --
+  although your mileage may certainly vary.
+  
+  Now, in order to transparently hook up LWP::Debug with Log::Log4perl,
+  all we have to do is say
+  
+      package LWP::Debug;
+      use Log::Log4perl qw(:easy);
+  
+      *trace = *INFO;
+      *conns = *DEBUG;
+      *debug = *DEBUG;
+  
+      package main;
+      # ... go on with your regular program ...
+  
+  at the beginning of our program. In this way, every time the, say,
+  C<LWP::UserAgent> module calls C<LWP::Debug::trace()>, it will implicitly
+  call INFO(), which is the C<info()> method of a stealth logger defined for
+  the Log::Log4perl category C<LWP::Debug>. Is this cool or what?
+  
+  Here's a complete program:
+  
+      use LWP::UserAgent;
+      use HTTP::Request::Common;
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->easy_init(
+          { category => "LWP::Debug",
+            level    => $DEBUG,
+            layout   => "%r %p %M-%L %m%n",
+          });
+  
+      package LWP::Debug;
+      use Log::Log4perl qw(:easy);
+      *trace = *INFO;
+      *conns = *DEBUG;
+      *debug = *DEBUG;
+  
+      package main;
+      my $ua = LWP::UserAgent->new();
+      my $resp = $ua->request(GET "http://amazon.com");
+  
+      if($resp->is_success()) {
+          print "Success: Received ",
+                length($resp->content()), "\n";
+      } else {
+          print "Error: ", $resp->code(), "\n";
+      }
+  
+  This will generate the following output on STDERR:
+  
+      174 INFO LWP::UserAgent::new-164 ()
+      208 INFO LWP::UserAgent::request-436 ()
+      211 INFO LWP::UserAgent::send_request-294 GET http://amazon.com
+      212 DEBUG LWP::UserAgent::_need_proxy-1123 Not proxied
+      405 INFO LWP::Protocol::http::request-122 ()
+      859 DEBUG LWP::Protocol::collect-206 read 233 bytes
+      863 DEBUG LWP::UserAgent::request-443 Simple response: Found
+      869 INFO LWP::UserAgent::request-436 ()
+      871 INFO LWP::UserAgent::send_request-294
+       GET http://www.amazon.com:80/exec/obidos/gateway_redirect
+      872 DEBUG LWP::UserAgent::_need_proxy-1123 Not proxied
+      873 INFO LWP::Protocol::http::request-122 ()
+      1016 DEBUG LWP::UserAgent::request-443 Simple response: Found
+      1020 INFO LWP::UserAgent::request-436 ()
+      1022 INFO LWP::UserAgent::send_request-294
+       GET http://www.amazon.com/exec/obidos/subst/home/home.html/
+      1023 DEBUG LWP::UserAgent::_need_proxy-1123 Not proxied
+      1024 INFO LWP::Protocol::http::request-122 ()
+      1382 DEBUG LWP::Protocol::collect-206 read 632 bytes
+      ...
+      2605 DEBUG LWP::Protocol::collect-206 read 77 bytes
+      2607 DEBUG LWP::UserAgent::request-443 Simple response: OK
+      Success: Received 42584
+  
+  Of course, in this way, the embedded logging and debug statements within
+  LWP can be utilized in any Log::Log4perl way you can think of. You can
+  have them sent to different appenders, block them based on the
+  category and everything else Log::Log4perl has to offer.
+  
+  Only drawback of this method: Steering logging behavior via category
+  is always based on the C<LWP::Debug> package. Although the logging
+  statements reflect the package name of the issuing module properly,
+  the stealth loggers in C<LWP::Debug> are all of the category C<LWP::Debug>.
+  This implies that you can't control the logging behavior based on the
+  package that's I<initiating> a log request (e.g. LWP::UserAgent) but only
+  based on the package that's actually I<executing> the logging statement,
+  C<LWP::Debug> in this case.
+  
+  To work around this conundrum, we need to write a wrapper function and
+  plant it into the C<LWP::Debug> package. It will determine the caller and
+  create a logger bound to a category with the same name as the caller's
+  package:
+  
+      package LWP::Debug;
+  
+      use Log::Log4perl qw(:levels get_logger);
+  
+      sub l4p_wrapper {
+          my($prio, @message) = @_;
+          $Log::Log4perl::caller_depth += 2;
+          get_logger(scalar caller(1))->log($prio, @message);
+          $Log::Log4perl::caller_depth -= 2;
+      }
+  
+      no warnings 'redefine';
+      *trace = sub { l4p_wrapper($INFO, @_); };
+      *debug = *conns = sub { l4p_wrapper($DEBUG, @_); };
+  
+      package main;
+      # ... go on with your main program ...
+  
+  This is less performant than the previous approach, because every
+  log request will request a reference to a logger first, then call
+  the wrapper, which will in turn call the appropriate log function.
+  
+  This hierarchy shift has to be compensated for by increasing
+  C<$Log::Log4perl::caller_depth> by 2 before calling the log function
+  and decreasing it by 2 right afterwards. Also, the C<l4p_wrapper>
+  function shown above calls C<caller(1)> which determines the name
+  of the package I<two> levels down the calling hierarchy (and
+  therefore compensates for both the wrapper function and the
+  anonymous subroutine calling it).
+  
+  C<no warnings 'redefine'> suppresses a warning Perl would generate
+  otherwise
+  upon redefining C<LWP::Debug>'s C<trace()>, C<debug()> and C<conns()>
+  functions. In case you use a perl prior to 5.6.x, you need
+  to manipulate C<$^W> instead.
+  
+  To make things easy for you when dealing with LWP, Log::Log4perl 0.47
+  introduces C<Log::Log4perl-E<gt>infiltrate_lwp()> which does exactly the
+  above.
+  
+  =head2 What if I need dynamic values in a static Log4perl configuration file?
+  
+  Say, your application uses Log::Log4perl for logging and
+  therefore comes with a Log4perl configuration file, specifying the logging
+  behavior.
+  But, you also want it to take command line parameters to set values
+  like the name of the log file.
+  How can you have
+  both a static Log4perl configuration file and a dynamic command line
+  interface?
+  
+  As of Log::Log4perl 0.28, every value in the configuration file
+  can be specified as a I<Perl hook>. So, instead of saying
+  
+      log4perl.appender.Logfile.filename = test.log
+  
+  you could just as well have a Perl subroutine deliver the value
+  dynamically:
+  
+      log4perl.appender.Logfile.filename = sub { logfile(); };
+  
+  given that C<logfile()> is a valid function in your C<main> package
+  returning a string containing the path to the log file.
+  
+  Or, think about using the value of an environment variable:
+  
+      log4perl.appender.DBI.user = sub { $ENV{USERNAME} };
+  
+  When C<Log::Log4perl-E<gt>init()> parses the configuration
+  file, it will notice the assignment above because of its
+  C<sub {...}> pattern and treat it in a special way:
+  It will evaluate the subroutine (which can contain
+  arbitrary Perl code) and take its return value as the right side
+  of the assignment.
+  
+  A typical application would be called like this on the command line:
+  
+      app                # log file is "test.log"
+      app -l mylog.txt   # log file is "mylog.txt"
+  
+  Here's some sample code implementing the command line interface above:
+  
+      use Log::Log4perl qw(get_logger);
+      use Getopt::Std;
+  
+      getopt('l:', \our %OPTS);
+  
+      my $conf = q(
+      log4perl.category.Bar.Twix         = WARN, Logfile
+      log4perl.appender.Logfile          = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile.filename = sub { logfile(); };
+      log4perl.appender.Logfile.layout   = SimpleLayout
+      );
+  
+      Log::Log4perl::init(\$conf);
+  
+      my $logger = get_logger("Bar::Twix");
+      $logger->error("Blah");
+  
+      ###########################################
+      sub logfile {
+      ###########################################
+          if(exists $OPTS{l}) {
+              return $OPTS{l};
+          } else {
+              return "test.log";
+          }
+      }
+  
+  Every Perl hook may contain arbitrary perl code,
+  just make sure to fully qualify eventual variable names
+  (e.g. C<%main::OPTS> instead of C<%OPTS>).
+  
+  B<SECURITY NOTE>: this feature means arbitrary perl code
+  can be embedded in the config file.  In the rare case
+  where the people who have access to your config file
+  are different from the people who write your code and
+  shouldn't have execute rights, you might want to call
+  
+      $Log::Log4perl::Config->allow_code(0);
+  
+  before you call init(). This will prevent Log::Log4perl from
+  executing I<any> Perl code in the config file (including
+  code for custom conversion specifiers
+  (see L<Log::Log4perl::Layout::PatternLayout/"Custom cspecs">).
+  
+  =head2 How can I roll over my logfiles automatically at midnight?
+  
+  Long-running applications tend to produce ever-increasing logfiles.
+  For backup and cleanup purposes, however, it is often desirable to move
+  the current logfile to a different location from time to time and
+  start writing a new one.
+  
+  This is a non-trivial task, because it has to happen in sync with
+  the logging system in order not to lose any messages in the process.
+  
+  Luckily, I<Mark Pfeiffer>'s C<Log::Dispatch::FileRotate> appender
+  works well with Log::Log4perl to rotate your logfiles in a variety of ways.
+  
+  Note, however, that having the application deal with rotating a log
+  file is not cheap. Among other things, it requires locking the log file
+  with every write to avoid race conditions.
+  There are good reasons to use external rotators like C<newsyslog>
+  instead.
+  See the entry C<How can I rotate a logfile with newsyslog?> in the
+  FAQ for more information on how to configure it.
+  
+  When using C<Log::Dispatch::FileRotate>,
+  all you have to do is specify it in your Log::Log4perl configuration file
+  and your logfiles will be rotated automatically.
+  
+  You can choose between rolling based on a maximum size ("roll if greater
+  than 10 MB") or based on a date pattern ("roll everyday at midnight").
+  In both cases, C<Log::Dispatch::FileRotate> allows you to define a
+  number C<max> of saved files to keep around until it starts overwriting
+  the oldest ones. If you set the C<max> parameter to 2 and the name of
+  your logfile is C<test.log>, C<Log::Dispatch::FileRotate> will
+  move C<test.log> to C<test.log.1> on the first rollover. On the second
+  rollover, it will move C<test.log.1> to C<test.log.2> and then C<test.log>
+  to C<test.log.1>. On the third rollover, it will move C<test.log.1> to
+  C<test.log.2> (therefore discarding the old C<test.log.2>) and
+  C<test.log> to C<test.log.1>. And so forth. This way, there's always
+  going to be a maximum of 2 saved log files around.
+  
+  Here's an example of a Log::Log4perl configuration file, defining a
+  daily rollover at midnight (date pattern C<yyyy-MM-dd>), keeping
+  a maximum of 5 saved logfiles around:
+  
+      log4perl.category         = WARN, Logfile
+      log4perl.appender.Logfile = Log::Dispatch::FileRotate
+      log4perl.appender.Logfile.filename    = test.log
+      log4perl.appender.Logfile.max         = 5
+      log4perl.appender.Logfile.DatePattern = yyyy-MM-dd
+      log4perl.appender.Logfile.TZ          = PST
+      log4perl.appender.Logfile.layout = \
+          Log::Log4perl::Layout::PatternLayout
+      log4perl.appender.Logfile.layout.ConversionPattern = %d %m %n
+  
+  Please see the C<Log::Dispatch::FileRotate> documentation for details.
+  C<Log::Dispatch::FileRotate> is available on CPAN.
+  
+  =head2 What's the easiest way to turn off all logging, even with a lengthy Log4perl configuration file?
+  
+  In addition to category-based levels and appender thresholds,
+  Log::Log4perl supports system-wide logging thresholds. This is the
+  minimum level the system will require of any logging events in order for them
+  to make it through to any configured appenders.
+  
+  For example, putting the line
+  
+      log4perl.threshold = ERROR
+  
+  anywhere in your configuration file will limit any output to any appender
+  to events with priority of ERROR or higher (ERROR or FATAL that is).
+  
+  However, in order to suppress all logging entirely, you need to use a
+  priority that's higher than FATAL: It is simply called C<OFF>, and it is never
+  used by any logger. By definition, it is higher than the highest
+  defined logger level.
+  
+  Therefore, if you keep the line
+  
+      log4perl.threshold = OFF
+  
+  somewhere in your Log::Log4perl configuration, the system will be quiet
+  as a graveyard. If you deactivate the line (e.g. by commenting it out),
+  the system will, upon config reload, snap back to normal operation, providing
+  logging messages according to the rest of the configuration file again.
+  
+  =head2 How can I log DEBUG and above to the screen and INFO and above to a file?
+  
+  You need one logger with two appenders attached to it:
+  
+      log4perl.logger = DEBUG, Screen, File
+  
+      log4perl.appender.Screen   = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.layout = SimpleLayout
+  
+      log4perl.appender.File   = Log::Log4perl::Appender::File
+      log4perl.appender.File.filename = test.log
+      log4perl.appender.File.layout = SimpleLayout
+      log4perl.appender.Screen.Threshold = INFO
+  
+  Since the file logger isn't supposed to get any messages with a priority
+  less than INFO, the appender's C<Threshold> setting blocks those out,
+  although the logger forwards them.
+  
+  It's a common mistake to think you can define two loggers for this, but
+  it won't work unless those two loggers have different categories. If you
+  wanted to log all DEBUG and above messages from the Foo::Bar module to a file
+  and all INFO and above messages from the Quack::Schmack module to the
+  screen, then you could have defined two loggers with different levels
+  C<log4perl.logger.Foo.Bar> (level INFO)
+  and C<log4perl.logger.Quack.Schmack> (level DEBUG) and assigned the file
+  appender to the former and the screen appender to the latter. But what we
+  wanted to accomplish was to route all messages, regardless of which module
+  (or category) they came from, to both appenders. The only
+  way to accomplish this is to define the root logger with the lower
+  level (DEBUG), assign both appenders to it, and block unwanted messages at
+  the file appender (C<Threshold> set to INFO).
+  
+  =head2 I keep getting duplicate log messages! What's wrong?
+  
+  Having several settings for related categories in the Log4perl
+  configuration file sometimes leads to a phenomenon called
+  "message duplication". It can be very confusing at first,
+  but if thought through properly, it turns out that Log4perl behaves
+  as advertised. But, don't despair, of course there's a number of
+  ways to avoid message duplication in your logs.
+  
+  Here's a sample Log4perl configuration file that produces the
+  phenomenon:
+  
+      log4perl.logger.Cat        = ERROR, Screen
+      log4perl.logger.Cat.Subcat = WARN, Screen
+  
+      log4perl.appender.Screen   = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.layout = SimpleLayout
+  
+  It defines two loggers, one for category C<Cat> and one for
+  C<Cat::Subcat>, which is obviously a subcategory of C<Cat>.
+  The parent logger has a priority setting of ERROR, the child
+  is set to the lower C<WARN> level.
+  
+  Now imagine the following code in your program:
+  
+      my $logger = get_logger("Cat.Subcat");
+      $logger->warn("Warning!");
+  
+  What do you think will happen? An unexperienced Log4perl user
+  might think: "Well, the message is being sent with level WARN, so the
+  C<Cat::Subcat> logger will accept it and forward it to the
+  attached C<Screen> appender. Then, the message will percolate up
+  the logger hierarchy, find
+  the C<Cat> logger, which will suppress the message because of its
+  ERROR setting."
+  But, perhaps surprisingly, what you'll get with the
+  code snippet above is not one but two log messages written
+  to the screen:
+  
+      WARN - Warning!
+      WARN - Warning!
+  
+  What happened? The culprit is that once the logger C<Cat::Subcat>
+  decides to fire, it will forward the message I<unconditionally>
+  to all directly or indirectly attached appenders. The C<Cat> logger
+  will never be asked if it wants the message or not -- the message
+  will just be pushed through to the appender attached to C<Cat>.
+  
+  One way to prevent the message from bubbling up the logger
+  hierarchy is to set the C<additivity> flag of the subordinate logger to
+  C<0>:
+  
+      log4perl.logger.Cat            = ERROR, Screen
+      log4perl.logger.Cat.Subcat     = WARN, Screen
+      log4perl.additivity.Cat.Subcat = 0
+  
+      log4perl.appender.Screen   = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.layout = SimpleLayout
+  
+  The message will now be accepted by the C<Cat::Subcat> logger,
+  forwarded to its appender, but then C<Cat::Subcat> will suppress
+  any further action. While this setting avoids duplicate messages
+  as seen before, it is often not the desired behavior. Messages
+  percolating up the hierarchy are a useful Log4perl feature.
+  
+  If you're defining I<different> appenders for the two loggers,
+  one other option is to define an appender threshold for the
+  higher-level appender. Typically it is set to be
+  equal to the logger's level setting:
+  
+      log4perl.logger.Cat           = ERROR, Screen1
+      log4perl.logger.Cat.Subcat    = WARN, Screen2
+  
+      log4perl.appender.Screen1   = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen1.layout = SimpleLayout
+      log4perl.appender.Screen1.Threshold = ERROR
+  
+      log4perl.appender.Screen2   = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen2.layout = SimpleLayout
+  
+  Since the C<Screen1> appender now blocks every message with
+  a priority less than ERROR, even if the logger in charge
+  lets it through, the message percolating up the hierarchy is
+  being blocked at the last minute and I<not> appended to C<Screen1>.
+  
+  So far, we've been operating well within the boundaries of the
+  Log4j standard, which Log4perl adheres to. However, if
+  you would really, really like to use a single appender
+  and keep the message percolation intact without having to deal
+  with message duplication, there's a non-standard solution for you:
+  
+      log4perl.logger.Cat        = ERROR, Screen
+      log4perl.logger.Cat.Subcat = WARN, Screen
+  
+      log4perl.appender.Screen   = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.layout = SimpleLayout
+  
+      log4perl.oneMessagePerAppender = 1
+  
+  The C<oneMessagePerAppender> flag will suppress duplicate messages
+  to the same appender. Again, that's non-standard. But way cool :).
+  
+  =head2 How can I configure Log::Log4perl to send me email if something happens?
+  
+  Some incidents require immediate action. You can't wait until someone
+  checks the log files, you need to get notified on your pager right away.
+  
+  The easiest way to do that is by using the C<Log::Dispatch::Email::MailSend>
+  module as an appender. It comes with the C<Log::Dispatch> bundle and
+  allows you to specify recipient and subject of outgoing emails in the Log4perl
+  configuration file:
+  
+      log4perl.category = FATAL, Mailer
+      log4perl.appender.Mailer         = Log::Dispatch::Email::MailSend
+      log4perl.appender.Mailer.to      = drone@pageme.net
+      log4perl.appender.Mailer.subject = Something's broken!
+      log4perl.appender.Mailer.layout  = SimpleLayout
+  
+  The message of every log incident this appender gets
+  will then be forwarded to the given
+  email address. Check the C<Log::Dispatch::Email::MailSend> documentation
+  for details. And please make sure there's not a flood of email messages
+  sent out by your application, filling up the recipient's inbox.
+  
+  There's one caveat you need to know about: The C<Log::Dispatch::Email>
+  hierarchy of appenders turns on I<buffering> by default. This means that
+  the appender will not send out messages right away but wait until a
+  certain threshold has been reached. If you'd rather have your alerts
+  sent out immediately, use
+  
+      log4perl.appender.Mailer.buffered = 0
+  
+  to turn buffering off.
+  
+  =head2 How can I write my own appender?
+  
+  First off, Log::Log4perl comes with a set of standard appenders. Then,
+  there's a lot of Log4perl-compatible appenders already
+  available on CPAN: Just run a search for C<Log::Dispatch> on
+  http://search.cpan.org and chances are that what you're looking for
+  has already been developed, debugged and been used successfully
+  in production -- no need for you to reinvent the wheel.
+  
+  Also, Log::Log4perl ships with a nifty database appender named
+  Log::Log4perl::Appender::DBI -- check it out if talking to databases is your
+  desire.
+  
+  But if you're up for a truly exotic task, you might have to write
+  an appender yourself. That's very easy -- it takes no longer
+  than a couple of minutes.
+  
+  Say, we wanted to create an appender of the class
+  C<ColorScreenAppender>, which logs messages
+  to the screen in a configurable color. Just create a new class
+  in C<ColorScreenAppender.pm>:
+  
+      package ColorScreenAppender;
+  
+  Now let's assume that your Log::Log4perl
+  configuration file C<test.conf> looks like this:
+  
+      log4perl.logger = INFO, ColorApp
+  
+      log4perl.appender.ColorApp=ColorScreenAppender
+      log4perl.appender.ColorApp.color=blue
+  
+      log4perl.appender.ColorApp.layout = PatternLayout
+      log4perl.appender.ColorApp.layout.ConversionPattern=%d %m %n
+  
+  This will cause Log::Log4perl on C<init()> to look for a class
+  ColorScreenAppender and call its constructor new(). Let's add
+  new() to ColorScreenAppender.pm:
+  
+      sub new {
+          my($class, %options) = @_;
+  
+          my $self = { %options };
+          bless $self, $class;
+  
+          return $self;
+      }
+  
+  To initialize this appender, Log::Log4perl will call
+  and pass all attributes of the appender as defined in the configuration
+  file to the constructor as name/value pairs (in this case just one):
+  
+      ColorScreenAppender->new(color => "blue");
+  
+  The new() method listed above stores the contents of the
+  %options hash in the object's
+  instance data hash (referred to by $self).
+  That's all for initializing a new appender with Log::Log4perl.
+  
+  Second, ColorScreenAppender needs to expose a
+  C<log()> method, which will be called by Log::Log4perl
+  every time it thinks the appender should fire. Along with the
+  object reference (as usual in Perl's object world), log()
+  will receive a list of name/value pairs, of which only the one
+  under the key C<message> shall be of interest for now since it is the
+  message string to be logged. At this point, Log::Log4perl has already taken
+  care of joining the message to be a single string.
+  
+  For our special appender ColorScreenAppender, we're using the
+  Term::ANSIColor module to colorize the output:
+  
+      use Term::ANSIColor;
+  
+      sub log {
+          my($self, %params) = @_;
+  
+          print colored($params{message},
+                        $self->{color});
+      }
+  
+  The color (as configured in the Log::Log4perl configuration file)
+  is available as $self-E<gt>{color} in the appender object. Don't
+  forget to return
+  
+      1;
+  
+  at the end of ColorScreenAppender.pm and you're done. Install the new appender
+  somewhere where perl can find it and try it with a test script like
+  
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->init("test.conf");
+      ERROR("blah");
+  
+  to see the new colored output. Is this cool or what?
+  
+  And it gets even better: You can write dynamically generated appender
+  classes using the C<Class::Prototyped> module. Here's an example of
+  an appender prepending every outgoing message with a configurable
+  number of bullets:
+  
+      use Class::Prototyped;
+  
+      my $class = Class::Prototyped->newPackage(
+        "MyAppenders::Bulletizer",
+        bullets => 1,
+        log     => sub {
+          my($self, %params) = @_;
+          print "*" x $self->bullets(),
+                $params{message};
+        },
+      );
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->init(\ q{
+        log4perl.logger = INFO, Bully
+  
+        log4perl.appender.Bully=MyAppenders::Bulletizer
+        log4perl.appender.Bully.bullets=3
+  
+        log4perl.appender.Bully.layout = PatternLayout
+        log4perl.appender.Bully.layout.ConversionPattern=%m %n
+      });
+  
+          # ... prints: "***Boo!\n";
+      INFO "Boo!";
+  
+  =head2 How can I drill down on references before logging them?
+  
+  If you've got a reference to a nested structure or object, then
+  you probably don't want to log it as C<HASH(0x81141d4)> but rather
+  dump it as something like
+  
+      $VAR1 = {
+                'a' => 'b',
+                'd' => 'e'
+              };
+  
+  via a module like Data::Dumper. While it's syntactically correct to say
+  
+      $logger->debug(Data::Dumper::Dumper($ref));
+  
+  this call imposes a huge performance penalty on your application
+  if the message is suppressed by Log::Log4perl, because Data::Dumper
+  will perform its expensive operations in any case, because it doesn't
+  know that its output will be thrown away immediately.
+  
+  As of Log::Log4perl 0.28, there's a better way: Use the
+  message output filter format as in
+  
+      $logger->debug( {filter => \&Data::Dumper::Dumper,
+                       value  => $ref} );
+  
+  and Log::Log4perl won't call the filter function unless the message really
+  gets written out to an appender. Just make sure to pass the whole slew as a
+  reference to a hash specifying a filter function (as a sub reference)
+  under the key C<filter> and the value to be passed to the filter function in
+  C<value>).
+  When it comes to logging, Log::Log4perl will call the filter function,
+  pass the C<value> as an argument and log the return value.
+  Saves you serious cycles.
+  
+  =head2 How can I collect all FATAL messages in an extra log file?
+  
+  Suppose you have employed Log4perl all over your system and you've already
+  activated logging in various subsystems. On top of that, without disrupting
+  any other settings, how can you collect all FATAL messages all over the system
+  and send them to a separate log file?
+  
+  If you define a root logger like this:
+  
+      log4perl.logger                  = FATAL, File
+      log4perl.appender.File           = Log::Log4perl::Appender::File
+      log4perl.appender.File.filename  = /tmp/fatal.txt
+      log4perl.appender.File.layout    = PatternLayout
+      log4perl.appender.File.layout.ConversionPattern= %d %m %n
+          # !!! Something's missing ...
+  
+  you'll be surprised to not only receive all FATAL messages
+  issued anywhere in the system,
+  but also everything else -- gazillions of
+  ERROR, WARN, INFO and even DEBUG messages will end up in
+  your fatal.txt logfile!
+  Reason for this is Log4perl's (or better: Log4j's) appender additivity.
+  Once a
+  lower-level logger decides to fire, the message is going to be forwarded
+  to all appenders upstream -- without further priority checks with their
+  attached loggers.
+  
+  There's a way to prevent this, however: If your appender defines a
+  minimum threshold, only messages of this priority or higher are going
+  to be logged. So, just add
+  
+      log4perl.appender.File.Threshold = FATAL
+  
+  to the configuration above, and you'll get what you wanted in the
+  first place: An overall system FATAL message collector.
+  
+  =head2 How can I bundle several log messages into one?
+  
+  Would you like to tally the messages arriving at your appender and
+  dump out a summary once they're exceeding a certain threshold?
+  So that something like
+  
+      $logger->error("Blah");
+      $logger->error("Blah");
+      $logger->error("Blah");
+  
+  won't be logged as
+  
+      Blah
+      Blah
+      Blah
+  
+  but as
+  
+      [3] Blah
+  
+  instead? If you'd like to hold off on logging a message until it has been
+  sent a couple of times, you can roll that out by creating a buffered
+  appender.
+  
+  Let's define a new appender like
+  
+      package TallyAppender;
+  
+      sub new {
+          my($class, %options) = @_;
+  
+          my $self = { maxcount => 5,
+                       %options
+                     };
+  
+          bless $self, $class;
+  
+          $self->{last_message}        = "";
+          $self->{last_message_count}  = 0;
+  
+          return $self;
+      }
+  
+  with two additional instance variables C<last_message> and
+  C<last_message_count>, storing the content of the last message sent
+  and a counter of how many times this has happened. Also, it features
+  a configuration parameter C<maxcount> which defaults to 5 in the
+  snippet above but can be set in the Log4perl configuration file like this:
+  
+      log4perl.logger = INFO, A
+      log4perl.appender.A=TallyAppender
+      log4perl.appender.A.maxcount = 3
+  
+  The main tallying logic lies in the appender's C<log> method,
+  which is called every time Log4perl thinks a message needs to get logged
+  by our appender:
+  
+      sub log {
+          my($self, %params) = @_;
+  
+              # Message changed? Print buffer.
+          if($self->{last_message} and
+             $params{message} ne $self->{last_message}) {
+              print "[$self->{last_message_count}]: " .
+                    "$self->{last_message}";
+              $self->{last_message_count} = 1;
+              $self->{last_message} = $params{message};
+              return;
+          }
+  
+          $self->{last_message_count}++;
+          $self->{last_message} = $params{message};
+  
+              # Threshold exceeded? Print, reset counter
+          if($self->{last_message_count} >=
+             $self->{maxcount}) {
+              print "[$self->{last_message_count}]: " .
+                    "$params{message}";
+              $self->{last_message_count} = 0;
+              $self->{last_message}       = "";
+              return;
+          }
+      }
+  
+  We basically just check if the oncoming message in C<$param{message}>
+  is equal to what we've saved before in the C<last_message> instance
+  variable. If so, we're increasing C<last_message_count>.
+  We print the message in two cases: If the new message is different
+  than the buffered one, because then we need to dump the old stuff
+  and store the new. Or, if the counter exceeds the threshold, as
+  defined by the C<maxcount> configuration parameter.
+  
+  Please note that the appender always gets the fully rendered message and
+  just compares it as a whole -- so if there's a date/timestamp in there,
+  that might confuse your logic. You can work around this by specifying
+  %m %n as a layout and add the date later on in the appender. Or, make
+  the comparison smart enough to omit the date.
+  
+  At last, don't forget what happens if the program is being shut down.
+  If there's still messages in the buffer, they should be printed out
+  at that point. That's easy to do in the appender's DESTROY method,
+  which gets called at object destruction time:
+  
+      sub DESTROY {
+          my($self) = @_;
+  
+          if($self->{last_message_count}) {
+              print "[$self->{last_message_count}]: " .
+                    "$self->{last_message}";
+              return;
+          }
+      }
+  
+  This will ensure that none of the buffered messages are lost.
+  Happy buffering!
+  
+  =head2 I want to log ERROR and WARN messages to different files! How can I do that?
+  
+  Let's assume you wanted to have each logging statement written to a
+  different file, based on the statement's priority. Messages with priority
+  C<WARN> are supposed to go to C</tmp/app.warn>, events prioritized
+  as C<ERROR> should end up in C</tmp/app.error>.
+  
+  Now, if you define two appenders C<AppWarn> and C<AppError>
+  and assign them both to the root logger,
+  messages bubbling up from any loggers below will be logged by both
+  appenders because of Log4perl's message propagation feature. If you limit
+  their exposure via the appender threshold mechanism and set
+  C<AppWarn>'s threshold to C<WARN> and C<AppError>'s to C<ERROR>, you'll
+  still get C<ERROR> messages in C<AppWarn>, because C<AppWarn>'s C<WARN>
+  setting will just filter out messages with a I<lower> priority than
+  C<WARN> -- C<ERROR> is higher and will be allowed to pass through.
+  
+  What we need for this is a Log4perl I<Custom Filter>, available with
+  Log::Log4perl 0.30.
+  
+  Both appenders need to verify that
+  the priority of the oncoming messages exactly I<matches> the priority
+  the appender is supposed to log messages of. To accomplish this task,
+  let's define two custom filters, C<MatchError> and C<MatchWarn>, which,
+  when attached to their appenders, will limit messages passed on to them
+  to those matching a given priority:
+  
+      log4perl.logger = WARN, AppWarn, AppError
+  
+          # Filter to match level ERROR
+      log4perl.filter.MatchError = Log::Log4perl::Filter::LevelMatch
+      log4perl.filter.MatchError.LevelToMatch  = ERROR
+      log4perl.filter.MatchError.AcceptOnMatch = true
+  
+          # Filter to match level WARN
+      log4perl.filter.MatchWarn  = Log::Log4perl::Filter::LevelMatch
+      log4perl.filter.MatchWarn.LevelToMatch  = WARN
+      log4perl.filter.MatchWarn.AcceptOnMatch = true
+  
+          # Error appender
+      log4perl.appender.AppError = Log::Log4perl::Appender::File
+      log4perl.appender.AppError.filename = /tmp/app.err
+      log4perl.appender.AppError.layout   = SimpleLayout
+      log4perl.appender.AppError.Filter   = MatchError
+  
+          # Warning appender
+      log4perl.appender.AppWarn = Log::Log4perl::Appender::File
+      log4perl.appender.AppWarn.filename = /tmp/app.warn
+      log4perl.appender.AppWarn.layout   = SimpleLayout
+      log4perl.appender.AppWarn.Filter   = MatchWarn
+  
+  The appenders C<AppWarn> and C<AppError> defined above are logging to C</tmp/app.warn> and
+  C</tmp/app.err> respectively and have the custom filters C<MatchWarn> and C<MatchError>
+  attached.
+  This setup will direct all WARN messages, issued anywhere in the system, to /tmp/app.warn (and
+  ERROR messages to /tmp/app.error) -- without any overlaps.
+  
+  =head2 On our server farm, Log::Log4perl configuration files differ slightly from host to host. Can I roll them all into one?
+  
+  You sure can, because Log::Log4perl allows you to specify attribute values
+  dynamically. Let's say that one of your appenders expects the host's IP address
+  as one of its attributes. Now, you could certainly roll out different
+  configuration files for every host and specify the value like
+  
+      log4perl.appender.MyAppender    = Log::Log4perl::Appender::SomeAppender
+      log4perl.appender.MyAppender.ip = 10.0.0.127
+  
+  but that's a maintenance nightmare. Instead, you can have Log::Log4perl
+  figure out the IP address at configuration time and set the appender's
+  value correctly:
+  
+          # Set the IP address dynamically
+      log4perl.appender.MyAppender    = Log::Log4perl::Appender::SomeAppender
+      log4perl.appender.MyAppender.ip = sub { \
+         use Sys::Hostname; \
+         use Socket; \
+         return inet_ntoa(scalar gethostbyname hostname); \
+      }
+  
+  If Log::Log4perl detects that an attribute value starts with something like
+  C<"sub {...">, it will interpret it as a perl subroutine which is to be executed
+  once at configuration time (not runtime!) and its return value is
+  to be used as the attribute value. This comes in handy
+  for rolling out applications where Log::Log4perl configuration files
+  show small host-specific differences, because you can deploy the unmodified
+  application distribution on all instances of the server farm.
+  
+  =head2 Log4perl doesn't interpret my backslashes correctly!
+  
+  If you're using Log4perl's feature to specify the configuration as a
+  string in your program (as opposed to a separate configuration file),
+  chances are that you've written it like this:
+  
+      # *** WRONG! ***
+  
+      Log::Log4perl->init( \ <<END_HERE);
+          log4perl.logger = WARN, A1
+          log4perl.appender.A1 = Log::Log4perl::Appender::Screen
+          log4perl.appender.A1.layout = \
+              Log::Log4perl::Layout::PatternLayout
+          log4perl.appender.A1.layout.ConversionPattern = %m%n
+      END_HERE
+  
+      # *** WRONG! ***
+  
+  and you're getting the following error message:
+  
+      Layout not specified for appender A1 at .../Config.pm line 342.
+  
+  What's wrong? The problem is that you're using a here-document with
+  substitution enabled (C<E<lt>E<lt>END_HERE>) and that Perl won't
+  interpret backslashes at line-ends as continuation characters but
+  will essentially throw them out. So, in the code above, the layout line
+  will look like
+  
+      log4perl.appender.A1.layout =
+  
+  to Log::Log4perl which causes it to report an error. To interpret the backslash
+  at the end of the line correctly as a line-continuation character, use
+  the non-interpreting mode of the here-document like in
+  
+      # *** RIGHT! ***
+  
+      Log::Log4perl->init( \ <<'END_HERE');
+          log4perl.logger = WARN, A1
+          log4perl.appender.A1 = Log::Log4perl::Appender::Screen
+          log4perl.appender.A1.layout = \
+              Log::Log4perl::Layout::PatternLayout
+          log4perl.appender.A1.layout.ConversionPattern = %m%n
+      END_HERE
+  
+      # *** RIGHT! ***
+  
+  (note the single quotes around C<'END_HERE'>) or use C<q{...}>
+  instead of a here-document and Perl will treat the backslashes at
+  line-end as intended.
+  
+  =head2 I want to suppress certain messages based on their content!
+  
+  Let's assume you've plastered all your functions with Log4perl
+  statements like
+  
+      sub some_func {
+  
+          INFO("Begin of function");
+  
+          # ... Stuff happens here ...
+  
+          INFO("End of function");
+      }
+  
+  to issue two log messages, one at the beginning and one at the end of
+  each function. Now you want to suppress the message at the beginning
+  and only keep the one at the end, what can you do? You can't use the category
+  mechanism, because both messages are issued from the same package.
+  
+  Log::Log4perl's custom filters (0.30 or better) provide an interface for the
+  Log4perl user to step in right before a message gets logged and decide if
+  it should be written out or suppressed, based on the message content or other
+  parameters:
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl::init( \ <<'EOT' );
+          log4perl.logger             = INFO, A1
+          log4perl.appender.A1        = Log::Log4perl::Appender::Screen
+          log4perl.appender.A1.layout = \
+              Log::Log4perl::Layout::PatternLayout
+          log4perl.appender.A1.layout.ConversionPattern = %m%n
+  
+          log4perl.filter.M1 = Log::Log4perl::Filter::StringMatch
+          log4perl.filter.M1.StringToMatch = Begin
+          log4perl.filter.M1.AcceptOnMatch = false
+  
+          log4perl.appender.A1.Filter = M1
+  EOT
+  
+  The last four statements in the configuration above are defining a custom
+  filter C<M1> of type C<Log::Log4perl::Filter::StringMatch>, which comes with
+  Log4perl right out of the box and allows you to define a text pattern to match
+  (as a perl regular expression) and a flag C<AcceptOnMatch> indicating
+  if a match is supposed to suppress the message or let it pass through.
+  
+  The last line then assigns this filter to the C<A1> appender, which will
+  call it every time it receives a message to be logged and throw all
+  messages out I<not> matching the regular expression C<Begin>.
+  
+  Instead of using the standard C<Log::Log4perl::Filter::StringMatch> filter,
+  you can define your own, simply using a perl subroutine:
+  
+      log4perl.filter.ExcludeBegin  = sub { !/Begin/ }
+      log4perl.appender.A1.Filter   = ExcludeBegin
+  
+  For details on custom filters, check L<Log::Log4perl::Filter>.
+  
+  =head2 My new module uses Log4perl -- but what happens if the calling program didn't configure it?
+  
+  If a Perl module uses Log::Log4perl, it will typically rely on the
+  calling program to initialize it. If it is using Log::Log4perl in C<:easy>
+  mode, like in
+  
+      package MyMod;
+      use Log::Log4perl qw(:easy);
+  
+      sub foo {
+          DEBUG("In foo");
+      }
+  
+      1;
+  
+  and the calling program doesn't initialize Log::Log4perl at all (e.g. because
+  it has no clue that it's available), Log::Log4perl will silently
+  ignore all logging messages. However, if the module is using Log::Log4perl
+  in regular mode like in
+  
+      package MyMod;
+      use Log::Log4perl qw(get_logger);
+  
+      sub foo {
+          my $logger = get_logger("");
+          $logger->debug("blah");
+      }
+  
+      1;
+  
+  and the main program is just using the module like in
+  
+      use MyMode;
+      MyMode::foo();
+  
+  then Log::Log4perl will also ignore all logging messages but
+  issue a warning like
+  
+      Log4perl: Seems like no initialization happened.
+      Forgot to call init()?
+  
+  (only once!) to remind novice users to not forget to initialize
+  the logging system before using it.
+  However, if you want to suppress this message, just
+  add the C<:nowarn> target to the module's C<use Log::Log4perl> call:
+  
+      use Log::Log4perl qw(get_logger :nowarn);
+  
+  This will have Log::Log4perl silently ignore all logging statements if
+  no initialization has taken place. If, instead of using init(), you're
+  using Log4perl's API to define loggers and appenders, the same
+  notification happens if no call to add_appenders() is made, i.e. no
+  appenders are defined.
+  
+  If the module wants to figure out if some other program part has
+  already initialized Log::Log4perl, it can do so by calling
+  
+      Log::Log4perl::initialized()
+  
+  which will return a true value in case Log::Log4perl has been initialized
+  and a false value if not.
+  
+  =head2 How can I synchronize access to an appender?
+  
+  If you're using the same instance of an appender in multiple processes,
+  and each process is passing on messages to the appender in parallel,
+  you might end up with overlapping log entries.
+  
+  Typical scenarios include a file appender that you create in the main
+  program, and which will then be shared between the parent and a
+  forked child process. Or two separate processes, each initializing a
+  Log4perl file appender on the same logfile.
+  
+  Log::Log4perl won't synchronize access to the shared logfile by
+  default. Depending on your operating system's flush mechanism,
+  buffer size and the size of your messages, there's a small chance of
+  an overlap.
+  
+  The easiest way to prevent overlapping messages in logfiles written to
+  by multiple processes is setting the
+  file appender's C<syswrite> flag along with a file write mode of C<"append">.
+  This makes sure that
+  C<Log::Log4perl::Appender::File> uses C<syswrite()> (which is guaranteed
+  to run uninterrupted) instead of C<print()> which might buffer
+  the message or get interrupted by the OS while it is writing. And in
+  C<"append"> mode, the OS kernel ensures that multiple processes share
+  one end-of-file marker, ensuring that each process writes to the I<real>
+  end of the file. (The value of C<"append">
+  for the C<mode> parameter is the default setting in Log4perl's file
+  appender so you don't have to set it explicitly.)
+  
+        # Guarantees atomic writes
+  
+      log4perl.category.Bar.Twix          = WARN, Logfile
+  
+      log4perl.appender.Logfile           = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile.mode      = append
+      log4perl.appender.Logfile.syswrite  = 1
+      log4perl.appender.Logfile.filename  = test.log
+      log4perl.appender.Logfile.layout    = SimpleLayout
+  
+  Another guaranteed way of having messages separated with any kind of
+  appender is putting a Log::Log4perl::Appender::Synchronized composite
+  appender in between Log::Log4perl and the real appender. It will make
+  sure to let messages pass through this virtual gate one by one only.
+  
+  Here's a sample configuration to synchronize access to a file appender:
+  
+      log4perl.category.Bar.Twix          = WARN, Syncer
+  
+      log4perl.appender.Logfile           = Log::Log4perl::Appender::File
+      log4perl.appender.Logfile.autoflush = 1
+      log4perl.appender.Logfile.filename  = test.log
+      log4perl.appender.Logfile.layout    = SimpleLayout
+  
+      log4perl.appender.Syncer            = Log::Log4perl::Appender::Synchronized
+      log4perl.appender.Syncer.appender   = Logfile
+  
+  C<Log::Log4perl::Appender::Synchronized> uses
+  the C<IPC::Shareable> module and its semaphores, which will slow down writing
+  the log messages, but ensures sequential access featuring atomic checks.
+  Check L<Log::Log4perl::Appender::Synchronized> for details.
+  
+  =head2 Can I use Log::Log4perl with log4j's Chainsaw?
+  
+  Yes, Log::Log4perl can be configured to send its events to log4j's
+  graphical log UI I<Chainsaw>.
+  
+  =for html
+  <p>
+  <TABLE><TR><TD>
+  <A HREF="http://log4perl.sourceforge.net/images/chainsaw2.jpg"><IMG SRC="http://log4perl.sourceforge.net/images/chainsaw2s.jpg"></A>
+  <TR><TD>
+  <I>Figure 1: Chainsaw receives Log::Log4perl events</I>
+  </TABLE>
+  <p>
+  
+  =for text
+  Figure1: Chainsaw receives Log::Log4perl events
+  
+  Here's how it works:
+  
+  =over 4
+  
+  =item *
+  
+  Get Guido Carls' E<lt>gcarls@cpan.orgE<gt> Log::Log4perl extension
+  C<Log::Log4perl::Layout::XMLLayout> from CPAN and install it:
+  
+      perl -MCPAN -eshell
+      cpan> install Log::Log4perl::Layout::XMLLayout
+  
+  =item *
+  
+  Install and start Chainsaw, which is part of the C<log4j> distribution now
+  (see http://jakarta.apache.org/log4j ). Create a configuration file like
+  
+    <log4j:configuration debug="true">
+      <plugin name="XMLSocketReceiver"
+              class="org.apache.log4j.net.XMLSocketReceiver">
+        <param name="decoder" value="org.apache.log4j.xml.XMLDecoder"/>
+        <param name="Port" value="4445"/>
+      </plugin>
+      <root> <level value="debug"/> </root>
+    </log4j:configuration>
+  
+  and name it e.g. C<config.xml>. Then start Chainsaw like
+  
+    java -Dlog4j.debug=true -Dlog4j.configuration=config.xml \
+      -classpath ".:log4j-1.3alpha.jar:log4j-chainsaw-1.3alpha.jar" \
+      org.apache.log4j.chainsaw.LogUI
+  
+  and watch the GUI coming up.
+  
+  =item *
+  
+  Configure Log::Log4perl to use a socket appender with an XMLLayout, pointing
+  to the host/port where Chainsaw (as configured above) is waiting with its
+  XMLSocketReceiver:
+  
+    use Log::Log4perl qw(get_logger);
+    use Log::Log4perl::Layout::XMLLayout;
+  
+    my $conf = q(
+      log4perl.category.Bar.Twix          = WARN, Appender
+      log4perl.appender.Appender          = Log::Log4perl::Appender::Socket
+      log4perl.appender.Appender.PeerAddr = localhost
+      log4perl.appender.Appender.PeerPort = 4445
+      log4perl.appender.Appender.layout   = Log::Log4perl::Layout::XMLLayout
+    );
+  
+    Log::Log4perl::init(\$conf);
+  
+      # Nasty hack to suppress encoding header
+    my $app = Log::Log4perl::appenders->{"Appender"};
+    $app->layout()->{enc_set} = 1;
+  
+    my $logger = get_logger("Bar.Twix");
+    $logger->error("One");
+  
+  The nasty hack shown in the code snippet above is currently (October 2003)
+  necessary, because Chainsaw expects XML messages to arrive in a format like
+  
+    <log4j:event logger="Bar.Twix"
+                 timestamp="1066794904310"
+                 level="ERROR"
+                 thread="10567">
+      <log4j:message><![CDATA[Two]]></log4j:message>
+      <log4j:NDC><![CDATA[undef]]></log4j:NDC>
+      <log4j:locationInfo class="main"
+        method="main"
+        file="./t"
+        line="32">
+      </log4j:locationInfo>
+    </log4j:event>
+  
+  without a preceding
+  
+    <?xml version = "1.0" encoding = "iso8859-1"?>
+  
+  which Log::Log4perl::Layout::XMLLayout applies to the first event sent
+  over the socket.
+  
+  =back
+  
+  See figure 1 for a screenshot of Chainsaw in action, receiving events from
+  the Perl script shown above.
+  
+  Many thanks to Chainsaw's
+  Scott Deboy <sdeboy@comotivsystems.com> for his support!
+  
+  =head2 How can I run Log::Log4perl under mod_perl?
+  
+  In persistent environments it's important to play by the rules outlined
+  in section L<Log::Log4perl/"Initialize once and only once">.
+  If you haven't read this yet, please go ahead and read it right now. It's
+  very important.
+  
+  And no matter if you use a startup handler to init() Log::Log4perl or use the
+  init_once() strategy (added in 0.42), either way you're very likely to have
+  unsynchronized writes to logfiles.
+  
+  If Log::Log4perl is configured with a log file appender, and it is
+  initialized via
+  the Apache startup handler, the file handle created initially will be
+  shared among all Apache processes. Similarly, with the init_once()
+  approach: although every process has a separate L4p configuration,
+  processes are gonna share the appender file I<names> instead, effectively
+  opening several different file handles on the same file.
+  
+  Now, having several appenders using the same file handle or having
+  several appenders logging to the same file unsynchronized, this might
+  result in overlapping messages. Sometimes, this is acceptable. If it's
+  not, here's two strategies:
+  
+  =over 4
+  
+  =item *
+  
+  Use the L<Log::Log4perl::Appender::Synchronized> appender to connect to
+  your file appenders. Here's the writeup:
+  http://log4perl.sourceforge.net/releases/Log-Log4perl/docs/html/Log/Log4perl/FAQ.html#23804
+  
+  =item *
+  
+  Use a different logfile for every process like in
+  
+       #log4perl.conf
+       ...
+       log4perl.appender.A1.filename = sub { "mylog.$$.log" }
+  
+  =back
+  
+  =head2 My program already uses warn() and die(). How can I switch to Log4perl?
+  
+  If your program already uses Perl's C<warn()> function to spew out
+  error messages and you'd like to channel those into the Log4perl world,
+  just define a C<__WARN__> handler where your program or module resides:
+  
+      use Log::Log4perl qw(:easy);
+  
+      $SIG{__WARN__} = sub {
+          local $Log::Log4perl::caller_depth =
+              $Log::Log4perl::caller_depth + 1;
+          WARN @_;
+      };
+  
+  Why the C<local> setting of C<$Log::Log4perl::caller_depth>?
+  If you leave that out,
+  C<PatternLayout> conversion specifiers like C<%M> or C<%F> (printing
+  the current function/method and source filename) will refer
+  to where the __WARN__ handler resides, not the environment
+  Perl's C<warn()> function was issued from. Increasing C<caller_depth>
+  adjusts for this offset. Having it C<local>, makes sure the level
+  gets set back after the handler exits.
+  
+  Once done, if your program does something like
+  
+      sub some_func {
+          warn "Here's a warning";
+      }
+  
+  you'll get (depending on your Log::Log4perl configuration) something like
+  
+      2004/02/19 20:41:02-main::some_func: Here's a warning at ./t line 25.
+  
+  in the appropriate appender instead of having a screen full of STDERR
+  messages. It also works with the C<Carp> module and its C<carp()>
+  and C<cluck()> functions.
+  
+  If, on the other hand, catching C<die()> and friends is
+  required, a C<__DIE__> handler is appropriate:
+  
+      $SIG{__DIE__} = sub {
+          if($^S) {
+              # We're in an eval {} and don't want log
+              # this message but catch it later
+              return;
+          }
+          local $Log::Log4perl::caller_depth =
+              $Log::Log4perl::caller_depth + 1;
+          LOGDIE @_;
+      };
+  
+  This will call Log4perl's C<LOGDIE()> function, which will log a fatal
+  error and then call die() internally, causing the program to exit. Works
+  equally well with C<Carp>'s C<croak()> and C<confess()> functions.
+  
+  =head2 Some module prints messages to STDERR. How can I funnel them to Log::Log4perl?
+  
+  If a module you're using doesn't use Log::Log4perl but prints logging
+  messages to STDERR instead, like
+  
+      ########################################
+      package IgnorantModule;
+      ########################################
+  
+      sub some_method {
+          print STDERR "Parbleu! An error!\n";
+      }
+  
+      1;
+  
+  there's still a way to capture these messages and funnel them
+  into Log::Log4perl, even without touching the module. What you need is
+  a trapper module like
+  
+      ########################################
+      package Trapper;
+      ########################################
+  
+      use Log::Log4perl qw(:easy);
+  
+      sub TIEHANDLE {
+          my $class = shift;
+          bless [], $class;
+      }
+  
+      sub PRINT {
+          my $self = shift;
+          $Log::Log4perl::caller_depth++;
+          DEBUG @_;
+          $Log::Log4perl::caller_depth--;
+      }
+  
+      1;
+  
+  and a C<tie> command in the main program to tie STDERR to the trapper
+  module along with regular Log::Log4perl initialization:
+  
+      ########################################
+      package main;
+      ########################################
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->easy_init(
+          {level  => $DEBUG,
+           file   => 'stdout',   # make sure not to use stderr here!
+           layout => "%d %M: %m%n",
+          });
+  
+      tie *STDERR, "Trapper";
+  
+  Make sure not to use STDERR as Log::Log4perl's file appender
+  here (which would be the default in C<:easy> mode), because it would
+  end up in an endless recursion.
+  
+  Now, calling
+  
+      IgnorantModule::some_method();
+  
+  will result in the desired output
+  
+      2004/05/06 11:13:04 IgnorantModule::some_method: Parbleu! An error!
+  
+  =head2 How come PAR (Perl Archive Toolkit) creates executables which then can't find their Log::Log4perl appenders?
+  
+  If not instructed otherwise, C<Log::Log4perl> dynamically pulls in
+  appender classes found in its configuration. If you specify
+  
+      #!/usr/bin/perl
+      # mytest.pl
+  
+      use Log::Log4perl qw(get_logger);
+  
+      my $conf = q(
+        log4perl.category.Bar.Twix = WARN, Logfile
+        log4perl.appender.Logfile  = Log::Log4perl::Appender::Screen
+        log4perl.appender.Logfile.layout = SimpleLayout
+      );
+  
+      Log::Log4perl::init(\$conf);
+      my $logger = get_logger("Bar::Twix");
+      $logger->error("Blah");
+  
+  then C<Log::Log4perl::Appender::Screen> will be pulled in while the program
+  runs, not at compile time. If you have PAR compile the script above to an
+  executable binary via
+  
+      pp -o mytest mytest.pl
+  
+  and then run C<mytest> on a machine without having Log::Log4perl installed,
+  you'll get an error message like
+  
+      ERROR: can't load appenderclass 'Log::Log4perl::Appender::Screen'
+      Can't locate Log/Log4perl/Appender/Screen.pm in @INC ...
+  
+  Why? At compile time, C<pp> didn't realize that
+  C<Log::Log4perl::Appender::Screen> would be needed later on and didn't
+  wrap it into the executable created. To avoid this, either say
+  C<use Log::Log4perl::Appender::Screen> in the script explicitly or
+  compile it with
+  
+      pp -o mytest -M Log::Log4perl::Appender::Screen mytest.pl
+  
+  to make sure the appender class gets included.
+  
+  =head2 How can I access a custom appender defined in the configuration?
+  
+  Any appender defined in the configuration file or somewhere in the code
+  can be accessed later via
+  C<Log::Log4perl-E<gt>appender_by_name("appender_name")>,
+  which returns a reference of the appender object.
+  
+  Once you've got a hold of the object, it can be queried or modified to
+  your liking. For example, see the custom C<IndentAppender> defined below:
+  After calling C<init()> to define the Log4perl settings, the
+  appender object is retrieved to call its C<indent_more()> and C<indent_less()>
+  methods to control indentation of messages:
+  
+      package IndentAppender;
+  
+      sub new {
+          bless { indent => 0 }, $_[0];
+      }
+  
+      sub indent_more  { $_[0]->{indent}++ }
+      sub indent_less  { $_[0]->{indent}-- }
+  
+      sub log {
+          my($self, %params) = @_;
+          print " " x $self->{indent}, $params{message};
+      }
+  
+      package main;
+  
+      use Log::Log4perl qw(:easy);
+  
+      my $conf = q(
+      log4perl.category          = DEBUG, Indented
+      log4perl.appender.Indented = IndentAppender
+      log4perl.appender.Indented.layout = Log::Log4perl::Layout::SimpleLayout
+      );
+  
+      Log::Log4perl::init(\$conf);
+  
+      my $appender = Log::Log4perl->appender_by_name("Indented");
+  
+      DEBUG "No identation";
+      $appender->indent_more();
+      DEBUG "One more";
+      $appender->indent_more();
+      DEBUG "Two more";
+      $appender->indent_less();
+      DEBUG "One less";
+  
+  As you would expect, this will print
+  
+      DEBUG - No identation
+       DEBUG - One more
+        DEBUG - Two more
+       DEBUG - One less
+  
+  because the very appender used by Log4perl is modified dynamically at
+  runtime.
+  
+  =head2 I don't know if Log::Log4perl is installed. How can I prepare my script?
+  
+  In case your script needs to be prepared for environments that may or may
+  not have Log::Log4perl installed, there's a trick.
+  
+  If you put the following BEGIN blocks at the top of the program,
+  you'll be able to use the DEBUG(), INFO(), etc. macros in
+  Log::Log4perl's C<:easy> mode.
+  If Log::Log4perl
+  is installed in the target environment, the regular Log::Log4perl rules
+  apply. If not, all of DEBUG(), INFO(), etc. are "stubbed" out, i.e. they
+  turn into no-ops:
+  
+      use warnings;
+      use strict;
+  
+      BEGIN {
+          eval { require Log::Log4perl; };
+  
+          if($@) {
+              print "Log::Log4perl not installed - stubbing.\n";
+              no strict qw(refs);
+              *{"main::$_"} = sub { } for qw(DEBUG INFO WARN ERROR FATAL);
+          } else {
+              no warnings;
+              print "Log::Log4perl installed - life is good.\n";
+              require Log::Log4perl::Level;
+              Log::Log4perl::Level->import(__PACKAGE__);
+              Log::Log4perl->import(qw(:easy));
+              Log::Log4perl->easy_init($main::DEBUG);
+          }
+      }
+  
+          # The regular script begins ...
+      DEBUG "Hey now!";
+  
+  This snippet will first probe for Log::Log4perl, and if it can't be found,
+  it will alias DEBUG(), INFO(), with empty subroutines via typeglobs.
+  If Log::Log4perl is available, its level constants are first imported
+  (C<$DEBUG>, C<$INFO>, etc.) and then C<easy_init()> gets called to initialize
+  the logging system.
+  
+  =head2 Can file appenders create files with different permissions?
+  
+  Typically, when C<Log::Log4perl::Appender::File> creates a new file,
+  its permissions are set to C<rw-r--r-->. Why? Because your
+  environment's I<umask> most likely defaults to
+  C<0022>, that's the standard setting.
+  
+  What's a I<umask>, you're asking? It's a template that's applied to
+  the permissions of all newly created files. While calls like
+  C<open(FILE, "E<gt>foo")> will always try to create files in C<rw-rw-rw-
+  > mode, the system will apply the current I<umask> template to
+  determine the final permission setting. I<umask> is a bit mask that's
+  inverted and then applied to the requested permission setting, using a
+  bitwise AND:
+  
+      $request_permission &~ $umask
+  
+  So, a I<umask> setting of 0000 (the leading 0 simply indicates an
+  octal value) will create files in C<rw-rw-rw-> mode, a setting of 0277
+  will use C<r-------->, and the standard 0022 will use C<rw-r--r-->.
+  
+  As an example, if you want your log files to be created with
+  C<rw-r--rw-> permissions, use a I<umask> of C<0020> before
+  calling Log::Log4perl->init():
+  
+      use Log::Log4perl;
+  
+      umask 0020;
+          # Creates log.out in rw-r--rw mode
+      Log::Log4perl->init(\ q{
+          log4perl.logger = WARN, File
+          log4perl.appender.File = Log::Log4perl::Appender::File
+          log4perl.appender.File.filename = log.out
+          log4perl.appender.File.layout = SimpleLayout
+      });
+  
+  =head2 Using Log4perl in an END block causes a problem!
+  
+  It's not easy to get to this error, but if you write something like
+  
+      END { Log::Log4perl::get_logger()->debug("Hey there."); }
+  
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($DEBUG);
+  
+  it won't work. The reason is that C<Log::Log4perl> defines an
+  END block that cleans up all loggers. And perl will run END blocks
+  in the reverse order as they're encountered in the compile phase,
+  so in the scenario above, the END block will run I<after> Log4perl
+  has cleaned up its loggers.
+  
+  Placing END blocks using Log4perl I<after>
+  a C<use Log::Log4perl> statement fixes the problem:
+  
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($DEBUG);
+  
+      END { Log::Log4perl::get_logger()->debug("Hey there."); }
+  
+  In this scenario, the shown END block is executed I<before> Log4perl
+  cleans up and the debug message will be processed properly.
+  
+  =head2 Help! My appender is throwing a "Wide character in print" warning!
+  
+  This warning shows up when Unicode strings are printed without
+  precautions. The warning goes away if the complaining appender is
+  set to utf-8 mode:
+  
+        # Either in the log4perl configuration file:
+    log4perl.appender.Logfile.filename = test.log
+    log4perl.appender.Logfile.utf8     = 1
+  
+        # Or, in easy mode:
+    Log::Log4perl->easy_init( {
+      level => $DEBUG,
+      file  => ":utf8> test.log"
+    } );
+  
+  If the complaining appender is a screen appender, set its C<utf8> option:
+  
+        log4perl.appender.Screen.stderr = 1
+        log4perl.appender.Screen.utf8   = 1
+  
+  Alternatively, C<binmode> does the trick:
+  
+        # Either STDOUT ...
+      binmode(STDOUT, ":utf8);
+  
+        # ... or STDERR.
+      binmode(STDERR, ":utf8);
+  
+  Some background on this: Perl's strings are either byte strings or
+  Unicode strings. C<"Mike"> is a byte string.
+  C<"\x{30DE}\x{30A4}\x{30AF}"> is a Unicode string. Unicode strings are
+  marked specially and are UTF-8 encoded internally.
+  
+  If you print a byte string to STDOUT,
+  all is well, because STDOUT is by default set to byte mode. However,
+  if you print a Unicode string to STDOUT without precautions, C<perl>
+  will try to transform the Unicode string back to a byte string before
+  printing it out. This is troublesome if the Unicode string contains
+  'wide' characters which can't be represented in Latin-1.
+  
+  For example, if you create a Unicode string with three japanese Katakana
+  characters as in
+  
+      perl -le 'print "\x{30DE}\x{30A4}\x{30AF}"'
+  
+  (coincidentally pronounced Ma-i-ku, the japanese pronunciation of
+  "Mike"), STDOUT is in byte mode and the warning
+  
+      Wide character in print at ./script.pl line 14.
+  
+  appears. Setting STDOUT to UTF-8 mode as in
+  
+      perl -le 'binmode(STDOUT, ":utf8"); print "\x{30DE}\x{30A4}\x{30AF}"'
+  
+  will silently print the Unicode string to STDOUT in UTF-8. To see the
+  characters printed, you'll need a UTF-8 terminal with a font including
+  japanese Katakana characters.
+  
+  =head2 How can I send errors to the screen, and debug messages to a file?
+  
+  Let's assume you want to maintain a detailed DEBUG output in a file
+  and only messages of level ERROR and higher should be printed on the
+  screen. Often times, developers come up with something like this:
+  
+       # Wrong!!!
+      log4perl.logger = DEBUG, FileApp
+      log4perl.logger = ERROR, ScreenApp
+       # Wrong!!!
+  
+  This won't work, however. Logger definitions aren't additive, and the
+  second statement will overwrite the first one. Log4perl versions
+  below 1.04 were silently accepting this, leaving people confused why
+  it wouldn't work as expected.
+  As of 1.04, this will throw a I<fatal error> to notify the user of
+  the problem.
+  
+  What you want to do instead, is this:
+  
+      log4perl.logger                    = DEBUG, FileApp, ScreenApp
+  
+      log4perl.appender.FileApp          = Log::Log4perl::Appender::File
+      log4perl.appender.FileApp.filename = test.log
+      log4perl.appender.FileApp.layout   = SimpleLayout
+  
+      log4perl.appender.ScreenApp          = Log::Log4perl::Appender::Screen
+      log4perl.appender.ScreenApp.stderr   = 0
+      log4perl.appender.ScreenApp.layout   = SimpleLayout
+         ### limiting output to ERROR messages
+      log4perl.appender.ScreenApp.Threshold = ERROR
+         ###
+  
+  Note that without the second appender's C<Threshold> setting, both appenders
+  would receive all messages prioritized DEBUG and higher. With the
+  threshold set to ERROR, the second appender will filter the messages
+  as required.
+  
+  =head2 Where should I put my logfiles?
+  
+  Your log files may go anywhere you want them, but the effective
+  user id of the calling process must have write access.
+  
+  If the log file doesn't exist at program start, Log4perl's file appender
+  will create it. For this, it needs write access to the directory where
+  the new file will be located in. If the log file already exists at startup,
+  the process simply needs write access to the file. Note that it will
+  need write access to the file's directory if you're encountering situations
+  where the logfile gets recreated, e.g. during log rotation.
+  
+  If Log::Log4perl is used by a web server application (e.g. in a CGI script
+  or mod_perl), then the webserver's user (usually C<nobody> or C<www>)
+  must have the permissions mentioned above.
+  
+  To prepare your web server to use log4perl, we'd recommend:
+  
+      webserver:~$ su -
+      webserver:~# mkdir /var/log/cgiapps
+      webserver:~# chown nobody:root /var/log/cgiapps/
+      webserver:~# chown nobody:root -R /var/log/cgiapps/
+      webserver:~# chmod 02755 -R /var/log/cgiapps/
+  
+  Then set your /etc/log4perl.conf file to include:
+  
+      log4perl.appender.FileAppndr1.filename =
+          /var/log/cgiapps/<app-name>.log
+  
+  =head2 How can my file appender deal with disappearing log files?
+  
+  The file appender that comes with Log4perl, L<Log::Log4perl::Appender::File>,
+  will open a specified log file at initialization time and will
+  keep writing to it via a file handle.
+  
+  In case the associated file goes way, messages written by a
+  long-running process will still be written
+  to the file handle. In case the file has been moved to a different
+  location on the same file system, the writer will keep writing to
+  it under the new filename. In case the file has been removed from
+  the file system, the log messages will end up in nowhere land. This
+  is not a bug in Log4perl, this is how Unix works. There is
+  no error message in this case, because the writer has no idea that
+  the file handle is not associated with a visible file.
+  
+  To prevent the loss of log messages when log files disappear, the
+  file appender's C<recreate> option needs to be set to a true value:
+  
+      log4perl.appender.Logfile.recreate = 1
+  
+  This will instruct the file appender to check in regular intervals
+  (default: 30 seconds) if the log file is still there. If it finds
+  out that the file is missing, it will recreate it.
+  
+  Continuously checking if the log file still exists is fairly
+  expensive. For this reason it is only performed every 30 seconds. To
+  change this interval, the option C<recreate_check_interval> can be set
+  to the number of seconds between checks. In the extreme case where the
+  check should be performed before every write, it can even be set to 0:
+  
+      log4perl.appender.Logfile.recreate = 1
+      log4perl.appender.Logfile.recreate_check_interval = 0
+  
+  To avoid having to check the file system so frequently, a signal
+  handler can be set up:
+  
+      log4perl.appender.Logfile.recreate = 1
+      log4perl.appender.Logfile.recreate_check_signal = USR1
+  
+  This will install a signal handler which will recreate a missing log file
+  immediately when it receives the defined signal.
+  
+  Note that the init_and_watch() method for Log4perl's initialization
+  can also be instructed to install a signal handler, usually using the
+  HUP signal. Make sure to use a different signal if you're using both
+  of them at the same time.
+  
+  =head2 How can I rotate a logfile with newsyslog?
+  
+  Here's a few things that need to be taken care of when using the popular
+  log file rotating utility C<newsyslog>
+  (http://www.courtesan.com/newsyslog) with Log4perl's file appender
+  in long-running processes.
+  
+  For example, with a newsyslog configuration like
+  
+      # newsyslog.conf
+      /tmp/test.log 666  12  5  *  B
+  
+  and a call to
+  
+      # newsyslog -f /path/to/newsyslog.conf
+  
+  C<newsyslog> will take action if C</tmp/test.log> is larger than the
+  specified 5K in size. It will move the current log file C</tmp/test.log> to
+  C</tmp/test.log.0> and create a new and empty C</tmp/test.log> with
+  the specified permissions (this is why C<newsyslog> needs to run as root).
+  An already existing C</tmp/test.log.0> would be moved to
+  C</tmp/test.log.1>, C</tmp/test.log.1> to C</tmp/test.log.2>, and so
+  forth, for every one of a max number of 12 archived logfiles that have
+  been configured in C<newsyslog.conf>.
+  
+  Although a new file has been created, from Log4perl's appender's point
+  of view, this situation is identical to the one described in the
+  previous FAQ entry, labeled C<How can my file appender deal with
+  disappearing log files>.
+  
+  To make sure that log messages are written to the new log file and not
+  to an archived one or end up in nowhere land,
+  the appender's C<recreate> and C<recreate_check_interval> have to be
+  configured to deal with the 'disappearing' log file.
+  
+  The situation gets interesting when C<newsyslog>'s option
+  to compress archived log files is enabled. This causes the
+  original log file not to be moved, but to disappear. If the
+  file appender isn't configured to recreate the logfile in this situation,
+  log messages will actually be lost without warning. This also
+  applies for the short time frame of C<recreate_check_interval> seconds
+  in between the recreator's file checks.
+  
+  To make sure that no messages get lost, one option is to set the
+  interval to
+  
+      log4perl.appender.Logfile.recreate_check_interval = 0
+  
+  However, this is fairly expensive. A better approach is to define
+  a signal handler:
+  
+      log4perl.appender.Logfile.recreate = 1
+      log4perl.appender.Logfile.recreate_check_signal  = USR1
+      log4perl.appender.Logfile.recreate_pid_write = /tmp/myappid
+  
+  As a service for C<newsyslog> users, Log4perl's file appender writes
+  the current process ID to a PID file specified by the C<recreate_pid_write>
+  option.  C<newsyslog> then needs to be configured as in
+  
+      # newsyslog.conf configuration for compressing archive files and
+      # sending a signal to the Log4perl-enabled application
+      /tmp/test.log 666  12  5  *  B /tmp/myappid 30
+  
+  to send the defined signal (30, which is USR1 on FreeBSD) to the
+  application process at rotation time. Note that the signal number
+  is different on Linux, where USR1 denotes as 10. Check C<man signal>
+  for details.
+  
+  =head2 How can a process under user id A log to a file under user id B?
+  
+  This scenario often occurs in configurations where processes run under
+  various user IDs but need to write to a log file under a fixed, but
+  different user id.
+  
+  With a traditional file appender, the log file will probably be created
+  under one user's id and appended to under a different user's id. With
+  a typical umask of 0002, the file will be created with -rw-rw-r--
+  permissions. If a user who's not in the first user's group
+  subsequently appends to the log file, it will fail because of a
+  permission problem.
+  
+  Two potential solutions come to mind:
+  
+  =over 4
+  
+  =item *
+  
+  Creating the file with a umask of 0000 will allow all users to append
+  to the log file. Log4perl's file appender C<Log::Log4perl::Appender::File>
+  has an C<umask> option that can be set to support this:
+  
+      log4perl.appender.File = Log::Log4perl::Appender::File
+      log4perl.appender.File.umask = sub { 0000 };
+  
+  This way, the log file will be created with -rw-rw-rw- permissions and
+  therefore has world write permissions. This might open up the logfile
+  for unwanted manipulations by arbitrary users, though.
+  
+  =item *
+  
+  Running the process under an effective user id of C<root> will allow
+  it to write to the log file, no matter who started the process.
+  However, this is not a good idea, because of security concerns.
+  
+  =back
+  
+  Luckily, under Unix, there's the syslog daemon which runs as root and
+  takes log requests from user processes over a socket and writes them
+  to log files as configured in C</etc/syslog.conf>.
+  
+  By modifying C</etc/syslog.conf> and HUPing the syslog daemon, you can
+  configure new log files:
+  
+      # /etc/syslog.conf
+      ...
+      user.* /some/path/file.log
+  
+  Using the C<Log::Dispatch::Syslog> appender, which comes with the
+  C<Log::Log4perl> distribution, you can then send messages via syslog:
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->init(\<<EOT);
+          log4perl.logger = DEBUG, app
+          log4perl.appender.app=Log::Dispatch::Syslog
+          log4perl.appender.app.Facility=user
+          log4perl.appender.app.layout=SimpleLayout
+      EOT
+  
+          # Writes to /some/path/file.log
+      ERROR "Message!";
+  
+  This way, the syslog daemon will solve the permission problem.
+  
+  Note that while it is possible to use syslog() without Log4perl (syslog
+  supports log levels, too), traditional syslog setups have a
+  significant drawback.
+  
+  Without Log4perl's ability to activate logging in only specific
+  parts of a system, complex systems will trigger log events all over
+  the place and slow down execution to a crawl at high debug levels.
+  
+  Remote-controlling logging in the hierarchical parts of an application
+  via Log4perl's categories is one of its most distinguished features.
+  It allows for enabling high debug levels in specified areas without
+  noticeable performance impact.
+  
+  =head2 I want to use UTC instead of the local time!
+  
+  If a layout defines a date, Log::Log4perl uses local time to populate it.
+  If you want UTC instead, set
+  
+      log4perl.utcDateTimes = 1
+  
+  in your configuration. Alternatively, you can set
+  
+      $Log::Log4perl::DateFormat::GMTIME = 1;
+  
+  in your program before the first log statement.
+  
+  =head2 Can Log4perl intercept messages written to a filehandle?
+  
+  You have a function that prints to a filehandle. You want to tie
+  into that filehandle and forward all arriving messages to a
+  Log4perl logger.
+  
+  First, let's write a package that ties a file handle and forwards it
+  to a Log4perl logger:
+  
+      package FileHandleLogger;
+      use Log::Log4perl qw(:levels get_logger);
+  
+      sub TIEHANDLE {
+         my($class, %options) = @_;
+  
+         my $self = {
+             level    => $DEBUG,
+             category => '',
+             %options
+         };
+  
+         $self->{logger} = get_logger($self->{category}),
+         bless $self, $class;
+      }
+  
+      sub PRINT {
+          my($self, @rest) = @_;
+          $Log::Log4perl::caller_depth++;
+          $self->{logger}->log($self->{level}, @rest);
+          $Log::Log4perl::caller_depth--;
+      }
+  
+      sub PRINTF {
+          my($self, $fmt, @rest) = @_;
+          $Log::Log4perl::caller_depth++;
+          $self->PRINT(sprintf($fmt, @rest));
+          $Log::Log4perl::caller_depth--;
+      }
+  
+      1;
+  
+  Now, if you have a function like
+  
+      sub function_printing_to_fh {
+          my($fh) = @_;
+          printf $fh "Hi there!\n";
+      }
+  
+  which takes a filehandle and prints something to it, it can be used
+  with Log4perl:
+  
+      use Log::Log4perl qw(:easy);
+      usa FileHandleLogger;
+  
+      Log::Log4perl->easy_init($DEBUG);
+  
+      tie *SOMEHANDLE, 'FileHandleLogger' or
+          die "tie failed ($!)";
+  
+      function_printing_to_fh(*SOMEHANDLE);
+          # prints "2007/03/22 21:43:30 Hi there!"
+  
+  If you want, you can even specify a different log level or category:
+  
+      tie *SOMEHANDLE, 'FileHandleLogger',
+          level => $INFO, category => "Foo::Bar" or die "tie failed ($!)";
+  
+  =head2 I want multiline messages rendered line-by-line!
+  
+  With the standard C<PatternLayout>, if you send a multiline message to
+  an appender as in
+  
+      use Log::Log4perl qw(:easy);
+      Log
+  
+  it gets rendered this way:
+  
+      2007/04/04 23:23:39 multi
+      line
+      message
+  
+  If you want each line to be rendered separately according to
+  the layout use C<Log::Log4perl::Layout::PatternLayout::Multiline>:
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->init(\<<EOT);
+        log4perl.category         = DEBUG, Screen
+        log4perl.appender.Screen = Log::Log4perl::Appender::Screen
+        log4perl.appender.Screen.layout = \\
+          Log::Log4perl::Layout::PatternLayout::Multiline
+        log4perl.appender.Screen.layout.ConversionPattern = %d %m %n
+      EOT
+  
+      DEBUG "some\nmultiline\nmessage";
+  
+  and you'll get
+  
+      2007/04/04 23:23:39 some
+      2007/04/04 23:23:39 multiline
+      2007/04/04 23:23:39 message
+  
+  instead.
+  
+  =head2 I'm on Windows and I'm getting all these 'redefined' messages!
+  
+  If you're on Windows and are getting warning messages like
+  
+    Constant subroutine Log::Log4perl::_INTERNAL_DEBUG redefined at
+      C:/Programme/Perl/lib/constant.pm line 103.
+    Subroutine import redefined at
+      C:/Programme/Perl/site/lib/Log/Log4Perl.pm line 69.
+    Subroutine initialized redefined at
+      C:/Programme/Perl/site/lib/Log/Log4Perl.pm line 207.
+  
+  then chances are that you're using 'Log::Log4Perl' (wrong uppercase P)
+  instead of the correct 'Log::Log4perl'. Perl on Windows doesn't
+  handle this error well and spits out a slew of confusing warning
+  messages. But now you know, just use the correct module name and
+  you'll be fine.
+  
+  =head2 Log4perl complains that no initialization happened during shutdown!
+  
+  If you're using Log4perl log commands in DESTROY methods of your objects,
+  you might see confusing messages like
+  
+      Log4perl: Seems like no initialization happened. Forgot to call init()?
+      Use of uninitialized value in subroutine entry at
+      /home/y/lib/perl5/site_perl/5.6.1/Log/Log4perl.pm line 134 during global
+      destruction. (in cleanup) Undefined subroutine &main:: called at
+      /home/y/lib/perl5/site_perl/5.6.1/Log/Log4perl.pm line 134 during global
+      destruction.
+  
+  when the program shuts down. What's going on?
+  
+  This phenomenon happens if you have circular references in your objects,
+  which perl can't clean up when an object goes out of scope but waits
+  until global destruction instead. At this time, however, Log4perl has
+  already shut down, so you can't use it anymore.
+  
+  For example, here's a simple class which uses a logger in its DESTROY
+  method:
+  
+      package A;
+      use Log::Log4perl qw(:easy);
+      sub new { bless {}, shift }
+      sub DESTROY { DEBUG "Waaah!"; }
+  
+  Now, if the main program creates a self-referencing object, like in
+  
+      package main;
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($DEBUG);
+  
+      my $a = A->new();
+      $a->{selfref} = $a;
+  
+  then you'll see the error message shown above during global destruction.
+  How to tackle this problem?
+  
+  First, you should clean up your circular references before global
+  destruction. They will not only cause objects to be destroyed in an order
+  that's hard to predict, but also eat up memory until the program shuts
+  down.
+  
+  So, the program above could easily be fixed by putting
+  
+      $a->{selfref} = undef;
+  
+  at the end or in an END handler. If that's hard to do, use weak references:
+  
+      package main;
+      use Scalar::Util qw(weaken);
+      use Log::Log4perl qw(:easy);
+      Log::Log4perl->easy_init($DEBUG);
+  
+      my $a = A->new();
+      $a->{selfref} = weaken $a;
+  
+  This allows perl to clean up the circular reference when the object
+  goes out of scope, and doesn't wait until global destruction.
+  
+  =head2 How can I access POE heap values from Log4perl's layout?
+  
+  POE is a framework for creating multitasked applications running in a
+  single process and a single thread. POE's threads equivalents are
+  'sessions' and since they run quasi-simultaneously, you can't use
+  Log4perl's global NDC/MDC to hold session-specific data.
+  
+  However, POE already maintains a data store for every session. It is called
+  'heap' and is just a hash storing session-specific data in key-value pairs.
+  To access this per-session heap data from a Log4perl layout, define a
+  custom cspec and reference it with the newly defined pattern in the layout:
+  
+      use strict;
+      use POE;
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->init( \ q{
+          log4perl.logger = DEBUG, Screen
+          log4perl.appender.Screen = Log::Log4perl::Appender::Screen
+          log4perl.appender.Screen.layout = PatternLayout
+          log4perl.appender.Screen.layout.ConversionPattern = %U %m%n
+          log4perl.PatternLayout.cspec.U = \
+              sub { POE::Kernel->get_active_session->get_heap()->{ user } }
+      } );
+  
+      for (qw( Huey Lewey Dewey )) {
+          POE::Session->create(
+              inline_states => {
+                  _start    => sub {
+                      $_[HEAP]->{user} = $_;
+                      POE::Kernel->yield('hello');
+                  },
+                  hello     => sub {
+                      DEBUG "I'm here now";
+                  }
+              }
+          );
+      }
+  
+      POE::Kernel->run();
+      exit;
+  
+  The code snippet above defines a new layout placeholder (called
+  'cspec' in Log4perl) %U which calls a subroutine, retrieves the active
+  session, gets its heap and looks up the entry specified ('user').
+  
+  Starting with Log::Log4perl 1.20, cspecs also support parameters in
+  curly braces, so you can say
+  
+      log4perl.appender.Screen.layout.ConversionPattern = %U{user} %U{id} %m%n
+      log4perl.PatternLayout.cspec.U = \
+              sub { POE::Kernel->get_active_session-> \
+                    get_heap()->{ $_[0]->{curlies} } }
+  
+  and print the POE session heap entries 'user' and 'id' with every logged
+  message. For more details on cpecs, read the PatternLayout manual.
+  
+  =head2 I want to print something unconditionally!
+  
+  Sometimes it's a script that's supposed to log messages regardless if
+  Log4perl has been initialized or not. Or there's a logging statement that's
+  not going to be suppressed under any circumstances -- many people want to
+  have the final word, make the executive decision, because it seems like
+  the only logical choice.
+  
+  But think about it:
+  First off, if a messages is supposed to be printed, where is it supposed
+  to end up at? STDOUT? STDERR? And are you sure you want to set in stone
+  that this message needs to be printed, while someone else might
+  find it annoying and wants to get rid of it?
+  
+  The truth is, there's always going to be someone who wants to log a
+  messages at all cost, but also another person who wants to suppress it
+  with equal vigilance. There's no good way to serve these two conflicting
+  desires, someone will always want to win at the cost of leaving
+  the other party disappointed.
+  
+  So, the best Log4perl offers is the ALWAYS level for a message that even
+  fires if the system log level is set to $OFF:
+  
+      use Log::Log4perl qw(:easy);
+  
+      Log::Log4perl->easy_init( $OFF );
+      ALWAYS "This gets logged always. Well, almost always";
+  
+  The logger won't fire, though, if Log4perl hasn't been initialized or
+  if someone defines a custom log hurdle that's higher than $OFF.
+  
+  Bottom line: Leave the setting of the logging level to the initial Perl
+  script -- let their owners decided what they want, no matter how tempting
+  it may be to decide it for them.
+  
+  =head2 Why doesn't my END handler remove my log file on Win32?
+  
+  If you have code like
+  
+      use Log::Log4perl qw( :easy );
+      Log::Log4perl->easy_init( { level => $DEBUG, file => "my.log" } );
+      END { unlink "my.log" or die };
+  
+  then you might be in for a surprise when you're running it on
+  Windows, because the C<unlink()> call in the END handler will complain that
+  the file is still in use.
+  
+  What happens in Perl if you have something like
+  
+      END { print "first end in main\n"; }
+      use Module;
+      END { print "second end in main\n"; }
+  
+  and
+  
+      package Module;
+      END { print "end in module\n"; }
+      1;
+  
+  is that you get
+  
+      second end in main
+      end in module
+      first end in main
+  
+  because perl stacks the END handlers in reverse order in which it
+  encounters them in the compile phase.
+  
+  Log4perl defines an END handler that cleans up left-over appenders (e.g.
+  file appenders which still hold files open), because those appenders have
+  circular references and therefore aren't cleaned up otherwise.
+  
+  Now if you define an END handler after "use Log::Log4perl", it'll
+  trigger before Log4perl gets a chance to clean up, which isn't a 
+  problem on Unix where you can delete a file even if some process has a 
+  handle to it open, but it's a problem on Win32, where the OS won't 
+  let you do that.
+  
+  The solution is easy, just place the END handler I<before> Log4perl
+  gets loaded, like in
+  
+      END { unlink "my.log" or die };
+      use Log::Log4perl qw( :easy );
+      Log::Log4perl->easy_init( { level => $DEBUG, file => "my.log" } );
+  
+  which will call the END handlers in the intended order.
+  
+  =cut
+  
+  =head1 SEE ALSO
+  
+  Log::Log4perl
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt>
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself.
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches):
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull,
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter,
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope,
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_FAQ
+
+$fatpacked{"Log/Log4perl/Filter.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_FILTER';
+  ##################################################
+  package Log::Log4perl::Filter;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Level;
+  use Log::Log4perl::Config;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  our %FILTERS_DEFINED = ();
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my($class, $name, $action) = @_;
+    
+      print "Creating filter $name\n" if _INTERNAL_DEBUG;
+  
+      my $self = { name => $name };
+      bless $self, $class;
+  
+      if(ref($action) eq "CODE") {
+          # it's a code ref
+          $self->{ok} = $action;
+      } else {
+          # it's something else
+          die "Code for ($name/$action) not properly defined";
+      }
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub register {         # Register a filter by name
+                         # (Passed on to subclasses)
+  ##################################################
+      my($self) = @_;
+  
+      by_name($self->{name}, $self);
+  }
+  
+  ##################################################
+  sub by_name {        # Get/Set a filter object by name
+  ##################################################
+      my($name, $value) = @_;
+  
+      if(defined $value) {
+          $FILTERS_DEFINED{$name} = $value;
+      }
+  
+      if(exists $FILTERS_DEFINED{$name}) {
+          return $FILTERS_DEFINED{$name};
+      } else {
+          return undef;
+      }
+  }
+  
+  ##################################################
+  sub reset {
+  ##################################################
+      %FILTERS_DEFINED = ();
+  }
+  
+  ##################################################
+  sub ok {
+  ##################################################
+      my($self, %p) = @_;
+  
+      print "Calling $self->{name}'s ok method\n" if _INTERNAL_DEBUG;
+  
+          # Force filter classes to define their own
+          # ok(). Exempt are only sub {..} ok functions,
+          # defined in the conf file.
+      die "This is to be overridden by the filter" unless
+           defined $self->{ok};
+  
+      # What should we set the message in $_ to? The most logical
+      # approach seems to be to concat all parts together. If some
+      # filter wants to dissect the parts, it still can examine %p,
+      # which gets passed to the subroutine and contains the chunks
+      # in $p{message}.
+          # Split because of CVS
+      local($_) = join $
+                       Log::Log4perl::JOIN_MSG_ARRAY_CHAR, @{$p{message}};
+      print "\$_ is '$_'\n" if _INTERNAL_DEBUG;
+  
+      my $decision = $self->{ok}->(%p);
+  
+      print "$self->{name}'s ok'ed: ", 
+            ($decision ? "yes" : "no"), "\n" if _INTERNAL_DEBUG;
+  
+      return $decision;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Filter - Log4perl Custom Filter Base Class
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl;
+  
+    Log::Log4perl->init(\ <<'EOT');
+      log4perl.logger = INFO, Screen
+      log4perl.filter.MyFilter        = sub { /let this through/ }
+      log4perl.appender.Screen        = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.Filter = MyFilter
+      log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+    EOT
+  
+        # Define a logger
+    my $logger = Log::Log4perl->get_logger("Some");
+  
+        # Let this through
+    $logger->info("Here's the info, let this through!");
+  
+        # Suppress this
+    $logger->info("Here's the info, suppress this!");
+  
+    #################################################################
+    # StringMatch Filter:
+    #################################################################
+    log4perl.filter.M1               = Log::Log4perl::Filter::StringMatch
+    log4perl.filter.M1.StringToMatch = let this through
+    log4perl.filter.M1.AcceptOnMatch = true
+  
+    #################################################################
+    # LevelMatch Filter:
+    #################################################################
+    log4perl.filter.M1               = Log::Log4perl::Filter::LevelMatch
+    log4perl.filter.M1.LevelToMatch  = INFO
+    log4perl.filter.M1.AcceptOnMatch = true
+  
+  =head1 DESCRIPTION
+  
+  Log4perl allows the use of customized filters in its appenders
+  to control the output of messages. These filters might grep for
+  certain text chunks in a message, verify that its priority
+  matches or exceeds a certain level or that this is the 10th
+  time the same message has been submitted -- and come to a log/no log 
+  decision based upon these circumstantial facts.
+  
+  Filters have names and can be specified in two different ways in the Log4perl
+  configuration file: As subroutines or as filter classes. Here's a 
+  simple filter named C<MyFilter> which just verifies that the 
+  oncoming message matches the regular expression C</let this through/i>:
+  
+      log4perl.filter.MyFilter        = sub { /let this through/i }
+  
+  It exploits the fact that when the subroutine defined
+  above is called on a message,
+  Perl's special C<$_> variable will be set to the message text (prerendered,
+  i.e. concatenated but not layouted) to be logged. 
+  The subroutine is expected to return a true value 
+  if it wants the message to be logged or a false value if doesn't.
+  
+  Also, Log::Log4perl will pass a hash to the subroutine,
+  containing all key/value pairs that it would pass to the corresponding 
+  appender, as specified in Log::Log4perl::Appender. Here's an
+  example of a filter checking the priority of the oncoming message:
+  
+    log4perl.filter.MyFilter        = sub {    \
+         my %p = @_;                           \
+         if($p{log4p_level} eq "WARN" or       \
+            $p{log4p_level} eq "INFO") {       \
+             return 1;                         \
+         }                                     \
+         return 0;                             \
+    }     
+  
+  If the message priority equals C<WARN> or C<INFO>, 
+  it returns a true value, causing
+  the message to be logged.
+  
+  =head2 Predefined Filters
+  
+  For common tasks like verifying that the message priority matches
+  a certain priority, there's already a 
+  set of predefined filters available. To perform an exact level match, it's
+  much cleaner to use Log4perl's C<LevelMatch> filter instead:
+  
+    log4perl.filter.M1               = Log::Log4perl::Filter::LevelMatch
+    log4perl.filter.M1.LevelToMatch  = INFO
+    log4perl.filter.M1.AcceptOnMatch = true
+  
+  This will let the message through if its priority is INFO and suppress
+  it otherwise. The statement can be negated by saying
+  
+    log4perl.filter.M1.AcceptOnMatch = false
+  
+  instead. This way, the message will be logged if its priority is
+  anything but INFO.
+  
+  On a similar note, Log4perl's C<StringMatch> filter will check the 
+  oncoming message for strings or regular expressions:
+  
+    log4perl.filter.M1               = Log::Log4perl::Filter::StringMatch
+    log4perl.filter.M1.StringToMatch = bl.. bl..
+    log4perl.filter.M1.AcceptOnMatch = true
+  
+  This will open the gate for messages like C<blah blah> because the 
+  regular expression in the C<StringToMatch> matches them. Again,
+  the setting of C<AcceptOnMatch> determines if the filter is defined
+  in a positive or negative way.
+  
+  All class filter entries in the configuration file
+  have to adhere to the following rule:
+  Only after a filter has been defined by name and class/subroutine,
+  its attribute values can be
+  assigned, just like the C<true> value above gets assigned to the
+  C<AcceptOnMatch> attribute I<after> the
+  filter C<M1> has been defined.
+  
+  =head2 Attaching a filter to an appender
+  
+  Attaching a filter to an appender is as easy as assigning its name to
+  the appender's C<Filter> attribute:
+  
+      log4perl.appender.MyAppender.Filter = MyFilter
+  
+  This will cause C<Log::Log4perl> to call the filter subroutine/method
+  every time a message is supposed to be passed to the appender. Depending
+  on the filter's return value, C<Log::Log4perl> will either continue as
+  planned or withdraw immediately.
+  
+  =head2 Combining filters with Log::Log4perl::Filter::Boolean
+  
+  Sometimes, it's useful to combine the output of various filters to
+  arrive at a log/no log decision. While Log4j, Log4perl's mother ship,
+  has chosen to implement this feature as a filter chain, similar to Linux' IP chains,
+  Log4perl tries a different approach. 
+  
+  Typically, filter results will not need to be bumped along chains but 
+  combined in a programmatic manner using boolean logic. "Log if
+  this filter says 'yes' and that filter says 'no'" 
+  is a fairly common requirement, but hard to implement as a chain.
+  
+  C<Log::Log4perl::Filter::Boolean> is a specially predefined custom filter
+  for Log4perl. It combines the results of other custom filters 
+  in arbitrary ways, using boolean expressions:
+  
+      log4perl.logger = WARN, AppWarn, AppError
+  
+      log4perl.filter.Match1       = sub { /let this through/ }
+      log4perl.filter.Match2       = sub { /and that, too/ }
+      log4perl.filter.MyBoolean       = Log::Log4perl::Filter::Boolean
+      log4perl.filter.MyBoolean.logic = Match1 || Match2
+  
+      log4perl.appender.Screen        = Log::Log4perl::Appender::Screen
+      log4perl.appender.Screen.Filter = MyBoolean
+      log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+  
+  C<Log::Log4perl::Filter::Boolean>'s boolean expressions allow for combining
+  different appenders by name using AND (&& or &), OR (|| or |) and NOT (!) as
+  logical expressions. Also, parentheses can be used for defining precedences. 
+  Operator precedence follows standard Perl conventions. Here's a bunch of examples:
+  
+      Match1 && !Match2            # Match1 and not Match2
+      !(Match1 || Match2)          # Neither Match1 nor Match2
+      (Match1 && Match2) || Match3 # Both Match1 and Match2 or Match3
+  
+  =head2 Writing your own filter classes
+  
+  If none of Log::Log4perl's predefined filter classes fits your needs,
+  you can easily roll your own: Just define a new class,
+  derive it from the baseclass C<Log::Log4perl::Filter>,
+  and define its C<new> and C<ok> methods like this:
+  
+      package Log::Log4perl::Filter::MyFilter;
+  
+      use base Log::Log4perl::Filter;
+  
+      sub new {
+          my ($class, %options) = @_;
+  
+          my $self = { %options,
+                     };
+       
+          bless $self, $class;
+  
+          return $self;
+      }
+  
+      sub ok {
+           my ($self, %p) = @_;
+  
+           # ... decide and return 1 or 0
+      }
+  
+      1;
+  
+  Log4perl will call the ok() method to determine if the filter
+  should let the message pass or not. A true return value indicates
+  the message will be logged by the appender, a false value blocks it.
+  
+  Values you've defined for its attributes in Log4perl's configuration file,
+  will be received through its C<new> method:
+  
+      log4perl.filter.MyFilter       = Log::Log4perl::Filter::MyFilter
+      log4perl.filter.MyFilter.color = red
+  
+  will cause C<Log::Log4perl::Filter::MyFilter>'s constructor to be called
+  like this:
+  
+      Log::Log4perl::Filter::MyFilter->new( name  => "MyFilter",
+                                            color => "red" );
+  
+  The custom filter class should use this to set the object's attributes, 
+  to have them available later to base log/nolog decisions on it.
+  
+  C<ok()> is the filter's method to tell if it agrees or disagrees with logging
+  the message. It will be called by Log::Log4perl whenever it needs the
+  filter to decide. A false value returned by C<ok()> will block messages,
+  a true value will let them through.
+  
+  =head2 A Practical Example: Level Matching
+  
+  See L<Log::Log4perl::FAQ> for this.
+  
+  =head1 SEE ALSO
+  
+  L<Log::Log4perl::Filter::LevelMatch>,
+  L<Log::Log4perl::Filter::LevelRange>,
+  L<Log::Log4perl::Filter::StringRange>,
+  L<Log::Log4perl::Filter::Boolean>
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_FILTER
+
+$fatpacked{"Log/Log4perl/Filter/Boolean.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_FILTER_BOOLEAN';
+  ##################################################
+  package Log::Log4perl::Filter::Boolean;
+  ##################################################
+  
+  use 5.006;
+  
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Level;
+  use Log::Log4perl::Config;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  use base qw(Log::Log4perl::Filter);
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my ($class, %options) = @_;
+  
+      my $self = { params => {},
+                   %options,
+                 };
+       
+      bless $self, $class;
+       
+      print "Compiling '$options{logic}'\n" if _INTERNAL_DEBUG;
+  
+          # Set up meta-decider for later
+      $self->compile_logic($options{logic});
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub ok {
+  ##################################################
+       my ($self, %p) = @_;
+  
+       return $self->eval_logic(\%p);
+  }
+  
+  ##################################################
+  sub compile_logic {
+  ##################################################
+      my ($self, $logic) = @_;
+  
+         # Extract Filter placeholders in logic as defined
+         # in configuration file.
+      while($logic =~ /([\w_-]+)/g) {
+              # Get the corresponding filter object
+          my $filter = Log::Log4perl::Filter::by_name($1);
+          die "Filter $1 required by Boolean filter, but not defined" 
+              unless $filter;
+  
+          $self->{params}->{$1} = $filter;
+      }
+  
+          # Fabricate a parameter list: A1/A2/A3 => $A1, $A2, $A3
+      my $plist = join ', ', map { '$' . $_ } keys %{$self->{params}};
+  
+          # Replace all the (dollar-less) placeholders in the code with
+          # calls to their respective coderefs.  
+          $logic =~ s/([\w_-]+)/\&\$$1/g;
+  
+          # Set up the meta decider, which transforms the config file
+          # logic into compiled perl code
+      my $func = <<EOT;
+          sub { 
+              my($plist) = \@_;
+              $logic;
+          }
+  EOT
+  
+      print "func=$func\n" if _INTERNAL_DEBUG;
+  
+      my $eval_func = eval $func;
+  
+      if(! $eval_func) {
+          die "Syntax error in Boolean filter logic: $eval_func";
+      }
+  
+      $self->{eval_func} = $eval_func;
+  }
+  
+  ##################################################
+  sub eval_logic {
+  ##################################################
+      my($self, $p) = @_;
+  
+      my @plist = ();
+  
+          # Eval the results of all filters referenced
+          # in the code (although the order of keys is
+          # not predictable, it is consistent :)
+      for my $param (keys %{$self->{params}}) {
+          # Pass a coderef as a param that will run the filter's ok method and
+          # return a 1 or 0.  
+          print "Passing filter $param\n" if _INTERNAL_DEBUG;
+          push(@plist, sub {
+              return $self->{params}->{$param}->ok(%$p) ? 1 : 0
+          });
+      }
+  
+          # Now pipe the parameters into the canned function,
+          # have it evaluate the logic and return the final
+          # decision
+      print "Passing in (", join(', ', @plist), ")\n" if _INTERNAL_DEBUG;
+      return $self->{eval_func}->(@plist);
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Filter::Boolean - Special filter to combine the results of others
+  
+  =head1 SYNOPSIS
+  
+      log4perl.logger = WARN, AppWarn, AppError
+  
+      log4perl.filter.Match1       = sub { /let this through/ }
+      log4perl.filter.Match2       = sub { /and that, too/ }
+      log4perl.filter.MyBoolean       = Log::Log4perl::Filter::Boolean
+      log4perl.filter.MyBoolean.logic = Match1 || Match2
+  
+      log4perl.appender.Screen        = Log::Dispatch::Screen
+      log4perl.appender.Screen.Filter = MyBoolean
+      log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+  
+  =head1 DESCRIPTION
+  
+  Sometimes, it's useful to combine the output of various filters to
+  arrive at a log/no log decision. While Log4j, Log4perl's mother ship,
+  chose to implement this feature as a filter chain, similar to Linux' IP chains,
+  Log4perl tries a different approach. 
+  
+  Typically, filter results will not need to be passed along in chains but 
+  combined in a programmatic manner using boolean logic. "Log if
+  this filter says 'yes' and that filter says 'no'" 
+  is a fairly common requirement but hard to implement as a chain.
+  
+  C<Log::Log4perl::Filter::Boolean> is a special predefined custom filter
+  for Log4perl which combines the results of other custom filters 
+  in arbitrary ways, using boolean expressions:
+  
+      log4perl.logger = WARN, AppWarn, AppError
+  
+      log4perl.filter.Match1       = sub { /let this through/ }
+      log4perl.filter.Match2       = sub { /and that, too/ }
+      log4perl.filter.MyBoolean       = Log::Log4perl::Filter::Boolean
+      log4perl.filter.MyBoolean.logic = Match1 || Match2
+  
+      log4perl.appender.Screen        = Log::Dispatch::Screen
+      log4perl.appender.Screen.Filter = MyBoolean
+      log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+  
+  C<Log::Log4perl::Filter::Boolean>'s boolean expressions allow for combining
+  different appenders by name using AND (&& or &), OR (|| or |) and NOT (!) as
+  logical expressions. Parentheses are used for grouping. Precedence follows
+  standard Perl. Here's a bunch of examples:
+  
+      Match1 && !Match2            # Match1 and not Match2
+      !(Match1 || Match2)          # Neither Match1 nor Match2
+      (Match1 && Match2) || Match3 # Both Match1 and Match2 or Match3
+  
+  =head1 SEE ALSO
+  
+  L<Log::Log4perl::Filter>,
+  L<Log::Log4perl::Filter::LevelMatch>,
+  L<Log::Log4perl::Filter::LevelRange>,
+  L<Log::Log4perl::Filter::MDC>,
+  L<Log::Log4perl::Filter::StringRange>
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_FILTER_BOOLEAN
+
+$fatpacked{"Log/Log4perl/Filter/LevelMatch.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_FILTER_LEVELMATCH';
+  ##################################################
+  package Log::Log4perl::Filter::LevelMatch;
+  ##################################################
+  
+  use 5.006;
+  
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Level;
+  use Log::Log4perl::Config;
+  use Log::Log4perl::Util qw( params_check );
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  use base qw(Log::Log4perl::Filter);
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my ($class, %options) = @_;
+  
+      my $self = { LevelToMatch  => '',
+                   AcceptOnMatch => 1,
+                   %options,
+                 };
+       
+      params_check( $self,
+                    [ qw( LevelToMatch ) ], 
+                    [ qw( name AcceptOnMatch ) ] 
+                  );
+  
+      $self->{AcceptOnMatch} = Log::Log4perl::Config::boolean_to_perlish(
+                                                  $self->{AcceptOnMatch});
+  
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub ok {
+  ##################################################
+       my ($self, %p) = @_;
+  
+       if($self->{LevelToMatch} eq $p{log4p_level}) {
+           print "Levels match\n" if _INTERNAL_DEBUG;
+           return $self->{AcceptOnMatch};
+       } else {
+           print "Levels don't match\n" if _INTERNAL_DEBUG;
+           return !$self->{AcceptOnMatch};
+       }
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Filter::LevelMatch - Filter to match the log level exactly
+  
+  =head1 SYNOPSIS
+  
+      log4perl.filter.Match1               = Log::Log4perl::Filter::LevelMatch
+      log4perl.filter.Match1.LevelToMatch  = ERROR
+      log4perl.filter.Match1.AcceptOnMatch = true
+  
+  =head1 DESCRIPTION
+  
+  This Log4perl custom filter checks if the currently submitted message
+  matches a predefined priority, as set in C<LevelToMatch>.
+  The additional parameter C<AcceptOnMatch> defines if the filter
+  is supposed to pass or block the message (C<true> or C<false>)
+  on a match.
+  
+  =head1 SEE ALSO
+  
+  L<Log::Log4perl::Filter>,
+  L<Log::Log4perl::Filter::Boolean>,
+  L<Log::Log4perl::Filter::LevelRange>,
+  L<Log::Log4perl::Filter::MDC>,
+  L<Log::Log4perl::Filter::StringMatch>
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_FILTER_LEVELMATCH
+
+$fatpacked{"Log/Log4perl/Filter/LevelRange.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_FILTER_LEVELRANGE';
+  ##################################################
+  package Log::Log4perl::Filter::LevelRange;
+  ##################################################
+  
+  use 5.006;
+  
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Level;
+  use Log::Log4perl::Config;
+  use Log::Log4perl::Util qw( params_check );
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  use base "Log::Log4perl::Filter";
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my ($class, %options) = @_;
+  
+      my $self = { LevelMin      => 'DEBUG',
+                   LevelMax      => 'FATAL',
+                   AcceptOnMatch => 1,
+                   %options,
+                 };
+       
+      params_check( $self,
+                    [ qw( LevelMin LevelMax ) ], 
+                    [ qw( name AcceptOnMatch ) ] 
+                  );
+  
+      $self->{AcceptOnMatch} = Log::Log4perl::Config::boolean_to_perlish(
+                                                  $self->{AcceptOnMatch});
+  
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub ok {
+  ##################################################
+       my ($self, %p) = @_;
+  
+       if(Log::Log4perl::Level::to_priority($self->{LevelMin}) <= 
+          Log::Log4perl::Level::to_priority($p{log4p_level}) and
+          Log::Log4perl::Level::to_priority($self->{LevelMax}) >= 
+          Log::Log4perl::Level::to_priority($p{log4p_level})) {
+           return $self->{AcceptOnMatch};
+       } else {
+           return ! $self->{AcceptOnMatch};
+       }
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Filter::LevelRange - Filter for a range of log levels
+  
+  =head1 SYNOPSIS
+  
+      log4perl.filter.Match1               = Log::Log4perl::Filter::LevelRange
+      log4perl.filter.Match1.LevelMin      = INFO
+      log4perl.filter.Match1.LevelMax      = ERROR
+      log4perl.filter.Match1.AcceptOnMatch = true
+  
+  =head1 DESCRIPTION
+  
+  This Log4perl custom filter checks if the current message
+  has a priority matching a predefined range. 
+  The C<LevelMin> and C<LevelMax> parameters define the levels
+  (choose from C<DEBUG>, C<INFO>, C<WARN>, C<ERROR>, C<FATAL>) marking
+  the window of allowed messages priorities.
+  
+  C<LevelMin> defaults to C<DEBUG>, and C<LevelMax> to C<FATAL>.
+  
+  The additional parameter C<AcceptOnMatch> defines if the filter
+  is supposed to pass or block the message (C<true> or C<false>).
+  
+  =head1 SEE ALSO
+  
+  L<Log::Log4perl::Filter>,
+  L<Log::Log4perl::Filter::Boolean>,
+  L<Log::Log4perl::Filter::LevelMatch>,
+  L<Log::Log4perl::Filter::MDC>,
+  L<Log::Log4perl::Filter::StringMatch>
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_FILTER_LEVELRANGE
+
+$fatpacked{"Log/Log4perl/Filter/MDC.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_FILTER_MDC';
+  package Log::Log4perl::Filter::MDC;
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Util qw( params_check );
+  
+  use base "Log::Log4perl::Filter";
+  
+  sub new {
+      my ( $class, %options ) = @_;
+  
+      my $self = {%options};
+  
+      params_check( $self, [qw( KeyToMatch RegexToMatch )] );
+  
+      $self->{RegexToMatch} = qr/$self->{RegexToMatch}/;
+  
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  sub ok {
+      my ( $self, %p ) = @_;
+  
+      my $context = Log::Log4perl::MDC->get_context;
+  
+      my $value = $context->{ $self->{KeyToMatch} };
+      return 1
+          if defined $value && $value =~ $self->{RegexToMatch};
+  
+      return 0;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Filter::MDC - Filter to match on values of a MDC key
+  
+  =head1 SYNOPSIS
+  
+      log4perl.filter.Match1               = Log::Log4perl::Filter::MDC
+      log4perl.filter.Match1.KeyToMatch    = foo
+      log4perl.filter.Match1.RegexToMatch  = bar
+  
+  =head1 DESCRIPTION
+  
+  This Log4perl filter checks if a predefined MDC key, as set in C<KeyToMatch>,
+  of the currently submitted message matches a predefined regex, as set in
+  C<RegexToMatch>.
+  
+  =head1 SEE ALSO
+  
+  L<Log::Log4perl::Filter>,
+  L<Log::Log4perl::Filter::Boolean>,
+  L<Log::Log4perl::Filter::LevelMatch>,
+  L<Log::Log4perl::Filter::LevelRange>,
+  L<Log::Log4perl::Filter::MDC>,
+  L<Log::Log4perl::Filter::StringMatch>
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_FILTER_MDC
+
+$fatpacked{"Log/Log4perl/Filter/StringMatch.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_FILTER_STRINGMATCH';
+  ##################################################
+  package Log::Log4perl::Filter::StringMatch;
+  ##################################################
+  
+  use 5.006;
+  
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl::Config;
+  use Log::Log4perl::Util qw( params_check );
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  use base "Log::Log4perl::Filter";
+  
+  ##################################################
+  sub new {
+  ##################################################
+       my ($class, %options) = @_;
+  
+       print join('-', %options) if _INTERNAL_DEBUG;
+  
+       my $self = { StringToMatch => undef,
+                    AcceptOnMatch => 1,
+                    %options,
+                  };
+       
+       params_check( $self,
+                    [ qw( StringToMatch ) ], 
+                    [ qw( name AcceptOnMatch ) ] 
+                  );
+  
+       $self->{AcceptOnMatch} = Log::Log4perl::Config::boolean_to_perlish(
+                                                   $self->{AcceptOnMatch});
+  
+       $self->{StringToMatch} = qr($self->{StringToMatch});
+  
+       bless $self, $class;
+  
+       return $self;
+  }
+  
+  ##################################################
+  sub ok {
+  ##################################################
+       my ($self, %p) = @_;
+  
+       local($_) = join $
+                       Log::Log4perl::JOIN_MSG_ARRAY_CHAR, @{$p{message}};
+  
+       if($_ =~ $self->{StringToMatch}) {
+           print "Strings match\n" if _INTERNAL_DEBUG;
+           return $self->{AcceptOnMatch};
+       } else {
+           print "Strings don't match ($_/$self->{StringToMatch})\n" 
+               if _INTERNAL_DEBUG;
+           return !$self->{AcceptOnMatch};
+       }
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Filter::StringMatch - Filter on log message string
+  
+  =head1 SYNOPSIS
+  
+      log4perl.filter.Match1               = Log::Log4perl::Filter::StringMatch
+      log4perl.filter.Match1.StringToMatch = blah blah
+      log4perl.filter.Match1.AcceptOnMatch = true
+  
+  =head1 DESCRIPTION
+  
+  This Log4perl custom filter checks if the currently submitted message
+  matches a predefined regular expression, as set in the C<StringToMatch>
+  parameter. It uses common Perl 5 regexes.
+  
+  The additional parameter C<AcceptOnMatch> defines if the filter
+  is supposed to pass or block the message on a match (C<true> or C<false>).
+  
+  =head1 SEE ALSO
+  
+  L<Log::Log4perl::Filter>,
+  L<Log::Log4perl::Filter::Boolean>,
+  L<Log::Log4perl::Filter::LevelMatch>,
+  L<Log::Log4perl::Filter::LevelRange>,
+  L<Log::Log4perl::Filter::MDC>
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_FILTER_STRINGMATCH
+
+$fatpacked{"Log/Log4perl/InternalDebug.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_INTERNALDEBUG';
+  package Log::Log4perl::InternalDebug;
+  use warnings;
+  use strict;
+  
+  use File::Temp qw(tempfile);
+  use File::Spec;
+  
+  require Log::Log4perl::Resurrector;
+  
+  ###########################################
+  sub enable {
+  ###########################################
+      unshift @INC, \&internal_debug_loader;
+  }
+  
+  ##################################################
+  sub internal_debug_fh {
+  ##################################################
+      my($file) = @_;
+  
+      local($/) = undef;
+      open FILE, "<$file" or die "Cannot open $file";
+      my $text = <FILE>;
+      close FILE;
+  
+      my($tmp_fh, $tmpfile) = tempfile( UNLINK => 1 );
+  
+      $text =~ s/_INTERNAL_DEBUG(?!\s*=>)/1/g;
+  
+      print $tmp_fh $text;
+      seek $tmp_fh, 0, 0;
+  
+      return $tmp_fh;
+  }
+  
+  ###########################################
+  sub internal_debug_loader {
+  ###########################################
+      my ($code, $module) = @_;
+  
+        # Skip non-Log4perl modules
+      if($module !~ m#^Log/Log4perl#) {
+          return undef;
+      }
+  
+      my $path = $module;
+      if(!-f $path) {
+          $path = Log::Log4perl::Resurrector::pm_search( $module );
+      }
+  
+      my $fh = internal_debug_fh($path);
+  
+      my $abs_path = File::Spec->rel2abs( $path );
+      $INC{$module} = $abs_path;
+  
+      return $fh;
+  }
+  
+  ###########################################
+  sub resurrector_init {
+  ###########################################
+      unshift @INC, \&resurrector_loader;
+  }
+  
+  ###########################################
+  sub import {
+  ###########################################
+      # enable it on import
+    enable();
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::InternalDebug - Dark Magic to enable _INTERNAL_DEBUG
+  
+  =head1 DESCRIPTION
+  
+  When called with
+  
+      perl -MLog::Log4perl::InternalDebug t/001Test.t
+  
+  scripts will run with _INTERNAL_DEBUG set to a true value and hence
+  print internal Log4perl debugging information.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_INTERNALDEBUG
+
+$fatpacked{"Log/Log4perl/JavaMap.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP';
+  package Log::Log4perl::JavaMap;
+  
+  use Carp;
+  use strict;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  our %translate = (
+      'org.apache.log4j.ConsoleAppender' => 
+          'Log::Log4perl::JavaMap::ConsoleAppender',
+      'org.apache.log4j.FileAppender'    => 
+          'Log::Log4perl::JavaMap::FileAppender',
+      'org.apache.log4j.RollingFileAppender'    => 
+          'Log::Log4perl::JavaMap::RollingFileAppender',
+      'org.apache.log4j.TestBuffer'    => 
+          'Log::Log4perl::JavaMap::TestBuffer',
+       'org.apache.log4j.jdbc.JDBCAppender'    => 
+          'Log::Log4perl::JavaMap::JDBCAppender',
+       'org.apache.log4j.SyslogAppender'    => 
+          'Log::Log4perl::JavaMap::SyslogAppender',
+       'org.apache.log4j.NTEventLogAppender'    => 
+          'Log::Log4perl::JavaMap::NTEventLogAppender',
+  );
+  
+  our %user_defined;
+  
+  sub get {
+      my ($appender_name, $appender_data) = @_;
+  
+      print "Trying to map $appender_name\n" if _INTERNAL_DEBUG;
+  
+      $appender_data->{value} ||
+              die "ERROR: you didn't tell me how to implement your appender " .
+                  "'$appender_name'";
+  
+      my $perl_class = $translate{$appender_data->{value}} || 
+                       $user_defined{$appender_data->{value}} ||
+              die "ERROR:  I don't know how to make a '$appender_data->{value}' " .
+                  "to implement your appender '$appender_name', that's not a " .
+                  "supported class\n";
+      eval {
+          eval "require $perl_class";  #see 'perldoc -f require' for why two evals
+          die $@ if $@;
+      };
+      $@ and die "ERROR: trying to set appender for $appender_name to " .
+                 "$appender_data->{value} using $perl_class failed\n$@  \n";
+  
+      my $app = $perl_class->new($appender_name, $appender_data);
+      return $app;
+  }
+  
+  #an external api to the two hashes
+  sub translate {
+      my $java_class = shift;
+  
+      return $translate{$java_class} || 
+              $user_defined{$java_class};
+  }
+  
+  1;
+  
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap - maps java log4j appenders to Log::Dispatch classes
+  
+  =head1 SYNOPSIS
+  
+       ###############################
+       log4j.appender.FileAppndr1        = org.apache.log4j.FileAppender
+       log4j.appender.FileAppndr1.File   = /var/log/onetime.log
+       log4j.appender.FileAppndr1.Append = false
+  
+       log4j.appender.FileAppndr1.layout = org.apache.log4j.PatternLayout
+       log4j.appender.FileAppndr1.layout.ConversionPattern=%d %4r [%t] %-5p %c %x - %m%n
+       ###############################
+  
+  
+  =head1 DESCRIPTION
+  
+  If somebody wants to create an appender called C<org.apache.log4j.ConsoleAppender>,
+  we want to translate it to Log::Dispatch::Screen, and then translate
+  the log4j options into Log::Dispatch parameters..
+  
+  =head2 What's Implemented
+  
+  (Note that you can always use the Log::Dispatch::* module.  By 'implemented'
+  I mean having a translation class that translates log4j options into
+  the Log::Dispatch options so you can use log4j rather than log4perl 
+  syntax in your config file.)
+  
+  Here's the list of appenders I see on the current (6/2002) log4j site.
+  
+  These are implemented
+  
+      ConsoleAppender     - Log::Dispatch::Screen
+      FileAppender        - Log::Dispatch::File
+      RollingFileAppender - Log::Dispatch::FileRotate (by Mark Pfeiffer)
+      JDBCAppender        - Log::Log4perl::Appender::DBI
+      SyslogAppender      - Log::Dispatch::Syslog
+      NTEventLogAppender  - Log::Dispatch::Win32EventLog
+  
+  
+  These should/will/might be implemented
+      
+      DailyRollingFileAppender - 
+      SMTPAppender     - Log::Dispatch::Email::MailSender
+      
+  
+  These might be implemented but they don't have corresponding classes
+  in Log::Dispatch (yet):
+  
+      NullAppender
+      TelnetAppender
+  
+  These might be simulated
+  
+      LF5Appender - use Tk?
+      ExternallyRolledFileAppender - catch a HUP instead?
+  
+  These will probably not be implemented
+  
+      AsyncAppender
+      JMSAppender
+      SocketAppender - (ships a serialized LoggingEvent to the server side)
+      SocketHubAppender
+  
+  =head1 ROLL YOUR OWN
+  
+  Let's say you've in a mixed Java/Perl environment and you've
+  come up with some custom Java appender with behavior you want to 
+  use in both worlds, C<myorg.customAppender>.  You write a
+  Perl appender with the same behavior C<Myorg::CustomAppender>. You
+  want to use one config file across both applications, so the
+  config file will have to say 'myorg.customAppender'.  But
+  the mapping from C<myorg.customAppender> to C<Myorg::CustomAppender>
+  isn't in this JavaMap class, so what do you do?
+  
+  In  your Perl code, before you call Log::Log4perl::init(), do this:
+  
+      $Log::Log4perl::JavaMap::user_defined{'myorg.customAppender'} = 
+          'Myorg::CustomAppender';
+  
+  and you can use 'myorg.customAppender' in your config file with
+  impunity.
+  
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP
+
+$fatpacked{"Log/Log4perl/JavaMap/ConsoleAppender.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP_CONSOLEAPPENDER';
+  package Log::Log4perl::JavaMap::ConsoleAppender;
+  
+  use Carp;
+  use strict;
+  use Log::Dispatch::Screen;
+  
+  
+  sub new {
+      my ($class, $appender_name, $data) = @_;
+      my $stderr;
+  
+      if (my $t = $data->{Target}{value}) {
+          if ($t eq 'System.out') {
+              $stderr = 0;
+          }elsif ($t eq 'System.err') {
+              $stderr = 1;
+          }else{
+              die "ERROR: illegal value '$t' for $data->{value}.Target' in appender $appender_name\n";
+          }
+      }elsif (defined $data->{stderr}{value}){
+          $stderr = $data->{stderr}{value};
+      }else{
+          $stderr = 0;
+      }
+  
+      return Log::Log4perl::Appender->new("Log::Dispatch::Screen",
+          name   => $appender_name,
+          stderr => $stderr );
+  }
+  
+  
+  1;
+  
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap::ConsoleAppender - wraps Log::Dispatch::Screen
+  
+  =head1 SYNOPSIS
+  
+  
+  =head1 DESCRIPTION
+  
+  Possible config properties for log4j ConsoleAppender are 
+  
+      Target (System.out, System.err, default is System.out)
+  
+  Possible config properties for Log::Dispatch::Screen are
+  
+      stderr (0 or 1)
+  
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  Log::Log4perl::Javamap
+  
+  Log::Dispatch::Screen
+  
+  =cut 
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP_CONSOLEAPPENDER
+
+$fatpacked{"Log/Log4perl/JavaMap/FileAppender.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP_FILEAPPENDER';
+  package Log::Log4perl::JavaMap::FileAppender;
+  
+  use Carp;
+  use strict;
+  use Log::Dispatch::File;
+  
+  
+  sub new {
+      my ($class, $appender_name, $data) = @_;
+      my $stderr;
+  
+      my $filename =  $data->{File}{value} || 
+                  $data->{filename}{value} || 
+                  die "'File' not supplied for appender '$appender_name', required for a '$data->{value}'\n";
+  
+      my $mode;
+      if (defined($data->{Append}{value})){
+          if (lc $data->{Append}{value} eq 'true' || $data->{Append}{value} == 1){
+              $mode = 'append';
+          }elsif (lc $data->{Append}{value} eq 'false' || $data->{Append}{value} == 0) {
+              $mode = 'write';
+          }elsif($data->{Append} =~ /^(write|append)$/){
+              $mode = $data->{Append}
+          }else{
+              die "'$data->{Append}' is not a legal value for Append for appender '$appender_name', '$data->{value}'\n";
+          }
+      }else{
+          $mode = 'append';
+      }
+  
+      my $autoflush;
+      if (defined($data->{BufferedIO}{value})){
+          if (lc $data->{BufferedIO}{value} eq 'true' || $data->{BufferedIO}{value}){
+              $autoflush = 1;
+          }elsif (lc $data->{BufferedIO}{value} eq 'true' || ! $data->{BufferedIO}{value}) {
+              $autoflush = 0;
+          }else{
+              die "'$data->{BufferedIO}' is not a legal value for BufferedIO for appender '$appender_name', '$data->{value}'\n";
+          }
+      }else{
+          $autoflush = 1;
+      }
+  
+  
+      return Log::Log4perl::Appender->new("Log::Dispatch::File",
+          name      => $appender_name,
+          filename  => $filename,
+          mode      => $mode,
+          autoflush => $autoflush,
+      );
+  }
+  
+  1;
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap::FileAppender - wraps Log::Dispatch::File
+  
+  =head1 SYNOPSIS
+  
+  
+  =head1 DESCRIPTION
+  
+  Possible config properties for log4j ConsoleAppender are 
+  
+      File
+      Append      "true|false|1|0" default=true
+      BufferedIO  "true|false|1|0" default=false (i.e. autoflush is on)
+  
+  Possible config properties for Log::Dispatch::File are
+  
+      filename
+      mode  "write|append"
+      autoflush 0|1
+  
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  Log::Log4perl::Javamap
+  
+  Log::Dispatch::File
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP_FILEAPPENDER
+
+$fatpacked{"Log/Log4perl/JavaMap/JDBCAppender.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP_JDBCAPPENDER';
+  package Log::Log4perl::JavaMap::JDBCAppender;
+  
+  use Carp;
+  use strict;
+  
+  sub new {
+      my ($class, $appender_name, $data) = @_;
+      my $stderr;
+  
+      my $pwd =  $data->{password}{value} || 
+                  die "'password' not supplied for appender '$appender_name', required for a '$data->{value}'\n";
+  
+      my $username =  $data->{user}{value} || 
+                  $data->{username}{value} || 
+                  die "'user' not supplied for appender '$appender_name', required for a '$data->{value}'\n";
+  
+  
+      my $sql =  $data->{sql}{value} || 
+                  die "'sql' not supplied for appender '$appender_name', required for a '$data->{value}'\n";
+  
+  
+      my $dsn;
+  
+      my $databaseURL = $data->{URL}{value};
+      if ($databaseURL) {
+          $databaseURL =~ m|^jdbc:(.+?):(.+?)://(.+?):(.+?);(.+)|;
+          my $driverName = $1;
+          my $databaseName = $2;
+          my $hostname = $3;
+          my $port = $4;
+          my $params = $5;
+          $dsn = "dbi:$driverName:database=$databaseName;host=$hostname;port=$port;$params";
+      }elsif ($data->{datasource}{value}){
+          $dsn = $data->{datasource}{value};
+      }else{
+          die "'databaseURL' not supplied for appender '$appender_name', required for a '$data->{value}'\n";
+      }
+  
+  
+      #this part isn't supported by log4j, it's my Log4perl
+      #hack, but I think it's so useful I'm going to implement it
+      #anyway
+      my %bind_value_params;
+      foreach my $p (keys %{$data->{params}}){
+          $bind_value_params{$p} =  $data->{params}{$p}{value};
+      }
+  
+      return Log::Log4perl::Appender->new("Log::Log4perl::Appender::DBI",
+          datasource    => $dsn,
+          username      => $username,
+          password      => $pwd, 
+          sql           => $sql,
+          params        => \%bind_value_params,
+              #warp_message also not a log4j thing, but see above
+          warp_message=> $data->{warp_message}{value},  
+      );
+  }
+  
+  1;
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap::JDBCAppender - wraps Log::Log4perl::Appender::DBI
+  
+  =head1 SYNOPSIS
+  
+  
+  =head1 DESCRIPTION
+  
+  Possible config properties for log4j JDBCAppender are 
+  
+      bufferSize 
+      sql
+      password
+      user
+      URL - attempting to translate a JDBC URL into DBI parameters,
+          let me know if you find problems
+  
+  Possible config properties for Log::Log4perl::Appender::DBI are
+  
+      bufferSize 
+      sql
+      password
+      username
+      datasource
+      
+      usePreparedStmt 0|1
+      
+      (patternLayout).dontCollapseArrayRefs 0|1
+      
+      
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  Log::Log4perl::Javamap
+  
+  Log::Log4perl::Appender::DBI
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP_JDBCAPPENDER
+
+$fatpacked{"Log/Log4perl/JavaMap/NTEventLogAppender.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP_NTEVENTLOGAPPENDER';
+  package Log::Log4perl::JavaMap::NTEventLogAppender;
+  
+  use Carp;
+  use strict;
+  
+  
+  
+  sub new {
+      my ($class, $appender_name, $data) = @_;
+      my $stderr;
+  
+      my ($source,   #        
+          );
+  
+      if (defined $data->{Source}{value}) {
+          $source = $data->{Source}{value}
+      }elsif (defined $data->{source}{value}){
+          $source = $data->{source}{value};
+      }else{
+          $source = 'user';
+      }
+  
+      
+      return Log::Log4perl::Appender->new("Log::Dispatch::Win32EventLog",
+          name      => $appender_name,
+          source    => $source,
+          min_level => 'debug',
+      );
+  }
+  
+  1;
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap::NTEventLogAppender - wraps Log::Dispatch::Win32EventLog
+  
+  
+  =head1 DESCRIPTION
+  
+  This maps log4j's NTEventLogAppender to Log::Dispatch::Win32EventLog
+  
+  Possible config properties for log4j NTEventLogAppender are 
+  
+      Source
+  
+  Possible config properties for Log::Dispatch::Win32EventLog are
+  
+      source
+  
+  Boy, that was hard.
+  
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  Log::Log4perl::Javamap
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP_NTEVENTLOGAPPENDER
+
+$fatpacked{"Log/Log4perl/JavaMap/RollingFileAppender.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP_ROLLINGFILEAPPENDER';
+  package Log::Log4perl::JavaMap::RollingFileAppender;
+  
+  use Carp;
+  use strict;
+  use Log::Dispatch::FileRotate 1.10;
+  
+  
+  sub new {
+      my ($class, $appender_name, $data) = @_;
+      my $stderr;
+  
+      my $filename =  $data->{File}{value} || 
+                  $data->{filename}{value} || 
+                  die "'File' not supplied for appender '$appender_name', required for a '$data->{value}'\n";
+  
+      my $mode;
+      if (defined($data->{Append}{value})){
+          if (lc $data->{Append}{value} eq 'true' || $data->{Append}{value} == 1){
+              $mode = 'append';
+          }elsif (lc $data->{Append}{value} eq 'false' || $data->{Append}{value} == 0) {
+              $mode = 'write';
+          }elsif($data->{Append} =~ /^(write|append)$/){
+              $mode = $data->{Append}
+          }else{
+              die "'$data->{Append}' is not a legal value for Append for appender '$appender_name', '$data->{value}'\n";
+          }
+      }else{
+          $mode = 'append';
+      }
+  
+      my $autoflush;
+      if (defined($data->{BufferedIO}{value})){
+          if (lc $data->{BufferedIO}{value} eq 'true' || $data->{BufferedIO}{value}){
+              $autoflush = 1;
+          }elsif (lc $data->{BufferedIO}{value} eq 'true' || ! $data->{BufferedIO}{value}) {
+              $autoflush = 0;
+          }else{
+              die "'$data->{BufferedIO}' is not a legal value for BufferedIO for appender '$appender_name', '$data->{value}'\n";
+          }
+      }else{
+          $autoflush = 1;
+      }
+  
+      my $max;
+      if (defined $data->{MaxBackupIndex}{value}) {
+          $max = $data->{MaxBackupIndex}{value};
+      }elsif (defined $data->{max}{value}){
+          $max = $data->{max}{value};
+      }else{
+          $max = 1;
+  
+      }
+  
+      my $size;
+      if (defined $data->{MaxFileSize}{value}) {
+          $size = $data->{MaxFileSize}{value}
+      }elsif (defined $data->{size}{value}){
+          $size = $data->{size}{value};
+      }else{
+          $size = 10_000_000;
+      }
+  
+  
+      return Log::Log4perl::Appender->new("Log::Dispatch::FileRotate",
+          name      => $appender_name,
+          filename  => $filename,
+          mode      => $mode,
+          autoflush => $autoflush,
+          size      => $size,
+          max       => $max,
+      );
+  }
+  
+  1;
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap::RollingFileAppender - wraps Log::Dispatch::FileRotate
+  
+  =head1 SYNOPSIS
+  
+  
+  =head1 DESCRIPTION
+  
+  This maps log4j's RollingFileAppender to Log::Dispatch::FileRotate 
+  by Mark Pfeiffer, <markpf@mlp-consulting.com.au>.
+  
+  Possible config properties for log4j ConsoleAppender are 
+  
+      File
+      Append      "true|false|1|0" default=true
+      BufferedIO  "true|false|1|0" default=false (i.e. autoflush is on)
+      MaxFileSize default 10_000_000
+      MaxBackupIndex default is 1
+  
+  Possible config properties for Log::Dispatch::FileRotate are
+  
+      filename
+      mode  "write|append"
+      autoflush 0|1
+      size
+      max
+  
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  Log::Log4perl::Javamap
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP_ROLLINGFILEAPPENDER
+
+$fatpacked{"Log/Log4perl/JavaMap/SyslogAppender.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP_SYSLOGAPPENDER';
+  package Log::Log4perl::JavaMap::SyslogAppender;
+  
+  use Carp;
+  use strict;
+  use Log::Dispatch::Syslog;
+  
+  
+  sub new {
+      my ($class, $appender_name, $data) = @_;
+      my $stderr;
+  
+      my ($ident,    #defaults to $0
+          $logopt,   #Valid options are 'cons', 'pid', 'ndelay', and 'nowait'.
+          $facility, #Valid options are 'auth', 'authpriv',
+                     #  'cron', 'daemon', 'kern', 'local0' through 'local7',
+                     #   'mail, 'news', 'syslog', 'user', 'uucp'.  Defaults to
+                     #   'user'
+          $socket,   #Valid options are 'unix' or 'inet'. Defaults to 'inet'
+          );
+  
+      if (defined $data->{Facility}{value}) {
+          $facility = $data->{Facility}{value}
+      }elsif (defined $data->{facility}{value}){
+          $facility = $data->{facility}{value};
+      }else{
+          $facility = 'user';
+      }
+  
+      if (defined $data->{Ident}{value}) {
+          $ident = $data->{Ident}{value}
+      }elsif (defined $data->{ident}{value}){
+          $ident = $data->{ident}{value};
+      }else{
+          $ident = $0;
+      }
+      
+      return Log::Log4perl::Appender->new("Log::Dispatch::Syslog",
+          name      => $appender_name,
+          facility  => $facility,
+          ident     => $ident,
+          min_level => 'debug',
+      );
+  }
+  
+  1;
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap::SysLogAppender - wraps Log::Dispatch::Syslog
+  
+  
+  =head1 DESCRIPTION
+  
+  This maps log4j's SyslogAppender to Log::Dispatch::Syslog
+  
+  Possible config properties for log4j SyslogAppender are 
+  
+      SyslogHost (Log::Dispatch::Syslog only accepts 'localhost')
+      Facility
+  
+  Possible config properties for Log::Dispatch::Syslog are
+  
+      min_level (debug)
+      max_level
+      ident    (defaults to $0)
+      logopt
+      facility 
+      socket   (defaults to 'inet')
+  
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  Log::Log4perl::Javamap
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP_SYSLOGAPPENDER
+
+$fatpacked{"Log/Log4perl/JavaMap/TestBuffer.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_JAVAMAP_TESTBUFFER';
+  package Log::Log4perl::JavaMap::TestBuffer;
+  
+  use Carp;
+  use strict;
+  use Log::Log4perl::Appender::TestBuffer;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  sub new {
+      my ($class, $appender_name, $data) = @_;
+      my $stderr;
+  
+      return Log::Log4perl::Appender->new("Log::Log4perl::Appender::TestBuffer",
+                                          name => $appender_name);
+  }
+  
+  1;
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::JavaMap::TestBuffer - wraps Log::Log4perl::Appender::TestBuffer
+  
+  =head1 SYNOPSIS
+  
+  =head1 DESCRIPTION
+  
+  Just for testing the Java mapping.
+  
+  =head1 SEE ALSO
+  
+  http://jakarta.apache.org/log4j/docs/
+  
+  Log::Log4perl::Javamap
+  
+  Log::Dispatch::Screen
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_JAVAMAP_TESTBUFFER
+
+$fatpacked{"Log/Log4perl/Layout.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_LAYOUT';
+  package Log::Log4perl::Layout;
+  
+  
+  use Log::Log4perl::Layout::SimpleLayout;
+  use Log::Log4perl::Layout::PatternLayout;
+  use Log::Log4perl::Layout::PatternLayout::Multiline;
+  
+  
+  ####################################################
+  sub appender_name {
+  ####################################################
+      my ($self, $arg) = @_;
+  
+      if ($arg) {
+          die "setting appender_name unimplemented until it makes sense";
+      }
+      return $self->{appender_name};
+  }
+  
+  
+  ##################################################
+  sub define {
+  ##################################################
+      ;  #subclasses may implement
+  }
+  
+  
+  ##################################################
+  sub render {
+  ##################################################
+      die "subclass must implement render";
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Layout - Log4perl Layout Virtual Base Class
+  
+  =head1 SYNOPSIS
+  
+      # Not to be used directly, see below
+  
+  =head1 DESCRIPTION
+  
+  C<Log::Log4perl::Layout> is a virtual base class for the two currently 
+  implemented layout types
+  
+      Log::Log4perl::Layout::SimpleLayout
+      Log::Log4perl::Layout::PatternLayout
+  
+  Unless you're implementing a new layout class for Log4perl, you shouldn't
+  use this class directly, but rather refer to
+  L<Log::Log4perl::Layout::SimpleLayout> or 
+  L<Log::Log4perl::Layout::PatternLayout>.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_LAYOUT
+
+$fatpacked{"Log/Log4perl/Layout/NoopLayout.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_LAYOUT_NOOPLAYOUT';
+  ##################################################
+  package Log::Log4perl::Layout::NoopLayout;
+  ##################################################
+  
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my $class = shift;
+      $class = ref ($class) || $class;
+  
+      my $self = {
+          format      => undef,
+          info_needed => {},
+          stack       => [],
+      };
+  
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub render {
+  ##################################################
+      #my($self, $message, $category, $priority, $caller_level) = @_;
+      return $_[1];;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Layout::NoopLayout - Pass-thru Layout
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Layout::NoopLayout;
+    my $layout = Log::Log4perl::Layout::NoopLayout->new();
+  
+  =head1 DESCRIPTION
+  
+  This is a no-op layout, returns the logging message unaltered,
+  useful for implementing the DBI logger.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_LAYOUT_NOOPLAYOUT
+
+$fatpacked{"Log/Log4perl/Layout/PatternLayout.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_LAYOUT_PATTERNLAYOUT';
+  ##################################################
+  package Log::Log4perl::Layout::PatternLayout;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+  use Carp;
+  use Log::Log4perl::Util;
+  use Log::Log4perl::Level;
+  use Log::Log4perl::DateFormat;
+  use Log::Log4perl::NDC;
+  use Log::Log4perl::MDC;
+  use Log::Log4perl::Util::TimeTracker;
+  use File::Spec;
+  use File::Basename;
+  
+  our $TIME_HIRES_AVAILABLE_WARNED = 0;
+  our $HOSTNAME;
+  our %GLOBAL_USER_DEFINED_CSPECS = ();
+  
+  our $CSPECS = 'cCdFHIlLmMnpPrRtTxX%';
+  
+  BEGIN {
+      # Check if we've got Sys::Hostname. If not, just punt.
+      $HOSTNAME = "unknown.host";
+      if(Log::Log4perl::Util::module_available("Sys::Hostname")) {
+          require Sys::Hostname;
+          $HOSTNAME = Sys::Hostname::hostname();
+      }
+  }
+  
+  use base qw(Log::Log4perl::Layout);
+  
+  no strict qw(refs);
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my $class = shift;
+      $class = ref ($class) || $class;
+  
+      my $options       = ref $_[0] eq "HASH" ? shift : {};
+      my $layout_string = @_ ? shift : '%m%n';
+      
+      my $self = {
+          format                => undef,
+          info_needed           => {},
+          stack                 => [],
+          CSPECS                => $CSPECS,
+          dontCollapseArrayRefs => $options->{dontCollapseArrayRefs}{value},
+          last_time             => undef,
+          undef_column_value    => 
+              (exists $options->{ undef_column_value } 
+                  ? $options->{ undef_column_value } 
+                  : "[undef]"),
+      };
+  
+      $self->{timer} = Log::Log4perl::Util::TimeTracker->new(
+          time_function => $options->{time_function}
+      );
+  
+      if(exists $options->{ConversionPattern}->{value}) {
+          $layout_string = $options->{ConversionPattern}->{value};
+      }
+  
+      if(exists $options->{message_chomp_before_newline}) {
+          $self->{message_chomp_before_newline} = 
+            $options->{message_chomp_before_newline}->{value};
+      } else {
+          $self->{message_chomp_before_newline} = 1;
+      }
+  
+      bless $self, $class;
+  
+      #add the global user-defined cspecs
+      foreach my $f (keys %GLOBAL_USER_DEFINED_CSPECS){
+              #add it to the list of letters
+          $self->{CSPECS} .= $f;
+               #for globals, the coderef is already evaled, 
+          $self->{USER_DEFINED_CSPECS}{$f} = $GLOBAL_USER_DEFINED_CSPECS{$f};
+      }
+  
+      #add the user-defined cspecs local to this appender
+      foreach my $f (keys %{$options->{cspec}}){
+          $self->add_layout_cspec($f, $options->{cspec}{$f}{value});
+      }
+  
+      # non-portable line breaks
+      $layout_string =~ s/\\n/\n/g;
+      $layout_string =~ s/\\r/\r/g;
+  
+      $self->define($layout_string);
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub define {
+  ##################################################
+      my($self, $format) = @_;
+  
+          # If the message contains a %m followed by a newline,
+          # make a note of that so that we can cut a superfluous 
+          # \n off the message later on
+      if($self->{message_chomp_before_newline} and $format =~ /%m%n/) {
+          $self->{message_chompable} = 1;
+      } else {
+          $self->{message_chompable} = 0;
+      }
+  
+      # Parse the format
+      $format =~ s/%(-?\d*(?:\.\d+)?) 
+                         ([$self->{CSPECS}])
+                         (?:{(.*?)})*/
+                         rep($self, $1, $2, $3);
+                        /gex;
+  
+      $self->{printformat} = $format;
+  }
+  
+  ##################################################
+  sub rep {
+  ##################################################
+      my($self, $num, $op, $curlies) = @_;
+  
+      return "%%" if $op eq "%";
+  
+      # If it's a %d{...} construct, initialize a simple date
+      # format formatter, so that we can quickly render later on.
+      # If it's just %d, assume %d{yyyy/MM/dd HH:mm:ss}
+      if($op eq "d") {
+          if(defined $curlies) {
+              $curlies = Log::Log4perl::DateFormat->new($curlies);
+          } else {
+              $curlies = Log::Log4perl::DateFormat->new("yyyy/MM/dd HH:mm:ss");
+          }
+      } elsif($op eq "m") {
+          $curlies = $self->curlies_csv_parse($curlies);
+      }
+  
+      push @{$self->{stack}}, [$op, $curlies];
+  
+      $self->{info_needed}->{$op}++;
+  
+      return "%${num}s";
+  }
+  
+  ###########################################
+  sub curlies_csv_parse {
+  ###########################################
+      my($self, $curlies) = @_;
+  
+      my $data = {};
+  
+      if(defined $curlies and length $curlies) {
+          $curlies =~ s/\s//g;
+  
+          for my $field (split /,/, $curlies) {
+              my($key, $value) = split /=/, $field;
+              $data->{$key} = $value;
+          }
+      }
+  
+      return $data;
+  }
+  
+  ##################################################
+  sub render {
+  ##################################################
+      my($self, $message, $category, $priority, $caller_level) = @_;
+  
+      $caller_level = 0 unless defined  $caller_level;
+  
+      my %info    = ();
+  
+      $info{m}    = $message;
+          # See 'define'
+      chomp $info{m} if $self->{message_chompable};
+  
+      my @results = ();
+  
+      my $caller_offset = Log::Log4perl::caller_depth_offset( $caller_level );
+  
+      if($self->{info_needed}->{L} or
+         $self->{info_needed}->{F} or
+         $self->{info_needed}->{C} or
+         $self->{info_needed}->{l} or
+         $self->{info_needed}->{M} or
+         $self->{info_needed}->{T} or
+         0
+        ) {
+  
+          my ($package, $filename, $line, 
+              $subroutine, $hasargs,
+              $wantarray, $evaltext, $is_require, 
+              $hints, $bitmask) = caller($caller_offset);
+  
+          # If caller() choked because of a whacko caller level,
+          # correct undefined values to '[undef]' in order to prevent 
+          # warning messages when interpolating later
+          unless(defined $bitmask) {
+              for($package, 
+                  $filename, $line,
+                  $subroutine, $hasargs,
+                  $wantarray, $evaltext, $is_require,
+                  $hints, $bitmask) {
+                  $_ = '[undef]' unless defined $_;
+              }
+          }
+  
+          $info{L} = $line;
+          $info{F} = $filename;
+          $info{C} = $package;
+  
+          if($self->{info_needed}->{M} or
+             $self->{info_needed}->{l} or
+             0) {
+              # To obtain the name of the subroutine which triggered the 
+              # logger, we need to go one additional level up.
+              my $levels_up = 1; 
+              {
+                  my @callinfo = caller($caller_offset+$levels_up);
+  
+                  if(_INTERNAL_DEBUG) {
+                      callinfo_dump( $caller_offset, \@callinfo );
+                  }
+  
+                  $subroutine = $callinfo[3];
+                      # If we're inside an eval, go up one level further.
+                  if(defined $subroutine and
+                     $subroutine eq "(eval)") {
+                      print "Inside an eval, one up\n" if _INTERNAL_DEBUG;
+                      $levels_up++;
+                      redo;
+                  }
+              }
+              $subroutine = "main::" unless $subroutine;
+              print "Subroutine is '$subroutine'\n" if _INTERNAL_DEBUG;
+              $info{M} = $subroutine;
+              $info{l} = "$subroutine $filename ($line)";
+          }
+      }
+  
+      $info{X} = "[No curlies defined]";
+      $info{x} = Log::Log4perl::NDC->get() if $self->{info_needed}->{x};
+      $info{c} = $category;
+      $info{d} = 1; # Dummy value, corrected later
+      $info{n} = "\n";
+      $info{p} = $priority;
+      $info{P} = $$;
+      $info{H} = $HOSTNAME;
+  
+      my $current_time;
+  
+      if($self->{info_needed}->{r} or $self->{info_needed}->{R}) {
+          if(!$TIME_HIRES_AVAILABLE_WARNED++ and 
+             !$self->{timer}->hires_available()) {
+              warn "Requested %r/%R pattern without installed Time::HiRes\n";
+          }
+          $current_time = [$self->{timer}->gettimeofday()];
+      }
+  
+      if($self->{info_needed}->{r}) {
+          $info{r} = $self->{timer}->milliseconds( $current_time );
+      }
+      if($self->{info_needed}->{R}) {
+          $info{R} = $self->{timer}->delta_milliseconds( $current_time );
+      }
+  
+          # Stack trace wanted?
+      if($self->{info_needed}->{T}) {
+          local $Carp::CarpLevel =
+                $Carp::CarpLevel + $caller_offset;
+          my $mess = Carp::longmess(); 
+          chomp($mess);
+          # $mess =~ s/(?:\A\s*at.*\n|^\s*Log::Log4perl.*\n|^\s*)//mg;
+          $mess =~ s/(?:\A\s*at.*\n|^\s*)//mg;
+          $mess =~ s/\n/, /g;
+          $info{T} = $mess;
+      }
+  
+          # As long as they're not implemented yet ..
+      $info{t} = "N/A";
+  
+          # Iterate over all info fields on the stack
+      for my $e (@{$self->{stack}}) {
+          my($op, $curlies) = @$e;
+  
+          my $result;
+  
+          if(exists $self->{USER_DEFINED_CSPECS}->{$op}) {
+              next unless $self->{info_needed}->{$op};
+              $self->{curlies} = $curlies;
+              $result = $self->{USER_DEFINED_CSPECS}->{$op}->($self, 
+                                $message, $category, $priority, 
+                                $caller_offset+1);
+          } elsif(exists $info{$op}) {
+              $result = $info{$op};
+              if($curlies) {
+                  $result = $self->curly_action($op, $curlies, $info{$op},
+                                                $self->{printformat}, \@results);
+              } else {
+                  # just for %d
+                  if($op eq 'd') {
+                      $result = $info{$op}->format($self->{timer}->gettimeofday());
+                  }
+              }
+          } else {
+              warn "Format %'$op' not implemented (yet)";
+              $result = "FORMAT-ERROR";
+          }
+  
+          $result = $self->{undef_column_value} unless defined $result;
+          push @results, $result;
+      }
+  
+        # dbi appender needs that
+      if( scalar @results == 1 and
+          !defined $results[0] ) {
+          return undef;
+      }
+  
+      return (sprintf $self->{printformat}, @results);
+  }
+  
+  ##################################################
+  sub curly_action {
+  ##################################################
+      my($self, $ops, $curlies, $data, $printformat, $results) = @_;
+  
+      if($ops eq "c") {
+          $data = shrink_category($data, $curlies);
+      } elsif($ops eq "C") {
+          $data = shrink_category($data, $curlies);
+      } elsif($ops eq "X") {
+          $data = Log::Log4perl::MDC->get($curlies);
+      } elsif($ops eq "d") {
+          $data = $curlies->format( $self->{timer}->gettimeofday() );
+      } elsif($ops eq "M") {
+          $data = shrink_category($data, $curlies);
+      } elsif($ops eq "m") {
+          if(exists $curlies->{chomp}) {
+              chomp $data;
+          }
+          if(exists $curlies->{indent}) {
+              if(defined $curlies->{indent}) {
+                    # fixed indent
+                  $data =~ s/\n/ "\n" . (" " x $curlies->{indent})/ge;
+              } else {
+                    # indent on the lead-in
+                  no warnings; # trailing array elements are undefined
+                  my $indent = length sprintf $printformat, @$results;
+                  $data =~ s/\n/ "\n" . (" " x $indent)/ge;
+              }
+          }
+      } elsif($ops eq "F") {
+          my @parts = File::Spec->splitdir($data);
+              # Limit it to max curlies entries
+          if(@parts > $curlies) {
+              splice @parts, 0, @parts - $curlies;
+          }
+          $data = File::Spec->catfile(@parts);
+      } elsif($ops eq "p") {
+          $data = substr $data, 0, $curlies;
+      }
+  
+      return $data;
+  }
+  
+  ##################################################
+  sub shrink_category {
+  ##################################################
+      my($category, $len) = @_;
+  
+      my @components = split /\.|::/, $category;
+  
+      if(@components > $len) {
+          splice @components, 0, @components - $len;
+          $category = join '.', @components;
+      } 
+  
+      return $category;
+  }
+  
+  ##################################################
+  sub add_global_cspec {
+  ##################################################
+  # This is a Class method.
+  # Accepts a coderef or text
+  ##################################################
+  
+      unless($Log::Log4perl::ALLOW_CODE_IN_CONFIG_FILE) {
+          die "\$Log::Log4perl::ALLOW_CODE_IN_CONFIG_FILE setting " .
+              "prohibits user defined cspecs";
+      }
+  
+      my ($letter, $perlcode) = @_;
+  
+      croak "Illegal value '$letter' in call to add_global_cspec()"
+          unless ($letter =~ /^[a-zA-Z]$/);
+  
+      croak "Missing argument for perlcode for 'cspec.$letter' ".
+            "in call to add_global_cspec()"
+          unless $perlcode;
+  
+      croak "Please don't redefine built-in cspecs [$CSPECS]\n".
+            "like you do for \"cspec.$letter\"\n "
+          if ($CSPECS =~/$letter/);
+  
+      if (ref $perlcode eq 'CODE') {
+          $GLOBAL_USER_DEFINED_CSPECS{$letter} = $perlcode;
+  
+      }elsif (! ref $perlcode){
+          
+          $GLOBAL_USER_DEFINED_CSPECS{$letter} = 
+              Log::Log4perl::Config::compile_if_perl($perlcode);
+  
+          if ($@) {
+              die qq{Compilation failed for your perl code for }.
+                  qq{"log4j.PatternLayout.cspec.$letter":\n}.
+                  qq{This is the error message: \t$@\n}.
+                  qq{This is the code that failed: \n$perlcode\n};
+          }
+  
+          croak "eval'ing your perlcode for 'log4j.PatternLayout.cspec.$letter' ".
+                "doesn't return a coderef \n".
+                "Here is the perl code: \n\t$perlcode\n "
+              unless (ref $GLOBAL_USER_DEFINED_CSPECS{$letter} eq 'CODE');
+  
+      }else{
+          croak "I don't know how to handle perlcode=$perlcode ".
+                "for 'cspec.$letter' in call to add_global_cspec()";
+      }
+  }
+  
+  ##################################################
+  sub add_layout_cspec {
+  ##################################################
+  # object method
+  # adds a cspec just for this layout
+  ##################################################
+      my ($self, $letter, $perlcode) = @_;
+  
+      unless($Log::Log4perl::ALLOW_CODE_IN_CONFIG_FILE) {
+          die "\$Log::Log4perl::ALLOW_CODE_IN_CONFIG_FILE setting " .
+              "prohibits user defined cspecs";
+      }
+  
+      croak "Illegal value '$letter' in call to add_layout_cspec()"
+          unless ($letter =~ /^[a-zA-Z]$/);
+  
+      croak "Missing argument for perlcode for 'cspec.$letter' ".
+            "in call to add_layout_cspec()"
+          unless $perlcode;
+  
+      croak "Please don't redefine built-in cspecs [$CSPECS] \n".
+            "like you do for 'cspec.$letter'"
+          if ($CSPECS =~/$letter/);
+  
+      if (ref $perlcode eq 'CODE') {
+  
+          $self->{USER_DEFINED_CSPECS}{$letter} = $perlcode;
+  
+      }elsif (! ref $perlcode){
+          
+          $self->{USER_DEFINED_CSPECS}{$letter} =
+              Log::Log4perl::Config::compile_if_perl($perlcode);
+  
+          if ($@) {
+              die qq{Compilation failed for your perl code for }.
+                  qq{"cspec.$letter":\n}.
+                  qq{This is the error message: \t$@\n}.
+                  qq{This is the code that failed: \n$perlcode\n};
+          }
+          croak "eval'ing your perlcode for 'cspec.$letter' ".
+                "doesn't return a coderef \n".
+                "Here is the perl code: \n\t$perlcode\n "
+              unless (ref $self->{USER_DEFINED_CSPECS}{$letter} eq 'CODE');
+  
+  
+      }else{
+          croak "I don't know how to handle perlcode=$perlcode ".
+                "for 'cspec.$letter' in call to add_layout_cspec()";
+      }
+  
+      $self->{CSPECS} .= $letter;
+  }
+  
+  ###########################################
+  sub callinfo_dump {
+  ###########################################
+      my($level, $info) = @_;
+  
+      my @called_by = caller(0);
+  
+      # Just for internal debugging
+      $called_by[1] = basename $called_by[1];
+      print "caller($level) at $called_by[1]-$called_by[2] returned ";
+  
+      my @by_idx;
+  
+      # $info->[1] = basename $info->[1] if defined $info->[1];
+  
+      my $i = 0;
+      for my $field (qw(package filename line subroutine hasargs
+                        wantarray evaltext is_require hints bitmask)) {
+          $by_idx[$i] = $field;
+          $i++;
+      }
+  
+      $i = 0;
+      for my $value (@$info) {
+          my $field = $by_idx[ $i ];
+          print "$field=", 
+                (defined $info->[$i] ? $info->[$i] : "[undef]"),
+                " ";
+          $i++;
+      }
+  
+      print "\n";
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Layout::PatternLayout - Pattern Layout
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Layout::PatternLayout;
+  
+    my $layout = Log::Log4perl::Layout::PatternLayout->new(
+                                                     "%d (%F:%L)> %m");
+  
+  =head1 DESCRIPTION
+  
+  Creates a pattern layout according to
+  http://jakarta.apache.org/log4j/docs/api/org/apache/log4j/PatternLayout.html
+  and a couple of Log::Log4perl-specific extensions.
+  
+  The C<new()> method creates a new PatternLayout, specifying its log
+  format. The format
+  string can contain a number of placeholders which will be
+  replaced by the logging engine when it's time to log the message:
+  
+      %c Category of the logging event.
+      %C Fully qualified package (or class) name of the caller
+      %d Current date in yyyy/MM/dd hh:mm:ss format
+      %d{...} Current date in customized format (see below)
+      %F File where the logging event occurred
+      %H Hostname (if Sys::Hostname is available)
+      %l Fully qualified name of the calling method followed by the
+         callers source the file name and line number between 
+         parentheses.
+      %L Line number within the file where the log statement was issued
+      %m The message to be logged
+      %m{chomp} Log message, stripped off a trailing newline
+      %m{indent} Log message, multi-lines indented so they line up with first
+      %m{indent=n} Log message, multi-lines indented by n spaces
+      %M Method or function where the logging request was issued
+      %n Newline (OS-independent)
+      %p Priority/level of the logging event (%p{1} shows the first letter)
+      %P pid of the current process
+      %r Number of milliseconds elapsed from program start to logging 
+         event
+      %R Number of milliseconds elapsed from last logging event to
+         current logging event 
+      %T A stack trace of functions called
+      %x The topmost NDC (see below)
+      %X{key} The entry 'key' of the MDC (see below)
+      %% A literal percent (%) sign
+  
+  NDC and MDC are explained in L<Log::Log4perl/"Nested Diagnostic Context (NDC)">
+  and L<Log::Log4perl/"Mapped Diagnostic Context (MDC)">.
+  
+  The granularity of time values is milliseconds if Time::HiRes is available.
+  If not, only full seconds are used.
+  
+  Every once in a while, someone uses the "%m%n" pattern and
+  additionally provides an extra newline in the log message (e.g.
+  C<-E<gt>log("message\n")>. To avoid printing an extra newline in
+  this case, the PatternLayout will chomp the message, printing only
+  one newline. This option can be controlled by PatternLayout's
+  C<message_chomp_before_newline> option. See L<Advanced options>
+  for details.
+  
+  =head2 Quantify placeholders
+  
+  All placeholders can be extended with formatting instructions,
+  just like in I<printf>:
+  
+      %20c   Reserve 20 chars for the category, right-justify and fill
+             with blanks if it is shorter
+      %-20c  Same as %20c, but left-justify and fill the right side 
+             with blanks
+      %09r   Zero-pad the number of milliseconds to 9 digits
+      %.8c   Specify the maximum field with and have the formatter
+             cut off the rest of the value
+  
+  =head2 Fine-tuning with curlies
+  
+  Some placeholders have special functions defined if you add curlies 
+  with content after them:
+  
+      %c{1}  Just show the right-most category compontent, useful in large
+             class hierarchies (Foo::Baz::Bar -> Bar)
+      %c{2}  Just show the two right most category components
+             (Foo::Baz::Bar -> Baz::Bar)
+  
+      %F     Display source file including full path
+      %F{1}  Just display filename
+      %F{2}  Display filename and last path component (dir/test.log)
+      %F{3}  Display filename and last two path components (d1/d2/test.log)
+  
+      %M     Display fully qualified method/function name
+      %M{1}  Just display method name (foo)
+      %M{2}  Display method name and last path component (main::foo)
+  
+  In this way, you're able to shrink the displayed category or
+  limit file/path components to save space in your logs.
+  
+  =head2 Fine-tune the date
+  
+  If you're not happy with the default %d format for the date which 
+  looks like
+  
+      yyyy/MM/DD HH:mm:ss
+  
+  (which is slightly different from Log4j which uses C<yyyy-MM-dd HH:mm:ss,SSS>)
+  you're free to fine-tune it in order to display only certain characteristics
+  of a date, according to the SimpleDateFormat in the Java World
+  (http://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html):
+  
+      %d{HH:mm}     "23:45" -- Just display hours and minutes
+      %d{yy, EEEE}  "02, Monday" -- Just display two-digit year 
+                                    and spelled-out weekday
+      %d{e}         "1473741760" -- Epoch seconds
+      %d{h a}       "12 PM"      -- Hour and am/pm marker
+      ... and many more
+  
+  For an exhaustive list of all supported date features, look at
+  L<Log::Log4perl::DateFormat>.
+  
+  =head2 Custom cspecs
+  
+  First of all, "cspecs" is short for "conversion specifiers", which is 
+  the log4j and the printf(3) term for what Mike is calling "placeholders."
+  I suggested "cspecs" for this part of the api before I saw that Mike was 
+  using "placeholders" consistently in the log4perl documentation.  Ah, the
+  joys of collaboration ;=) --kg
+  
+  If the existing corpus of placeholders/cspecs isn't good enough for you,
+  you can easily roll your own:
+  
+      #'U' a global user-defined cspec     
+      log4j.PatternLayout.cspec.U = sub { return "UID: $< "}
+      
+      #'K' cspec local to appndr1                 (pid in hex)
+      log4j.appender.appndr1.layout.cspec.K = sub { return sprintf "%1x", $$}
+      
+      #and now you can use them
+      log4j.appender.appndr1.layout.ConversionPattern = %K %U %m%n
+  
+  The benefit of this approach is that you can define and use the cspecs 
+  right next to each other in the config file.
+  
+  If you're an API kind of person, there's also this call:
+  
+      Log::Log4perl::Layout::PatternLayout::
+                      add_global_cspec('Z', sub {'zzzzzzzz'}); #snooze?
+  
+  When the log message is being put together, your anonymous sub 
+  will be called with these arguments:
+  
+      ($layout, $message, $category, $priority, $caller_level);
+      
+      layout: the PatternLayout object that called it
+      message: the logging message (%m)
+      category: e.g. groceries.beverages.adult.beer.schlitz
+      priority: e.g. DEBUG|WARN|INFO|ERROR|FATAL
+      caller_level: how many levels back up the call stack you have 
+          to go to find the caller
+  
+  Please note that the subroutines you're defining in this way are going
+  to be run in the C<main> namespace, so be sure to fully qualify functions
+  and variables if they're located in different packages. I<Also make sure
+  these subroutines aren't using Log4perl, otherwise Log4perl will enter 
+  an infinite recursion.>
+  
+  With Log4perl 1.20 and better, cspecs can be written with parameters in
+  curly braces. Writing something like
+  
+      log4perl.appender.Screen.layout.ConversionPattern = %U{user} %U{id} %m%n
+  
+  will cause the cspec function defined for %U to be called twice, once
+  with the parameter 'user' and then again with the parameter 'id', 
+  and the placeholders in the cspec string will be replaced with
+  the respective return values.
+  
+  The parameter value is available in the 'curlies' entry of the first
+  parameter passed to the subroutine (the layout object reference). 
+  So, if you wanted to map %U{xxx} to entries in the POE session hash, 
+  you'd write something like:
+  
+     log4perl.PatternLayout.cspec.U = sub { \
+       POE::Kernel->get_active_session->get_heap()->{ $_[0]->{curlies} } }
+                                            
+  B<SECURITY NOTE>
+    
+  This feature means arbitrary perl code can be embedded in the config file. 
+  In the rare case where the people who have access to your config file are
+  different from the people who write your code and shouldn't have execute
+  rights, you might want to set
+  
+      $Log::Log4perl::Config->allow_code(0);
+  
+  before you call init().  Alternatively you can supply a restricted set of
+  Perl opcodes that can be embedded in the config file as described in
+  L<Log::Log4perl/"Restricting what Opcodes can be in a Perl Hook">.
+    
+  =head2 Advanced Options
+  
+  The constructor of the C<Log::Log4perl::Layout::PatternLayout> class
+  takes an optional hash reference as a first argument to specify
+  additional options in order to (ab)use it in creative ways:
+  
+    my $layout = Log::Log4perl::Layout::PatternLayout->new(
+      { time_function       => \&my_time_func,
+      }, 
+      "%d (%F:%L)> %m");
+  
+  Here's a list of parameters:
+  
+  =over 4
+  
+  =item time_function
+  
+  Takes a reference to a function returning the time for the time/date
+  fields, either in seconds
+  since the epoch or as an array, carrying seconds and 
+  microseconds, just like C<Time::HiRes::gettimeofday> does.
+  
+  =item message_chomp_before_newline
+  
+  If a layout contains the pattern "%m%n" and the message ends with a newline,
+  PatternLayout will chomp the message, to prevent printing two newlines. 
+  If this is not desired, and you want two newlines in this case, 
+  the feature can be turned off by setting the
+  C<message_chomp_before_newline> option to a false value:
+  
+    my $layout = Log::Log4perl::Layout::PatternLayout->new(
+        { message_chomp_before_newline => 0
+        }, 
+        "%d (%F:%L)> %m%n");
+  
+  In a Log4perl configuration file, the feature can be turned off like this:
+  
+      log4perl.appender.App.layout   = PatternLayout
+      log4perl.appender.App.layout.ConversionPattern = %d %m%n
+        # Yes, I want two newlines
+      log4perl.appender.App.layout.message_chomp_before_newline = 0
+  
+  =back
+  
+  =head2 Getting rid of newlines
+  
+  If your code contains logging statements like 
+  
+        # WRONG, don't do that!
+      $logger->debug("Some message\n");
+  
+  then it's usually best to strip the newlines from these calls. As explained
+  in L<Log::Log4perl/Logging newlines>, logging statements should never contain
+  newlines, but rely on appender layouts to add necessary newlines instead.
+  
+  If changing the code is not an option, use the special PatternLayout 
+  placeholder %m{chomp} to refer to the message excluding a trailing 
+  newline:
+  
+      log4perl.appender.App.layout.ConversionPattern = %d %m{chomp}%n
+  
+  This will add a single newline to every message, regardless if it
+  complies with the Log4perl newline guidelines or not (thanks to 
+  Tim Bunce for this idea).
+  
+  =head2 Multi Lines
+  
+  If a log message consists of several lines, like
+  
+      $logger->debug("line1\nline2\nline3");
+  
+  then by default, they get logged like this (assuming the the layout is
+  set to "%d>%m%n"):
+  
+        # layout %d>%m%n
+      2014/07/27 12:46:16>line1
+      line2
+      line3
+  
+  If you'd rather have the messages aligned like
+  
+        # layout %d>%m{indent}%n
+      2014/07/27 12:46:16>line1
+                          line2
+                          line3
+  
+  then use the C<%m{indent}> option for the %m specifier. This option
+  can also take a fixed value, as in C<%m{indent=2}>, which indents
+  subsequent lines by two spaces:
+  
+        # layout %d>%m{indent=2}%n
+      2014/07/27 12:46:16>line1
+        line2
+        line3
+  
+  Note that you can still add the C<chomp> option for the C<%m> specifier
+  in this case (see above what it does), simply add it after a 
+  separating comma, like in C<%m{indent=2,chomp}>.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_LAYOUT_PATTERNLAYOUT
+
+$fatpacked{"Log/Log4perl/Layout/PatternLayout/Multiline.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_LAYOUT_PATTERNLAYOUT_MULTILINE';
+  #!/usr/bin/perl
+  
+  package Log::Log4perl::Layout::PatternLayout::Multiline;
+  use base qw(Log::Log4perl::Layout::PatternLayout);
+  
+  ###########################################
+  sub render {
+  ###########################################
+      my($self, $message, $category, $priority, $caller_level) = @_;
+  
+      my @messages = split /\r?\n/, $message;
+  
+      $caller_level = 0 unless defined $caller_level;
+  
+      my $result = '';
+  
+      for my $msg ( @messages ) {
+          $result .= $self->SUPER::render(
+              $msg, $category, $priority, $caller_level + 1
+          );
+      }
+      return $result;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Layout::PatternLayout::Multiline
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl::Layout::PatternLayout::Multiline;
+  
+      my $layout = Log::Log4perl::Layout::PatternLayout::Multiline->new(
+          "%d (%F:%L)> %m");
+  
+  =head1 DESCRIPTION
+  
+  C<Log::Log4perl::Layout::PatternLayout::Multiline> is a subclass
+  of Log4perl's PatternLayout and is helpful if you send multiline
+  messages to your appenders which appear as
+  
+      2007/04/04 23:59:01 This is
+      a message with
+      multiple lines
+  
+  and you want them to appear as 
+  
+      2007/04/04 23:59:01 This is
+      2007/04/04 23:59:01 a message with
+      2007/04/04 23:59:01 multiple lines
+  
+  instead. This layout class simply splits up the incoming message into
+  several chunks split by line breaks and renders them with PatternLayout
+  just as if it had arrived in separate chunks in the first place.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_LAYOUT_PATTERNLAYOUT_MULTILINE
+
+$fatpacked{"Log/Log4perl/Layout/SimpleLayout.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_LAYOUT_SIMPLELAYOUT';
+  ##################################################
+  package Log::Log4perl::Layout::SimpleLayout;
+  ##################################################
+  # as documented in
+  # http://jakarta.apache.org/log4j/docs/api/org/apache/log4j/SimpleLayout.html
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  use Log::Log4perl::Level;
+  
+  no strict qw(refs);
+  use base qw(Log::Log4perl::Layout);
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my $class = shift;
+      $class = ref ($class) || $class;
+  
+      my $self = {
+          format      => undef,
+          info_needed => {},
+          stack       => [],
+      };
+  
+      bless $self, $class;
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub render {
+  ##################################################
+      my($self, $message, $category, $priority, $caller_level) = @_;
+  
+      return "$priority - $message\n";
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Layout::SimpleLayout - Simple Layout
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Layout::SimpleLayout;
+    my $layout = Log::Log4perl::Layout::SimpleLayout->new();
+  
+  =head1 DESCRIPTION
+  
+  This class implements the C<log4j> simple layout format -- it basically 
+  just prints the message priority and the message, that's all.
+  Check 
+  http://jakarta.apache.org/log4j/docs/api/org/apache/log4j/SimpleLayout.html
+  for details.
+  
+  =head1 SEE ALSO
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_LAYOUT_SIMPLELAYOUT
+
+$fatpacked{"Log/Log4perl/Level.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_LEVEL';
+  ###############r###################################
+  package Log::Log4perl::Level;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  use Carp;
+  
+  # log4j, for whatever reason, puts 0 as all and MAXINT as OFF.
+  # this seems less optimal, as more logging would imply a higher
+  # level. But oh well. Probably some brokenness that has persisted. :)
+  use constant ALL_INT   => 0;
+  use constant TRACE_INT =>  5000;
+  use constant DEBUG_INT => 10000;
+  use constant INFO_INT  => 20000;
+  use constant WARN_INT  => 30000;
+  use constant ERROR_INT => 40000;
+  use constant FATAL_INT => 50000;
+  use constant OFF_INT   => (2 ** 31) - 1;
+  
+  no strict qw(refs);
+  use vars qw(%PRIORITY %LEVELS %SYSLOG %L4P_TO_LD);
+  
+  %PRIORITY = (); # unless (%PRIORITY);
+  %LEVELS = () unless (%LEVELS);
+  %SYSLOG = () unless (%SYSLOG);
+  %L4P_TO_LD = () unless (%L4P_TO_LD);
+  
+  sub add_priority {
+    my ($prio, $intval, $syslog, $log_dispatch_level) = @_;
+    $prio = uc($prio); # just in case;
+  
+    $PRIORITY{$prio}    = $intval;
+    $LEVELS{$intval}    = $prio;
+  
+    # Set up the mapping between Log4perl integer levels and 
+    # Log::Dispatch levels
+    # Note: Log::Dispatch uses the following levels:
+    # 0 debug
+    # 1 info
+    # 2 notice
+    # 3 warning
+    # 4 error
+    # 5 critical
+    # 6 alert
+    # 7 emergency
+  
+        # The equivalent Log::Dispatch level is optional, set it to 
+        # the highest value (7=emerg) if it's not provided.
+    $log_dispatch_level = 7 unless defined $log_dispatch_level;
+    
+    $L4P_TO_LD{$prio}  = $log_dispatch_level;
+  
+    $SYSLOG{$prio}      = $syslog if defined($syslog);
+  }
+  
+  # create the basic priorities
+  add_priority("OFF",   OFF_INT,   -1, 7);
+  add_priority("FATAL", FATAL_INT,  0, 7);
+  add_priority("ERROR", ERROR_INT,  3, 4);
+  add_priority("WARN",  WARN_INT,   4, 3);
+  add_priority("INFO",  INFO_INT,   6, 1);
+  add_priority("DEBUG", DEBUG_INT,  7, 0);
+  add_priority("TRACE", TRACE_INT,  8, 0);
+  add_priority("ALL",   ALL_INT,    8, 0);
+  
+  # we often sort numerically, so a helper func for readability
+  sub numerically {$a <=> $b}
+  
+  ###########################################
+  sub import {
+  ###########################################
+      my($class, $namespace) = @_;
+             
+      if(defined $namespace) {
+          # Export $OFF, $FATAL, $ERROR etc. to
+          # the given namespace
+          $namespace .= "::" unless $namespace =~ /::$/;
+      } else {
+          # Export $OFF, $FATAL, $ERROR etc. to
+          # the caller's namespace
+          $namespace = caller(0) . "::";
+      }
+  
+      for my $key (keys %PRIORITY) {
+          my $name  = "$namespace$key";
+          my $value = $PRIORITY{$key};
+          *{"$name"} = \$value;
+  	my $nameint = "$namespace${key}_INT";
+  	my $func = uc($key) . "_INT";
+  	*{"$nameint"} = \&$func;
+      }
+  }
+  
+  ##################################################
+  sub new { 
+  ##################################################
+      # We don't need any of this class nonsense
+      # in Perl, because we won't allow subclassing
+      # from this. We're optimizing for raw speed.
+  }
+  
+  ##################################################
+  sub to_priority {
+  # changes a level name string to a priority numeric
+  ##################################################
+      my($string) = @_;
+  
+      if(exists $PRIORITY{$string}) {
+          return $PRIORITY{$string};
+      }else{
+          croak "level '$string' is not a valid error level (".join ('|', keys %PRIORITY),')';
+      }
+  }
+  
+  ##################################################
+  sub to_level {
+  # changes a priority numeric constant to a level name string 
+  ##################################################
+      my ($priority) = @_;
+      if (exists $LEVELS{$priority}) {
+          return $LEVELS{$priority}
+      }else {
+        croak("priority '$priority' is not a valid error level number (",
+  	  join("|", sort numerically keys %LEVELS), "
+            )");
+      }
+  
+  }
+  
+  ##################################################
+  sub to_LogDispatch_string {
+  # translates into strings that Log::Dispatch recognizes
+  ##################################################
+      my($priority) = @_;
+  
+      confess "do what? no priority?" unless defined $priority;
+  
+      my $string;
+  
+      if(exists $LEVELS{$priority}) {
+          $string = $LEVELS{$priority};
+      }
+  
+          # Log::Dispatch idiosyncrasies
+      if($priority == $PRIORITY{WARN}) {
+          $string = "WARNING";
+      }
+           
+      if($priority == $PRIORITY{FATAL}) {
+          $string = "EMERGENCY";
+      }
+           
+      return $string;
+  }
+  
+  ###################################################
+  sub is_valid {
+  ###################################################
+      my $q = shift;
+  
+      if ($q =~ /[A-Z]/) {
+          return exists $PRIORITY{$q};
+      }else{
+          return $LEVELS{$q};
+      }
+      
+  }
+  
+  sub get_higher_level {
+      my ($old_priority, $delta) = @_;
+  
+      $delta ||= 1;
+  
+      my $new_priority = 0;
+  
+      foreach (1..$delta){
+          #so the list is TRACE, DEBUG, INFO, WARN, ERROR, FATAL
+        # but remember, the numbers go in reverse order!
+          foreach my $p (sort numerically keys %LEVELS){
+              if ($p > $old_priority) {
+                  $new_priority = $p;
+                  last;
+              }
+          }
+          $old_priority = $new_priority;
+      }
+      return $new_priority;
+  }
+  
+  sub get_lower_level {
+      my ($old_priority, $delta) = @_;
+  
+      $delta ||= 1;
+  
+      my $new_priority = 0;
+  
+      foreach (1..$delta){
+          #so the list is FATAL, ERROR, WARN, INFO, DEBUG, TRACE
+        # but remember, the numbers go in reverse order!
+          foreach my $p (reverse sort numerically keys %LEVELS){
+              if ($p < $old_priority) {
+                  $new_priority = $p;
+                  last;
+              }
+          }
+          $old_priority = $new_priority;
+      }
+      return $new_priority;
+  }
+  
+  sub isGreaterOrEqual {
+    my $lval = shift;
+    my $rval = shift;
+    
+    # in theory, we should check if the above really ARE valid levels.
+    # but we just use numeric comparison, since they aren't really classes.
+  
+    # oh, yeah, and 'cuz level ints go from 0 .. N with 0 being highest,
+    # these are reversed.
+    return $lval <= $rval;
+  }
+  
+  ######################################################################
+  # 
+  # since the integer representation of levels is reversed from what
+  # we normally want, we don't want to use < and >... instead, we
+  # want to use this comparison function
+  
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Level - Predefined log levels
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Level;
+    print $ERROR, "\n";
+  
+    # -- or --
+  
+    use Log::Log4perl qw(:levels);
+    print $ERROR, "\n";
+  
+  =head1 DESCRIPTION
+  
+  C<Log::Log4perl::Level> simply exports a predefined set of I<Log4perl> log
+  levels into the caller's name space. It is used internally by 
+  C<Log::Log4perl>. The following scalars are defined:
+  
+      $OFF
+      $FATAL
+      $ERROR
+      $WARN
+      $INFO
+      $DEBUG
+      $TRACE
+      $ALL
+  
+  C<Log::Log4perl> also exports these constants into the caller's namespace
+  if you pull it in providing the C<:levels> tag:
+  
+      use Log::Log4perl qw(:levels);
+  
+  This is the preferred way, there's usually no need to call 
+  C<Log::Log4perl::Level> explicitly.
+  
+  The numerical values assigned to these constants are purely virtual,
+  only used by Log::Log4perl internally and can change at any time,
+  so please don't make any assumptions. You can test for numerical equality
+  by directly comparing two level values, that's ok:
+  
+      if( get_logger()->level() == $DEBUG ) {
+          print "The logger's level is DEBUG\n";
+      }
+  
+  But if you want to figure out which of two levels is more verbose, use
+  Log4perl's own comparator:
+  
+      if( Log::Log4perl::Level::isGreaterOrEqual( $level1, $level2 ) ) {
+          print Log::Log4perl::Level::to_level( $level1 ), 
+              " is equal or more verbose than ", 
+              Log::Log4perl::Level::to_level( $level2 ), "\n";
+      }
+  
+  If the caller wants to import level constants into a different namespace,
+  it can be provided with the C<use> command:
+  
+      use Log::Log4perl::Level qw(MyNameSpace);
+  
+  After this C<$MyNameSpace::ERROR>, C<$MyNameSpace::INFO> etc. 
+  will be defined accordingly.
+  
+  =head2 Numeric levels and Strings
+  
+  Level variables like $DEBUG or $WARN have numeric values that are 
+  internal to Log4perl. Transform them to strings that can be used
+  in a Log4perl configuration file, use the c<to_level()> function
+  provided by Log::Log4perl::Level:
+  
+      use Log::Log4perl qw(:easy);
+      use Log::Log4perl::Level;
+  
+          # prints "DEBUG"
+      print Log::Log4perl::Level::to_level( $DEBUG ), "\n";
+  
+  To perform the reverse transformation, which takes a string like
+  "DEBUG" and converts it into a constant like C<$DEBUG>, use the
+  to_priority() function:
+  
+      use Log::Log4perl qw(:easy);
+      use Log::Log4perl::Level;
+  
+      my $numval = Log::Log4perl::Level::to_priority( "DEBUG" );
+  
+  after which $numval could be used where a numerical value is required:
+  
+      Log::Log4perl->easy_init( $numval );
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_LEVEL
+
+$fatpacked{"Log/Log4perl/Logger.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_LOGGER';
+  ##################################################
+  package Log::Log4perl::Logger;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  use Log::Log4perl;
+  use Log::Log4perl::Level;
+  use Log::Log4perl::Layout;
+  use Log::Log4perl::Appender;
+  use Log::Log4perl::Appender::String;
+  use Log::Log4perl::Filter;
+  use Carp;
+  
+  $Carp::Internal{"Log::Log4perl"}++;
+  $Carp::Internal{"Log::Log4perl::Logger"}++;
+  
+  use constant _INTERNAL_DEBUG => 0;
+  
+      # Initialization
+  our $ROOT_LOGGER;
+  our $LOGGERS_BY_NAME = {};
+  our %APPENDER_BY_NAME = ();
+  our $INITIALIZED = 0;
+  our $NON_INIT_WARNED;
+  our $DIE_DEBUG = 0;
+  our $DIE_DEBUG_BUFFER = "";
+      # Define the default appender that's used for formatting
+      # warn/die/croak etc. messages.
+  our $STRING_APP_NAME = "_l4p_warn";
+  our $STRING_APP      = Log::Log4perl::Appender->new(
+                            "Log::Log4perl::Appender::String",
+                            name => $STRING_APP_NAME);
+  $STRING_APP->layout(Log::Log4perl::Layout::PatternLayout->new("%m"));
+  our $STRING_APP_CODEREF = generate_coderef([[$STRING_APP_NAME, $STRING_APP]]);
+  
+  __PACKAGE__->reset();
+  
+  ###########################################
+  sub warning_render {
+  ###########################################
+      my($logger, @message) = @_;
+  
+      $STRING_APP->string("");
+      $STRING_APP_CODEREF->($logger, 
+                            @message, 
+                            Log::Log4perl::Level::to_level($ALL));
+      return $STRING_APP->string();
+  }
+  
+  ##################################################
+  sub cleanup {
+  ##################################################
+      # warn "Logger cleanup";
+  
+      # Nuke all convenience loggers to avoid them causing cleanup to 
+      # be delayed until global destruction. Problem is that something like
+      #     *{"DEBUG"} = sub { $logger->debug };
+      # ties up a reference to $logger until global destruction, so we 
+      # need to clean up all :easy shortcuts, hence freeing the last
+      # logger references, to then rely on the garbage collector for cleaning
+      # up the loggers.
+      Log::Log4perl->easy_closure_global_cleanup();
+  
+      # Delete all loggers
+      $LOGGERS_BY_NAME = {};
+  
+      # Delete the root logger
+      undef $ROOT_LOGGER;
+  
+      # Delete all appenders
+      %APPENDER_BY_NAME   = ();
+  
+      undef $INITIALIZED;
+  }
+  
+  ##################################################
+  sub DESTROY {
+  ##################################################
+      CORE::warn "Destroying logger $_[0] ($_[0]->{category})" 
+              if $Log::Log4perl::CHATTY_DESTROY_METHODS;
+  }
+  
+  ##################################################
+  sub reset {
+  ##################################################
+      $ROOT_LOGGER        = __PACKAGE__->_new("", $OFF);
+  #    $LOGGERS_BY_NAME    = {};  #leave this alone, it's used by 
+                                  #reset_all_output_methods when 
+                                  #the config changes
+  
+      %APPENDER_BY_NAME   = ();
+      undef $INITIALIZED;
+      undef $NON_INIT_WARNED;
+      Log::Log4perl::Appender::reset();
+  
+      #clear out all the existing appenders
+      foreach my $logger (values %$LOGGERS_BY_NAME){
+          $logger->{appender_names} = [];
+  
+  	#this next bit deals with an init_and_watch case where a category
+  	#is deleted from the config file, we need to zero out the existing
+  	#loggers so ones not in the config file not continue with their old
+  	#behavior --kg
+          next if $logger eq $ROOT_LOGGER;
+          $logger->{level} = undef;
+          $logger->level();  #set it from the hierarchy
+      }
+  
+      # Clear all filters
+      Log::Log4perl::Filter::reset();
+  }
+  
+  ##################################################
+  sub _new {
+  ##################################################
+      my($class, $category, $level) = @_;
+  
+      print("_new: $class/$category/", defined $level ? $level : "undef",
+            "\n") if _INTERNAL_DEBUG;
+  
+      die "usage: __PACKAGE__->_new(category)" unless
+          defined $category;
+      
+      $category  =~ s/::/./g;
+  
+         # Have we created it previously?
+      if(exists $LOGGERS_BY_NAME->{$category}) {
+          print "_new: exists already\n" if _INTERNAL_DEBUG;
+          return $LOGGERS_BY_NAME->{$category};
+      }
+  
+      my $self  = {
+          category  => $category,
+          num_appenders => 0,
+          additivity    => 1,
+          level         => $level,
+          layout        => undef,
+                  };
+  
+     bless $self, $class;
+  
+     $level ||= $self->level();
+  
+          # Save it in global structure
+     $LOGGERS_BY_NAME->{$category} = $self;
+  
+     $self->set_output_methods;
+  
+     print("Created logger $self ($category)\n") if _INTERNAL_DEBUG;
+  
+     return $self;
+  }
+  
+  ##################################################
+  sub category {
+  ##################################################
+     my ($self) = @_;
+  
+     return $self->{ category };
+  }
+  
+  ##################################################
+  sub reset_all_output_methods {
+  ##################################################
+      print "reset_all_output_methods: \n" if _INTERNAL_DEBUG;
+  
+      foreach my $loggername ( keys %$LOGGERS_BY_NAME){
+          $LOGGERS_BY_NAME->{$loggername}->set_output_methods;
+      }
+      $ROOT_LOGGER->set_output_methods;
+  }
+  
+  ##################################################
+  sub set_output_methods {
+  # Here's a big performance increase.  Instead of having the logger
+  # calculate whether to log and whom to log to every time log() is called,
+  # we calculate it once when the logger is created, and recalculate
+  # it if the config information ever changes.
+  #
+  ##################################################
+     my ($self) = @_;
+      
+     my (@appenders, %seen);
+  
+     my ($level) = $self->level();
+  
+     print "set_output_methods: $self->{category}/$level\n" if _INTERNAL_DEBUG;
+  
+     #collect the appenders in effect for this category    
+  
+     for(my $logger = $self; $logger; $logger = parent_logger($logger)) {
+  
+          foreach my $appender_name (@{$logger->{appender_names}}){
+  
+                  #only one message per appender, (configurable)
+              next if $seen{$appender_name} ++ && 
+                      $Log::Log4perl::one_message_per_appender;
+  
+              push (@appenders,     
+                     [$appender_name,
+                      $APPENDER_BY_NAME{$appender_name},
+                     ]
+              );
+          }
+          last unless $logger->{additivity};
+      }
+  
+          #make a no-op coderef for inactive levels
+      my $noop = generate_noop_coderef();
+  
+         #make a coderef
+      my $coderef = (! @appenders ? $noop : &generate_coderef(\@appenders)); 
+  
+      my %priority = %Log::Log4perl::Level::PRIORITY; #convenience and cvs
+  
+     # changed to >= from <= as level ints were reversed
+      foreach my $levelname (keys %priority){
+          if (Log::Log4perl::Level::isGreaterOrEqual($level,
+  						   $priority{$levelname}
+  						   )) {
+              print "  ($priority{$levelname} <= $level)\n"
+                    if _INTERNAL_DEBUG;
+              $self->{$levelname}      = $coderef;
+              $self->{"is_$levelname"} = generate_is_xxx_coderef("1");
+              print "Setting is_$levelname to 1\n" if _INTERNAL_DEBUG;
+          }else{
+              print "  ($priority{$levelname} > $level)\n" if _INTERNAL_DEBUG;
+              $self->{$levelname}      = $noop;
+              $self->{"is_$levelname"} = generate_is_xxx_coderef("0");
+              print "Setting is_$levelname to 0\n" if _INTERNAL_DEBUG;
+          }
+  
+          print("  Setting [$self] $self->{category}.$levelname to ",
+                ($self->{$levelname} == $noop ? "NOOP" : 
+                ("Coderef [$coderef]: " . scalar @appenders . " appenders")), 
+                "\n") if _INTERNAL_DEBUG;
+      }
+  }
+  
+  ##################################################
+  sub generate_coderef {
+  ##################################################
+      my $appenders = shift;
+                      
+      print "generate_coderef: ", scalar @$appenders, 
+            " appenders\n" if _INTERNAL_DEBUG;
+  
+      my $watch_check_code = generate_watch_code("logger", 1);
+  
+      return sub {
+        my $logger = shift;
+        my $level  = pop;
+  
+        my $message;
+        my $appenders_fired = 0;
+        
+        # Evaluate all parameters that need to be evaluated. Two kinds:
+        #
+        # (1) It's a hash like { filter => "filtername",
+        #                        value  => "value" }
+        #     => filtername(value)
+        #
+        # (2) It's a code ref
+        #     => coderef()
+        #
+  
+        $message   = [map { ref $_ eq "HASH" && 
+                             exists $_->{filter} && 
+                             ref $_->{filter} eq 'CODE' ?
+                                 $_->{filter}->($_->{value}) :
+                             ref $_ eq "CODE" ?
+                                 $_->() : $_ 
+                            } @_];                  
+  
+        print("coderef: $logger->{category}\n") if _INTERNAL_DEBUG;
+  
+        if(defined $Log::Log4perl::Config::WATCHER) {
+            return unless $watch_check_code->($logger, @_, $level);
+        }
+  
+        foreach my $a (@$appenders) {   #note the closure here
+            my ($appender_name, $appender) = @$a;
+  
+            print("  Sending message '<$message->[0]>' ($level) " .
+                  "to $appender_name\n") if _INTERNAL_DEBUG;
+                  
+            $appender->log(
+                #these get passed through to Log::Dispatch
+                { name    => $appender_name,
+                  level   => $Log::Log4perl::Level::L4P_TO_LD{
+                                 $level},   
+                  message => $message,
+                },
+                #these we need
+                $logger->{category},
+                $level,
+            ) and $appenders_fired++;
+                # Only counting it if it returns a true value. Otherwise
+                # the appender threshold might have suppressed it after all.
+      
+        } #end foreach appenders
+      
+        return $appenders_fired;
+  
+      }; #end coderef
+  }
+  
+  ##################################################
+  sub generate_noop_coderef {
+  ##################################################
+      my $watch_delay_code;
+  
+      # This might seem crazy at first, but even in a Log4perl noop, we
+      # need to check if the configuration changed in a init_and_watch 
+      # situation. Why? Say, an application is running in a loop that
+      # constantly tries to issue debug() messages, but they're suppressed by
+      # the current Log4perl configuration. If debug() (which is a noop
+      # here) wasn't watching the configuration for changes, it would never
+      # catch the case where someone bumps up the log level and expects
+      # the application to pick it up and start logging debug() statements.
+  
+      my $watch_check_code = generate_watch_code("logger", 1);
+  
+      my $coderef;
+  
+      if(defined $Log::Log4perl::Config::WATCHER) {
+          $coderef = $watch_check_code;
+      } else {
+          $coderef = sub { undef };
+      }
+  
+      return $coderef;
+  }
+  
+  ##################################################
+  sub generate_is_xxx_coderef {
+  ##################################################
+      my($return_token) = @_;
+  
+      return generate_watch_code("checker", $return_token);
+  }
+  
+  ##################################################
+  sub generate_watch_code {
+  ##################################################
+      my($type, $return_token) = @_;
+  
+      print "generate_watch_code:\n" if _INTERNAL_DEBUG;
+  
+        # No watcher configured, return a no-op as watch code.
+      if(! defined $Log::Log4perl::Config::WATCHER) {
+          return sub { $return_token };
+      }
+  
+      my $cond = generate_watch_conditional();
+  
+      return sub {
+          print "exe_watch_code:\n" if _INTERNAL_DEBUG;
+  
+         if(_INTERNAL_DEBUG) {
+             print "Next check: ",
+               "$Log::Log4perl::Config::Watch::NEXT_CHECK_TIME ",
+               " Now: ", time(), " Mod: ",
+               (stat($Log::Log4perl::Config::WATCHER->file()))[9],
+               "\n";
+         }
+  
+         if( $cond->() ) {
+             my $init_permitted = 1;
+  
+             if(exists $Log::Log4perl::Config::OPTS->{ preinit_callback } ) {
+                 print "Calling preinit_callback\n" if _INTERNAL_DEBUG;
+                 $init_permitted = 
+                 $Log::Log4perl::Config::OPTS->{ preinit_callback }->( 
+                     Log::Log4perl::Config->watcher()->file() );
+                 print "Callback returned $init_permitted\n" if _INTERNAL_DEBUG;
+             }
+  
+             if( $init_permitted ) {
+                 Log::Log4perl->init_and_watch();
+             } else {
+                 # It was time to reinit, but init wasn't permitted.
+                 # Return true, so that the logger continues as if
+                 # it wasn't time to reinit.
+                 return 1;
+             }
+  
+             my $logger = shift;
+             my $level  = pop;
+  
+             # Forward call to new configuration
+             if($type eq "checker") {
+                 return $logger->$level();
+  
+             } elsif( $type eq "logger") {
+                 my $methodname = lc($level);
+  
+                 # Bump up the caller level by three, since
+                 # we've artificially introduced additional levels.
+                 local $Log::Log4perl::caller_depth =
+                       $Log::Log4perl::caller_depth + 3;
+  
+                 # Get a new logger for the same category (the old
+                 # logger might be obsolete because of the re-init)
+                 $logger = Log::Log4perl::get_logger( $logger->{category} );
+  
+                 $logger->$methodname(@_); # send the message
+                 # to the new configuration
+                 return undef;     # Return false, so the logger finishes
+                 # prematurely and doesn't log the same 
+                 # message again.
+             } else {
+                 die "internal error: unknown type";
+             }
+         } else {
+             if(_INTERNAL_DEBUG) {
+                 print "Conditional returned false\n";
+             }
+             return $return_token;
+         }
+     };
+  }
+  
+  ##################################################
+  sub generate_watch_conditional {
+  ##################################################
+  
+      if(defined $Log::Log4perl::Config::Watch::SIGNAL_CAUGHT) {
+          # In this mode, we just check for the variable indicating
+          # that the signal has been caught
+          return sub {
+              return $Log::Log4perl::Config::Watch::SIGNAL_CAUGHT;
+          };
+      }
+  
+      return sub {
+          return 
+              ( time() > $Log::Log4perl::Config::Watch::NEXT_CHECK_TIME and 
+                $Log::Log4perl::Config::WATCHER->change_detected() );
+      };
+  }
+  
+  ##################################################
+  sub parent_string {
+  ##################################################
+      my($string) = @_;
+  
+      if($string eq "") {
+          return undef; # root doesn't have a parent.
+      }
+  
+      my @components = split /\./, $string;
+      
+      if(@components == 1) {
+          return "";
+      }
+  
+      pop @components;
+  
+      return join('.', @components);
+  }
+  
+  ##################################################
+  sub level {
+  ##################################################
+      my($self, $level, $dont_reset_all) = @_;
+  
+          # 'Set' function
+      if(defined $level) {
+          croak "invalid level '$level'" 
+                  unless Log::Log4perl::Level::is_valid($level);
+          if ($level =~ /\D/){
+              $level = Log::Log4perl::Level::to_priority($level);
+          }
+          $self->{level} = $level;   
+  
+          &reset_all_output_methods
+              unless $dont_reset_all;  #keep us from getting overworked 
+                                       #if it's the config file calling us 
+  
+          return $level;
+      }
+  
+          # 'Get' function
+      if(defined $self->{level}) {
+          return $self->{level};
+      }
+  
+      for(my $logger = $self; $logger; $logger = parent_logger($logger)) {
+  
+          # Does the current logger have the level defined?
+  
+          if($logger->{category} eq "") {
+              # It's the root logger
+              return $ROOT_LOGGER->{level};
+          }
+              
+          if(defined $LOGGERS_BY_NAME->{$logger->{category}}->{level}) {
+              return $LOGGERS_BY_NAME->{$logger->{category}}->{level};
+          }
+      }
+  
+      # We should never get here because at least the root logger should
+      # have a level defined
+      die "We should never get here.";
+  }
+  
+  ##################################################
+  sub parent_logger {
+  # Get the parent of the current logger or undef
+  ##################################################
+      my($logger) = @_;
+  
+          # Is it the root logger?
+      if($logger->{category} eq "") {
+          # Root has no parent
+          return undef;
+      }
+  
+          # Go to the next defined (!) parent
+      my $parent_class = parent_string($logger->{category});
+  
+      while($parent_class ne "" and
+            ! exists $LOGGERS_BY_NAME->{$parent_class}) {
+          $parent_class = parent_string($parent_class);
+          $logger =  $LOGGERS_BY_NAME->{$parent_class};
+      }
+  
+      if($parent_class eq "") {
+          $logger = $ROOT_LOGGER;
+      } else {
+          $logger = $LOGGERS_BY_NAME->{$parent_class};
+      }
+  
+      return $logger;
+  }
+  
+  ##################################################
+  sub get_root_logger {
+  ##################################################
+      my($class) = @_;
+      return $ROOT_LOGGER;    
+  }
+  
+  ##################################################
+  sub additivity {
+  ##################################################
+      my($self, $onoff, $no_reinit) = @_;
+  
+      if(defined $onoff) {
+          $self->{additivity} = $onoff;
+      }
+  
+      if( ! $no_reinit ) {
+          $self->set_output_methods();
+      }
+  
+      return $self->{additivity};
+  }
+  
+  ##################################################
+  sub get_logger {
+  ##################################################
+      my($class, $category) = @_;
+  
+      unless(defined $ROOT_LOGGER) {
+          Carp::confess "Internal error: Root Logger not initialized.";
+      }
+  
+      return $ROOT_LOGGER if $category eq "";
+  
+      my $logger = $class->_new($category);
+      return $logger;
+  }
+  
+  ##################################################
+  sub add_appender {
+  ##################################################
+      my($self, $appender, $dont_reset_all) = @_;
+  
+          # We take this as an indicator that we're initialized.
+      $INITIALIZED = 1;
+  
+      my $appender_name = $appender->name();
+  
+      $self->{num_appenders}++;  #should this be inside the unless?
+  
+        # Add newly created appender to the end of the appender array
+      unless (grep{$_ eq $appender_name} @{$self->{appender_names}}){
+          $self->{appender_names} = [sort @{$self->{appender_names}}, 
+                                          $appender_name];
+      }
+  
+      $APPENDER_BY_NAME{$appender_name} = $appender;
+  
+      reset_all_output_methods
+                  unless $dont_reset_all;  # keep us from getting overworked
+                                           # if it's  the config file calling us
+  
+          # For chaining calls ...
+      return $appender;
+  }
+  
+  ##################################################
+  sub remove_appender {
+  ##################################################
+      my($self, $appender_name, $dont_reset_all, $sloppy) = @_;
+  
+      my %appender_names = map { $_ => 1 } @{$self->{appender_names}};
+      
+      if(!exists $appender_names{$appender_name}) {
+          die "No such appender: $appender_name" unless $sloppy;
+          return undef;
+      }
+  
+      delete $appender_names{$appender_name};
+      $self->{num_appenders}--;
+      $self->{appender_names} = [sort keys %appender_names];
+  
+      &reset_all_output_methods
+                  unless $dont_reset_all; 
+  }
+  
+  ##################################################
+  sub eradicate_appender {
+  ##################################################
+          # If someone calls Logger->... and not Logger::...
+      shift if $_[0] eq __PACKAGE__;
+  
+      my($appender_name, $dont_reset_all) = @_;
+  
+      return 0 unless exists 
+          $APPENDER_BY_NAME{$appender_name};
+  
+          # Remove the given appender from all loggers
+          # and delete all references to it, causing
+          # its DESTROY method to be called.
+      foreach my $logger (values %$LOGGERS_BY_NAME){
+          $logger->remove_appender($appender_name, 0, 1);
+      }
+          # Also remove it from the root logger
+      $ROOT_LOGGER->remove_appender($appender_name, 0, 1);
+      
+      delete $APPENDER_BY_NAME{$appender_name};
+  
+      &reset_all_output_methods
+                  unless $dont_reset_all; 
+  
+      return 1;
+  }
+  
+  ##################################################
+  sub has_appenders {
+  ##################################################
+      my($self) = @_;
+  
+      return $self->{num_appenders};
+  }
+  
+  ##################################################
+  sub log {
+  # external api
+  ##################################################
+      my ($self, $priority, @messages) = @_;
+  
+      confess("log: No priority given!") unless defined($priority);
+  
+         # Just in case of 'init_and_watch' -- see Changes 0.21
+      $_[0] = $LOGGERS_BY_NAME->{$_[0]->{category}} if 
+          defined $Log::Log4perl::Config::WATCHER;
+  
+      init_warn() unless $INITIALIZED or $NON_INIT_WARNED;
+  
+      croak "priority $priority isn't numeric" if ($priority =~ /\D/);
+  
+      my $which = Log::Log4perl::Level::to_level($priority);
+  
+      $self->{$which}->($self, @messages, 
+                      Log::Log4perl::Level::to_level($priority));
+  }
+  
+  ######################################################################
+  #
+  # create_custom_level 
+  # creates a custom level
+  # in theory, could be used to create the default ones
+  ######################################################################
+  sub create_custom_level {
+  ######################################################################
+    my $level = shift || die("create_custom_level: " .
+                             "forgot to pass in a level string!");
+    my $after = shift || die("create_custom_level: " .
+                             "forgot to pass in a level after which to " .
+                             "place the new level!");
+    my $syslog_equiv = shift; # can be undef
+    my $log_dispatch_level = shift; # optional
+  
+    ## only let users create custom levels before initialization
+  
+    die("create_custom_level must be called before init or " .
+        "first get_logger() call") if ($INITIALIZED);
+  
+    my %PRIORITY = %Log::Log4perl::Level::PRIORITY; #convenience
+  
+    die("create_custom_level: no such level \"$after\"! Use one of: ", 
+       join(", ", sort keys %PRIORITY)) unless $PRIORITY{$after};
+  
+    # figure out new int value by AFTER + (AFTER+ 1) / 2
+  
+    my $next_prio = Log::Log4perl::Level::get_lower_level($PRIORITY{$after}, 1);
+    my $cust_prio = int(($PRIORITY{$after} + $next_prio) / 2);
+  
+    die(qq{create_custom_level: Calculated level of $cust_prio already exists!
+        This should only happen if you've made some insane number of custom
+        levels (like 15 one after another)
+        You can usually fix this by re-arranging your code from:
+        create_custom_level("cust1", X);
+        create_custom_level("cust2", X);
+        create_custom_level("cust3", X);
+        create_custom_level("cust4", X);
+        create_custom_level("cust5", X);
+        into:
+        create_custom_level("cust3", X);
+        create_custom_level("cust5", X);
+        create_custom_level("cust4", 4);
+        create_custom_level("cust2", cust3);
+        create_custom_level("cust1", cust2);
+     }) if (${Log::Log4perl::Level::LEVELS{$cust_prio}});
+  
+    Log::Log4perl::Level::add_priority($level, $cust_prio, $syslog_equiv,
+                                       $log_dispatch_level);
+  
+    print("Adding prio $level at $cust_prio\n") if _INTERNAL_DEBUG;
+  
+    # get $LEVEL into namespace of Log::Log4perl::Logger to 
+    # create $logger->foo nd $logger->is_foo
+    my $name = "Log::Log4perl::Logger::";
+    my $key = $level;
+  
+    no strict qw(refs);
+    # be sure to use ${Log...} as CVS adds log entries for Log
+    *{"$name$key"} = \${Log::Log4perl::Level::PRIORITY{$level}};
+  
+    # now, stick it in the caller's namespace
+    $name = caller(0) . "::";
+    *{"$name$key"} = \${Log::Log4perl::Level::PRIORITY{$level}};
+    use strict qw(refs);
+  
+    create_log_level_methods($level);
+  
+    return 0;
+  
+  }
+  
+  ########################################
+  #
+  # if we were hackin' lisp (or scheme), we'd be returning some lambda
+  # expressions. But we aren't. :) So we'll just create some strings and
+  # eval them.
+  ########################################
+  sub create_log_level_methods {
+  ########################################
+    my $level = shift || die("create_log_level_methods: " .
+                             "forgot to pass in a level string!");
+    my $lclevel = lc($level);
+    my $levelint = uc($level) . "_INT";
+    my $initial_cap = ucfirst($lclevel);
+  
+    no strict qw(refs);
+  
+    # This is a bit better way to create code on the fly than eval'ing strings.
+    # -erik
+  
+    *{__PACKAGE__ . "::$lclevel"} = sub {
+          if(_INTERNAL_DEBUG) {
+              my $level_disp = (defined $_[0]->{level} ? $_[0]->{level} 
+                                                       : "[undef]");
+              print "$lclevel: ($_[0]->{category}/$level_disp) [@_]\n";
+          }
+          init_warn() unless $INITIALIZED or $NON_INIT_WARNED;
+          $_[0]->{$level}->(@_, $level) if defined $_[0]->{$level};
+       };
+  
+    # Added these to have is_xxx functions as fast as xxx functions
+    # -ms
+    
+    my $islevel   = "is_" . $level;
+    my $islclevel = "is_" . $lclevel;
+  
+    *{__PACKAGE__ . "::is_$lclevel"} = sub {
+        $_[0]->{$islevel}->($_[0], $islclevel);
+    };
+    
+    # Add the isXxxEnabled() methods as identical to the is_xxx
+    # functions. - dviner
+    
+    *{__PACKAGE__ . "::is".$initial_cap."Enabled"} = 
+                             \&{__PACKAGE__ . "::is_$lclevel"};
+    
+    use strict qw(refs);
+  
+    return 0;
+  }
+  
+  #now lets autogenerate the logger subs based on the defined priorities
+  foreach my $level (keys %Log::Log4perl::Level::PRIORITY){
+    create_log_level_methods($level);
+  }
+  
+  ##################################################
+  sub init_warn {
+  ##################################################
+      CORE::warn "Log4perl: Seems like no initialization happened. " .
+                 "Forgot to call init()?\n";
+      # Only tell this once;
+      $NON_INIT_WARNED = 1;
+  }
+  
+  #######################################################
+  # call me from a sub-func to spew the sub-func's caller
+  #######################################################
+  sub callerline {
+    my $message = join ('', @_);
+  
+    my $caller_offset = 
+      Log::Log4perl::caller_depth_offset( 
+          $Log::Log4perl::caller_depth + 1 );
+  
+    my ($pack, $file, $line) = caller($caller_offset);
+  
+    if (not chomp $message) {     # no newline
+      $message .= " at $file line $line";
+  
+      # Someday, we'll use Threads. Really.
+      if (defined &Thread::tid) {
+        my $tid = Thread->self->tid;
+        $message .= " thread $tid" if $tid;
+      }
+    }
+  
+    return ($message, "\n");
+  }
+  
+  #######################################################
+  sub and_warn {
+  #######################################################
+    my $self = shift;
+    CORE::warn(callerline($self->warning_render(@_)));
+  }
+  
+  #######################################################
+  sub and_die {
+  #######################################################
+    my $self = shift;
+    my $arg  = $_[0];
+  
+    my($msg) = callerline($self->warning_render(@_));
+  
+    if($DIE_DEBUG) {
+        $DIE_DEBUG_BUFFER = "DIE_DEBUG: $msg";
+    } else {
+        if( $Log::Log4perl::STRINGIFY_DIE_MESSAGE ) {
+            die("$msg\n");
+        }
+        die $arg;
+    }
+  }
+  
+  ##################################################
+  sub logwarn {
+  ##################################################
+    my $self = shift;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    if ($self->is_warn()) {
+          # Since we're one caller level off now, compensate for that.
+      my @chomped = @_;
+      chomp($chomped[-1]);
+      $self->warn(@chomped);
+    }
+  
+    $self->and_warn(@_);
+  }
+  
+  ##################################################
+  sub logdie {
+  ##################################################
+    my $self = shift;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    if ($self->is_fatal()) {
+          # Since we're one caller level off now, compensate for that.
+      my @chomped = @_;
+      chomp($chomped[-1]);
+      $self->fatal(@chomped);
+    }
+  
+    $Log::Log4perl::LOGDIE_MESSAGE_ON_STDERR ? 
+        $self->and_die(@_) : 
+          exit($Log::Log4perl::LOGEXIT_CODE);
+  }
+  
+  ##################################################
+  sub logexit {
+  ##################################################
+    my $self = shift;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    if ($self->is_fatal()) {
+          # Since we're one caller level off now, compensate for that.
+      my @chomped = @_;
+      chomp($chomped[-1]);
+      $self->fatal(@chomped);
+    }
+  
+    exit $Log::Log4perl::LOGEXIT_CODE;
+  }
+  
+  ##################################################
+  # clucks and carps are WARN level
+  sub logcluck {
+  ##################################################
+    my $self = shift;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    local $Carp::CarpLevel = 
+          $Carp::CarpLevel + 1;
+  
+    my $msg = $self->warning_render(@_);
+  
+    if ($self->is_warn()) {
+      my $message = Carp::longmess($msg);
+      foreach (split(/\n/, $message)) {
+        $self->warn("$_\n");
+      }
+    }
+  
+    Carp::cluck($msg);
+  }
+  
+  ##################################################
+  sub logcarp {
+  ##################################################
+    my $self = shift;
+  
+    local $Carp::CarpLevel = $Carp::CarpLevel + 1;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    my $msg = $self->warning_render(@_);
+  
+    if ($self->is_warn()) {
+      my $message = Carp::shortmess($msg);
+      foreach (split(/\n/, $message)) {
+        $self->warn("$_\n");
+      }
+    }
+  
+    Carp::carp($msg);
+  }
+  
+  ##################################################
+  # croaks and confess are FATAL level
+  ##################################################
+  sub logcroak {
+  ##################################################
+    my $self = shift;
+    my $arg  = $_[0];
+  
+    my $msg = $self->warning_render(@_);
+  
+    local $Carp::CarpLevel = 
+          $Carp::CarpLevel + 1;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    if ($self->is_fatal()) {
+      my $message = Carp::shortmess($msg);
+      foreach (split(/\n/, $message)) {
+        $self->fatal("$_\n");
+      }
+    }
+  
+    my $croak_msg = $arg;
+  
+    if( $Log::Log4perl::STRINGIFY_DIE_MESSAGE ) {
+        $croak_msg = $msg;
+    }
+  
+    $Log::Log4perl::LOGDIE_MESSAGE_ON_STDERR ? 
+        Carp::croak($croak_msg) : 
+          exit($Log::Log4perl::LOGEXIT_CODE);
+  }
+  
+  ##################################################
+  sub logconfess {
+  ##################################################
+    my $self = shift;
+    my $arg  = $_[0];
+  
+    local $Carp::CarpLevel = 
+          $Carp::CarpLevel + 1;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    my $msg = $self->warning_render(@_);
+  
+    if ($self->is_fatal()) {
+      my $message = Carp::longmess($msg);
+      foreach (split(/\n/, $message)) {
+        $self->fatal("$_\n");
+      }
+    }
+  
+    my $confess_msg = $arg;
+  
+    if( $Log::Log4perl::STRINGIFY_DIE_MESSAGE ) {
+        $confess_msg = $msg;
+    }
+  
+    $Log::Log4perl::LOGDIE_MESSAGE_ON_STDERR ? 
+        confess($confess_msg) :
+          exit($Log::Log4perl::LOGEXIT_CODE);
+  }
+  
+  ##################################################
+  # in case people prefer to use error for warning
+  ##################################################
+  sub error_warn {
+  ##################################################
+    my $self = shift;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    if ($self->is_error()) {
+      $self->error(@_);
+    }
+  
+    $self->and_warn(@_);
+  }
+  
+  ##################################################
+  sub error_die {
+  ##################################################
+    my $self = shift;
+  
+    local $Log::Log4perl::caller_depth = 
+          $Log::Log4perl::caller_depth + 1;
+  
+    my $msg = $self->warning_render(@_);
+  
+    if ($self->is_error()) {
+      $self->error($msg);
+    }
+  
+    $Log::Log4perl::LOGDIE_MESSAGE_ON_STDERR ? 
+        $self->and_die($msg) :
+          exit($Log::Log4perl::LOGEXIT_CODE);
+  }
+  
+  ##################################################
+  sub more_logging {
+  ##################################################
+    my ($self) = shift;
+    return $self->dec_level(@_);
+  }
+  
+  ##################################################
+  sub inc_level {
+  ##################################################
+      my ($self, $delta) = @_;
+  
+      $delta ||= 1;
+  
+      $self->level(Log::Log4perl::Level::get_higher_level($self->level(), 
+                                                          $delta));
+  
+      $self->set_output_methods;
+  }
+  
+  ##################################################
+  sub less_logging {
+  ##################################################
+    my ($self) = shift;
+    return $self->inc_level(@_);
+  }
+  
+  ##################################################
+  sub dec_level {
+  ##################################################
+      my ($self, $delta) = @_;
+  
+      $delta ||= 1;
+  
+      $self->level(Log::Log4perl::Level::get_lower_level($self->level(), $delta));
+  
+      $self->set_output_methods;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Logger - Main Logger Class
+  
+  =head1 SYNOPSIS
+  
+      # It's not here
+  
+  =head1 DESCRIPTION
+  
+  While everything that makes Log4perl tick is implemented here,
+  please refer to L<Log::Log4perl> for documentation.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_LOGGER
+
+$fatpacked{"Log/Log4perl/MDC.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_MDC';
+  ##################################################
+  package Log::Log4perl::MDC;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  our %MDC_HASH = ();
+  
+  ###########################################
+  sub get {
+  ###########################################
+      my($class, $key) = @_;
+  
+      if($class ne __PACKAGE__) {
+          # Somebody called us with Log::Log4perl::MDC::get($key)
+          $key = $class;
+      }
+  
+      if(exists $MDC_HASH{$key}) {
+          return $MDC_HASH{$key};
+      } else {
+          return undef;
+      }
+  }
+  
+  ###########################################
+  sub put {
+  ###########################################
+      my($class, $key, $value) = @_;
+  
+      if($class ne __PACKAGE__) {
+          # Somebody called us with Log::Log4perl::MDC::put($key, $value)
+          $value = $key;
+          $key   = $class;
+      }
+  
+      $MDC_HASH{$key} = $value;
+  }
+  
+  ###########################################
+  sub remove {
+  ###########################################
+      %MDC_HASH = ();
+  
+      1;
+  }
+  
+  ###########################################
+  sub get_context {
+  ###########################################
+      return \%MDC_HASH;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::MDC - Mapped Diagnostic Context
+  
+  =head1 DESCRIPTION
+  
+  Log::Log4perl allows loggers to maintain global thread-specific data, 
+  called the Nested Diagnostic Context (NDC) and 
+  Mapped Diagnostic Context (MDC).
+  
+  The MDC is a simple thread-specific hash table, in which the application
+  can stuff values under certain keys and retrieve them later
+  via the C<"%X{key}"> placeholder in 
+  C<Log::Log4perl::Layout::PatternLayout>s.
+  
+  =over 4
+  
+  =item Log::Log4perl::MDC->put($key, $value);
+  
+  Store a value C<$value> under key C<$key> in the map.
+  
+  =item my $value = Log::Log4perl::MDC->get($key);
+  
+  Retrieve the content of the map under the specified key.
+  Typically done by C<%X{key}> in
+  C<Log::Log4perl::Layout::PatternLayout>.
+  If no value exists to the given key, C<undef> is returned.
+  
+  =item my $text = Log::Log4perl::MDC->remove();
+  
+  Delete all entries from the map.
+  
+  =item Log::Log4perl::MDC->get_context();
+  
+  Returns a reference to the hash table.
+  
+  =back
+  
+  Please note that all of the methods above are class methods, there's no
+  instances of this class. Since the thread model in perl 5.8.0 is
+  "no shared data unless explicitly requested" the data structures
+  used are just global (and therefore thread-specific).
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_MDC
+
+$fatpacked{"Log/Log4perl/NDC.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_NDC';
+  ##################################################
+  package Log::Log4perl::NDC;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  
+  our @NDC_STACK = ();
+  our $MAX_SIZE  = 5;
+  
+  ###########################################
+  sub get {
+  ###########################################
+      if(@NDC_STACK) {
+          # Return elements blank separated
+          return join " ", @NDC_STACK;
+      } else {
+          return "[undef]";
+      }
+  }
+  
+  ###########################################
+  sub pop {
+  ###########################################
+      if(@NDC_STACK) {
+          return pop @NDC_STACK;
+      } else {
+          return undef;
+      }
+  }
+  
+  ###########################################
+  sub push {
+  ###########################################
+      my($self, $text) = @_;
+  
+      unless(defined $text) {
+          # Somebody called us via Log::Log4perl::NDC::push("blah") ?
+          $text = $self;
+      }
+  
+      if(@NDC_STACK >= $MAX_SIZE) {
+          CORE::pop(@NDC_STACK);
+      }
+  
+      return push @NDC_STACK, $text;
+  }
+  
+  ###########################################
+  sub remove {
+  ###########################################
+      @NDC_STACK = ();
+  }
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::NDC - Nested Diagnostic Context
+  
+  =head1 DESCRIPTION
+  
+  Log::Log4perl allows loggers to maintain global thread-specific data, 
+  called the Nested Diagnostic Context (NDC).
+  
+  At some point, the application might decide to push a piece of
+  data onto the NDC stack, which other parts of the application might 
+  want to reuse. For example, at the beginning of a web request in a server,
+  the application might decide to push the IP address of the client
+  onto the stack to provide it for other loggers down the road without
+  having to pass the data from function to function.
+  
+  The Log::Log4perl::Layout::PatternLayout class even provides the handy
+  C<%x> placeholder which is replaced by the blank-separated list
+  of elements currently on the stack.
+  
+  This module maintains a simple stack which you can push data on to, query
+  what's on top, pop it off again or delete the entire stack.
+  
+  Its purpose is to provide a thread-specific context which all 
+  Log::Log4perl loggers can refer to without the application having to
+  pass around the context data between its functions.
+  
+  Since in 5.8.0 perl's threads don't share data only upon request,
+  global data is by definition thread-specific.
+  
+  =over 4
+  
+  =item Log::Log4perl::NDC->push($text);
+  
+  Push an item onto the stack. If the stack grows beyond the defined
+  limit (C<$Log::Log4perl::NDC::MAX_SIZE>), just the topmost element
+  will be replated.
+  
+  This is typically done when a context is entered.
+  
+  =item Log::Log4perl::NDC->pop();
+  
+  Discard the upmost element of the stack. This is typically done when
+  a context is left.
+  
+  =item my $text = Log::Log4perl::NDC->get();
+  
+  Retrieve the content of the stack as a string of blank-separated values
+  without disrupting the stack structure. Typically done by C<%x>.
+  If the stack is empty the value C<"[undef]"> is being returned.
+  
+  =item Log::Log4perl::NDC->remove();
+  
+  Reset the stack, remove all items.
+  
+  =back
+  
+  Please note that all of the methods above are class methods, there's no
+  instances of this class.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_NDC
+
+$fatpacked{"Log/Log4perl/Resurrector.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_RESURRECTOR';
+  package Log::Log4perl::Resurrector;
+  use warnings;
+  use strict;
+  
+  # [rt.cpan.org #84818]
+  use if $^O eq "MSWin32", "Win32"; 
+  
+  use File::Temp qw(tempfile);
+  use File::Spec;
+  
+  use constant INTERNAL_DEBUG => 0;
+  
+  our $resurrecting = '';
+  
+  ###########################################
+  sub import {
+  ###########################################
+      resurrector_init();
+  }
+  
+  ##################################################
+  sub resurrector_fh {
+  ##################################################
+      my($file) = @_;
+  
+      local($/) = undef;
+      open FILE, "<$file" or die "Cannot open $file";
+      my $text = <FILE>;
+      close FILE;
+  
+      print "Read ", length($text), " bytes from $file\n" if INTERNAL_DEBUG;
+  
+      my($tmp_fh, $tmpfile) = tempfile( UNLINK => 1 );
+      print "Opened tmpfile $tmpfile\n" if INTERNAL_DEBUG;
+  
+      $text =~ s/^\s*###l4p//mg;
+  
+      print "Text=[$text]\n" if INTERNAL_DEBUG;
+  
+      print $tmp_fh $text;
+      seek $tmp_fh, 0, 0;
+  
+      return $tmp_fh;
+  }
+  
+  ###########################################
+  sub resurrector_loader {
+  ###########################################
+      my ($code, $module) = @_;
+  
+      print "resurrector_loader called with $module\n" if INTERNAL_DEBUG;
+  
+        # Avoid recursion
+      if($resurrecting eq $module) {
+          print "ignoring $module (recursion)\n" if INTERNAL_DEBUG;
+          return undef;
+      }
+      
+      local $resurrecting = $module;
+      
+      
+        # Skip Log4perl appenders
+      if($module =~ m#^Log/Log4perl/Appender#) {
+          print "Ignoring $module (Log4perl-internal)\n" if INTERNAL_DEBUG;
+          return undef;
+      }
+  
+      my $path = $module;
+  
+        # Skip unknown files
+      if(!-f $module) {
+            # We might have a 'use lib' statement that modified the
+            # INC path, search again.
+          $path = pm_search($module);
+          if(! defined $path) {
+              print "File $module not found\n" if INTERNAL_DEBUG;
+              return undef;
+          }
+          print "File $module found in $path\n" if INTERNAL_DEBUG;
+      }
+  
+      print "Resurrecting module $path\n" if INTERNAL_DEBUG;
+  
+      my $fh = resurrector_fh($path);
+  
+      my $abs_path = File::Spec->rel2abs( $path );
+      print "Setting %INC entry of $module to $abs_path\n" if INTERNAL_DEBUG;
+      $INC{$module} = $abs_path;
+  
+      return $fh;
+  }
+  
+  ###########################################
+  sub pm_search {
+  ###########################################
+      my($pmfile) = @_;
+  
+      for(@INC) {
+            # Skip subrefs
+          next if ref($_);
+          my $path = File::Spec->catfile($_, $pmfile);
+          return $path if -f $path;
+      }
+  
+      return undef;
+  }
+  
+  ###########################################
+  sub resurrector_init {
+  ###########################################
+      unshift @INC, \&resurrector_loader;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Resurrector - Dark Magic to resurrect hidden L4p statements
+  
+  =head1 DESCRIPTION
+  
+  Loading C<use Log::Log4perl::Resurrector> causes subsequently loaded
+  modules to have their hidden
+  
+      ###l4p use Log::Log4perl qw(:easy);
+  
+      ###l4p DEBUG(...)
+      ###l4p INFO(...)
+      ...
+  
+  statements uncommented and therefore 'resurrected', i.e. activated.
+  
+  This allows for a module C<Foobar.pm> to be written with Log4perl
+  statements commented out and running at full speed in normal mode.
+  When loaded via
+  
+      use Foobar;
+  
+  all hidden Log4perl statements will be ignored.
+  
+  However, if a script loads the module C<Foobar> I<after> loading 
+  C<Log::Log4perl::Resurrector>, as in
+  
+      use Log::Log4perl::Resurrector;
+      use Foobar;
+  
+  then C<Log::Log4perl::Resurrector> will have put a source filter in place
+  that will extract all hidden Log4perl statements in C<Foobar> before 
+  C<Foobar> actually gets loaded. 
+  
+  Therefore, C<Foobar> will then behave as if the
+  
+      ###l4p use Log::Log4perl qw(:easy);
+  
+      ###l4p DEBUG(...)
+      ###l4p INFO(...)
+      ...
+  
+  statements were actually written like
+  
+      use Log::Log4perl qw(:easy);
+  
+      DEBUG(...)
+      INFO(...)
+      ...
+  
+  and the module C<Foobar> will indeed be Log4perl-enabled. Whether any
+  activated Log4perl statement will actually trigger log
+  messages, is up to the Log4perl configuration, of course.
+  
+  There's a startup cost to using C<Log::Log4perl::Resurrector> (all
+  subsequently loaded modules are examined) but once the compilation
+  phase has finished, the perl program will run at full speed.
+  
+  Some of the techniques used in this module have been stolen from the
+  C<Acme::Incorporated> CPAN module, written by I<chromatic>. Long
+  live CPAN!
+   
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_RESURRECTOR
+
+$fatpacked{"Log/Log4perl/Util.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_UTIL';
+  package Log::Log4perl::Util;
+  
+  require Exporter;
+  our @EXPORT_OK = qw( params_check );
+  our @ISA       = qw( Exporter );
+  
+  use File::Spec;
+  
+  ###########################################
+  sub params_check {
+  ###########################################
+      my( $hash, $required, $optional ) = @_;
+  
+      my $pkg       = caller();
+      my %hash_copy = %$hash;
+  
+      if( defined $required ) {
+          for my $p ( @$required ) {
+              if( !exists $hash->{ $p } or
+                  !defined $hash->{ $p } ) {
+                  die "$pkg: Required parameter $p missing.";
+              }
+              delete $hash_copy{ $p };
+          }
+      }
+  
+      if( defined $optional ) {
+          for my $p ( @$optional ) {
+              delete $hash_copy{ $p };
+          }
+          if( scalar keys %hash_copy ) {
+              die "$pkg: Unknown parameter: ", join( ",", keys %hash_copy );
+          }
+      }
+  }
+  
+  ##################################################
+  sub module_available {  # Check if a module is available
+  ##################################################
+      my($full_name) = @_;
+        # Weird cases like "strict;" (including the semicolon) would 
+        # succeed with the eval below, so check those up front. 
+        # I can't believe Perl doesn't have a proper way to check if a 
+        # module is available or not!
+      return 0 if $full_name =~ /[^\w:]/;
+      $full_name =~ s#::#/#g;
+      $full_name .= '.pm';
+      return 1 if $INC{$full_name};
+      eval {
+          local $SIG{__DIE__} = sub {};
+          require $full_name;
+      };
+      return !$@;
+  }
+  
+  ##################################################
+  sub tmpfile_name {  # File::Temp without the bells and whistles
+  ##################################################
+  
+      my $name = File::Spec->catfile(File::Spec->tmpdir(), 
+                                'l4p-tmpfile-' . 
+                                "$$-" .
+                                int(rand(9999999)));
+  
+          # Some crazy versions of File::Spec use backslashes on Win32
+      $name =~ s#\\#/#g;
+      return $name;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Util - Internal utility functions
+  
+  =head1 DESCRIPTION
+  
+  Only internal functions here. Don't peek.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_UTIL
+
+$fatpacked{"Log/Log4perl/Util/Semaphore.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_UTIL_SEMAPHORE';
+  #//////////////////////////////////////////
+  package Log::Log4perl::Util::Semaphore;
+  #//////////////////////////////////////////
+  use IPC::SysV qw(IPC_RMID IPC_CREAT IPC_EXCL SEM_UNDO IPC_NOWAIT 
+                   IPC_SET IPC_STAT SETVAL);
+  use IPC::Semaphore;
+  use POSIX qw(EEXIST);
+  use strict;
+  use warnings;
+  use constant INTERNAL_DEBUG => 0;
+  
+  ###########################################
+  sub new {
+  ###########################################
+      my($class, %options) = @_;
+  
+      my $self = {
+          key           => undef,
+          mode          => undef,
+          uid           => undef,
+          gid           => undef,
+          destroy       => undef,
+          semop_wait    => .1,
+          semop_retries => 1,
+  	creator       => $$,
+          %options,
+      };
+  
+      $self->{ikey} = unpack("i", pack("A4", $self->{key}));
+  
+        # Accept usernames in the uid field as well
+      if(defined $self->{uid} and 
+         $self->{uid} =~ /\D/) {
+          $self->{uid} = (getpwnam $self->{uid})[2];
+      }
+  
+      bless $self, $class;
+      $self->init();
+  
+      my @values = ();
+      for my $param (qw(mode uid gid)) {
+          push @values, $param, $self->{$param} if defined $self->{$param};
+      }
+      $self->semset(@values) if @values;
+  
+      return $self;
+  }
+  
+  ###########################################
+  sub init {
+  ###########################################
+      my($self) = @_;
+  
+      print "Semaphore init '$self->{key}'/'$self->{ikey}'\n" if INTERNAL_DEBUG;
+  
+      $self->{id} = semget( $self->{ikey}, 
+                            1, 
+                            &IPC_EXCL|&IPC_CREAT|($self->{mode}||0777),
+                    );
+  
+     if(! defined $self->{id} and
+        $! == EEXIST) {
+         print "Semaphore '$self->{key}' already exists\n" if INTERNAL_DEBUG;
+         defined( $self->{id} = semget( $self->{ikey}, 1, 0 ) )
+             or die "semget($self->{ikey}) failed: $!";
+     } elsif($!) {
+         die "Cannot create semaphore $self->{key}/$self->{ikey} ($!)";
+     }
+  
+     print "Semaphore has id $self->{id}\n" if INTERNAL_DEBUG;
+  }
+  
+  ###########################################
+  sub status_as_string {
+  ###########################################
+      my($self, @values) = @_;
+  
+      my $sem = IPC::Semaphore->new($self->{ikey}, 1, 0);
+  
+      my $values  = join('/', $sem->getall());
+      my $ncnt    = $sem->getncnt(0);
+      my $pidlast = $sem->getpid(0);
+      my $zcnt    = $sem->getzcnt(0);
+      my $id      = $sem->id();
+  
+      return <<EOT;
+  Semaphore Status
+  Key ...................................... $self->{key}
+  iKey ..................................... $self->{ikey}
+  Id ....................................... $id
+  Values ................................... $values
+  Processes waiting for counter increase ... $ncnt
+  Processes waiting for counter to hit 0 ... $zcnt
+  Last process to perform an operation ..... $pidlast
+  EOT
+  }
+  
+  ###########################################
+  sub semsetval {
+  ###########################################
+      my($self, %keyvalues) = @_;
+  
+      my $sem = IPC::Semaphore->new($self->{ikey}, 1, 0);
+      $sem->setval(%keyvalues);
+  }
+  
+  ###########################################
+  sub semset {
+  ###########################################
+      my($self, @values) = @_;
+  
+      print "Setting values for semaphore $self->{key}/$self->{ikey}\n" if
+          INTERNAL_DEBUG;
+  
+      my $sem = IPC::Semaphore->new($self->{ikey}, 1, 0);
+      $sem->set(@values);
+  }
+  
+  ###########################################
+  sub semlock {
+  ###########################################
+      my($self) = @_;
+  
+      my $operation = pack("s!*", 
+                            # wait until it's 0
+                           0, 0, 0,
+                            # increment by 1
+                           0, 1, SEM_UNDO
+                          );
+  
+      print "Locking semaphore '$self->{key}'\n" if INTERNAL_DEBUG;
+      $self->semop($self->{id}, $operation);
+  }
+  
+  ###########################################
+  sub semunlock {
+  ###########################################
+      my($self) = @_;
+  
+  #    my $operation = pack("s!*", 
+  #                          # decrement by 1
+  #                         0, -1, SEM_UNDO
+  #                        );
+  #
+      print "Unlocking semaphore '$self->{key}'\n" if INTERNAL_DEBUG;
+  
+  #      # ignore errors, as they might result from trying to unlock an
+  #      # already unlocked semaphore.
+  #    semop($self->{id}, $operation);
+  
+      semctl $self->{id}, 0, SETVAL, 0;
+  }
+  
+  ###########################################
+  sub remove {
+  ###########################################
+      my($self) = @_;
+  
+      print "Removing semaphore '$self->{key}/$self->{id}'\n" if INTERNAL_DEBUG;
+  
+      semctl ($self->{id}, 0, &IPC_RMID, 0) or 
+          die "Removing semaphore $self->{key} failed: $!";
+  }
+  
+  ###########################################
+  sub DESTROY {
+  ###########################################
+      my($self) = @_;
+  
+      if($self->{destroy} && $$==$self->{creator}) {
+          $self->remove();
+      }
+  }
+  
+  ###########################################
+  sub semop {
+  ###########################################
+      my($self, @args) = @_;
+  
+      my $retries     = $self->{semop_retries};
+  
+      my $rc;
+  
+      {
+          $rc = semop($args[0], $args[1]);
+  
+          if(!$rc and 
+             $! =~ /temporarily unavailable/ and
+             $retries-- > 0) {
+              $rc = 'undef' unless defined $rc;
+              print "semop failed (rc=$rc), retrying\n", 
+                    $self->status_as_string if INTERNAL_DEBUG;
+              select undef, undef, undef, $self->{semop_wait};
+              redo;
+          }
+      }
+  
+      $rc or die "semop(@args) failed: $! ";
+      $rc;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Util::Semaphore - Easy to use semaphores
+  
+  =head1 SYNOPSIS
+  
+      use Log::Log4perl::Util::Semaphore;
+      my $sem = Log::Log4perl::Util::Semaphore->new( key => "abc" );
+  
+      $sem->semlock();
+        # ... critical section 
+      $sem->semunlock();
+  
+      $sem->semset( uid  => (getpwnam("hugo"))[2], 
+                    gid  => 102,
+                    mode => 0644
+                  );
+  
+  =head1 DESCRIPTION
+  
+  Log::Log4perl::Util::Semaphore provides the synchronisation mechanism
+  for the Synchronized.pm appender in Log4perl, but can be used independently
+  of Log4perl.
+  
+  As a convenience, the C<uid> field accepts user names as well, which it 
+  translates into the corresponding uid by running C<getpwnam>.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_UTIL_SEMAPHORE
+
+$fatpacked{"Log/Log4perl/Util/TimeTracker.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'LOG_LOG4PERL_UTIL_TIMETRACKER';
+  ##################################################
+  package Log::Log4perl::Util::TimeTracker;
+  ##################################################
+  
+  use 5.006;
+  use strict;
+  use warnings;
+  use Log::Log4perl::Util;
+  use Carp;
+  
+  our $TIME_HIRES_AVAILABLE;
+  
+  BEGIN {
+      # Check if we've got Time::HiRes. If not, don't make a big fuss,
+      # just set a flag so we know later on that we can't have fine-grained
+      # time stamps
+      $TIME_HIRES_AVAILABLE = 0;
+      if(Log::Log4perl::Util::module_available("Time::HiRes")) {
+          require Time::HiRes;
+          $TIME_HIRES_AVAILABLE = 1;
+      }
+  }
+  
+  ##################################################
+  sub new {
+  ##################################################
+      my $class = shift;
+      $class = ref ($class) || $class;
+  
+      my $self = {
+          reset_time            => undef,
+          @_,
+      };
+  
+      $self->{time_function} = \&_gettimeofday unless 
+          defined $self->{time_function};
+  
+      bless $self, $class;
+  
+      $self->reset();
+  
+      return $self;
+  }
+  
+  ##################################################
+  sub hires_available {
+  ##################################################
+      return $TIME_HIRES_AVAILABLE;
+  }
+  
+  ##################################################
+  sub _gettimeofday {
+  ##################################################
+      # Return secs and optionally msecs if we have Time::HiRes
+      if($TIME_HIRES_AVAILABLE) {
+          return (Time::HiRes::gettimeofday());
+      } else {
+          return (time(), 0);
+      }
+  }
+  
+  ##################################################
+  sub gettimeofday {
+  ##################################################
+      my($self) = @_;
+  
+      my($seconds, $microseconds) = $self->{time_function}->();
+  
+      $microseconds = 0 if ! defined $microseconds;
+      return($seconds, $microseconds);
+  }
+  
+  ##################################################
+  sub reset {
+  ##################################################
+      my($self) = @_;
+  
+      my $current_time = [$self->gettimeofday()];
+      $self->{reset_time} = $current_time;
+      $self->{last_call_time} = $current_time;
+  
+      return $current_time;
+  }
+  
+  ##################################################
+  sub time_diff {
+  ##################################################
+      my($time_from, $time_to) = @_;
+  
+      my $seconds = $time_to->[0] -
+                    $time_from->[0];
+  
+      my $milliseconds = int(( $time_to->[1] -
+                               $time_from->[1] ) / 1000);
+  
+      if($milliseconds < 0) {
+          $milliseconds = 1000 + $milliseconds;
+          $seconds--;
+      }
+  
+      return($seconds, $milliseconds);
+  }
+  
+  ##################################################
+  sub milliseconds {
+  ##################################################
+      my($self, $current_time) = @_;
+  
+      $current_time = [ $self->gettimeofday() ] unless
+          defined $current_time;
+  
+      my($seconds, $milliseconds) = time_diff(
+              $self->{reset_time}, 
+              $current_time);
+  
+      return $seconds*1000 + $milliseconds;
+  }
+  
+  ##################################################
+  sub delta_milliseconds {
+  ##################################################
+      my($self, $current_time) = @_;
+  
+      $current_time = [ $self->gettimeofday() ] unless
+          defined $current_time;
+  
+      my($seconds, $milliseconds) = time_diff(
+              $self->{last_call_time}, 
+              $current_time);
+  
+      $self->{last_call_time} = $current_time;
+  
+      return $seconds*1000 + $milliseconds;
+  }
+  
+  1;
+  
+  __END__
+  
+  =encoding utf8
+  
+  =head1 NAME
+  
+  Log::Log4perl::Util::TimeTracker - Track time elapsed
+  
+  =head1 SYNOPSIS
+  
+    use Log::Log4perl::Util::TimeTracker;
+  
+    my $timer = Log::Log4perl::Util::TimeTracker->new();
+  
+      # equivalent to Time::HiRes::gettimeofday(), regardless
+      # if Time::HiRes is present or not. 
+    my($seconds, $microseconds) = $timer->gettimeofday();
+  
+      # reset internal timer
+    $timer->reset();
+  
+      # return milliseconds since last reset
+    $msecs = $timer->milliseconds();
+  
+      # return milliseconds since last call
+    $msecs = $timer->delta_milliseconds();
+  
+  =head1 DESCRIPTION
+  
+  This utility module helps tracking time elapsed for PatternLayout's
+  date and time placeholders. Its accuracy depends on the availability
+  of the Time::HiRes module. If it's available, its granularity is
+  milliseconds, if not, seconds.
+  
+  The most common use of this module is calling the gettimeofday() 
+  method:
+  
+    my($seconds, $microseconds) = $timer->gettimeofday();
+  
+  It returns seconds and microseconds of the current epoch time. If 
+  Time::HiRes is installed, it will simply defer to its gettimeofday()
+  function, if it's missing, time() will be called instead and $microseconds
+  will always be 0.
+  
+  To measure time elapsed in milliseconds, use the reset() method to 
+  reset the timer to the current time, followed by one or more calls to
+  the milliseconds() method:
+  
+      # reset internal timer
+    $timer->reset();
+  
+      # return milliseconds since last reset
+    $msecs = $timer->milliseconds();
+  
+  On top of the time span between the last reset and the current time, 
+  the module keeps track of the time between calls to delta_milliseconds():
+  
+    $msecs = $timer->delta_milliseconds();
+  
+  On the first call, this will return the number of milliseconds since the
+  last reset(), on subsequent calls, it will return the time elapsed in
+  milliseconds since the last call to delta_milliseconds() instead. Note
+  that reset() also resets the time of the last call.
+  
+  The internal timer of this module gets its time input from the POSIX time() 
+  function, or, if the Time::HiRes module is available, from its 
+  gettimeofday() function. To figure out which one it is, use
+  
+      if( $timer->hires_available() ) {
+          print "Hooray, we get real milliseconds!\n";
+      } else {
+          print "Milliseconds are just bogus\n";
+      }
+  
+  For testing purposes, a different time source can be provided, so test
+  suites can simulate time passing by without actually having to wait:
+  
+    my $start_time = time();
+  
+    my $timer = Log::Log4perl::Util::TimeTracker->new(
+            time_function => sub {
+                return $start_time++;
+            },
+    );
+  
+  Every call to $timer->epoch() will then return a time value that is one
+  second ahead of the value returned on the previous call. This also means
+  that every call to delta_milliseconds() will return a value that exceeds
+  the value returned on the previous call by 1000.
+  
+  =head1 LICENSE
+  
+  Copyright 2002-2013 by Mike Schilli E<lt>m@perlmeister.comE<gt> 
+  and Kevin Goess E<lt>cpan@goess.orgE<gt>.
+  
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself. 
+  
+  =head1 AUTHOR
+  
+  Please contribute patches to the project on Github:
+  
+      http://github.com/mschilli/log4perl
+  
+  Send bug reports or requests for enhancements to the authors via our
+  
+  MAILING LIST (questions, bug reports, suggestions/patches): 
+  log4perl-devel@lists.sourceforge.net
+  
+  Authors (please contact them via the list above, not directly):
+  Mike Schilli <m@perlmeister.com>,
+  Kevin Goess <cpan@goess.org>
+  
+  Contributors (in alphabetical order):
+  Ateeq Altaf, Cory Bennett, Jens Berthold, Jeremy Bopp, Hutton
+  Davidson, Chris R. Donnelly, Matisse Enzer, Hugh Esco, Anthony
+  Foiani, James FitzGibbon, Carl Franks, Dennis Gregorovic, Andy
+  Grundman, Paul Harrington, Alexander Hartmaier  David Hull, 
+  Robert Jacobson, Jason Kohles, Jeff Macdonald, Markus Peter, 
+  Brett Rann, Peter Rabbitson, Erik Selberg, Aaron Straup Cope, 
+  Lars Thegler, David Viner, Mac Yang.
+  
+LOG_LOG4PERL_UTIL_TIMETRACKER
+
 $fatpacked{"Net/OpenSSH.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'NET_OPENSSH';
   package Net::OpenSSH;
   
@@ -8503,19 +28376,19 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   use warnings;
   use v5.16.3;
   
+  use Log::Log4perl qw(get_logger);
   use Net::OpenSSH;
   use Time::Piece;
-  use Carp;
   use List::Util 1.33 qw(any);
-  use File::Path qw(make_path); # make_path() behaves like 'mkdir --parents'
+  use File::Path qw(make_path);
   
   sub do_snapshot { # No test. Is not pure.
   
       # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
   
-      my $config_ref = shift // confess missing_arg();
-      my $subvol     = shift // confess missing_arg();
-      my $timeframe  = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subvol     = shift // get_logger->logconfess(missing_arg());
+      my $timeframe  = shift // get_logger->logconfess(missing_arg());
   
       take_new_snapshot($config_ref, $subvol, $timeframe);
       delete_old_snapshots($config_ref, $subvol, $timeframe);
@@ -8528,9 +28401,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # take a single $timeframe snapshot of $subvol. Used for yabsm's
       # 'take-snap' command.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subvol     = shift // confess missing_arg();
-      my $timeframe  = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subvol     = shift // get_logger->logconfess(missing_arg());
+      my $timeframe  = shift // get_logger->logconfess(missing_arg());
   
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
@@ -8538,9 +28411,10 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       my $snap_name = current_time_snapstring();
   
+      # For the first time we take a $timeframe snapshot of $subvol.
       make_path $snap_dir if not -d $snap_dir;
   
-      system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
+      safe_system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
   
       return;
   }
@@ -8551,9 +28425,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # setting defined in the users config. This function should be
       # called directly after take_new_snapshot().
   
-      my $config_ref = shift // confess missing_arg();
-      my $subvol     = shift // confess missing_arg();
-      my $timeframe  = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subvol     = shift // get_logger->logconfess(missing_arg());
+      my $timeframe  = shift // get_logger->logconfess(missing_arg());
   
       my $existing_snaps_ref = all_snaps($config_ref, $subvol, $timeframe);
   
@@ -8565,33 +28439,33 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # took a snapshot.
       if ($num_snaps == $num_to_keep + 1) {
   
-  	# pop takes from the end of the array. This is the oldest snap
-  	# because they are sorted newest to oldest.
-  	my $oldest_snap = pop @$existing_snaps_ref;
+          # This is the oldest snap because they are sorted newest
+          # to oldest and pop takes from the end of the array.
+          my $oldest_snap = pop @$existing_snaps_ref;
   
-  	system("btrfs subvol delete $oldest_snap");
+          safe_system("btrfs subvol delete $oldest_snap");
   
-  	return;
+          return;
       }
   
       # We haven't reached the snapshot quota yet so don't delete anything.
       elsif ($num_snaps <= $num_to_keep) { return }
   
-      # User changed their settings to keep less snapshots than they
+      # User changed their settings to keep less snapshots then they
       # were keeping prior.
       else {
   
-  	while ($num_snaps > $num_to_keep) {
+          while ($num_snaps > $num_to_keep) {
   
-  	    # pop mutates $existing_snaps_ref, and thus is not idempotent.
+              # pop mutates $existing_snaps_ref, and thus is not idempotent.
               my $oldest_snap = pop @$existing_snaps_ref;
   
-  	    system("btrfs subvol delete $oldest_snap");
+              safe_system("btrfs subvol delete $oldest_snap");
   
-  	    $num_snaps--;
-  	}
+              $num_snaps--;
+          }
   
-  	return;
+          return;
       }
   }
   
@@ -8600,19 +28474,19 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Determine if $backup is local or remote and dispatch the
       # corresponding do_backup_bootstrap_* subroutine.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       if (is_local_backup($config_ref, $backup)) {
-  	do_backup_bootstrap_local($config_ref, $backup);
+          do_backup_bootstrap_local($config_ref, $backup);
       }
   
       elsif (is_remote_backup($config_ref, $backup)) {
-  	do_backup_bootstrap_ssh($config_ref, $backup);
+          do_backup_bootstrap_ssh($config_ref, $backup);
       }
   
       else {
-  	confess "yabsm: internal error: no such user defined backup '$backup'";
+          get_logger->logconfess("yabsm: internal error: no such user defined backup '$backup'");
       }
   
       return;
@@ -8625,14 +28499,16 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # backups backup bootstrap dir and then then btrfs send/receive
       # the bootstrap snap.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
       # delete old bootstrap snap
       if (-d $boot_snap_dir) {
-          system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
+          my @snaps = glob "$boot_snap_dir/*";
+          1 == scalar @snaps or get_logger->logdie("yabsm: error: multiple bootstrap snapshots in $boot_snap_dir");
+          safe_system("btrfs subvol delete " . shift @snaps);
       }
       else {
           make_path $boot_snap_dir;
@@ -8643,26 +28519,25 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # if $backup_dir exists this cannot be the first time
       # bootstrapping so we need to delete the old bootstrap snap.
       if (-d $backup_dir) {
-          system "btrfs subvol delete $_" for grep { $_ =~ /BOOTSTRAP-day/ } glob "$backup_dir/*";
+          my @boot_snap = grep { /BOOTSTRAP-/ } glob "$backup_dir/*";
+          1 == scalar @boot_snap or get_logger->logdie("yabsm: error: multiple bootstrap snapshots in $backup_dir");
+          safe_system('btrfs subvol delete ' . shift @boot_snap);
       }
       else {
           make_path $backup_dir;
       }
   
-      my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
-  
-      my $subvol = $config_ref->{backups}{$backup}{subvol};
-  
+      my $boot_snap  = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
+      my $subvol     = $config_ref->{backups}{$backup}{subvol};
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
   
-      system("btrfs subvol snapshot -r $mountpoint $boot_snap");
-  
-      system("btrfs send $boot_snap | btrfs receive $backup_dir");
+      safe_system("btrfs subvol snapshot -r $mountpoint $boot_snap");
+      safe_system("btrfs send $boot_snap | btrfs receive $backup_dir");
   
       return;
   }
   
-  sub do_backup_bootstrap_ssh{ # No test. Is not pure.
+  sub do_backup_bootstrap_ssh { # No test. Is not pure.
   
       # Perform bootstrap phase of a btrfs incremental backup. To
       # bootstrap a backup we create a new snapshot and place it in the
@@ -8670,46 +28545,38 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # /.snapshots/yabsm/home/backups/homeBackup/bootstrap-snap/), and
       # then btrfs send/receive the bootstrap snap over ssh.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
-  
-      ### LOCAL ###
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
       # if $boot_snap_dir exists this cannot be the first time bootstrapping
+      # so we need to delete the old bootstrap snap.
       if (-d $boot_snap_dir) {
-          system "btrfs subvol delete $_" for glob "$boot_snap_dir/*";
+          my @boot_snap = glob "$boot_snap_dir/*";
+          1 == scalar @boot_snap or get_logger->logdie('multiple bootstrap snapshots in $boot_snap_dir');
+          safe_system('btrfs subvol delete ' . shift @boot_snap);
       }
       else {
           make_path $boot_snap_dir;
       }
   
       my $subvol = $config_ref->{backups}{$backup}{subvol};
-  
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-  
+      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
       my $boot_snap = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
   
-      system("btrfs subvol snapshot -r $mountpoint $boot_snap");
+      safe_system("btrfs subvol snapshot -r $mountpoint $boot_snap");
   
-      ### REMOTE ###
-  
-      # setup local bootstrap snap
-      my $server_ssh = new_ssh_connection($config_ref->{backups}{$backup}{host});
-  
-      my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
+      # setup Net::OpenSSH ssh connection
+      my $host = $config_ref->{backups}{$backup}{host};
+      my $ssh = new_ssh_connection($host);
   
       # delete old remote bootstrap snap(s) if it exists
-      $server_ssh->system( "ls -d $backup_dir/* "
-                  . '| grep BOOTSTRAP-day '
-                  . '| while read -r line; do sudo -n btrfs subvol delete "$line"; done'
-                  );
+      safe_system_ssh($ssh, "ls -d $backup_dir/* | grep BOOTSTRAP- | while read -r boot_snap; do sudo -n btrfs subvol delete \"\$boot_snap\"; done");
   
       # send the bootstrap backup to remote host
-      $server_ssh->system({stdin_file => ['-|', "btrfs send $boot_snap"]}
-  		, "sudo -n btrfs receive $backup_dir"
-  	        );
+      safe_system_ssh($ssh, "sudo -n btrfs receive $backup_dir", {stdin_file => ['-|', "btrfs send $boot_snap"]});
   
       return;
   }
@@ -8721,23 +28588,23 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # has not been bootstrapped then instead perform the bootstrap
       # routine.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       if (not has_bootstrap($config_ref, $backup)) {
           do_backup_bootstrap($config_ref, $backup)
       }
   
       elsif (is_local_backup($config_ref, $backup)) {
-  	do_backup_local($config_ref, $backup);
+          do_backup_local($config_ref, $backup);
       }
   
       elsif (is_remote_backup($config_ref, $backup)) {
-  	do_backup_ssh($config_ref, $backup);
+          do_backup_ssh($config_ref, $backup);
       }
   
       else {
-  	confess "yabsm: internal error: no such defined backup '$backup'";
+          get_logger->logconfess("yabsm: internal error: no such defined backup '$backup'");
       }
   
       return;
@@ -8749,35 +28616,28 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # function will kill the program if the bootstrap phase has not
       # yet been completed.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       if (not has_bootstrap($config_ref, $backup)) {
-          confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
+          get_logger->logconfess("yabsm: internal error: backup '$backup' has not been bootstrapped");
       }
   
       # bootstrap dir should have exactly one snap
-      my $boot_snap =
-        [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
-  
+      my $boot_snap = [ glob bootstrap_snap_dir($config_ref, $backup) . '/*' ]->[0];
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-  
       my $subvol = $config_ref->{backups}{$backup}{subvol};
-  
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
-  
       my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-  
-      make_path $tmp_dir if not -d $tmp_dir;
-  
       my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
   
-      system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+      # If this is the first time backing up $backup.
+      make_path $tmp_dir if not -d $tmp_dir;
   
-      system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
-  
-      system("btrfs subvol delete $tmp_snap");
-  
+      # main
+      safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+      safe_system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
+      safe_system("btrfs subvol delete $tmp_snap");
       delete_old_backups_local($config_ref, $backup);
   
       return;
@@ -8789,11 +28649,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # This function will kill the program if the bootstrap phase has
       # not yet been completed.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       if (not has_bootstrap($config_ref, $backup)) {
-          confess "yabsm: internal error: backup '$backup' has not been bootstrapped";
+          get_logger->logconfess("yabsm: internal error: backup '$backup' has not been bootstrapped");
       }
   
       # bootstrap snapshot dir should have exactly one snapshot.
@@ -8801,31 +28661,21 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
         [glob bootstrap_snap_dir($config_ref, $backup) . '/*']->[0];
   
       my $subvol = $config_ref->{backups}{$backup}{subvol};
-  
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
-  
       my $remote_host = $config_ref->{backups}{$backup}{host};
-  
-      my $server_ssh = new_ssh_connection($remote_host);
-  
       my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
+      my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
+      my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+      my $ssh = new_ssh_connection($remote_host);
   
-      my $local_yabsm_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-  
-      make_path $local_yabsm_dir if not -d $local_yabsm_dir;
-  
-      my $snapshot = "$local_yabsm_dir/" . current_time_snapstring();
+      # If this is the first time backing up $backup.
+      make_path $tmp_dir if not -d $tmp_dir;
   
       # main
-  
-      system("btrfs subvol snapshot -r $mountpoint $snapshot");
-  
-      $server_ssh->system({stdin_file => ['-|', "btrfs send -p $boot_snap $snapshot"]}
-                          , "sudo -n btrfs receive $remote_backup_dir");
-  
-      system("btrfs subvol delete $snapshot");
-  
-      delete_old_backups_ssh($config_ref, $server_ssh, $backup);
+      safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
+      safe_system_ssh($ssh, "sudo -n btrfs receive $remote_backup_dir", {stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]});
+      safe_system("btrfs subvol delete $tmp_snap");
+      delete_old_backups_ssh($config_ref, $ssh, $backup);
   
       return;
   }
@@ -8836,8 +28686,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # $keep setting defined in the users config. This
       # function should be called directly after do_backup_local().
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
@@ -8851,13 +28701,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # performed a backup.
       if ($num_backups == $num_to_keep + 1) {
   
-  	# pop takes from the end of the array. This is the oldest backup
-  	# because they are sorted newest to oldest.
-  	my $oldest_backup = pop @existing_backups;
+          # pop takes from the end of the array. This is the oldest backup
+          # because they are sorted newest to oldest.
+          my $oldest_backup = pop @existing_backups;
   
-  	system("btrfs subvol delete $oldest_backup");
+          safe_system("btrfs subvol delete $oldest_backup");
   
-  	return;
+          return;
       }
   
       # We haven't reached the backup quota yet so we don't delete anything.
@@ -8867,34 +28717,34 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # were keeping prior.
       else {
   
-  	while ($num_backups > $num_to_keep) {
+          while ($num_backups > $num_to_keep) {
   
-  	    # note that pop mutates existing_snaps
-  	    my $oldest_backup = pop @existing_backups;
+              # note that pop mutates existing_snaps
+              my $oldest_backup = pop @existing_backups;
   
-  	    system("btrfs subvol delete $oldest_backup");
+              safe_system("btrfs subvol delete $oldest_backup");
   
-  	    $num_backups--;
-  	}
+              $num_backups--;
+          }
   
-  	return;
+          return;
       }
   }
   
   sub delete_old_backups_ssh { # No test. Is not pure.
   
       # Delete old backup snapshot(s) at the remote host connected to by
-      # $server_ssh. We know how many backups to keep based off $backup's $keep
+      # $ssh. We know how many backups to keep based off $backup's $keep
       # setting defined in the users config. This function should be
       # called directly after do_backup_ssh().
   
-      my $config_ref = shift // confess missing_arg();
-      my $server_ssh = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $ssh = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       my $remote_backup_dir = $config_ref->{backups}{$backup}{backup_dir};
   
-      my @existing_backups = all_backup_snaps($config_ref, $backup, $server_ssh);
+      my @existing_backups = all_backup_snaps($config_ref, $backup, $ssh);
   
       my $num_backups = scalar @existing_backups;
   
@@ -8904,13 +28754,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # performed a backup.
       if ($num_backups == $num_to_keep + 1) {
   
-  	# pop takes from the end of the array. This is the oldest backup
-  	# because they are sorted newest to oldest.
-  	my $oldest_backup = pop @existing_backups;
+          # pop takes from the end of the array. This is the oldest backup
+          # because they are sorted newest to oldest.
+          my $oldest_backup = pop @existing_backups;
   
-  	$server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+          safe_system_ssh($ssh, "sudo -n btrfs subvol delete $oldest_backup");
   
-  	return;
+          return;
       }
   
       # We haven't reached the backup quota yet so we don't delete anything.
@@ -8920,17 +28770,17 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # were keeping prior.
       else {
   
-  	while ($num_backups > $num_to_keep) {
+          while ($num_backups > $num_to_keep) {
   
-  	    # note that pop mutates existing_snaps
-  	    my $oldest_backup = pop @existing_backups;
+              # note that pop mutates existing_snaps
+              my $oldest_backup = pop @existing_backups;
   
-  	    $server_ssh->system("sudo -n btrfs subvol delete $oldest_backup");
+              safe_system_ssh($ssh, "sudo -n btrfs subvol delete $oldest_backup");
   
-  	    $num_backups--;
-  	}
+              $num_backups--;
+          }
   
-  	return;
+          return;
       }
   }
   
@@ -8938,15 +28788,15 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # True if $backup already has a bootstrap snapshot.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
       return 0 if not -d $bootstrap_snap_dir;
   
       opendir(my $dh, $bootstrap_snap_dir) or
-        confess "yabsm: internal error: can not open dir '$bootstrap_snap_dir'";
+        get_logger->logdie("yabsm: internal error: can not open dir '$bootstrap_snap_dir'");
   
       my @snaps = grep { /^[^.]/ } readdir($dh);
   
@@ -8968,8 +28818,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # only want snapshots from certain timeframes which can be passed
       # as the >=3'rd arguments.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subject    = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subject    = shift // get_logger->logconfess(missing_arg());
       my @timeframes = @_;
   
       my @all_snaps = (); # return this
@@ -9007,16 +28857,16 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # can be passed as an arg if $backup is a remote backup, otherwise
       # a new connection will be opened.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       my @all_backups = ();
   
       if (is_remote_backup($config_ref, $backup)) {
           my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
           my $remote_host = $config_ref->{backups}{$backup}{host};
-          my $server_ssh = shift // new_ssh_connection( $remote_host );
-          @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $server_ssh->capture("ls $backup_dir") ]);
+          my $ssh = shift // new_ssh_connection( $remote_host );
+          @all_backups = sort_snaps([ map { chomp; $_ = "$backup_dir/$_" } grep { $_ !~ /BOOTSTRAP-day/ } $ssh->capture("ls $backup_dir") ]);
   
       }
   
@@ -9034,17 +28884,17 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # $subvol and $timeframe arguments are optional. Note that we do not
       # check check that $subvol and $timeframe are a valid subvol/timeframe.
   
-      my $config_ref = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
       my $subvol     = shift; # optional
       my $timeframe  = shift; # optional
   
       my $yabsm_dir = $config_ref->{misc}{yabsm_dir};
   
       if (defined $subvol) {
-  	$yabsm_dir .= "/$subvol";
-  	if (defined $timeframe) {
-  	    $yabsm_dir .= "/$timeframe";
-  	}
+          $yabsm_dir .= "/$subvol";
+          if (defined $timeframe) {
+              $yabsm_dir .= "/$timeframe";
+          }
       }
   
       return $yabsm_dir;
@@ -9055,8 +28905,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Return the path of the directory holding the bootstrap snapshot for
       # $backup. The bootstrap snapshot is used for btrfs incremental backups.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       my $subvol = $config_ref->{backups}{$backup}{subvol};
   
@@ -9070,7 +28920,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Return 1 iff $snapstring is a valid snapstring. Works on
       # absolute paths as well as plain snapstrings.
   
-      my $snapstring = shift // confess missing_arg();
+      my $snapstring = shift // get_logger->logconfess(missing_arg());
   
       return $snapstring =~ /day=\d{4}_\d{2}_\d{2},time=\d{2}:\d{2}$/;
   }
@@ -9089,8 +28939,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Return a snapstring of the time $n $unit's ago from the current
       # time. The unit can be minutes, hours or days.
   
-      my $n    = shift // confess missing_arg();
-      my $unit = shift // confess missing_arg();
+      my $n    = shift // get_logger->logconfess(missing_arg());
+      my $unit = shift // get_logger->logconfess(missing_arg());
   
       # Can add/subtract by seconds with Time::Piece objects.
   
@@ -9099,7 +28949,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       if    ($unit =~ /^(minutes|mins|m)$/) { $seconds_per_unit = 60    }
       elsif ($unit =~ /^(hours|hrs|h)$/   ) { $seconds_per_unit = 3600  }
       elsif ($unit =~ /^(days|d)$/        ) { $seconds_per_unit = 86400 }
-      else  { confess "yabsm: internal error: '$unit' is not a valid time unit" }
+      else  { get_logger->logconfess("yabsm: internal error: '$unit' is not a valid time unit") }
   
       my $current_time = current_time_snapstring();
   
@@ -9114,7 +28964,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # An immediate is either a literal time or a relative time.
   
-      my $imm = shift // confess missing_arg();
+      my $imm = shift // get_logger->logconfess(missing_arg());
   
       return is_literal_time($imm) || is_relative_time($imm);
   }
@@ -9125,7 +28975,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # come in one of 5 different forms which can be seen by the 5
       # regexps below.
   
-      my $lit_time = shift // confess missing_arg();
+      my $lit_time = shift // get_logger->logconfess(missing_arg());
   
       # yr-mon-day-hr:min
       my $re1 = qr/^\d{4}-\d{1,2}-\d{1,2}-\d{1,2}:\d{1,2}$/;
@@ -9152,7 +29002,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # The amount field must be a whole number.
       # The unit field must be a time unit like 'minutes', 'hours', or 'days'.
   
-      my $rel_time = shift // confess missing_arg();
+      my $rel_time = shift // get_logger->logconfess(missing_arg());
   
       my ($back, $amount, $unit) = split '-', $rel_time, 3;
   
@@ -9172,25 +29022,25 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Resolve an immediate to a snapstring.
   
-      my $imm = shift // confess missing_arg();
+      my $imm = shift // get_logger->logconfess(missing_arg());
   
       if (is_literal_time($imm)) {
-  	return literal_time_to_snapstring($imm);
+          return literal_time_to_snapstring($imm);
       }
   
       if (is_relative_time($imm)) {
-  	return relative_time_to_snapstring($imm);
+          return relative_time_to_snapstring($imm);
       }
   
       # input should have already been cleansed.
-      confess "yabsm: internal error: '$imm' is not an immediate";
+      get_logger->logconfess("yabsm: internal error: '$imm' is not an immediate");
   }
   
   sub literal_time_to_snapstring { # Has test. Is pure.
   
       # Resolve a literal time to a snapstring.
   
-      my $lit_time = shift // confess missing_arg();
+      my $lit_time = shift // get_logger->logconfess(missing_arg());
   
       # literal time forms
       my $yr_mon_day_hr_min = qr/^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
@@ -9202,26 +29052,26 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $hr_min            = qr/^(\d{1,2}):(\d{1,2})$/;
   
       if ($lit_time =~ $yr_mon_day_hr_min) {
-  	return nums_to_snapstring($1, $2, $3, $4, $5);
+          return nums_to_snapstring($1, $2, $3, $4, $5);
       }
   
       if ($lit_time =~ $yr_mon_day) {
-  	return nums_to_snapstring($1, $2, $3, 0, 0);
+          return nums_to_snapstring($1, $2, $3, 0, 0);
       }
   
       if ($lit_time =~ $mon_day) {
-  	my $t = localtime;
-  	return nums_to_snapstring($t->year, $1, $2, 0, 0);
+          my $t = localtime;
+          return nums_to_snapstring($t->year, $1, $2, 0, 0);
       }
   
       if ($lit_time =~ $mon_day_hr) {
-  	my $t = localtime;
-  	return nums_to_snapstring($t->year, $1, $2, $3, 0);
+          my $t = localtime;
+          return nums_to_snapstring($t->year, $1, $2, $3, 0);
       }
   
       if ($lit_time =~ $mon_day_hr_min) {
-  	my $t = localtime;
-  	return nums_to_snapstring($t->year, $1, $2, $3, $4);
+          my $t = localtime;
+          return nums_to_snapstring($t->year, $1, $2, $3, $4);
       }
   
       if ($lit_time =~ $day_hr_min) {
@@ -9235,7 +29085,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       # input should have already been cleansed.
-      confess "yabsm: internal error: '$lit_time' is not a valid literal time";
+      get_logger->logconfess("yabsm: internal error: '$lit_time' is not a valid literal time");
   }
   
   sub time_hour { # Has test. Is pure.
@@ -9264,7 +29114,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Resolve a relative time to a snapstring.
   
-      my $rel_time = shift // confess missing_arg();
+      my $rel_time = shift // get_logger->logconfess(missing_arg());
   
       my (undef, $amount, $unit) = split '-', $rel_time, 3;
   
@@ -9279,7 +29129,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # order the year, month, day, hour, and minute. This works with
       # both a full path and just a snapshot name string.
   
-      my $snap = shift // confess missing_arg();
+      my $snap = shift // get_logger->logconfess(missing_arg());
   
       my @nums = $snap =~ /day=(\d{4})_(\d{2})_(\d{2}),time=(\d{2}):(\d{2})$/;
   
@@ -9301,7 +29151,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Turn a snapshot name string into a Time::Peice object. This is
       # useful because we can do time arithmetic on these objects.
   
-      my $snap = shift // confess missing_arg();
+      my $snap = shift // get_logger->logconfess(missing_arg());
   
       my ($yr, $mon, $day, $hr, $min) = snapstring_to_nums($snap);
   
@@ -9312,7 +29162,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Turn a Time::Piece object into a snapshot name string.
   
-      my $time_piece_obj = shift // confess missing_arg();
+      my $time_piece_obj = shift // get_logger->logconfess(missing_arg());
   
       my $yr  = $time_piece_obj->year;
       my $mon = $time_piece_obj->mon;
@@ -9329,7 +29179,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # The snapshots will be returned newest to oldest. Works with
       # plain snapstrings and full paths.
   
-      my $snaps_ref = shift // confess missing_arg();
+      my $snaps_ref = shift // get_logger->logconfess(missing_arg());
   
       my @sorted_snaps = sort { cmp_snaps($a, $b) } @$snaps_ref;
   
@@ -9343,8 +29193,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Return 0 if $snap1 and $snap2 are the same.
       # Works with both plain snapstrings and full paths.
   
-      my $snap1 = shift // confess missing_arg();
-      my $snap2 = shift // confess missing_arg();
+      my $snap1 = shift // get_logger->logconfess(missing_arg());
+      my $snap2 = shift // get_logger->logconfess(missing_arg());
   
       my @snap1_nums = snapstring_to_nums($snap1);
       my @snap2_nums = snapstring_to_nums($snap2);
@@ -9352,8 +29202,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # lexicographic order
       for (my $i = 0; $i <= $#snap1_nums; $i++) {
   
-  	return -1 if $snap1_nums[$i] > $snap2_nums[$i];
-  	return 1  if $snap1_nums[$i] < $snap2_nums[$i];
+          return -1 if $snap1_nums[$i] > $snap2_nums[$i];
+          return 1  if $snap1_nums[$i] < $snap2_nums[$i];
       }
   
       # Must be the same
@@ -9366,38 +29216,38 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # $target_snap. $all_snaps_ref should be sorted from newest to
       # oldest.
   
-      my $all_snaps_ref = shift // confess missing_arg();
-      my $target_snap   = shift // confess missing_arg();
+      my $all_snaps_ref = shift // get_logger->logconfess(missing_arg());
+      my $target_snap   = shift // get_logger->logconfess(missing_arg());
   
       my $snap;
   
       for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
   
-  	my $this_snap = $all_snaps_ref->[$i];
+          my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $target_snap);
+          my $cmp = cmp_snaps($this_snap, $target_snap);
   
-  	# if $this_snap is the same as $target_snap
-  	if ($cmp == 0) {
-  	    $snap = $this_snap;
-  	    last;
-  	}
+          # if $this_snap is the same as $target_snap
+          if ($cmp == 0) {
+              $snap = $this_snap;
+              last;
+          }
   
-  	# if $this_snap is older than $target_snap
-  	if ($cmp == 1) {
-  	    if ($i == 0) { # No previous snap. This is as close as were getting.
-  		$snap = $this_snap;
-  	    }
-  	    else {
-  		my $prev_snap = $all_snaps_ref->[$i-1];
-  		$snap = snap_closer($target_snap, $prev_snap, $this_snap);
-  	    }
-  	    last;
-  	}
+          # if $this_snap is older than $target_snap
+          if ($cmp == 1) {
+              if ($i == 0) { # No previous snap. This is as close as were getting.
+                  $snap = $this_snap;
+              }
+              else {
+                  my $prev_snap = $all_snaps_ref->[$i-1];
+                  $snap = snap_closer($target_snap, $prev_snap, $this_snap);
+              }
+              last;
+          }
       }
   
       if (not defined $snap) {
-  	$snap = oldest_snap($all_snaps_ref);
+          $snap = oldest_snap($all_snaps_ref);
       }
   
       return $snap;
@@ -9408,9 +29258,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Return either $snap1 or $snap2, depending on which is closer to
       # $target_snap. If they are equidistant return $snap1.
   
-      my $target_snap = shift // confess missing_arg();
-      my $snap1       = shift // confess missing_arg();
-      my $snap2       = shift // confess missing_arg();
+      my $target_snap = shift // get_logger->logconfess(missing_arg());
+      my $snap1       = shift // get_logger->logconfess(missing_arg());
+      my $snap2       = shift // get_logger->logconfess(missing_arg());
   
       my $target_epoch = snapstring_to_time_piece_obj($target_snap)->epoch;
       my $snap1_epoch  = snapstring_to_time_piece_obj($snap1)->epoch;
@@ -9429,22 +29279,22 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # $target_snap. We assume that $all_snaps_ref is sorted from
       # newest to oldest.
   
-      my $all_snaps_ref = shift // confess missing_arg();
-      my $target_snap   = shift // confess missing_arg();
+      my $all_snaps_ref = shift // get_logger->logconfess(missing_arg());
+      my $target_snap   = shift // get_logger->logconfess(missing_arg());
   
       my @newer = ();
   
       for (my $i = 0; $i <= $#{ $all_snaps_ref }; $i++) {
   
-  	my $this_snap = $all_snaps_ref->[$i];
+          my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $target_snap);
+          my $cmp = cmp_snaps($this_snap, $target_snap);
   
-  	# if $this_snap is newer than $target_snap
-  	if ($cmp == -1) {
-  	    push @newer, $this_snap;
-  	}
-  	else { last }
+          # if $this_snap is newer than $target_snap
+          if ($cmp == -1) {
+              push @newer, $this_snap;
+          }
+          else { last }
       }
   
       return wantarray ? @newer : \@newer;
@@ -9454,8 +29304,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return all the snapshots that are older than $target_snap.
   
-      my $all_snaps_ref = shift // confess missing_arg();
-      my $target_snap   = shift // confess missing_arg();
+      my $all_snaps_ref = shift // get_logger->logconfess(missing_arg());
+      my $target_snap   = shift // get_logger->logconfess(missing_arg());
   
       my @older = ();
   
@@ -9463,15 +29313,15 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       for (my $i = 0; $i <= $last_idx; $i++) {
   
-  	my $this_snap = $all_snaps_ref->[$i];
+          my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $target_snap);
+          my $cmp = cmp_snaps($this_snap, $target_snap);
   
-  	# if $this_snap is older than $target_snap
-  	if ($cmp == 1) {
-  	    @older = @$all_snaps_ref[$i .. $last_idx];
-  	    last;
-  	}
+          # if $this_snap is older than $target_snap
+          if ($cmp == 1) {
+              @older = @$all_snaps_ref[$i .. $last_idx];
+              last;
+          }
       }
   
       return wantarray ? @older : \@older;
@@ -9483,9 +29333,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # and $target_snap2. Remember that $all_snaps_ref is sorted
       # newest to oldest.
   
-      my $all_snaps_ref = shift // confess missing_arg();
-      my $target_snap1  = shift // confess missing_arg();
-      my $target_snap2  = shift // confess missing_arg();
+      my $all_snaps_ref = shift // get_logger->logconfess(missing_arg());
+      my $target_snap1  = shift // get_logger->logconfess(missing_arg());
+      my $target_snap2  = shift // get_logger->logconfess(missing_arg());
   
       # figure out which target snap is newer/older.
   
@@ -9493,12 +29343,12 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $newer;
   
       if (-1 == cmp_snaps($target_snap1, $target_snap2)) {
-  	$newer = $target_snap1;
-  	$older = $target_snap2;
+          $newer = $target_snap1;
+          $older = $target_snap2;
       }
       else {
-  	$newer = $target_snap2;
-  	$older = $target_snap1;
+          $newer = $target_snap2;
+          $older = $target_snap1;
       }
   
       # Find the snaps between (inclusive) $newer and $older. Remember
@@ -9510,40 +29360,40 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       for (my $i = 0; $i <= $last_idx; $i++) {
   
-  	my $this_snap = $all_snaps_ref->[$i];
+          my $this_snap = $all_snaps_ref->[$i];
   
-  	my $cmp = cmp_snaps($this_snap, $newer);
+          my $cmp = cmp_snaps($this_snap, $newer);
   
-  	# if $this_snap is older or equal to the $newer
-  	if ($cmp == 1 || $cmp == 0) {
+          # if $this_snap is older or equal to the $newer
+          if ($cmp == 1 || $cmp == 0) {
   
-  	    # between (inclusive)
-  	    push @snaps_between, $this_snap if $cmp == 0;
+              # between (inclusive)
+              push @snaps_between, $this_snap if $cmp == 0;
   
-  	    for (my $j = $i+1; $j <= $last_idx; $j++) {
+              for (my $j = $i+1; $j <= $last_idx; $j++) {
   
-  		my $this_snap = $all_snaps_ref->[$j];
+                  my $this_snap = $all_snaps_ref->[$j];
   
-  		my $cmp = cmp_snaps($this_snap, $older);
+                  my $cmp = cmp_snaps($this_snap, $older);
   
-  		# if $this_snap is older than or equal to $older
-  		if ($cmp == 1 || $cmp == 0) {
+                  # if $this_snap is older than or equal to $older
+                  if ($cmp == 1 || $cmp == 0) {
   
-  		    # between (inclusive)
-  		    push @snaps_between, $this_snap if $cmp == 0;
+                      # between (inclusive)
+                      push @snaps_between, $this_snap if $cmp == 0;
   
-  		    # Were done. Break the inner loop. The outer loop
-  		    # will be broken as well.
-  		    last;
-  		}
+                      # Were done. Break the inner loop. The outer loop
+                      # will be broken as well.
+                      last;
+                  }
   
-  		else {
-  		    push @snaps_between, $this_snap;
-  		}
-  	    }
+                  else {
+                      push @snaps_between, $this_snap;
+                  }
+              }
   
-  	    last;
-  	}
+              last;
+          }
       }
   
       return wantarray ? @snaps_between : \@snaps_between;
@@ -9557,21 +29407,21 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # snapshot of some subvol/backup, and thus will require an extra
       # argument denoting the desired subvol/backup.
   
-      my $ref    = shift // confess missing_arg();
+      my $ref    = shift // get_logger->logconfess(missing_arg());
       my $subvol = shift; # only needed if $ref is $config_ref
   
       my $ref_type = ref($ref);
   
       if ($ref_type eq 'ARRAY') {
-  	return $ref->[0]
+          return $ref->[0]
       }
   
       if ($ref_type eq 'HASH') {
-  	my $all_snaps_ref = all_snaps($ref, $subvol);
-  	return $all_snaps_ref->[0];
+          my $all_snaps_ref = all_snaps($ref, $subvol);
+          return $all_snaps_ref->[0];
       }
   
-      confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
+      get_logger->logconfess("yabsm: internal error: '$ref' has ref type '$ref_type'");
   }
   
   sub oldest_snap { # Has test. Is not pure.
@@ -9582,21 +29432,21 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # snapshot of some subvol/backup, and thus will require an extra
       # argument denoting the desired subvol/backup.
   
-      my $ref = shift // confess missing_arg();
+      my $ref = shift // get_logger->logconfess(missing_arg());
   
       my $ref_type = ref($ref);
   
       if ($ref_type eq 'ARRAY') {
-  	return $ref->[-1];
+          return $ref->[-1];
       }
   
       if ($ref_type eq 'HASH') {
-  	my $subject = shift // confess missing_arg();
-  	my $all_snaps_ref = all_snaps($ref, $subject);
-  	return $all_snaps_ref->[-1];
+          my $subject = shift // get_logger->logconfess(missing_arg());
+          my $all_snaps_ref = all_snaps($ref, $subject);
+          return $all_snaps_ref->[-1];
       }
   
-      confess "yabsm: internal error: '$ref' has ref type '$ref_type'";
+      get_logger("yabsm: internal error: '$ref' has ref type '$ref_type'");
   }
   
   sub answer_query { # No test. Is not pure.
@@ -9605,9 +29455,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # $subject. We expect that $query has already been
       # validated. $subject can either be a defined subvol or a backup.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subject    = shift // confess missing_arg();
-      my $query      = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subject    = shift // get_logger->logconfess(missing_arg());
+      my $query      = shift // get_logger->logconfess(missing_arg());
   
       my $all_snaps_ref = all_snaps($config_ref, $subject);
   
@@ -9615,71 +29465,71 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       if ($query eq 'all') {
   
-  	# return all the snaps
+          # return all the snaps
   
-  	@snaps_to_return = @$all_snaps_ref;
+          @snaps_to_return = @$all_snaps_ref;
       }
   
       elsif ($query eq 'newest') {
   
-  	# return just the newest snap
+          # return just the newest snap
   
-  	my $snap = newest_snap($all_snaps_ref);
+          my $snap = newest_snap($all_snaps_ref);
   
-  	@snaps_to_return = ($snap);
+          @snaps_to_return = ($snap);
       }
   
       elsif ($query eq 'oldest') {
   
-  	# return just the oldest snap
+          # return just the oldest snap
   
-  	my $snap = oldest_snap($all_snaps_ref);
+          my $snap = oldest_snap($all_snaps_ref);
   
-  	@snaps_to_return = ($snap);
+          @snaps_to_return = ($snap);
       }
   
       elsif (is_immediate($query)) {
   
-  	# return the one snap closest to the time denoted by the immediate.
+          # return the one snap closest to the time denoted by the immediate.
   
-  	my $target = immediate_to_snapstring($query);
+          my $target = immediate_to_snapstring($query);
   
-  	my $snap = snap_closest_to($all_snaps_ref, $target);
+          my $snap = snap_closest_to($all_snaps_ref, $target);
   
-  	@snaps_to_return = ($snap);
+          @snaps_to_return = ($snap);
       }
   
       elsif (is_newer_than_query($query)) {
   
-  	my (undef, $imm) = split /\s/, $query, 2;
+          my (undef, $imm) = split /\s/, $query, 2;
   
-  	my $target = immediate_to_snapstring($imm);
+          my $target = immediate_to_snapstring($imm);
   
-  	@snaps_to_return = snaps_newer_than($all_snaps_ref, $target);
+          @snaps_to_return = snaps_newer_than($all_snaps_ref, $target);
       }
   
       elsif (is_older_than_query($query)) {
   
-  	my (undef, $imm) = split /\s/, $query, 2;
+          my (undef, $imm) = split /\s/, $query, 2;
   
-  	my $target = immediate_to_snapstring($imm);
+          my $target = immediate_to_snapstring($imm);
   
-  	@snaps_to_return = snaps_older_than($all_snaps_ref, $target);
+          @snaps_to_return = snaps_older_than($all_snaps_ref, $target);
       }
   
       elsif (is_between_query($query)) {
   
-  	my (undef, $imm1, $imm2) = split /\s/, $query, 3;
+          my (undef, $imm1, $imm2) = split /\s/, $query, 3;
   
-  	my $target1 = immediate_to_snapstring($imm1);
+          my $target1 = immediate_to_snapstring($imm1);
   
-  	my $target2 = immediate_to_snapstring($imm2);
+          my $target2 = immediate_to_snapstring($imm2);
   
-  	@snaps_to_return = snaps_between($all_snaps_ref, $target1, $target2);
+          @snaps_to_return = snaps_between($all_snaps_ref, $target1, $target2);
       }
   
       else { # input should have already been cleansed
-  	confess "yabsm: internal error: '$query' is not a valid query";
+          get_logger->("yabsm: internal error: '$query' is not a valid query");
       }
   
       return wantarray ? @snaps_to_return : \@snaps_to_return;
@@ -9690,7 +29540,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # True iff $query is a valid query. Used to validate
       # user input query for 'yabsm find'.
   
-      my $query = shift // confess missing_arg();
+      my $query = shift // get_logger->logconfess(missing_arg());
   
       if ($query eq 'all')             { return 1 }
       if ($query eq 'newest')          { return 1 }
@@ -9711,7 +29561,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # keywords 'newer', 'after', or 'aft'. A newer_than query takes
       # exactly one immediate as an argument.
   
-      my $query = shift // confess missing_arg();
+      my $query = shift // get_logger->logconfess(missing_arg());
   
       my ($keyword, $imm) = split /\s/, $query, 2;
   
@@ -9732,7 +29582,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # keywords 'older', 'before', or 'bef'. An older_than query takes
       # exactly one immediate as an argument.
   
-      my $query = shift // confess missing_arg();
+      my $query = shift // get_logger->logconfess(missing_arg());
   
       my ($keyword, $imm) = split /\s/, $query, 2;
   
@@ -9751,7 +29601,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # A between query takes two immediate arguments and returns all
       # snapshots between the two immediate times.
   
-      my $query = shift // confess missing_arg();
+      my $query = shift // get_logger->logconfess(missing_arg());
   
       my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
   
@@ -9777,7 +29627,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # true if $tf is a yabsm timeframe.
   
-      my $tf = shift // confess missing_arg();
+      my $tf = shift // get_logger->logconfess(missing_arg());
   
       return any { $tf eq $_ } all_timeframes();
   }
@@ -9786,9 +29636,9 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # true iff $subvol wants to take $timeframe snapshots.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subvol     = shift // confess missing_arg();
-      my $timeframe  = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subvol     = shift // get_logger->logconfess(missing_arg());
+      my $timeframe  = shift // get_logger->logconfess(missing_arg());
   
       return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
   }
@@ -9797,8 +29647,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return an array of all the timeframes that $subvol wants snapshots for.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subvol     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subvol     = shift // get_logger->logconfess(missing_arg());
   
       my @tfs = ();
   
@@ -9815,7 +29665,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return an array of the names of every user defined subvol.
   
-      my $config_ref = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
   
       my @subvols = sort keys %{$config_ref->{subvols}};
   
@@ -9826,7 +29676,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return an array of the names of every user defined backup.
   
-      my $config_ref = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
   
       my @backups = sort keys %{$config_ref->{backups}};
   
@@ -9837,18 +29687,18 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # Return an array of all the backups that are backing up $subvol.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subvol     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subvol     = shift // get_logger->logconfess(missing_arg());
   
       my @backups = ();
   
       foreach my $backup (all_backups($config_ref)) {
   
-  	my $this_subvol = $config_ref->{backups}{$backup}{subvol};
+          my $this_subvol = $config_ref->{backups}{$backup}{subvol};
   
-  	if ($this_subvol eq $subvol) {
-  	    push @backups, $backup
-  	}
+          if ($this_subvol eq $subvol) {
+              push @backups, $backup
+          }
       }
   
       return wantarray ? @backups : \@backups;
@@ -9859,8 +29709,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # True iff $subject is an existing user defined subject. A subject
       # is either a subvol or backup.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subject    = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subject    = shift // get_logger->logconfess(missing_arg());
   
       my $is_subvol = is_subvol($config_ref, $subject);
       my $is_backup = is_backup($config_ref, $subject);
@@ -9872,8 +29722,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # True iff $subvol is the name of a user defined subvol.
   
-      my $config_ref = shift // confess missing_arg();
-      my $subvol     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $subvol     = shift // get_logger->logconfess(missing_arg());
   
       return any { $subvol eq $_ } all_subvols($config_ref);
   }
@@ -9882,8 +29732,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
       # True iff $backup is the name of a user defined backup.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       return any { $backup eq $_ } all_backups($config_ref);
   }
@@ -9894,11 +29744,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # local backup is one in which the backups 'remote' field is set
       # to 'yes'.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       if (is_backup($config_ref, $backup)) {
-  	return $config_ref->{backups}{$backup}{remote} eq 'yes';
+          return $config_ref->{backups}{$backup}{remote} eq 'yes';
       }
   
       else { return 0 }
@@ -9909,8 +29759,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Schedule snapshots based off user configuration by adding
       # them to $cron_scheduler object (see Schedule::Cron module).
   
-      my $config_ref     = shift // confess missing_arg();
-      my $cron_scheduler = shift // confess missing_arg();
+      my $config_ref     = shift // get_logger->logconfess(missing_arg());
+      my $cron_scheduler = shift // get_logger->logconfess(missing_arg());
   
       foreach my $subvol (all_subvols($config_ref)) {
   
@@ -9973,8 +29823,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Schedule backups based off user configuration by adding
       # them to $cron_scheduler object (see Schedule::Cron module).
   
-      my $config_ref     = shift // confess missing_arg();
-      my $cron_scheduler = shift // confess missing_arg();
+      my $config_ref     = shift // get_logger->logconfess(missing_arg());
+      my $cron_scheduler = shift // get_logger->logconfess(missing_arg());
   
       foreach my $backup (all_backups($config_ref)) {
   
@@ -10025,6 +29875,10 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
                   sub { do_backup($config_ref, $backup) }
               );
           }
+  
+          else {
+              get_logger->logdie("yabsm: internal error: invalid timeframe '$timeframe'");
+          }
       }
   }
   
@@ -10033,11 +29887,11 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Return 1 iff $backup is the name of a defined local backup. A
       # local backup is a backup whos 'remote' field is set # to 'no'.
   
-      my $config_ref = shift // confess missing_arg();
-      my $backup     = shift // confess missing_arg();
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+      my $backup     = shift // get_logger->logconfess(missing_arg());
   
       if (is_backup($config_ref, $backup)) {
-  	return $config_ref->{backups}{$backup}{remote} eq 'no';
+          return $config_ref->{backups}{$backup}{remote} eq 'no';
       }
       else { return 0 }
   }
@@ -10047,18 +29901,18 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Create and return a Net::OpenSSH connection object. Kill the
       # program if we cannot establish a connection to $remote host.
   
-      my $remote_host = shift // confess missing_arg();
+      my $remote_host = shift // get_logger->logconfess(missing_arg());
   
-      my $server_ssh = Net::OpenSSH->new( $remote_host,
+      my $ssh = Net::OpenSSH->new( $remote_host,
                                         , batch_mode => 1 # Don't try asking for password
-  			              , timeout => 5    # Minutes
-  			              , kill_ssh_on_timeout => 1
-  			              );
+                                        , timeout => 5    # Minutes
+                                        , kill_ssh_on_timeout => 1
+                                        );
   
-      $server_ssh->error and
-        die "yabsm: ssh error: could not establish ssh connection to '$remote_host' " . $server_ssh->error . "\n";
+      $ssh->error and
+        get_logger->logdie("yabsm: error: could not establish ssh connection to '$remote_host': " . $ssh->error);
   
-      return $server_ssh;
+      return $ssh;
   }
   
   sub day_of_week_num { # Has test. Is pure.
@@ -10068,19 +29922,19 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # the week, and this function is used to generate cron
       # strings. Exit program if $dow is not a valid day of week.
   
-      my $dow = shift // confess missing_arg();
+      my $dow = shift // get_logger->logconfess(missing_arg());
   
       $dow = lc $dow;
   
-      if    ($dow =~ /^monday$/)    { return 1 }
-      elsif ($dow =~ /^tuesday$/)   { return 2 }
-      elsif ($dow =~ /^wednesday$/) { return 3 }
-      elsif ($dow =~ /^thursday$/)  { return 4 }
-      elsif ($dow =~ /^friday$/)    { return 5 }
-      elsif ($dow =~ /^saturday$/)  { return 6 }
-      elsif ($dow =~ /^sunday$/)    { return 7 }
+      if    ($dow eq 'monday')    { return 1 }
+      elsif ($dow eq 'tuesday')   { return 2 }
+      elsif ($dow eq 'wednesday') { return 3 }
+      elsif ($dow eq 'thursday')  { return 4 }
+      elsif ($dow eq 'friday')    { return 5 }
+      elsif ($dow eq 'saturday')  { return 6 }
+      elsif ($dow eq 'sunday')    { return 7 }
       else {
-          confess "yabsm: internal error: no such day of week '$dow'";
+          get_logger->logconfess("yabsm: internal error: no such day of week '$dow'");
       }
   }
   
@@ -10089,6 +29943,46 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       # Return all the valid days of the week.
   
       return qw(monday tuesday wednesday thursday friday saturday sunday);
+  }
+  
+  sub safe_system {
+  
+      # Like backticks but log and die if $cmd exits with non-zero status.
+  
+      my $cmd     = shift // get_logger->logconfess(missing_arg());
+      my $err_msg = shift;
+  
+      my $output = `$cmd`;
+  
+      # $? is the exit status of $cmd
+      unless (0 == $?) {
+          $err_msg = $err_msg // "yabsm: error: shell command '$cmd' exited with status $? and outputted - $output";
+          get_logger->logdie($err_msg);
+      }
+  
+      return $output;
+  }
+  
+  sub safe_system_ssh {
+  
+      # Like Net::OpenSSH::capture but log and die if $cmd exits with
+      # a non-zero status.
+  
+      my $ssh  = shift // get_logger->logconfess(missing_arg());
+      my $cmd  = shift // get_logger->logconfess(missing_arg());
+      my %opts = (ref $_[0] eq 'HASH' ? %{shift()} : ());
+  
+      my $output = $ssh->capture({%opts}, $cmd);
+  
+      unless (0 == $?) {
+          get_logger->logdie( 'yabsm: error: SSH command sent to '
+                            . $ssh->get_host
+                            . " exited with status $? and outputted - "
+                            . $output
+                            );
+      }
+  
+      return $output
   }
   
   sub missing_arg {
@@ -10358,6 +30252,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
   use Carp;
   use Array::Utils 'array_minus';
+  use Log::Log4perl 'get_logger';
   
   use Parser::MGC;
   use base 'Parser::MGC';
@@ -10411,7 +30306,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
   sub p {
   
-      my $self = shift // Yabsm::Base::missing_arg();
+      my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
   
       my %config;
   
@@ -10461,7 +30356,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
   sub subvol_def_p {
   
-      my $self = shift // Yabsm::Base::missing_arg();
+      my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
   
       my %kvs; # return this
       my $k;
@@ -10506,7 +30401,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
   sub backup_def_p {
   
-      my $self = shift // Yabsm::Base::missing_arg();
+      my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
   
       my %kvs; # return this
       my $k;
@@ -10568,7 +30463,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
   sub missing_subvol_settings {
   
-      my $config_ref = shift // Yabsm::Base::missing_arg();
+      my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
   
       my @err_msgs = ();
   
@@ -10620,7 +30515,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
   sub missing_backup_settings {
   
-      my $config_ref = shift // Yabsm::Base::missing_arg();
+      my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
   
       my @err_msgs = ();
   
@@ -10670,7 +30565,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
   sub missing_misc_settings {
   
-      my $config_ref = shift // Yabsm::Base::missing_arg();
+      my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
   
       my @err_msgs = ();
   

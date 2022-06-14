@@ -64,6 +64,7 @@ sub gen_random_config {
         my $monthly_want = yes_or_no();
         my $monthly_time = rand_time();
         my $monthly_keep = 1 + int(rand(1000));
+        my $monthly_day  = 1 + int(rand(31));
 
         # add entries to the config
 
@@ -86,6 +87,7 @@ sub gen_random_config {
 
         $config{subvols}{$subvol}{monthly_want} = $monthly_want;
         $config{subvols}{$subvol}{monthly_time} = $monthly_time;
+        $config{subvols}{$subvol}{monthly_day} = $monthly_day;
         $config{subvols}{$subvol}{monthly_keep} = $monthly_keep;
     }
 

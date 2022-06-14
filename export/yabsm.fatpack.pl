@@ -28368,7 +28368,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   #  has not been informally tested.
   #
   #  An error message prefixed with 'yabsm: internal error' is an error for a
-  #  scenario that will only occur a bug is present.
+  #  scenario that will only occur if a bug is present.
   
   package Yabsm::Base;
   
@@ -28794,6 +28794,8 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $bootstrap_snap_dir = bootstrap_snap_dir($config_ref, $backup);
   
       return 0 if not -d $bootstrap_snap_dir;
+  
+      # Log if the bootstrap dir does not exist
   
       opendir(my $dh, $bootstrap_snap_dir) or
         get_logger->logdie("yabsm: internal error: can not open dir '$bootstrap_snap_dir'");
@@ -29529,7 +29531,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       else { # input should have already been cleansed
-          get_logger->("yabsm: internal error: '$query' is not a valid query");
+          get_logger->logconfess("yabsm: internal error: '$query' is not a valid query");
       }
   
       return wantarray ? @snaps_to_return : \@snaps_to_return;

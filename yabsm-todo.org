@@ -17,6 +17,5 @@
 - [X] Let user select day for monthly snapshots.
 - [ ] Write server authentication script to setup yabsm user.
 - [ ] Improve test suite.
-- [ ] Create Makefile that cleans the fatpacked scripts.
 - [ ] Create a comment that shows the tree structure of a produced
       config in src/lib/Config.pm.

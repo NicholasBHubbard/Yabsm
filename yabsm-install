@@ -40,10 +40,14 @@ GetOptions( 'y=s'    => \$yabsm_install_dir
 
 print $usage and exit 0 if $help;
 
+my $yabsmd_conf = 'etc/yabsmd.conf.example';
+my $yabsm       = "$yabsm_install_dir/yabsm";
+my $yabsmd      = "$yabsm_install_dir/yabsmd";
+
 my $export_dir = "$yabsm_root/export";
 
-copy "$export_dir/yabsmd.conf.example", '/etc' or die "$script: error: $!\n";
-copy "$export_dir/yabsm.fatpack.pl", "$yabsm_install_dir/yabsm" or die "$script: error: $!\n";
-copy "$export_dir/yabsmd.fatpack.pl", "$yabsmd_install_dir/yabsmd" or die "$script: error: $!\n";
+copy "$export_dir/yabsmd.conf.example", $yabsmd_conf or die "$script: error: could not install $yabsmd_conf\n";
+copy "$export_dir/yabsm.fatpack.pl",    $yabsm       or die "$script: error: could not install $yabsm\n";
+copy "$export_dir/yabsmd.fatpack.pl",   $yabsmd      or die "$script: error: could not install $yabsmd\n";
 
 say 'all good';

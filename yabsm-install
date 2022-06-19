@@ -40,7 +40,7 @@ GetOptions( 'y=s'    => \$yabsm_install_dir
 
 print $usage and exit 0 if $help;
 
-my $yabsmd_conf = 'etc/yabsmd.conf.example';
+my $yabsmd_conf = '/etc/yabsmd.conf.example';
 my $yabsm       = "$yabsm_install_dir/yabsm";
 my $yabsmd      = "$yabsm_install_dir/yabsmd";
 

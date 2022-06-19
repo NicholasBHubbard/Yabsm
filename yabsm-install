@@ -44,7 +44,7 @@ my $yabsmd_conf = 'etc/yabsmd.conf.example';
 my $yabsm       = "$yabsm_install_dir/yabsm";
 my $yabsmd      = "$yabsm_install_dir/yabsmd";
 
-my $export_dir = "$yabsm_root/export";
+my $export_dir  = "$yabsm_root/export";
 
 copy "$export_dir/yabsmd.conf.example", $yabsmd_conf or die "$script: error: could not install $yabsmd_conf\n";
 copy "$export_dir/yabsm.fatpack.pl",    $yabsm       or die "$script: error: could not install $yabsm\n";

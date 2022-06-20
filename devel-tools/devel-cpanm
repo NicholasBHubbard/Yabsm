@@ -24,7 +24,7 @@ chomp $plx;
 
 chdir $yabsm_root;
 
-my $cpanm_cmd = "PERL_CPANM_HOME=$yabsm_root $plx --cpanm -v -L local @ARGV";
+my $cpanm_cmd = "PERL_CPANM_HOME=$yabsm_root $plx --cpanm -L local -v @ARGV";
 say "$script: executing: $cpanm_cmd";
 system($cpanm_cmd);
 

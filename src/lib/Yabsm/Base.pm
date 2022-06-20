@@ -33,7 +33,6 @@ use v5.16.3;
 use Log::Log4perl qw(get_logger);
 use Net::OpenSSH;
 use Time::Piece;
-use List::Util 1.33 qw(any);
 use File::Path qw(make_path);
 
 sub do_snapshot { # No test. Is not pure.
@@ -662,13 +661,13 @@ sub is_relative_time { # Has test. Is pure.
 
     my ($back, $amount, $unit) = split '-', $rel_time, 3;
 
-    return 0 if any { not defined } ($back, $amount, $unit);
+    return 0 if grep { not defined } ($back, $amount, $unit);
 
     my $back_correct = $back =~ /^b(ack)?$/;
 
     my $amount_correct = $amount =~ /^\d+$/;
 
-    my $unit_correct = any { $unit eq $_ } qw(minutes mins m hours hrs h days d);
+    my $unit_correct = grep { $unit eq $_ } qw(minutes mins m hours hrs h days d);
 
     return $back_correct && $amount_correct && $unit_correct;
 }
@@ -1221,7 +1220,7 @@ sub is_newer_than_query { # Has test. Is pure.
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
-    return 0 if any { not defined } ($keyword, $imm);
+    return 0 if grep { not defined } ($keyword, $imm);
 
     my $keyword_correct = $keyword =~ /^(newer|after|aft)$/;
 
@@ -1242,7 +1241,7 @@ sub is_older_than_query { # Has test. Is pure.
 
     my ($keyword, $imm) = split /\s/, $query, 2;
 
-    return 0 if any { not defined } ($keyword, $imm);
+    return 0 if grep { not defined } ($keyword, $imm);
 
     my $keyword_correct = $keyword =~ /^(older|before|bef)$/;
 
@@ -1261,7 +1260,7 @@ sub is_between_query { # Has test. Is pure.
 
     my ($keyword, $imm1, $imm2) = split /\s/, $query, 3;
 
-    return 0 if any { not defined } ($keyword, $imm1, $imm2);
+    return 0 if grep { not defined } ($keyword, $imm1, $imm2);
 
     my $keyword_correct = $keyword =~ /^bet(ween)?$/;
 
@@ -1285,7 +1284,7 @@ sub is_timeframe { # Has test. Is pure.
 
     my $tf = shift // get_logger->logconfess(missing_arg());
 
-    return any { $tf eq $_ } all_timeframes();
+    return grep { $tf eq $_ } all_timeframes();
 }
 
 sub timeframe_want { # Has test. Is pure.
@@ -1381,7 +1380,7 @@ sub is_subvol { # Has test. Is pure.
     my $config_ref = shift // get_logger->logconfess(missing_arg());
     my $subvol     = shift // get_logger->logconfess(missing_arg());
 
-    return any { $subvol eq $_ } all_subvols($config_ref);
+    return grep { $subvol eq $_ } all_subvols($config_ref);
 }
 
 sub is_backup { # Has test. Is pure.
@@ -1391,7 +1390,7 @@ sub is_backup { # Has test. Is pure.
     my $config_ref = shift // get_logger->logconfess(missing_arg());
     my $backup     = shift // get_logger->logconfess(missing_arg());
 
-    return any { $backup eq $_ } all_backups($config_ref);
+    return grep { $backup eq $_ } all_backups($config_ref);
 }
 
 sub is_remote_backup { # Has test. Is pure.

@@ -37,6 +37,9 @@ say "$script: executing: $fatpack_yabsm_cmd";
 say "$script: executing: $fatpack_yabsmd_cmd";
 0 == system($fatpack_yabsmd_cmd) or die "$script: error: could not fatpack $yabsm_root/src/yabsmd.pl";
 
+chmod 0555, $yabsm_fatpacked;
+chmod 0555, $yabsmd_fatpacked;
+
 rmtree "$yabsm_root/src/fatlib";
 
 say 'all good';

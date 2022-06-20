@@ -7,5 +7,4 @@ requires 'Net::OpenSSH', '== 0.82';
 requires 'Schedule::Cron', '== 1.01';
 requires 'lib::relative', '== 1.000';
 requires 'Array::Utils', '== 0.5';
-requires 'List::Util', '== 1.33';
 requires 'Feature::Compat::Try', '== 0.04';

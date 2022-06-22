@@ -65,7 +65,7 @@ sub take_new_snapshot { # No test. Is not pure.
     my $snap_name = current_time_snapstring();
 
     # For the first time we take a $timeframe snapshot of $subvol.
-    make_path $snap_dir if not -d $snap_dir;
+    make_path_safe($snap_dir) if not -d $snap_dir;
 
     safe_system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
 
@@ -164,7 +164,7 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
         safe_system("btrfs subvol delete " . shift @snaps);
     }
     else {
-        make_path $boot_snap_dir;
+        make_path_safe($boot_snap_dir);
     }
 
     my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
@@ -177,7 +177,7 @@ sub do_backup_bootstrap_local { # No test. Is not pure.
         safe_system('btrfs subvol delete ' . shift @boot_snap);
     }
     else {
-        make_path $backup_dir;
+        make_path_safe($backup_dir);
     }
 
     my $boot_snap  = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
@@ -211,7 +211,7 @@ sub do_backup_bootstrap_ssh { # No test. Is not pure.
         safe_system('btrfs subvol delete ' . shift @boot_snap);
     }
     else {
-        make_path $boot_snap_dir;
+        make_path_safe($boot_snap_dir);
     }
 
     my $subvol = $config_ref->{backups}{$backup}{subvol};
@@ -285,7 +285,7 @@ sub do_backup_local { # No test. Is not pure.
     my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
 
     # If this is the first time backing up $backup.
-    make_path $tmp_dir if not -d $tmp_dir;
+    make_path_safe($tmp_dir) if not -d $tmp_dir;
 
     # main
     safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
@@ -322,7 +322,7 @@ sub do_backup_ssh { # No test. Is not pure.
     my $ssh = new_ssh_connection($remote_host);
 
     # If this is the first time backing up $backup.
-    make_path $tmp_dir if not -d $tmp_dir;
+    make_path_safe($tmp_dir) if not -d $tmp_dir;
 
     # main
     safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
@@ -1638,6 +1638,19 @@ sub safe_system_ssh {
     }
 
     return $output
+}
+
+sub make_path_safe {
+
+    # Wrapper around File::Path::make_path() that logdies if the path
+    # cannot be created.
+
+    my $path = shift // get_logger->logconfess(missing_arg());
+
+    my $ret = make_path($path)
+      or get_logger->logdie("yabsm: error: $!\n");
+
+    return $ret;
 }
 
 sub missing_arg {

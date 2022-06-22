@@ -89,7 +89,7 @@ sub yabsmd_start {
 
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {
-        die "yabsmd: error: yabsmd tried to start when there is already a running as pid $yabsmd_pid\n";
+        die "yabsmd: error: yabsmd is already running as pid $yabsmd_pid\n";
     }
 
     # Daemons should restart on a SIGHUP.

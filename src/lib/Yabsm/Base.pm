@@ -1611,7 +1611,7 @@ sub safe_system {
 
     # $? is the exit status of $cmd
     unless (0 == $?) {
-        $err_msg = $err_msg // "yabsm: error: shell command '$cmd' exited with status $? and outputted - $output";
+        $err_msg = $err_msg // "yabsm: error: system command '$cmd' exited with status $? and outputted -\n $output";
         get_logger->logdie($err_msg);
     }
 

@@ -23,7 +23,7 @@ $plx = "$yabsm_root/local/bin/plx" if -x "$yabsm_root/local/bin/plx";
 $plx = `sh -c 'command -v plx'` if `sh -c 'command -v plx'`;
 chomp $plx;
 
-my $fatpack = "$yabsm_root/local/bin/fatpack-simple";
+my $fatpack = "$yabsm_root/local/bin/fatpack";
 
 my $local_lib = "$yabsm_root/local";
 
@@ -51,8 +51,8 @@ my $excluded = join ',', qw(Module::Build
 my $yabsm_fatpacked = "$yabsm_root/export/yabsm.fatpack.pl";
 my $yabsmd_fatpacked = "$yabsm_root/export/yabsmd.fatpack.pl";
 
-my $fatpack_yabsm_cmd = "$plx --perl $fatpack -d $local_lib --shebang '#!/usr/bin/env perl' -o $yabsm_fatpacked $yabsm_root/src/yabsm.pl";
-my $fatpack_yabsmd_cmd = "$plx --perl $fatpack -d $local_lib --shebang '#!/usr/bin/env perl' -o $yabsmd_fatpacked $yabsm_root/src/yabsmd.pl";
+my $fatpack_yabsm_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsm.pl > $yabsm_fatpacked";
+my $fatpack_yabsmd_cmd = "$plx --perl $fatpack pack $yabsm_root/src/yabsmd.pl > $yabsmd_fatpacked";
 
 chdir "$yabsm_root/src";
 

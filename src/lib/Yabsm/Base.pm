@@ -1602,18 +1602,14 @@ sub all_days_of_week { # No test. Is pure.
 
 sub safe_system {
 
-    # Like backticks but log and die if $cmd exits with non-zero status.
+    # Like backticks but logconfess if $cmd
+    # exits with non-zero status.
 
-    my $cmd     = shift // get_logger->logconfess(missing_arg());
-    my $err_msg = shift;
+    my $cmd = shift // get_logger->logconfess(missing_arg());
 
     my $output = `$cmd`;
 
-    # $? is the exit status of $cmd
-    unless (0 == $?) {
-        $err_msg = $err_msg // "yabsm: error: system command '$cmd' exited with status $? and outputted -\n $output";
-        get_logger->logdie($err_msg);
-    }
+    $? == system($cmd) or get_logger->logconfess("yabsm: error: $!\n");
 
     return $output;
 }

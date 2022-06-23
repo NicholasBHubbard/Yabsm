@@ -1609,7 +1609,7 @@ sub safe_system {
 
     my $output = `$cmd`;
 
-    $? == system($cmd) or get_logger->logconfess("yabsm: error: $!\n");
+    0 == system($cmd) or get_logger->logconfess("yabsm: error: $!\n");
 
     return $output;
 }

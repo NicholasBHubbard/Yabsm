@@ -120,7 +120,8 @@ sub yabsmd_start {
     $SIG{XCPU}   = \&cleanup_and_exit;
     $SIG{XFSZ}   = \&cleanup_and_exit;
 
-    # Program will die with relevant error messages if config is invalid.
+    # read_config() kills the program with relevant error messages if
+    # /etc/yabsmd.conf is an invalid config.
     my $config_ref = Yabsm::Config::read_config();
 
     # Shedule::Cron takes care of the entire underlying mechanism for

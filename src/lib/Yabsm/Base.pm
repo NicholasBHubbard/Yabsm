@@ -35,6 +35,33 @@ use Net::OpenSSH;
 use Time::Piece;
 use File::Path qw(make_path);
 
+sub initialize_directories {
+    # TODO init directories
+    my $config_ref = shift // get_logger->logconfess(missing_arg());
+
+    get_logger->logdie("yabsm: error: initialize_directories() called while not root user")
+      if $<;
+
+    # We need the main snapshot dir
+    # every backup needs blank
+    # every subvol needs blank
+
+    my $yabsm_dir = local_yabsm_dir($config_ref);
+
+    make_path_safe($yabsm_dir);
+
+    foreach my $subvol (all_subvols($config_ref)) {
+        foreach my $tf (subvol_timeframes($config_ref, $subvol)) {
+            make_path_safe("$yabsm_dir/$subvol/$tf");
+        }
+    }
+
+    foreach my $backup (all_backups($config_ref)) {
+        #TODO
+        my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+   }
+}
+
 sub do_snapshot { # No test. Is not pure.
 
     # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
@@ -1298,7 +1325,7 @@ sub timeframe_want { # Has test. Is pure.
     return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
 }
 
-sub subvols_timeframes { # Has test. Is pure.
+sub subvol_timeframes { # Has test. Is pure.
 
     # Return an array of all the timeframes that $subvol wants snapshots for.
 
@@ -1643,10 +1670,10 @@ sub make_path_safe {
 
     my $path = shift // get_logger->logconfess(missing_arg());
 
-    my $ret = make_path($path)
-      or get_logger->logdie("yabsm: error: $!\n");
+    -d $path        and return 1;
+    make_path $path and return 1;
 
-    return $ret;
+    get_logger->logdie("yabsm: error: $!\n");
 }
 
 sub missing_arg {

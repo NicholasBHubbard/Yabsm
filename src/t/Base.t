@@ -1236,9 +1236,9 @@ sub test_subvol_timeframes {
     my $t = 1;
     for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
 
-        my @subvols_timeframes = Yabsm::Base::subvol_timeframes($config_ref, $subvol);
+        my @subvol_timeframes = Yabsm::Base::subvol_timeframes($config_ref, $subvol);
 
-        for my $tf (@subvols_timeframes) {
+        for my $tf (@subvol_timeframes) {
             $t = 0 if not 'yes' eq $config_ref->{subvols}{$subvol}{"${tf}_want"};
         }
     }

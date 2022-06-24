@@ -32,18 +32,6 @@ sub main {
 
     shift and die $usage;
 
-    Log::Log4perl::init(do {
-    my $log_config = q(
-log4perl.category.Yabsm.Base       = ALL, Logfile
-log4perl.appender.Logfile          = Log::Log4perl::Appender::File
-log4perl.appender.Logfile.filename = /var/log/yabsmd.log
-log4perl.appender.Logfile.mode     = append
-log4perl.appender.Logfile.layout   = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.Logfile.layout.ConversionPattern = %d [%M]: %m{chomp}%n
-);
-    \$log_config;
-});
-
     if    ($cmd eq 'start')   { yabsmd_start()   }
     elsif ($cmd eq 'stop')    { yabsmd_stop()    }
     elsif ($cmd eq 'restart') { yabsmd_restart() }
@@ -87,6 +75,18 @@ sub yabsmd_start {
 
     die "yabsmd: error: permission denied\n" if $<;
 
+    Log::Log4perl::init(do {
+        my $log_config = q(
+log4perl.category.Yabsm.Base       = ALL, Logfile
+log4perl.appender.Logfile          = Log::Log4perl::Appender::File
+log4perl.appender.Logfile.filename = /var/log/yabsmd.log
+log4perl.appender.Logfile.mode     = append
+log4perl.appender.Logfile.layout   = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Logfile.layout.ConversionPattern = %d [%M]: %m{chomp}%n
+);
+        \$log_config;
+    });
+
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {
         die "yabsmd: error: yabsmd is already running as pid $yabsmd_pid\n";
@@ -123,6 +123,9 @@ sub yabsmd_start {
     # read_config() kills the program with relevant error messages if
     # /etc/yabsmd.conf is an invalid config.
     my $config_ref = Yabsm::Config::read_config();
+
+    # Make sure we are not missing a directory at run time.
+    Yabsm::Base::initialize_directories($config_ref);
 
     # Shedule::Cron takes care of the entire underlying mechanism for
     # running a cron daemon.

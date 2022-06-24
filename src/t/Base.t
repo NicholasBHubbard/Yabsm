@@ -1228,22 +1228,22 @@ sub test_timeframe_want {
     ok ( $t, 'timeframe_want()' );
 }
 
-test_subvols_timeframes();
-sub test_subvols_timeframes {
+test_subvol_timeframes();
+sub test_subvol_timeframes {
 
     my $config_ref = gen_random_config();
 
     my $t = 1;
     for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
 
-        my @subvols_timeframes = Yabsm::Base::subvols_timeframes($config_ref, $subvol);
+        my @subvols_timeframes = Yabsm::Base::subvol_timeframes($config_ref, $subvol);
 
         for my $tf (@subvols_timeframes) {
             $t = 0 if not 'yes' eq $config_ref->{subvols}{$subvol}{"${tf}_want"};
         }
     }
 
-    ok ( $t, 'subvols_timeframes()' );
+    ok ( $t, 'subvol_timeframes()' );
 }
 
 test_bootstrap_snap_dir();

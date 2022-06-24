@@ -32361,12 +32361,13 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       make_path_safe($yabsm_dir);
   
       foreach my $subvol (all_subvols($config_ref)) {
-          foreach my $tf (subvols_timeframes($subvol)) {
+          foreach my $tf (subvol_timeframes($config_ref, $subvol)) {
               make_path_safe("$yabsm_dir/$subvol/$tf");
           }
       }
   
       foreach my $backup (all_backups($config_ref)) {
+          #TODO
           my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
      }
   }
@@ -33634,7 +33635,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       return 'yes' eq $config_ref->{subvols}{$subvol}{"${timeframe}_want"};
   }
   
-  sub subvols_timeframes { # Has test. Is pure.
+  sub subvol_timeframes { # Has test. Is pure.
   
       # Return an array of all the timeframes that $subvol wants snapshots for.
   

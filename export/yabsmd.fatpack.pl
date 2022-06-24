@@ -34482,7 +34482,7 @@ $fatpacked{"Yabsm/Config.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YA
   
           else { # the minimal required settings are all defined.
   
-              for my $tframe (Yabsm::Base::subvols_timeframes($config_ref, $subvol)) {
+              for my $tframe (Yabsm::Base::subvol_timeframes($config_ref, $subvol)) {
                   if ($tframe eq '5minute') {
                       push @req, '5minute_keep';
                   }

@@ -58,5 +58,5 @@ unless ($quiet) {
     say "$script: installed $yabsmd_conf";
     say "$script: installed $yabsm";
     say "$script: installed $yabsmd";
-    say "\nall good"
+    say "\nall good";
 }

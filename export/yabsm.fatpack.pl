@@ -28381,6 +28381,32 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   use Time::Piece;
   use File::Path qw(make_path);
   
+  sub initialize_directories {
+      # TODO init directories
+      my $config_ref = shift // get_logger->logconfess(missing_arg());
+  
+      get_logger->logdie("yabsm: error: initialize_directories() called while not root user")
+        if $<;
+  
+      # We need the main snapshot dir
+      # every backup needs blank
+      # every subvol needs blank
+  
+      my $yabsm_dir = local_yabsm_dir($config_ref);
+  
+      make_path_safe($yabsm_dir);
+  
+      foreach my $subvol (all_subvols($config_ref)) {
+          foreach my $tf (subvols_timeframes($subvol)) {
+              make_path_safe("$yabsm_dir/$subvol/$tf");
+          }
+      }
+  
+      foreach my $backup (all_backups($config_ref)) {
+          my $boot_snap_dir = bootstrap_snap_dir($config_ref, $backup);
+     }
+  }
+  
   sub do_snapshot { # No test. Is not pure.
   
       # Take a new $timeframe snapshot of $subvol and delete old snapshot(s).
@@ -28411,7 +28437,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $snap_name = current_time_snapstring();
   
       # For the first time we take a $timeframe snapshot of $subvol.
-      make_path $snap_dir if not -d $snap_dir;
+      make_path_safe($snap_dir) if not -d $snap_dir;
   
       safe_system("btrfs subvol snapshot -r $mountpoint $snap_dir/$snap_name");
   
@@ -28510,7 +28536,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           safe_system("btrfs subvol delete " . shift @snaps);
       }
       else {
-          make_path $boot_snap_dir;
+          make_path_safe($boot_snap_dir);
       }
   
       my $backup_dir = $config_ref->{backups}{$backup}{backup_dir};
@@ -28523,7 +28549,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           safe_system('btrfs subvol delete ' . shift @boot_snap);
       }
       else {
-          make_path $backup_dir;
+          make_path_safe($backup_dir);
       }
   
       my $boot_snap  = "$boot_snap_dir/BOOTSTRAP-" . current_time_snapstring();
@@ -28557,7 +28583,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
           safe_system('btrfs subvol delete ' . shift @boot_snap);
       }
       else {
-          make_path $boot_snap_dir;
+          make_path_safe($boot_snap_dir);
       }
   
       my $subvol = $config_ref->{backups}{$backup}{subvol};
@@ -28631,7 +28657,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
   
       # If this is the first time backing up $backup.
-      make_path $tmp_dir if not -d $tmp_dir;
+      make_path_safe($tmp_dir) if not -d $tmp_dir;
   
       # main
       safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
@@ -28668,7 +28694,7 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       my $ssh = new_ssh_connection($remote_host);
   
       # If this is the first time backing up $backup.
-      make_path $tmp_dir if not -d $tmp_dir;
+      make_path_safe($tmp_dir) if not -d $tmp_dir;
   
       # main
       safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
@@ -29948,18 +29974,14 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
   
   sub safe_system {
   
-      # Like backticks but log and die if $cmd exits with non-zero status.
+      # Like backticks but logconfess if $cmd
+      # exits with non-zero status.
   
-      my $cmd     = shift // get_logger->logconfess(missing_arg());
-      my $err_msg = shift;
+      my $cmd = shift // get_logger->logconfess(missing_arg());
   
       my $output = `$cmd`;
   
-      # $? is the exit status of $cmd
-      unless (0 == $?) {
-          $err_msg = $err_msg // "yabsm: error: shell command '$cmd' exited with status $? and outputted - $output";
-          get_logger->logdie($err_msg);
-      }
+      0 == system($cmd) or get_logger->logconfess("yabsm: error: $!\n");
   
       return $output;
   }
@@ -29984,6 +30006,19 @@ $fatpacked{"Yabsm/Base.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'YABS
       }
   
       return $output
+  }
+  
+  sub make_path_safe {
+  
+      # Wrapper around File::Path::make_path() that logdies if the path
+      # cannot be created.
+  
+      my $path = shift // get_logger->logconfess(missing_arg());
+  
+      -d $path        and return 1;
+      make_path $path and return 1;
+  
+      get_logger->logdie("yabsm: error: $!\n");
   }
   
   sub missing_arg {

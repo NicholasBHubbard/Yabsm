@@ -562,9 +562,10 @@ sub all_backup_snaps { # No test. Is not pure.
 
 sub local_yabsm_dir { # Has test. Is pure.
 
-    # Return the local directory path to the/a yabsm directory. The
-    # $subvol and $timeframe arguments are optional. Note that we do not
-    # check check that $subvol and $timeframe are a valid subvol/timeframe.
+    # Return the local directory path to the yabsm directory. The
+    # $subvol and $timeframe arguments are optional. Note that we
+    # do not check check that $subvol and $timeframe are a
+    # valid subvol/timeframe.
 
     my $config_ref = shift // get_logger->logconfess(missing_arg());
     my $subvol     = shift; # optional

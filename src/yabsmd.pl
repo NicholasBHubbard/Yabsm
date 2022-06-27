@@ -149,10 +149,13 @@ sub yabsmd_stop {
 
     if (my $pid = yabsmd_pid()) {
         say "Stopping yabsmd process running as pid $pid";
-        kill 'TERM', $pid;
+        unless (kill 'TERM', $pid) {
+            get_logger->logdie("yabsmd: error: couldn't kill yabsmd process running as pid $pid");
+        }
     }
     else {
         say STDERR "no running instance of yabsmd";
+        exit 1;
     }
 }
 

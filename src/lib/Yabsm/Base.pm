@@ -309,15 +309,15 @@ sub do_backup_local { # No test. Is not pure.
     my $subvol = $config_ref->{backups}{$backup}{subvol};
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+    my $new_snap = "$tmp_dir/" . current_time_snapstring();
 
     # If this is the first time backing up $backup.
     make_path_safe($tmp_dir) if not -d $tmp_dir;
 
     # main
-    safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-    safe_system("btrfs send -p $boot_snap $tmp_snap | btrfs receive $backup_dir");
-    safe_system("btrfs subvol delete $tmp_snap");
+    safe_system("btrfs subvol snapshot -r $mountpoint $new_snap");
+    safe_system("btrfs send -p $boot_snap $new_snap | btrfs receive $backup_dir");
+    safe_system("btrfs subvol delete $new_snap");
     delete_old_backups_local($config_ref, $backup);
 
     return;
@@ -345,16 +345,16 @@ sub do_backup_ssh { # No test. Is not pure.
     my $remote_host = $config_ref->{backups}{$backup}{host};
     my $mountpoint = $config_ref->{subvols}{$subvol}{mountpoint};
     my $tmp_dir = local_yabsm_dir($config_ref) . "/.tmp/$backup";
-    my $tmp_snap = "$tmp_dir/" . current_time_snapstring();
+    my $new_snap = "$tmp_dir/" . current_time_snapstring();
     my $ssh = new_ssh_connection($remote_host);
 
     # If this is the first time backing up $backup.
     make_path_safe($tmp_dir) if not -d $tmp_dir;
 
     # main
-    safe_system("btrfs subvol snapshot -r $mountpoint $tmp_snap");
-    safe_system_ssh($ssh, "sudo -n btrfs receive $remote_backup_dir", {stdin_file => ['-|', "btrfs send -p $boot_snap $tmp_snap"]});
-    safe_system("btrfs subvol delete $tmp_snap");
+    safe_system("btrfs subvol snapshot -r $mountpoint $new_snap");
+    safe_system_ssh($ssh, "sudo -n btrfs receive $remote_backup_dir", {stdin_file => ['-|', "btrfs send -p $boot_snap $new_snap"]});
+    safe_system("btrfs subvol delete $new_snap");
     delete_old_backups_ssh($config_ref, $ssh, $backup);
 
     return;

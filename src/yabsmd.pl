@@ -172,9 +172,11 @@ sub yabsmd_restart {
 
 sub yabsmd_status {
     if (my $pid = yabsmd_pid()) {
-        say "yabsmd is running as pid $pid";
+        say $pid;
+        exit 0;
     }
     else {
         say STDERR "no running instance of yabsmd";
+        exit 1;
     }
 }

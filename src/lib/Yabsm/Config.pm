@@ -61,7 +61,7 @@ sub parse_config_or_die {
         return wantarray ? %{ $config_ref } : $config_ref;
     }
     else {
-        say for @error_msgs;
+        say STDERR $_ for @error_msgs;
         exit EXIT_STATUS; # config errors exit with status 2
     }
 }

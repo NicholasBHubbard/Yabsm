@@ -62,7 +62,7 @@ sub parse_config_or_die {
     }
     else {
         say STDERR $_ for @error_msgs;
-        exit EXIT_STATUS; # config errors exit with status 2
+        exit EXIT_STATUS;
     }
 }
 

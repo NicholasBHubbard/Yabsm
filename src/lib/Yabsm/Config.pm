@@ -218,6 +218,7 @@ sub config_parser {
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected subvol name');
                 my $kvs = $self->scope_of('{', 'subvol_settings_parser' ,'}');
+                delete $config{subvols}{$name};
                 $config{subvols}{$name} = $kvs;
             },
             sub {
@@ -226,6 +227,7 @@ sub config_parser {
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected snap name');
                 my $kvs = $self->scope_of('{', 'snap_settings_parser', '}');
+                delete $config{snaps}{$name};
                 $config{snaps}{$name} = $kvs;
             },
             sub {
@@ -234,6 +236,7 @@ sub config_parser {
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected ssh_backup name');
                 my $kvs = $self->scope_of('{', 'ssh_backup_settings_parser', '}');
+                delete $config{ssh_backups}{$name};
                 $config{ssh_backups}{$name} = $kvs;
             },
             sub {
@@ -242,6 +245,7 @@ sub config_parser {
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected local_backup name');
                 my $kvs = $self->scope_of('{', 'local_backup_settings_parser', '}');
+                delete $config{local_backups}{$name};
                 $config{local_backups}{$name} = $kvs;
             },
             sub {

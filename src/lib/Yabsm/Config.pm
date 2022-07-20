@@ -250,7 +250,7 @@ sub config_parser {
             },
             sub {
                 $self->commit;
-                $self->skip_ws;
+                $self->skip_ws; # fwiw skip_ws also skips comments
                 $self->fail(q(expected one of 'subvol', 'snap', 'ssh_backup', or 'local_backup'));
             }
         );

@@ -12,9 +12,6 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Exporter 'import';
-our @EXPORT_OK = qw( read_config );
-
 # located using lib::relative in yabsm.pl
 use lib::relative '..';
 use Yabsm::Base;
@@ -25,347 +22,466 @@ use Log::Log4perl 'get_logger';
 
 use Parser::MGC;
 use base 'Parser::MGC';
+use Regexp::Common 'net';
+
+use Feature::Compat::Try;
 
                  ####################################
-                 #         REGEX LOOKUP TABLE       #
+                 #              EXPORTED            #
                  ####################################
 
-my %regex = ( path         => qr/\/[^#\s]*/
-            , subject_name => qr/[a-zA-Z][-\w]*/
-            , ssh_host     => qr/[-@.\/\w]+/
-            , comment      => qr/#.*/
-            , pos_int      => qr/[1-9]\d*/
-            , month_day    => qr/3[01]|[12][0-9]|[1-9]/ # 1-31
-            , time         => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/
-            );
+use Exporter 'import';
+our @EXPORT_OK = qw( parse_config_or_die );
 
-                 ####################################
-                 #          MAIN SUBROUTINE         #
-                 ####################################
+sub parse_config_or_die {
 
-sub read_config {
+    # Attempt to parse $file into a yabsm configuration data
+    # structure.
 
     my $file = shift // '/etc/yabsmd.conf';
 
-    # see documentation of Parser::MGC to see what is going on here
-    my $parser = __PACKAGE__->new( toplevel => 'p'
-                                 , patterns => { comment => $regex{comment}
-                                               , ident   => qr/[-\w]+/
+    # Initialize the Parser::MGC parser object
+    my $parser = __PACKAGE__->new( toplevel => 'config_parser'
+                                 , patterns => { comment => &grammar->{comment}
+                                               , ws      => &grammar->{whitespace}
                                                }
                                  );
 
-    my $config_ref = $parser->from_file($file);
+    # Config errors exit with status 2
+    use constant EXIT_STATUS => 2;
 
-    my @errors = ();
+    my $config_ref = do {
+        try { $parser->from_file($file) }
+        catch ($e) { print "yabsm: config error: $e" ; exit EXIT_STATUS }
+    };
 
-    push @errors, $_ for missing_subvol_settings($config_ref);
-    push @errors, $_ for missing_backup_settings($config_ref);
-    push @errors, $_ for missing_misc_settings($config_ref);
+    my ($config_valid, @error_msgs) = check_config($config_ref);
 
-    if (@errors) {
-        die ((join "\n", @errors) . "\n");
+    if ($config_valid) {
+        return wantarray ? %{ $config_ref } : $config_ref;
     }
+    else {
+        say for @error_msgs;
+        exit EXIT_STATUS; # config errors exit with status 2
+    }
+}
 
-    return $config_ref;
+                 ####################################
+                 #              GRAMMAR             #
+                 ####################################
+
+sub grammar {
+
+    # Return a hash of all the atomic grammar elements of the
+    # yabsm config language.
+
+    my %grammar = (
+        name          => qr/[a-zA-Z][-_a-zA-Z0-9]*/,
+        subvol        => qr/[a-zA-Z][-_a-zA-Z0-9]*/,
+        dir           => qr/\/[a-zA-Z0-9._:\-\/]*/,
+        mountpoint    => qr/\/[a-zA-Z0-9._:\-\/]*/,
+        # timeframes example: hourly,monthly,daily
+        timeframes    => qr/((5minute|hourly|daily|weekly|monthly),)+(5minute|hourly|daily|weekly|monthly)|(5minute|hourly|daily|weekly|monthly)/,
+        ssh_dest      => qr/[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)@($RE{net}{IPv4}{strict}|$RE{net}{IPv6})/,
+        opening_brace => qr/{/,
+        closing_brace => qr/}/,
+        equals_sign   => qr/=/,
+        comment       => qr/[\s\t]*#.*/,
+        whitespace    => qr/[\s\t\n]+/,
+        timeframe_sub_grammar => {
+            #keep
+            '5minute_keep' => qr/[1-9][0-9]*/,
+            hourly_keep    => qr/[1-9][0-9]*/,
+            daily_keep     => qr/[1-9][0-9]*/,
+            weekly_keep    => qr/[1-9][0-9]*/,
+            monthly_keep   => qr/[1-9][0-9]*/,
+            #time
+            daily_time     => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/,
+            weekly_time    => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/,
+            monthly_time   => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/,
+            #day
+            weekly_day     => qr/[1-7]|monday|tuesday|wednesday|thursday|friday|saturday|sunday/,
+            monthly_day    => qr/3[01]|[12][0-9]|[1-9]/ # 1-31
+        }
+    );
+
+    return wantarray ? %grammar : \%grammar;
+}
+
+sub subvol_settings_grammar {
+    my %grammar = grammar();
+    my %subvol_settings_grammar = (
+        mountpoint => $grammar{mountpoint}
+    );
+    return wantarray ? %subvol_settings_grammar : \%subvol_settings_grammar;
+}
+
+sub snap_settings_grammar {
+    my $include_tf_sub_grammar = shift // 1;
+    my %grammar = grammar();
+    my %timeframe_sub_grammar =
+      $include_tf_sub_grammar ? %{ $grammar{timeframe_sub_grammar} } : ();
+    my %snap_settings_grammar = (
+        subvol     => $grammar{subvol},
+        dir        => $grammar{dir},
+        timeframes => $grammar{timeframes},
+        %timeframe_sub_grammar
+    );
+    return wantarray ? %snap_settings_grammar : \%snap_settings_grammar;
+}
+
+sub ssh_backup_settings_grammar {
+    my $include_tf_sub_grammar = shift // 1;
+    my %grammar = grammar();
+    my %timeframe_sub_grammar =
+      $include_tf_sub_grammar ? %{ $grammar{timeframe_sub_grammar} } : ();
+    my %ssh_backup_settings_grammar = (
+        subvol     => $grammar{subvol},
+        ssh_dest   => $grammar{ssh_dest},
+        dir        => $grammar{dir},
+        timeframes => $grammar{timeframes},
+        %timeframe_sub_grammar
+    );
+    return wantarray ? %ssh_backup_settings_grammar : \%ssh_backup_settings_grammar;
+}
+
+sub local_backup_settings_grammar {
+    my $include_tf_sub_grammar = shift // 1;
+    my %grammar = grammar();
+    my %timeframe_sub_grammar =
+      $include_tf_sub_grammar ? %{ $grammar{timeframe_sub_grammar} } : ();
+    my %local_backup_settings_grammar = (
+        subvol     => $grammar{subvol},
+        dir        => $grammar{dir},
+        timeframes => $grammar{timeframes},
+        %timeframe_sub_grammar
+    );
+    return wantarray ? %local_backup_settings_grammar : \%local_backup_settings_grammar;
+}
+
+sub grammar_msg {
+
+    # Return a hash that associates grammar elements to their
+    # linguistic descriptions.
+
+    my %grammar_msg = (
+        name           => 'thing name',
+        subvol         => 'subvol name',
+        dir            => 'absolute path',
+        mountpoint     => 'absolute path',
+        timeframes     => 'comma separated timeframes',
+        ssh_dest       => 'SSH destination',
+        opening_brace  => q('{'}),
+        closing_brace  => q('}'),
+        equals_sign    => q('='),
+        comment        => 'comment',
+        whitespace     => 'whitespace',
+        #keep
+        '5minute_keep' => 'positive integer',
+        hourly_keep    => 'positive integer',
+        daily_keep     => 'positive integer',
+        weekly_keep    => 'positive integer',
+        monthly_keep   => 'positive integer',
+        #time
+        daily_time     => 'time in "hh:mm" form',
+        weekly_time    => 'time in "hh:mm" form',
+        monthly_time   => 'time in "hh:mm" form',
+        #day
+        weekly_day     => 'week day',
+        monthly_day    => 'month day'
+    );
+
+    return wantarray ? %grammar_msg : \%grammar_msg;
 }
 
                  ####################################
                  #              PARSER              #
                  ####################################
 
-sub p {
+sub config_parser {
 
-    my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
+    my $self = shift // Yabsm::Base::missing_arg();
 
+    # return this
     my %config;
+
+    # parse
+
+    my %grammar = grammar();
 
     $self->sequence_of( sub {
         $self->commit;
         $self->any_of(
             sub {
-                $self->token_kw( 'subvol' );
+                $self->expect( 'subvol' );
                 $self->commit;
-                my $name = $self->maybe_expect( $regex{subject_name} );
-                $name // $self->fail('expected alphanumeric sequence starting with letter');
-                my $kvs  = $self->scope_of('{', 'subvol_def_p', '}');
+                my $name = $self->maybe_expect( $grammar{name} );
+                $name // $self->fail('expected subvol name');
+                my $kvs = $self->scope_of('{', 'subvol_settings_parser' ,'}');
                 $config{subvols}{$name} = $kvs;
             },
             sub {
-                $self->token_kw( 'backup' );
+                $self->expect( 'snap' );
                 $self->commit;
-                my $name = $self->maybe_expect( $regex{subject_name} );
-                $name // $self->fail('expected alphanumeric sequence starting with letter');
-                my $kvs  = $self->scope_of('{', 'backup_def_p', '}');
-                $config{backups}{$name} = $kvs;
+                my $name = $self->maybe_expect( $grammar{name} );
+                $name // $self->fail('expected snap name');
+                my $kvs = $self->scope_of('{', 'snap_settings_parser', '}');
+                $config{snaps}{$name} = $kvs;
             },
             sub {
-                my $k = $self->token_kw( misc_keywords() );
+                $self->expect( 'ssh_backup' );
                 $self->commit;
-                $self->maybe_expect( '=' ) // $self->fail("expected '='");
-                my $v;
-                # the only misc setting at this time is 'yabsm_dir'
-                if ($k eq 'yabsm_dir') {
-                    $v = $self->maybe_expect( $regex{path} );
-                    $v // $self->fail('expected file path');
-                }
-                else {
-                    confess "internal error: no such misc setting '$k'";
-                }
-                $config{misc}{$k} = $v;
+                my $name = $self->maybe_expect( $grammar{name} );
+                $name // $self->fail('expected ssh_backup name');
+                my $kvs = $self->scope_of('{', 'ssh_backup_settings_parser', '}');
+                $config{ssh_backups}{$name} = $kvs;
+            },
+            sub {
+                $self->expect( 'local_backup' );
+                $self->commit;
+                my $name = $self->maybe_expect( $grammar{name} );
+                $name // $self->fail('expected local_backup name');
+                my $kvs = $self->scope_of('{', 'local_backup_settings_parser', '}');
+                $config{local_backups}{$name} = $kvs;
             },
             sub {
                 $self->commit;
-                $self->fail('could not parse subvol, backup or misc setting');
+                $self->skip_ws;
+                $self->fail(q(expected one of 'subvol', 'snap', 'ssh_backup', or 'local_backup'));
             }
         );
     });
 
-    return \%config;
+    return wantarray ? %config : \%config;
 }
 
-sub subvol_def_p {
+sub settings_parser {
 
-    my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
+    # Abstract method that parses a sequence of key=val pairs
+    # based off of a given grammar (%grammar). The arg $type
+    # is simply a string that is either 'subvol', 'snap',
+    # 'ssh_backup', or 'local_backup' and is used for error
+    # message purposes. This method is not called directly but
+    # instead called from the wrapper parsers 'subvol_settings_parser'
+    # 'snap_settings_parser', 'ssh_backup_settings_parser', and
+    # 'local_backup_settings_parser'.
 
-    my %kvs; # return this
-    my $k;
-    my $v;
+    my $self    = shift;
+    my $type    = shift;
+    my %grammar = %{ +shift };
+
+    my @settings = keys %grammar;
+    my $setting_rx = join '|', @settings;
+
+    # return this
+    my %kvs;
 
     $self->sequence_of( sub {
         $self->commit;
-        $k = $self->token_kw( subvol_keywords() );
-        $self->maybe_expect( '=' ) // $self->fail("expected '='");
-        if ($k eq 'mountpoint') {
-            $v = $self->maybe_expect( $regex{path} );
-            $v // $self->fail('expected file path');
-        }
-        elsif ($k =~ /_want$/) {
-            $v = $self->maybe( sub { $self->token_kw( 'yes', 'no' ) } );
-            $v // $self->fail( q(expected 'yes' or 'no') );
-        }
-        elsif ($k =~ /_time$/) {
-            $v = $self->maybe_expect( $regex{time} );
-            $v // $self->fail(q(expected time in format 'hh:mm'));
-        }
-        elsif ($k =~ /_keep$/) {
-            $v = $self->maybe_expect( $regex{pos_int} );
-            $v // $self->fail('expected positive integer');
-        }
-        elsif ($k eq 'weekly_day') {
-            $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
-        }
-        elsif ($k eq 'monthly_day') {
-            $v = $self->maybe_expect( $regex{month_day} );
-            $v // $self->fail('expected integer in range 1-31');
-        }
-        else {
-            confess "yabsm: internal error: no such subvol setting '$k'";
-        }
 
-        $kvs{ $k } = $v;
+        my $setting = $self->maybe_expect( qr/$setting_rx/ )
+          // $self->fail("expected a $type setting");
+
+        $self->maybe_expect('=') // $self->fail('expected "="');
+
+        my $value = $self->maybe_expect($grammar{$setting})
+          // $self->fail('expected ' . grammar_msg->{$setting});
+
+        $kvs{$setting} = $value;
     });
 
-    return \%kvs;
+    return wantarray ? %kvs : \%kvs;
 }
 
-sub backup_def_p {
+sub subvol_settings_parser {
+    my $self = shift;
+    my $subvol_settings_grammar = subvol_settings_grammar();
+    $self->settings_parser('subvol', $subvol_settings_grammar);
+}
 
-    my $self = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
+sub snap_settings_parser {
+    my $self = shift;
+    my $snap_settings_grammar = snap_settings_grammar();
+    $self->settings_parser('snap', $snap_settings_grammar);
+}
 
-    my %kvs; # return this
-    my $k;
-    my $v;
+sub ssh_backup_settings_parser {
+    my $self = shift;
+    my $ssh_backup_settings_grammar = ssh_backup_settings_grammar();
+    $self->settings_parser('ssh_backup', $ssh_backup_settings_grammar);
+}
 
-    $self->sequence_of( sub {
-        $self->commit;
-        $k = $self->token_kw( backup_keywords() );
-        $self->maybe_expect( '=' ) // $self->fail("expected '='");
-
-        if ($k eq 'remote') {
-            $v = $self->maybe( sub { $self->token_kw( 'yes', 'no' ) } );
-            $v // $self->fail( q(expected 'yes' or 'no') );
-        }
-        elsif ($k eq 'timeframe') {
-            $v = $self->token_kw( Yabsm::Base::all_timeframes() );
-        }
-        elsif ($k =~ /(daily|weekly|monthly)_time$/) {
-            $v = $self->maybe_expect( $regex{time} );
-            $v // $self->fail(q(expected time in format 'hh:mm'));
-        }
-        elsif ($k eq 'backup_dir') {
-            $v = $self->maybe_expect( $regex{path} );
-            $v // $self->fail('expected file path');
-        }
-        elsif ($k eq 'keep') {
-            $v = $self->maybe_expect( $regex{pos_int} );
-            $v // $self->fail('expected positive integer');
-        }
-        elsif ($k eq 'host') {
-            $v = $self->maybe_expect( $regex{ssh_host} );
-            $v // $self->fail('expected alphanumeric sequence starting with a letter');
-        }
-        elsif ($k eq 'subvol') {
-            # We check that $v is a defined subvol later
-            $v = $self->maybe_expect( $regex{subject_name} );
-            $v // $self->fail('expected alphanumeric sequence starting with a letter');
-        }
-        elsif ($k eq 'weekly_day') {
-            $v = $self->token_kw( Yabsm::Base::all_days_of_week() );
-        }
-        elsif ($k eq 'monthly_day') {
-            $v = $self->maybe_expect( $regex{month_day} );
-            $v // $self->fail('expected integer in range 1-31');
-        }
-        else {
-            confess "yabsm: internal error: no such backup setting '$k'";
-        }
-
-        $kvs{ $k } = $v;
-    });
-
-    return \%kvs;
+sub local_backup_settings_parser {
+    my $self = shift;
+    my $local_backup_settings_grammar = local_backup_settings_grammar();
+    $self->settings_parser('local_backup', $local_backup_settings_grammar);
 }
 
                  ####################################
-                 #       STATIC CONFIG ANALYSIS     #
+                 #          ERROR ANALYSIS          #
                  ####################################
 
-sub missing_subvol_settings {
+sub check_config {
 
-    my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
+    # Ensure that $config_ref references a valid yabsm configuration.
+    # If the config is valid return a list containing only the value
+    # 1, otherwise return multiple values where the first value is 0
+    # and the rest of the values are the corresponding error messages.
 
-    my @err_msgs = ();
+    my $config_ref = shift;
 
-    for my $subvol (Yabsm::Base::all_subvols($config_ref)) {
+    my @error_msgs;
 
-        # No matter what these settings are required. More required
-        # settings will be added based on the values of these settings.
-        my @req = qw(mountpoint 5minute_want hourly_want daily_want weekly_want monthly_want);
+    push @error_msgs, snap_errors($config_ref);
+    push @error_msgs, ssh_backup_errors($config_ref);
+    push @error_msgs, local_backup_errors($config_ref);
 
-        my @def = keys %{ $config_ref->{subvols}{$subvol} };
+    if (@error_msgs) {
+        return (0, @error_msgs);
+    }
+    else {
+        return (1);
+    }
+}
 
-        if (my @missing = array_minus(@req, @def)) {
-            push @err_msgs, "yabsm: config error: subvol '$subvol' missing required setting '$_'" for @missing;
+sub snap_errors {
+
+    # Ensure that all the snaps defined in the config referenced
+    # by $config_ref are not missing required snap settings and
+    # they are snapping a defined subvol.
+
+    my $config_ref = shift;
+
+    # return this
+    my @error_msgs;
+
+    # Base required settings. Passing 0 to snap_settings_grammar
+    # excludes timeframe settings from the returned hash.
+    my @base_required_settings = keys snap_settings_grammar(0);
+
+    my @subvols = keys %{ $config_ref->{subvols} };
+
+    foreach my $snap (keys %{ $config_ref->{snaps} }) {
+
+        # make sure the subvol being snapped exists
+        my $subvol = $config_ref->{snaps}{$snap}{subvol};
+        unless (grep $subvol, @subvols) {
+            push @error_msgs, "yabsm: config error: snap '$snap' is snapshotting an undefined subvol '$subvol'";
         }
 
-        else { # the minimal required settings are all defined.
-
-            for my $tframe (Yabsm::Base::subvol_timeframes($config_ref, $subvol)) {
-                if ($tframe eq '5minute') {
-                    push @req, '5minute_keep';
-                }
-                elsif ($tframe eq 'hourly') {
-                    push @req, 'hourly_keep';
-                }
-                elsif ($tframe eq 'daily') {
-                    push @req, 'daily_time', 'daily_keep';
-                }
-                elsif ($tframe eq 'weekly') {
-                    push @req, 'weekly_time', 'weekly_day', 'weekly_keep';
-                }
-                elsif ($tframe eq 'monthly') {
-                    push @req, 'monthly_time', 'monthly_day', 'monthly_keep';
-                }
-                else {
-                    confess "yabsm: internal error: no such timeframe '$tframe'";
-                }
-            }
-
-            my @def = keys %{ $config_ref->{subvols}{$subvol} };
-
-            if (my @missing = array_minus(@req, @def)) {
-                push @err_msgs, "error: subvol '$subvol' missing required setting '$_'" for @missing;
-            }
+        # ensure that all required settings exist.
+        my $timeframes = $config_ref->{snaps}{$snap}{timeframes};
+        my @required_settings = (@base_required_settings, required_timeframe_settings($timeframes));
+        my @defined_settings = keys $config_ref->{snaps}{$snap};
+        my @missing_settings = array_minus(@required_settings, @defined_settings);
+        foreach my $setting (@missing_settings) {
+            push @error_msgs, "yabsm: config error: snap '$snap' is missing required setting '$setting'";
         }
     }
 
-    return wantarray ? @err_msgs : \@err_msgs;
+    return wantarray ? @error_msgs : \@error_msgs;
 }
 
-sub missing_backup_settings {
+sub ssh_backup_errors {
 
-    my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
+    # Ensure that all the ssh_backups defined in the config referenced
+    # by $config_ref are not missing required ssh_backup settings and
+    # they are backing up a defined subvol.
 
-    my @err_msgs = ();
+    my $config_ref = shift;
 
-    for my $backup (Yabsm::Base::all_backups($config_ref)) {
+    # return this
+    my @error_msgs;
 
-        # base required settings
-        my @req = qw(remote subvol backup_dir timeframe keep);
+    # Base required settings. Passing 0 to ssh_backup_settings_grammar
+    # excludes timeframe settings from the returned hash.
+    my @base_required_settings = keys ssh_backup_settings_grammar(0);
 
-        my @def = keys %{ $config_ref->{backups}{$backup} };
+    my @subvols = keys %{ $config_ref->{subvols} };
 
-        if (my @missing = array_minus(@req, @def)) {
-            push @err_msgs, "yabsm: config error: backup '$backup' missing required setting '$_'" for @missing;
+    foreach my $ssh_backup (keys %{ $config_ref->{ssh_backups} }) {
+
+        # ensure sure the subvol being backed up exists.
+        my $subvol = $config_ref->{ssh_backups}{$ssh_backup}{subvol};
+        unless (grep $subvol, @subvols) {
+            push @error_msgs, "yabsm: config error: ssh_backup '$ssh_backup' is backing up an undefined subvol '$subvol'";
         }
 
-        else { # the base required settings are defined
-
-            my $subvol = $config_ref->{backups}{$backup}{subvol};
-            my $remote = $config_ref->{backups}{$backup}{remote};
-            my $tframe = $config_ref->{backups}{$backup}{timeframe};
-
-            if (not grep { $subvol eq $_ } Yabsm::Base::all_subvols($config_ref)) {
-                push @err_msgs, "yabsm: config error: backup '$backup' backing up undefined subvol '$subvol'";
-            }
-
-            if ($remote eq 'yes') {
-                push @req, 'host';
-            }
-
-            if ($tframe eq 'daily') {
-                push @req, 'daily_time';
-            }
-            elsif ($tframe eq 'weekly') {
-                push @req, 'weekly_time', 'weekly_day';
-            }
-            elsif ($tframe eq 'monthly') {
-                push @req, 'monthly_time', 'monthly_day';
-            }
-
-            if (my @missing = array_minus(@req, @def)) {
-                push @err_msgs, "yabsm: config error: backup '$backup' missing required setting '$_'" for @missing;
-            }
+        # ensure that all required settings are defined.
+        my $timeframes = $config_ref->{ssh_backups}{$ssh_backup}{timeframes};
+        my @required_settings = (@base_required_settings, required_timeframe_settings($timeframes));
+        my @defined_settings  = keys $config_ref->{ssh_backups}{$ssh_backup};
+        my @missing_settings  = array_minus(@required_settings, @defined_settings);
+        foreach my $setting (@missing_settings) {
+            push @error_msgs, "yabsm: config error: ssh_backup '$ssh_backup' is missing required setting '$setting'";
         }
     }
 
-    return wantarray ? @err_msgs : \@err_msgs;
+    return wantarray ? @error_msgs : \@error_msgs;
 }
 
-sub missing_misc_settings {
+sub local_backup_errors {
 
-    my $config_ref = shift // get_logger->logconfess(Yabsm::Base::missing_arg());
+    # Ensure that all the local_backups defined in the config
+    # referenced by $config_ref are not missing required local_backup
+    # settings and they are backing up a defined subvol.
 
-    my @err_msgs = ();
+    my $config_ref = shift;
 
-    # for now all misc settings are required
-    my @req = misc_keywords();
+    # return this
+    my @error_msgs;
 
-    my @def = keys %{ $config_ref->{misc} };
+    # Base required settings. Passing 0 to local_backup_settings_grammar
+    # excludes timeframe settings from the returned hash.
+    my @base_required_settings = keys local_backup_settings_grammar(0);
 
-    my @missing = array_minus(@req, @def);
+    my @subvols = keys %{ $config_ref->{subvols} };
 
-    push @err_msgs, "yabsm: config error: missing misc setting '$_'" for @missing;
+    foreach my $local_backup (keys %{ $config_ref->{local_backups} }) {
 
-    return wantarray ? @err_msgs : \@err_msgs;
+        # make sure the subvol being backed up exists.
+        my $subvol = $config_ref->{local_backups}{$local_backup}{subvol};
+        unless (grep $subvol, @subvols) {
+            push @error_msgs, "yabsm: config error: local_backup '$local_backup' is backing up an undefined subvol '$subvol'";
+        }
+
+        # ensure that all required settings are defined.
+        my $timeframes = $config_ref->{local_backups}{$local_backup}{timeframes};
+        my @required_settings = (@base_required_settings, required_timeframe_settings($timeframes));
+        my @defined_settings  = keys $config_ref->{local_backups}{$local_backup};
+        my @missing_settings  = array_minus(@required_settings, @defined_settings);
+        foreach my $setting (@missing_settings) {
+            push @error_msgs, "yabsm: config error: local_backup '$local_backup' is missing required setting '$setting'";
+        }
+    }
+
+    return wantarray ? @error_msgs : \@error_msgs;
 }
 
-                 ####################################
-                 #              KEYWORDS            #
-                 ####################################
+sub required_timeframe_settings {
 
-sub subvol_keywords {
-    return qw(mountpoint 5minute_want 5minute_keep hourly_want hourly_keep daily_want daily_time daily_keep weekly_want weekly_time weekly_day weekly_keep monthly_want monthly_time monthly_day monthly_keep);
+    # Given a timeframes value like 'hourly,daily,monthly' returns a
+    # list of required settings. This subroutine is used to
+    # dynamically determine what settings are required for certain
+    # config entities.
+
+    my $timeframes_val = shift;
+
+    my @timeframes = split ',', $timeframes_val;
+
+    # return this
+    my @required;
+
+    foreach my $tframe (@timeframes) {
+        if    ($tframe eq '5minute') { push @required, qw(5minute_keep) }
+        elsif ($tframe eq 'hourly')  { push @required, qw(hourly_keep) }
+        elsif ($tframe eq 'daily')   { push @required, qw(daily_keep daily_time) }
+        elsif ($tframe eq 'weekly')  { push @required, qw(weekly_keep weekly_time weekly_day) }
+        elsif ($tframe eq 'monthly') { push @required, qw(monthly_keep monthly_time monthly_day) }
+        else {
+           get_logger->logconfess("yabsm: internal error: no such timeframe '$tframe'");
+        }
+    }
+
+    return @required;
 }
-
-sub backup_keywords {
-    return qw(subvol remote host keep backup_dir timeframe daily_time weekly_time monthly_time weekly_day monthly_day);
-}
-
-sub misc_keywords {
-    # This is set up so in the future it is easy to add
-    # new settings as misc settings.
-    return qw(yabsm_dir);
-}
-
-1;

@@ -352,9 +352,9 @@ sub snap_errors {
 
     # Ensure that all the snaps defined in the config referenced
     # by $config_ref are not missing required snap settings and
-    # they are snapping a defined subvol.
+    # are snapshotting a defined subvol.
 
-    my $config_ref = shift;
+    my $config_ref = shift // get_logger->logconfess('TODO');
 
     # return this
     my @error_msgs;
@@ -367,19 +367,24 @@ sub snap_errors {
 
     foreach my $snap (keys %{ $config_ref->{snaps} }) {
 
-        # make sure the subvol being snapped exists
+        # Make sure that the subvol being snapped exists
         my $subvol = $config_ref->{snaps}{$snap}{subvol};
-        unless (grep $subvol, @subvols) {
-            push @error_msgs, "yabsm: config error: snap '$snap' is snapshotting an undefined subvol '$subvol'";
+        if (defined $subvol) {
+            unless (grep $subvol, keys %{ $config_ref->{subvols} }) {
+                push @error_msgs, "yabsm: config error: snap 'snap' is snapshotting up a non-existent subvol '$subvol'";
+            }
         }
 
-        # ensure that all required settings exist.
+        # Make sure all required settings are defined
+        my @required_settings = @base_required_settings;
         my $timeframes = $config_ref->{snaps}{$snap}{timeframes};
-        my @required_settings = (@base_required_settings, required_timeframe_settings($timeframes));
-        my @defined_settings = keys $config_ref->{snaps}{$snap};
+        if (defined $timeframes) {
+            push @required_settings, required_timeframe_settings($timeframes);
+        }
+        my @defined_settings = keys %{ $config_ref->{snaps}{$snap} };
         my @missing_settings = array_minus(@required_settings, @defined_settings);
-        foreach my $setting (@missing_settings) {
-            push @error_msgs, "yabsm: config error: snap '$snap' is missing required setting '$setting'";
+        foreach my $missing (@missing_settings) {
+            push @error_msgs, "yabsm: config error: snap '$snap' missing required setting '$missing'";
         }
     }
 
@@ -390,9 +395,9 @@ sub ssh_backup_errors {
 
     # Ensure that all the ssh_backups defined in the config referenced
     # by $config_ref are not missing required ssh_backup settings and
-    # they are backing up a defined subvol.
+    # are backing up a defined subvol.
 
-    my $config_ref = shift;
+    my $config_ref = shift // get_logger->logconfess('TODO');
 
     # return this
     my @error_msgs;
@@ -405,19 +410,24 @@ sub ssh_backup_errors {
 
     foreach my $ssh_backup (keys %{ $config_ref->{ssh_backups} }) {
 
-        # ensure sure the subvol being backed up exists.
+        # Make sure that the subvol being backed up exists
         my $subvol = $config_ref->{ssh_backups}{$ssh_backup}{subvol};
-        unless (grep $subvol, @subvols) {
-            push @error_msgs, "yabsm: config error: ssh_backup '$ssh_backup' is backing up an undefined subvol '$subvol'";
+        if (defined $subvol) {
+            unless (grep $subvol, keys %{ $config_ref->{subvols} }) {
+                push @error_msgs, "yabsm: config error: ssh_backup '$ssh_backup' is backing up a non-existent subvol '$subvol'";
+            }
         }
 
-        # ensure that all required settings are defined.
+        # Make sure all required settings are defined
+        my @required_settings = @base_required_settings;
         my $timeframes = $config_ref->{ssh_backups}{$ssh_backup}{timeframes};
-        my @required_settings = (@base_required_settings, required_timeframe_settings($timeframes));
-        my @defined_settings  = keys $config_ref->{ssh_backups}{$ssh_backup};
-        my @missing_settings  = array_minus(@required_settings, @defined_settings);
-        foreach my $setting (@missing_settings) {
-            push @error_msgs, "yabsm: config error: ssh_backup '$ssh_backup' is missing required setting '$setting'";
+        if (defined $timeframes) {
+            push @required_settings, required_timeframe_settings($timeframes);
+        }
+        my @defined_settings = keys %{ $config_ref->{ssh_backups}{$ssh_backup} };
+        my @missing_settings = array_minus(@required_settings, @defined_settings);
+        foreach my $missing (@missing_settings) {
+            push @error_msgs, "yabsm: config error: ssh_backup '$ssh_backup' missing required setting '$missing'";
         }
     }
 
@@ -428,9 +438,9 @@ sub local_backup_errors {
 
     # Ensure that all the local_backups defined in the config
     # referenced by $config_ref are not missing required local_backup
-    # settings and they are backing up a defined subvol.
+    # settings and are backing up a defined subvol
 
-    my $config_ref = shift;
+    my $config_ref = shift // get_logger->logconfess('TODO');
 
     # return this
     my @error_msgs;
@@ -439,23 +449,26 @@ sub local_backup_errors {
     # excludes timeframe settings from the returned hash.
     my @base_required_settings = keys local_backup_settings_grammar(0);
 
-    my @subvols = keys %{ $config_ref->{subvols} };
-
     foreach my $local_backup (keys %{ $config_ref->{local_backups} }) {
 
-        # make sure the subvol being backed up exists.
+        # Make sure that the subvol being backed up exists
         my $subvol = $config_ref->{local_backups}{$local_backup}{subvol};
-        unless (grep $subvol, @subvols) {
-            push @error_msgs, "yabsm: config error: local_backup '$local_backup' is backing up an undefined subvol '$subvol'";
+        if (defined $subvol) {
+            unless (grep $subvol, keys %{ $config_ref->{subvols} }) {
+                push @error_msgs, "yabsm: config error: local_backup '$local_backup' is backing up a non-existent subvol '$subvol'";
+            }
         }
 
-        # ensure that all required settings are defined.
+        # Make sure all required settings are defined
+        my @required_settings = @base_required_settings;
         my $timeframes = $config_ref->{local_backups}{$local_backup}{timeframes};
-        my @required_settings = (@base_required_settings, required_timeframe_settings($timeframes));
-        my @defined_settings  = keys $config_ref->{local_backups}{$local_backup};
-        my @missing_settings  = array_minus(@required_settings, @defined_settings);
-        foreach my $setting (@missing_settings) {
-            push @error_msgs, "yabsm: config error: local_backup '$local_backup' is missing required setting '$setting'";
+        if (defined $timeframes) {
+            push @required_settings, required_timeframe_settings($timeframes);
+        }
+        my @defined_settings = keys %{ $config_ref->{local_backups}{$local_backup} };
+        my @missing_settings = array_minus(@required_settings, @defined_settings);
+        foreach my $missing (@missing_settings) {
+            push @error_msgs, "yabsm: config error: local_backup '$local_backup' missing required setting '$missing'";
         }
     }
 
@@ -469,7 +482,7 @@ sub required_timeframe_settings {
     # dynamically determine what settings are required for certain
     # config entities.
 
-    my $timeframes_val = shift;
+    my $timeframes_val = shift // get_logger->logconfess('TODO');
 
     my @timeframes = split ',', $timeframes_val;
 

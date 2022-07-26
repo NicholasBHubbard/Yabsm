@@ -2,9 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  This module exists to provide the read_config() subroutine that is
-#  used to create the $config_ref variable that is passed around the
-#  rest of yabsm constantly. See t/Config.t for this modules testing.
+#  Provides functionality for YABSM configuration parsing using the
+#  Parser::MGC library. Tests for the parser are located at
+#  src/t/Config.t.
 
 package Yabsm::Config;
 
@@ -47,12 +47,9 @@ sub parse_config_or_die {
                                                }
                                  );
 
-    # Config errors exit with status 2
-    use constant EXIT_STATUS => 2;
-
     my $config_ref = do {
         try { $parser->from_file($file) }
-        catch ($e) { print "yabsm: config error: $e" ; exit EXIT_STATUS }
+        catch ($e) { die "yabsm: config error: $e\n" }
     };
 
     my ($config_valid, @error_msgs) = check_config($config_ref);
@@ -61,8 +58,8 @@ sub parse_config_or_die {
         return wantarray ? %{ $config_ref } : $config_ref;
     }
     else {
-        say STDERR $_ for @error_msgs;
-        exit EXIT_STATUS;
+        my $error_msg = join '', map { $_ = "$_\n" } @error_msgs;
+        die $error_msg;
     }
 }
 
@@ -108,61 +105,11 @@ sub grammar {
     return wantarray ? %grammar : \%grammar;
 }
 
-sub subvol_settings_grammar {
-    my %grammar = grammar();
-    my %subvol_settings_grammar = (
-        mountpoint => $grammar{mountpoint}
-    );
-    return wantarray ? %subvol_settings_grammar : \%subvol_settings_grammar;
-}
-
-sub snap_settings_grammar {
-    my $include_tf_sub_grammar = shift // 1;
-    my %grammar = grammar();
-    my %timeframe_sub_grammar =
-      $include_tf_sub_grammar ? %{ $grammar{timeframe_sub_grammar} } : ();
-    my %snap_settings_grammar = (
-        subvol     => $grammar{subvol},
-        dir        => $grammar{dir},
-        timeframes => $grammar{timeframes},
-        %timeframe_sub_grammar
-    );
-    return wantarray ? %snap_settings_grammar : \%snap_settings_grammar;
-}
-
-sub ssh_backup_settings_grammar {
-    my $include_tf_sub_grammar = shift // 1;
-    my %grammar = grammar();
-    my %timeframe_sub_grammar =
-      $include_tf_sub_grammar ? %{ $grammar{timeframe_sub_grammar} } : ();
-    my %ssh_backup_settings_grammar = (
-        subvol     => $grammar{subvol},
-        ssh_dest   => $grammar{ssh_dest},
-        dir        => $grammar{dir},
-        timeframes => $grammar{timeframes},
-        %timeframe_sub_grammar
-    );
-    return wantarray ? %ssh_backup_settings_grammar : \%ssh_backup_settings_grammar;
-}
-
-sub local_backup_settings_grammar {
-    my $include_tf_sub_grammar = shift // 1;
-    my %grammar = grammar();
-    my %timeframe_sub_grammar =
-      $include_tf_sub_grammar ? %{ $grammar{timeframe_sub_grammar} } : ();
-    my %local_backup_settings_grammar = (
-        subvol     => $grammar{subvol},
-        dir        => $grammar{dir},
-        timeframes => $grammar{timeframes},
-        %timeframe_sub_grammar
-    );
-    return wantarray ? %local_backup_settings_grammar : \%local_backup_settings_grammar;
-}
-
 sub grammar_msg {
 
-    # Return a hash that associates grammar elements to their
-    # linguistic descriptions.
+    # Return a hash that associates grammar non-terminals to a
+    # linguistic description of their expected value. Used for
+    # generating meaningful error messages.
 
     my %grammar_msg = (
         name           => 'thing name',
@@ -194,18 +141,101 @@ sub grammar_msg {
     return wantarray ? %grammar_msg : \%grammar_msg;
 }
 
+sub subvol_settings_grammar {
+
+    # Return a hash of a subvols key=val grammar.
+
+    my %grammar = grammar();
+
+    my %subvol_settings_grammar = (
+        mountpoint => $grammar{mountpoint}
+    );
+
+    return wantarray ? %subvol_settings_grammar : \%subvol_settings_grammar;
+}
+
+sub snap_settings_grammar {
+
+    # Return a hash of a snaps key=val grammar. Optionally takes
+    # a false value to exclude the timeframe subgrammar from the
+    # returned grammar.
+
+    my $include_tf = shift // 1;
+
+    my %grammar = grammar();
+
+    my %timeframe_sub_grammar =
+      $include_tf ? %{ $grammar{timeframe_sub_grammar} } : ();
+
+    my %snap_settings_grammar = (
+        subvol     => $grammar{subvol},
+        dir        => $grammar{dir},
+        timeframes => $grammar{timeframes},
+        %timeframe_sub_grammar
+    );
+
+    return wantarray ? %snap_settings_grammar : \%snap_settings_grammar;
+}
+
+sub ssh_backup_settings_grammar {
+
+    # Return a hash of a ssh_backups key=val grammar. Optionally takes
+    # a false value to exclude the timeframe subgrammar from the
+    # returned grammar.
+
+    my $include_tf = shift // 1;
+
+    my %grammar = grammar();
+
+    my %timeframe_sub_grammar =
+      $include_tf ? %{ $grammar{timeframe_sub_grammar} } : ();
+
+    my %ssh_backup_settings_grammar = (
+        subvol     => $grammar{subvol},
+        ssh_dest   => $grammar{ssh_dest},
+        dir        => $grammar{dir},
+        timeframes => $grammar{timeframes},
+        %timeframe_sub_grammar
+    );
+
+    return wantarray ? %ssh_backup_settings_grammar : \%ssh_backup_settings_grammar;
+}
+
+sub local_backup_settings_grammar {
+
+    # Return a hash of a local_backups key=val grammar. Optionally
+    # takes a false value to exclude the timeframe subgrammar from the
+    # returned grammar.
+
+    my $include_tf = shift // 1;
+
+    my %grammar = grammar();
+
+    my %timeframe_sub_grammar =
+      $include_tf ? %{ $grammar{timeframe_sub_grammar} } : ();
+
+    my %local_backup_settings_grammar = (
+        subvol     => $grammar{subvol},
+        dir        => $grammar{dir},
+        timeframes => $grammar{timeframes},
+        %timeframe_sub_grammar
+    );
+
+    return wantarray ? %local_backup_settings_grammar : \%local_backup_settings_grammar;
+}
+
                  ####################################
                  #              PARSER              #
                  ####################################
 
 sub config_parser {
 
-    my $self = shift // Yabsm::Base::missing_arg();
+    my $self = shift // get_logger->logconfess('TODO');
 
     # return this
     my %config;
 
-    # parse
+    # Define the parser
 
     my %grammar = grammar();
 
@@ -250,7 +280,7 @@ sub config_parser {
             },
             sub {
                 $self->commit;
-                $self->skip_ws; # fwiw skip_ws also skips comments
+                $self->skip_ws; # skip_ws also skips comments
                 $self->fail(q(expected one of 'subvol', 'snap', 'ssh_backup', or 'local_backup'));
             }
         );
@@ -262,20 +292,18 @@ sub config_parser {
 sub settings_parser {
 
     # Abstract method that parses a sequence of key=val pairs
-    # based off of a given grammar (%grammar). The arg $type
+    # based off of the input grammar %grammar. The arg $type
     # is simply a string that is either 'subvol', 'snap',
-    # 'ssh_backup', or 'local_backup' and is used for error
-    # message purposes. This method is not called directly but
-    # instead called from the wrapper parsers 'subvol_settings_parser'
-    # 'snap_settings_parser', 'ssh_backup_settings_parser', and
-    # 'local_backup_settings_parser'.
+    # 'ssh_backup', or 'local_backup' and is only used for error
+    # message generation. This method should be called from a wrapper
+    # method.
 
     my $self    = shift;
     my $type    = shift;
     my %grammar = %{ +shift };
 
     my @settings = keys %grammar;
-    my $setting_rx = join '|', @settings;
+    my $setting_regex = join '|', @settings;
 
     # return this
     my %kvs;
@@ -283,7 +311,7 @@ sub settings_parser {
     $self->sequence_of( sub {
         $self->commit;
 
-        my $setting = $self->maybe_expect( qr/$setting_rx/ )
+        my $setting = $self->maybe_expect( qr/$setting_regex/ )
           // $self->fail("expected a $type setting");
 
         $self->maybe_expect('=') // $self->fail('expected "="');
@@ -335,6 +363,10 @@ sub check_config {
     my $config_ref = shift;
 
     my @error_msgs;
+
+    unless ($config_ref->{subvols}) {
+        push @error_msgs, 'yabsm: config error: no defined subvols';
+    }
 
     push @error_msgs, snap_errors($config_ref);
     push @error_msgs, ssh_backup_errors($config_ref);

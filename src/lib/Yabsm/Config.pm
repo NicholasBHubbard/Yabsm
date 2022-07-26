@@ -364,8 +364,8 @@ sub check_config {
 
     my @error_msgs;
 
-    unless ($config_ref->{subvols}) {
-        push @error_msgs, 'yabsm: config error: no defined subvols';
+    unless ($config_ref->{snaps} || $config_ref->{ssh_backups} || $config_ref->{local_backups}) {
+        push @error_msgs, 'yabsm: config error: no defined snaps, ssh_backups, or local_backups';
     }
 
     push @error_msgs, snap_errors($config_ref);

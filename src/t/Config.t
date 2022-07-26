@@ -12,145 +12,139 @@ use v5.16.3;
 
 use Test::More 'no_plan';
 use Test::Exception;
-use Time::Piece;
-use List::Util 'shuffle';
+use File::Temp 'tempfile';
 
 # Import Config.pm
 use FindBin '$Bin';
 use lib "$Bin/../lib";
 
 # Module to test
-use Yabsm::Config;
+use Yabsm::Config 'parse_config_or_die';
 
 # Change to directory of this test script.
 use Cwd 'chdir';
-use File::Basename;
+use File::Basename qw(basename dirname);
 chdir dirname $0;
 
-print "Testing that all the valid configs parse successfully ...\n";
-for my $config_file (glob './configs/valid/*') {
-    lives_ok { Yabsm::Config::read_config($config_file) } $config_file;
+# Test that all valid configs are accepted.
+foreach my $config (glob "test-configs/valid/*") {
+    lives_ok { parse_config_or_die($config) } 'should succeed: ' . basename($config);
 }
 
-print "\nTesting that all the invalid configs kill the program ...\n";
-for my $config_file (glob './configs/invalid/*') {
-    dies_ok { Yabsm::Config::read_config($config_file) } $config_file;
+# Test that all invalid configs are rejected.
+foreach my $config (glob "test-configs/invalid/*") {
+    dies_ok { parse_config_or_die($config) } 'should fail: ' . basename($config);
 }
 
-print "\nTesting read_config() returns correct data structure\n";
-my $file_str = <<'EOF';
-yabsm_dir=/.snapshots/yabsm
-
-subvol root {
-    mountpoint=/
-
-    5minute_want=no
-
-    hourly_want=yes
-    hourly_keep=24
-
-    daily_want=no
-
-    weekly_want=yes
-    weekly_day=tuesday
-    weekly_time=23:59
-    weekly_keep=7
-
-    monthly_want=yes
-    monthly_day=30
-    monthly_time=12:30
-    monthly_keep=12
-}
-
+# Test that correct data structure is produced
+my $config = <<'END_CONFIG';
+# Example config
 subvol home {
     mountpoint=/home
-
-    5minute_want=yes
-    5minute_keep=12
-
-    hourly_want=no
-
-    daily_want=yes
-    daily_time=23:59
-    daily_keep=14
-
-    weekly_want=no
-
-    monthly_want=no
 }
-
-backup rootBackup {
-    subvol=root
-    remote=no
-    backup_dir=/
-    keep=100
-    timeframe=weekly
-    weekly_day=friday
-    weekly_time=23:59
+subvol root {
+    mountpoint=/
 }
-
-backup homeBackup {
+snap home_snap {
     subvol=home
-    remote=yes
-    host=foohost
-    backup_dir=/home
-    timeframe=hourly
-    keep=12
+    dir=/.snapshots/yabsm/home
+    timeframes=5minute,hourly,daily,weekly,monthly
+    daily_time=23:59
+    weekly_day=wednesday
+    weekly_time=00:00
+    monthly_day=31
+    monthly_time=23:59
+    5minute_keep=36
+    hourly_keep=48
+    daily_keep=365
+    weekly_keep=56
+    monthly_keep=12
+
 }
-EOF
+snap root_snap {
+    subvol=root
+    dir=/.snapshots/yabsm/root
+    timeframes=hourly,daily
+    hourly_keep=72
+    daily_time=07:03
+    daily_keep=14
+}
+ssh_backup root_my_server {
+    subvol=root
+    ssh_dest=nick@192.168.1.37
+    dir=/backups/btrfs/yabsm/desktop_root
+    timeframes=5minute,hourly
+    5minute_keep=24
+    hourly_keep=24
+}
+local_backup home_external_drive {
+    subvol=home
+    dir=/mnt/backup_drive/yabsm/desktop_home
+    timeframes=hourly
+    hourly_keep=48
+}
+END_CONFIG
 
-my %t_conf = ( misc    => { yabsm_dir => '/.snapshots/yabsm' }
+my %expected_config = (
+    subvols => {
+        root => {
+            'mountpoint' => '/'
+        },
+        home => {
+            'mountpoint' => '/home'
+        }
+    },
+    local_backups => {
+        home_external_drive => {
+            subvol => 'home',
+            hourly_keep => '48',
+            timeframes => 'hourly',
+            dir => '/mnt/backup_drive/yabsm/desktop_home'
+        }
+    },
+    ssh_backups => {
+        root_my_server => {
+            '5minute_keep' => '24',
+            subvol => 'root',
+            hourly_keep => '24',
+            ssh_dest => 'nick@192.168.1.37',
+            timeframes => '5minute,hourly',
+            dir => '/backups/btrfs/yabsm/desktop_root'
+        }
+    },
+    snaps => {
+        home_snap => {
+            monthly_day => '31',
+            subvol => 'home',
+            daily_time => '23:59',
+            hourly_keep => '48',
+            monthly_time => '23:59',
+            monthly_keep => '12',
+            dir => '/.snapshots/yabsm/home',
+            '5minute_keep' => '36',
+            daily_keep => '365',
+            weekly_keep => '56',
+            timeframes => '5minute,hourly,daily,weekly,monthly',
+            weekly_day => 'wednesday',
+            weekly_time => '00:00'
+        },
+        root_snap => {
+            daily_keep => '14',
+            subvol => 'root',
+            daily_time => '07:03',
+            hourly_keep => '72',
+            timeframes => 'hourly,daily',
+            dir => '/.snapshots/yabsm/root'
+        }
+    }
+);
 
-             , subvols => { root => { mountpoint     => '/'
-                                    , '5minute_want' => 'no'
-                                    , hourly_want    => 'yes'
-                                    , hourly_keep    => '24'
-                                    , daily_want     => 'no'
-                                    , weekly_want    => 'yes'
-                                    , weekly_day     => 'tuesday'
-                                    , weekly_time    => '23:59'
-                                    , weekly_keep    => '7'
-                                    , monthly_want   => 'yes'
-                                    , monthly_time   => '12:30'
-                                    , monthly_day    => '30'
-                                    , monthly_keep   => '12'
-                                    }
+my ($tmp_fh, $tmp_file) = tempfile( DIR => '/tmp', UNLINK => 1 );
+print $tmp_fh $config;
+close $tmp_fh;
 
-                          , home => { mountpoint     => '/home'
-                                    , '5minute_want' => 'yes'
-                                    , '5minute_keep' => '12'
-                                    , hourly_want    => 'no'
-                                    , daily_want     => 'yes'
-                                    , daily_time     => '23:59'
-                                    , daily_keep     => '14'
-                                    , weekly_want    => 'no'
-                                    , monthly_want   => 'no'
-                                    }
-                          }
+my $got_config_ref = parse_config_or_die($tmp_file);
 
-             , backups => { rootBackup => { subvol      => 'root'
-                                          , remote      => 'no'
-                                          , backup_dir  => '/'
-                                          , keep        => '100'
-                                          , timeframe   => 'weekly'
-                                          , weekly_day  => 'friday'
-                                          , weekly_time => '23:59'
-                                          }
+is_deeply( $got_config_ref, \%expected_config, 'parse production');
 
-                          , homeBackup => { remote     => 'yes'
-                                          , host       => 'foohost'
-                                          , subvol     => 'home'
-                                          , backup_dir => '/home'
-                                          , timeframe  => 'hourly'
-                                          , keep       => '12'
-                                          }
-                          }
-             );
-
-
-my $tmp_file = '/tmp/yabsm_tmp_conf';
-`echo '$file_str' > $tmp_file`;
-my $config_ref = Yabsm::Config::read_config($tmp_file);
-`rm $tmp_file`;
-
-is_deeply($config_ref, \%t_conf, 'data structure layout');
+1;

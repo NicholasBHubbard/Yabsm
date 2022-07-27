@@ -1674,6 +1674,7 @@ sub make_path_safe {
     -d $path        and return 1;
     make_path $path and return 1;
 
+    # make_path sets $!
     get_logger->logdie("yabsm: error: $!\n");
 }
 

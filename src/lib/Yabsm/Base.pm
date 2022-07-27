@@ -1677,8 +1677,31 @@ sub make_path_safe {
     get_logger->logdie("yabsm: error: $!\n");
 }
 
-sub missing_arg {
-    return 'yabsm: internal error: subroutine missing a required arg';
+sub die_missing_arg {
+
+    # logconfess about the calling function having been called with
+    # a missing argument. Subs should use this function with an
+    # expression like 'shift // die_missing_arg()'.
+
+    my $caller = ( caller(1) )[3];
+    get_logger->logconfess("yabsm: internal error: call to '$caller' missing a required arg");
+}
+
+sub die_arg_count {
+
+    my $lower    = shift // die_missing_arg();
+    my $upper    = shift // die_missing_arg();
+    my $num_args = @_    // die_missing_arg();
+
+    if ($lower <= $num_args && $num_args <= $upper) {
+        get_logger->logconfess("yabsm: internal error: called die_arg_count() but arg count is in range")
+    }
+
+    my $caller = ( caller(1) )[3];
+
+    my $arg_num_range = $lower == $upper ? $lower : "$lower-$upper";
+
+    get_logger->logconfess("yabsm: internal error: call to '$caller' passed $num_args args but takes $arg_num_range args")
 }
 
 1;

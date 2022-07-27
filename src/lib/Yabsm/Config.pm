@@ -5,6 +5,27 @@
 #  Provides functionality for YABSM configuration parsing using the
 #  Parser::MGC library. Tests for the parser are located at
 #  src/t/Config.t.
+#
+#  This parser produces a multi-dimensional hash data structure with
+#  the following skeleton:
+#
+#  %config = ( subvols       => { foo => { mountpoint=/foo_dir },
+#                                 bar => { mountpoint=/bar_dir },
+#                                 ...
+#                               },
+#              snaps         => { foo_snap => { key=val, ... },
+#                                 bar_snap => { key=val, ... }
+#                                 ...
+#                               },
+#              ssh_backups   => { foo_ssh_backup => { key=val, ... },
+#                                 bar_ssh_backup => { key=val, ... },
+#                                  ...
+#                               },
+#              local_backups => { foo_local_backup => { key=val, ... },
+#                                 bar_local_backup => { key=val, ... },
+#                                 ...
+#                               }
+#            );
 
 package Yabsm::Config;
 
@@ -360,7 +381,7 @@ sub check_config {
     # 1, otherwise return multiple values where the first value is 0
     # and the rest of the values are the corresponding error messages.
 
-    my $config_ref = shift;
+    my $config_ref = shift // get_logger->logconfess('TODO');
 
     my @error_msgs;
 

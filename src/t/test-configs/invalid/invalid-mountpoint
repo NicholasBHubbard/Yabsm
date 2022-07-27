@@ -1,0 +1,12 @@
+# This config should fail because foobar/baz is not a full path
+
+subvol foo {
+    mountpoint=foobar/baz
+}
+
+snap foo {
+     subvol=foo
+     dir=/foo
+     timeframes=5minute
+     5minute_keep=1
+}

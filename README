@@ -5,14 +5,15 @@
 * What is Yabsm?
 
 Yabsm is a btrfs snapshot manager that runs as a daemon and allows you to
-organize your snapshots into 5minute, hourly, daily, and monthly timeslots.
+snapshot and backup your btrfs filesystem.
 
-Yabsm is also a btrfs snapshot backup manager. You can define backups that
-use btrfs send/receive to perform incremental backups over ssh.
-
-* Contents
-  + [[#Configuration][Configuration]]
-  
+Yabsm configuration works by the user defining Yabsm subvols that are an
+interface for your btrfs subvolumes. Subvols can be snapshotted to a local
+btrfs directory in any timeframes include of 5minute, hourly, daily, weekly,
+and monthly. Subvols can also be backed up to either local storage hardware
+or over the network via SSH. Backups can be performed in any timeframes the
+same way that regular snapshots can. A goal of yabsm is to make configuation
+easy.
 
 # Features
 * Features
@@ -25,132 +26,149 @@ use btrfs send/receive to perform incremental backups over ssh.
 
 # Dependencies
 * Dependencies
-  + [[https://github.com/kdave/btrfs-progs][btrfs-progs]]
-  + [[https://www.openssh.com/][OpenSSH]]
-  + [[https://www.perl.org/][Perl (>= version 5.16.3)]]
+  btrfs-progs >= v5.16
+  OpenSSH
+  perl        >= v5.16.3
+  sudo
+  
 It is unlikely that you do not already have these installed.
 
 # Installation
 * Installation
   #+BEGIN_SRC  
   $ git clone https://github.com/NicholasBHubbard/yabsm
-  # yabsm/install
+  # yabsm/yabsm-install
   #+END_SRC  
 
-# Post-Installation
-* Post Installation
-Yabsm installs an example configuration file to =/etc/yabsm.conf.example=. You
-will want to copy this file to =/etc/yabsm.conf= and then build your custom
-configuation based off the example.
+Yabsm installs three files by default /etc/yabsmd.conf.example,
+/usr/local/bin/yabsm, and an init script.
 
-After you are finished creating your config you will need to write the proper
-yabsm cronjobs to your =/etc/crontab= file.
-#+BEGIN_SRC
-# yabsm update-crontab
-#+END_SRC
-If you want to install cronjobs to a file other than =/etc/crontab= you can
-redirect the output of =yabsm print-crons= to some other file.
+You can use the  -d option to install the yabsm executable to a different dir.
 
-For more information on how to create a configuration see the section below.
+After installation you will want to move /etc/yabsmd.conf.example to
+/etc/yabsmd.conf which is a commented config that will walk you through
+configuration. If you aren't sure if you're configuration is valid you can run
+the command =yabsm check-config= which will either say your configuration is
+fine or give error messages about what you did wrong.
+
+# Starting yabsmd
+* Starting yabsmd
+Yabsm supports systemd, runit, openrc, and sysvinit.
+
+Depending on your init system run one of:
+
+TODO COMMAND LIST HERE
+
 # Configuration
 * Configuration
-  Yabsm is configured through the =/etc/yabsm.conf= file.
 
-  Effort has been put in to ensure that erroneous configs are rejected with
-  meaningful error messages. To check that your config is valid run
-  =yabsm check-config=.
+In a configuration you define 4 things; Subvols, snaps, ssh_backups, and
+local_backups.
 
-  The fundamental building blocks of a configuration are =subvols= and
-  =backups=.
+Every snap, ssh_backup, and local_backup target one subvol.
 
-  A =subvol= relates to a btrfs subvolume through its =mountpoint=
-  setting which is the directory that will be snapshotted by yabsm. A =subvols=
-  snapshotting is controlled through its =TIMEFRAME_want= settings. For each
-  =TIMEFRAME_want=yes= setting a directory =YABSM_DIR/SUBVOL_NAME/TIMEFRAME=
-  directory will be created where the corresponding snapshots will be placed.
+Snaps are readonly snapshots taken using the command =btrfs subvolume snapshot -r $new_snap=.
 
-  A =backup= performs incremental backups of a yabsm =subvol= to either a
-  remote or local btrfs filesystem. The backup snapshots are placed in the
-  directory specified by the =backup_dir= setting.
+Both ssh and local backups are implemented as incremental-backups with the
+general command structure =btrfs send -p $boot_snap $tmp_snap | btrfs receive $dir=.
+
+Both snaps and backups can be performed in any of 5minute, hourly, daily, weekly
+or monthly timeframes. Each timeframe gets its own ${timeframe}_keep value that
+allows you to keep a certain number of snapshots before you start discarding the
+oldest snapshot in the same timeframe when taking a new snap.
 
 *** Example Config
 #+BEGIN_SRC 
     # /etc/yabsmd.conf
 
-    yabsm_dir=/.snapshots/yabsm
-
-    # Lets define some subvols
+    ### Lets define some subvols
   
     subvol home {
         mountpoint=/home
-
-        5minute_want=yes
-        5minute_keep=24
-
-        hourly_want=yes
-        hourly_keep=24
-
-        daily_want=yes
-        daily_time=18:00
-        daily_keep=30
-
-        weekly_want=yes
-        weekly_day=wednesday
-        weekly_time=09:30
-        weekly_keep=12
-
-        monthly_want=no
-        monthly_day=13
-        monthly_time=05:00
-        monthly_keep=12
     }
 
     subvol root {
         mountpoint=/
-
-        5minute_want=no
-
-        hourly_want=no
-
-        daily_want=no
-
-        weekly_want=yes
-        weekly_day=friday
-        weekly_time=23:59
-        weekly_keep=52
-
-        monthly_want=no
     }
 
-    # Now lets backup the subvols
+    ### Now lets define some snaps
 
-    backup homeBackup {
+    snap home_snap {
         subvol=home
 
-        remote=yes
+        # Where should we place the snapshots?
+        dir=/.snapshots/yabsm/home
 
-        host=alice@192.168.1.73
+        timeframes=5minute,hourly,daily,weekly,monthly
 
-        # the remote dir
-        backup_dir=/.snapshots/backups/yabsm/desktopHomeBackup
+        daily_time=23:59 
 
-        timeframe=daily
+        weekly_day=wednesday
+        weekly_time=00:00
 
-        time=23:59
+        monthly_day=31
+        monthly_time=23:59
 
-        keep=365
+        5minute_keep=36 # I can go back 3 hours by 5minute increments
+        hourly_keep=48  # Two days back by hour increments
+        daily_keep=365  # Back a year in daily increments
+        weekly_keep=56  # Back a year in weekly increments
+        monthly_keep=12 # You get it by now or re-read
+    
     }
 
-    backup rootBackup {
+    snap root_snap {
         subvol=root
 
-        remote=no
+        dir=/.snapshots/yabsm/root
 
-        # this is a local dir because remote=no
-        backup_dir=/.snapshots/slkserverRootBackup
+        timeframes=hourly,daily        
+
+        hourly_keep=72
+
+        daily_time=07:03
+        daily_keep=14 
+    }
+
+    ssh_backup root_my_server {
+        subvol=root      
+
+        # Could also be an ssh name you defined in ~/.ssh/config
+        ssh_dest=192.168.1.37
+
+        # This is the remote dir
+        dir=/backups/btrfs/yabsm/desktop_root
+
+        timeframes=5minute,hourly
+
+        5minute_keep=24
+
+        hourly_keep=24
+    }
+
+    local_backup home_external_drive {
+
+        subvol=home
+
+        dir=/mnt/backup_drive/yabsm/desktop_home
+ 
+        timeframes=hourly
+
+        hourly_keep=48
     }
 #+END_SRC 
-  
+ 
+Thats it! If you can understand this configuration you should completely
+understand how yabsm works. One of the yabsms goals is to produce meaningful
+error messages for erroneous configurations. To check if your configuration is
+valid or not you can run =yabsm check-config=.
+
+# Configuring Remote Servers
+* Configuring Remote Servers
+
+Remote servers must be configured to use yabsm. To configure a server run the
+command =yabsm config-server $host=.
+
 *** yabsm_dir
 The directory for yabsm to store snapshots and use as a working directory for
 incremental backups. This directory is taken literally so you probably want it

@@ -1,0 +1,14 @@
+# This config should fail because having an hourly timeframe specified
+# introduces hourly_keep as a required setting.
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo {
+    ###hourly_keep=1
+    subvol=foo
+    dir=/.snapshots/yabsm/foo
+    timeframes=5minute,hourly
+    5minute_keep=1
+}

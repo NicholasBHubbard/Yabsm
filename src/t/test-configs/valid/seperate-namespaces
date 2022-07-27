@@ -1,0 +1,28 @@
+# This config shows that subvol, snap, ssh_backup, and local_backup names
+# do not share one namespace (all definitions are named foo).
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo {
+    subvol=foo
+    dir=/.snapshots/yabsm/foo
+    timeframes=5minute
+    5minute_keep=1
+}
+
+ssh_backup foo {
+    subvol=foo
+    ssh_dest=nick@192.168.1.12
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=1
+}
+
+local_backup foo {
+    subvol=foo
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=1
+}

@@ -9,21 +9,21 @@
 #  This parser produces a multi-dimensional hash data structure with
 #  the following skeleton:
 #
-#  %config = ( subvols       => { foo => { mountpoint=/foo_dir },
-#                                 bar => { mountpoint=/bar_dir },
-#                                 ...
+#  %config = ( subvols       => { foo => { mountpoint=/foo_dir }
+#                               , bar => { mountpoint=/bar_dir }
+#                               , ...
 #                               },
-#              snaps         => { foo_snap => { key=val, ... },
-#                                 bar_snap => { key=val, ... }
-#                                 ...
+#              snaps         => { foo_snap => { key=val, ... }
+#                               , bar_snap => { key=val, ... }
+#                               , ...
 #                               },
-#              ssh_backups   => { foo_ssh_backup => { key=val, ... },
-#                                 bar_ssh_backup => { key=val, ... },
-#                                  ...
+#              ssh_backups   => { foo_ssh_backup => { key=val, ... }
+#                               , bar_ssh_backup => { key=val, ... }
+#                               ,  ...
 #                               },
-#              local_backups => { foo_local_backup => { key=val, ... },
-#                                 bar_local_backup => { key=val, ... },
-#                                 ...
+#              local_backups => { foo_local_backup => { key=val, ... }
+#                               , bar_local_backup => { key=val, ... }
+#                               , ...
 #                               }
 #            );
 

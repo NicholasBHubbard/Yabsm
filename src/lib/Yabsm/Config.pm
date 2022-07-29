@@ -26,8 +26,6 @@
 #                               , ...
 #                               }
 #            );
-#
-#  Note that the returned hash is made readonly via Const::Fast.
 
 package Yabsm::Config;
 
@@ -41,7 +39,6 @@ use Yabsm::Base;
 
 use Log::Log4perl 'get_logger';
 use Array::Utils 'array_minus';
-use Const::Fast;
 
 use Parser::MGC;
 use base 'Parser::MGC';
@@ -59,8 +56,7 @@ our @EXPORT_OK = qw( parse_config_or_die );
 sub parse_config_or_die {
 
     # Attempt to parse $file into a yabsm configuration data
-    # structure. Note that the returned data structure is read-only
-    # via Const::Fast.
+    # structure.
 
     my $file = shift // '/etc/yabsmd.conf';
 
@@ -79,8 +75,7 @@ sub parse_config_or_die {
     my ($config_valid, @error_msgs) = check_config($config_ref);
 
     if ($config_valid) {
-        const my $config_ref => $config_ref;
-        return $config_ref;
+        return wantarray ? %{ $config_ref} : $config_ref;
     }
     else {
         my $error_msg = join '', map { $_ = "$_\n" } @error_msgs;

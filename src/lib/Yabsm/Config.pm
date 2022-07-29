@@ -80,7 +80,7 @@ sub parse_config_or_die {
 
     if ($config_valid) {
         const my $config_ref => $config_ref;
-        return wantarray ? %{ $config_ref } : $config_ref;
+        return $config_ref;
     }
     else {
         my $error_msg = join '', map { $_ = "$_\n" } @error_msgs;
@@ -555,3 +555,5 @@ sub required_timeframe_settings {
 
     return @required;
 }
+
+1;

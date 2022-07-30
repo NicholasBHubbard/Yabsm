@@ -27,7 +27,7 @@
 #                               }
 #            );
 
-package Yabsm::Config;
+package Yabsm::ConfigParser;
 
 use strict;
 use warnings;

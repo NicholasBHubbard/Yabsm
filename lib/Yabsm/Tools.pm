@@ -102,7 +102,7 @@ sub is_btrfs_subvol { # No test
 
 sub is_timeframe { # No test
 
-    # Return 1 if $tframe is a valid timeframe and return 0 otherwise.
+    # Return 1 if given a valid timeframe and return 0 otherwise.
 
     1 == @_ or die_arg_count(1, 1, @_);
 

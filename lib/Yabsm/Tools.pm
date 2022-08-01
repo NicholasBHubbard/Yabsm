@@ -109,7 +109,19 @@ sub is_btrfs_subvolume { # No test
 
     return 0 unless is_btrfs_dir($dir);
 
-    return 0+('256' eq `stat --printf=%i '$dir' 2>/dev/nuill`);
+    return 0+('256' eq `stat --printf=%i '$dir' 2>/dev/null`);
+}
+
+sub is_btrfs_subvolume_or_die { # No test
+
+    # Wrapper around is_btrfs_subvolume() that logdies if it returns
+    # false.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $dir = shift;
+
+    is_btrfs_subvolume($dir) ? return 1 : get_logger->logdie("yabsm: error: '$dir' is not a btrfs subvolume")
 }
 
 sub is_timeframe { # No test

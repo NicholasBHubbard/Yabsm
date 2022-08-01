@@ -18,8 +18,7 @@ use File::Path qw(make_path);
 use File::Basename qw(basename);
 
 use Exporter 'import';
-our @EXPORT_OK = qw(die_missing_arg
-                    die_arg_count
+our @EXPORT_OK = qw(die_arg_count
                     is_btrfs_dir
                     is_timeframe
                     safe_system
@@ -30,16 +29,6 @@ our @EXPORT_OK = qw(die_missing_arg
                  #            SUBROUTINES           #
                  ####################################
 
-sub die_missing_arg { # No test
-
-    # logconfess about the calling function having been called with
-    # a missing argument. Subs should use this subroutine using an
-    # expression like 'shift // die_missing_arg()'.
-
-    my $caller = ( caller(1) )[3];
-    get_logger->logconfess("yabsm: internal error: call to '$caller' missing a required arg");
-}
-
 sub die_arg_count { # Has test
 
     # logconfess if $num_args is not in range $lower to $upper. Used
@@ -47,9 +36,9 @@ sub die_arg_count { # Has test
     # arguments. Subs should use this subroutine using an expression
     # like '1 == @_ or die_arg_count(1, 1, @_)'.
 
-    my $lower    = shift // die_missing_arg;
-    my $upper    = shift // die_missing_arg;
-    my $num_args = @_    // die_missing_arg;
+    my $lower    = shift // get_logger->logconfess('yabsm: internal error: missing required arg');
+    my $upper    = shift // get_logger->logconfess('yabsm: internal error: missing required arg');
+    my $num_args = @_    // get_logger->logconfess('yabsm: internal error: missing required arg');
 
     ($lower, $upper) = ($upper, $lower) if $lower > $upper;
 

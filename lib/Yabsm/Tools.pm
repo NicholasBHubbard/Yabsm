@@ -18,6 +18,7 @@ use File::Path qw(make_path);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(die_arg_count
+                    has_btrfs_progs
                     is_btrfs_dir
                     is_btrfs_subvolume
                     is_timeframe

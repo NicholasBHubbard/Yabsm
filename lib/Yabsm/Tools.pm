@@ -15,7 +15,6 @@ use v5.16.3;
 use Log::Log4perl qw(get_logger);
 use Time::Piece;
 use File::Path qw(make_path);
-use File::Basename qw(basename);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(die_arg_count
@@ -86,7 +85,7 @@ sub is_btrfs_subvol { # No test
     # subvolume is snapshotted, this entity will exist in place of the
     # original subvolume. Its inode number is 2.
     #
-    # For a generally reliable check wheter any directory is a
+    # For a generally reliable check whether any directory is a
     # subvolume, the filesystem type should be verified as well
     #
     # stat -f --format=%T /path

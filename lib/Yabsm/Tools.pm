@@ -69,6 +69,37 @@ sub is_btrfs_dir { # No test
     return 0+('btrfs' eq `stat -f --printf=%T '$dir'`);
 }
 
+sub is_btrfs_subvol { # No test
+
+    # Return 1 if $dir is a btrfs subvolume on this OS and return 0
+    # otherwise.
+    #
+    # Please read the follow StackOverflow answer from a btrfs
+    # maintainer (https://stackoverflow.com/a/32865333):
+    #
+    # A subvolume is identified by inode number 256, so you can check
+    # it simply by
+    #
+    # if [ `stat --format=%i /path` -eq 256 ]; then ...; fi
+    #
+    # There's also a so called empty-subvolume, ie. if a nested
+    # subvolume is snapshotted, this entity will exist in place of the
+    # original subvolume. Its inode number is 2.
+    #
+    # For a generally reliable check wheter any directory is a
+    # subvolume, the filesystem type should be verified as well
+    #
+    # stat -f --format=%T /path
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $dir = shift;
+
+    return 0 unless is_btrfs_dir($dir);
+
+    return 0+('256' eq `stat --printf=%i '$dir'`);
+}
+
 sub is_timeframe { # No test
 
     # Return 1 if $tframe is a valid timeframe and return 0 otherwise.

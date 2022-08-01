@@ -77,7 +77,7 @@ sub is_btrfs_dir { # No test
 
     return 0 unless -d $dir;
 
-    return 0+('btrfs' eq `stat -f --printf=%T '$dir'`);
+    return 0+('btrfs' eq `stat -f --printf=%T '$dir' 2>/dev/null`);
 }
 
 sub is_btrfs_subvolume { # No test
@@ -108,7 +108,7 @@ sub is_btrfs_subvolume { # No test
 
     return 0 unless is_btrfs_dir($dir);
 
-    return 0+('256' eq `stat --printf=%i '$dir'`);
+    return 0+('256' eq `stat --printf=%i '$dir' 2>/dev/nuill`);
 }
 
 sub is_timeframe { # No test

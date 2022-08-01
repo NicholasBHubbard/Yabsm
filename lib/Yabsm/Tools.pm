@@ -19,7 +19,7 @@ use File::Path qw(make_path);
 use Exporter 'import';
 our @EXPORT_OK = qw(die_arg_count
                     is_btrfs_dir
-                    is_btrfs_subvol
+                    is_btrfs_subvolume
                     is_timeframe
                     safe_system
                     safe_make_path
@@ -69,7 +69,7 @@ sub is_btrfs_dir { # No test
     return 0+('btrfs' eq `stat -f --printf=%T '$dir'`);
 }
 
-sub is_btrfs_subvol { # No test
+sub is_btrfs_subvolume { # No test
 
     # Return 1 if $dir is a btrfs subvolume on this OS and return 0
     # otherwise.

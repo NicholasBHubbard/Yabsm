@@ -25,6 +25,8 @@ our @EXPORT_OK = qw(die_arg_count
                     safe_make_path
                    );
 
+our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
+
                  ####################################
                  #            SUBROUTINES           #
                  ####################################

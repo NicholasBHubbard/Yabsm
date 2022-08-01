@@ -19,6 +19,7 @@ use File::Path qw(make_path);
 use Exporter 'import';
 our @EXPORT_OK = qw(die_arg_count
                     is_btrfs_dir
+                    is_btrfs_subvol
                     is_timeframe
                     safe_system
                     safe_make_path

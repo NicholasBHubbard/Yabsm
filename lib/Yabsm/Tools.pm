@@ -109,6 +109,15 @@ sub is_timeframe { # No test
     return shift =~ /^(5minute|hourly|daily|weekly|monthly)$/;
 }
 
+sub is_week_day { # No test
+
+    # Return 1 if give a valid week day and return 0 otherwise.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    return shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/;
+}
+
 sub safe_system { # No test
 
     # Wrapper around system that logdies if the system command fails.

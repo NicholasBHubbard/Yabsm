@@ -18,9 +18,12 @@ use File::Path qw(make_path);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(die_arg_count
-                    has_btrfs_progs
+                    have_sudo_access_to_btrfs
+                    have_sudo_access_to_btrfs_or_die
                     is_btrfs_dir
+                    is_btrfs_dir_or_die
                     is_btrfs_subvolume
+                    is_btrfs_subvolume_or_die
                     is_timeframe
                     safe_system
                     safe_make_path
@@ -56,15 +59,24 @@ sub die_arg_count { # Has test
     get_logger->logconfess("yabsm: internal error: call to '$caller' passed $num_args args but takes $num_range_msg");
 }
 
-sub has_btrfs_progs { # No test
+sub have_sudo_access_to_btrfs { # No test
 
-    # Return 1 if btrfs-progs is installed on the OS and return 0
+    # Return 1 if we can run `btrfs` with `sudo -n` and return 0
     # otherwise.
 
     0 == @_ or die_arg_count(0, 0, @_);
 
-    return 1 if `command -v btrfs 2>/dev/null`;
-    return 0;
+    return 0+(0 == system('sudo -n btrfs --help >/dev/null 2>&1'));
+}
+
+sub have_sudo_access_to_btrfs_or_die { # No test
+
+    # Wrapper around have_sudo_access_to_btrfs() that logdies if it
+    # returns false.
+
+    0 == @_ or die_arg_count(0, 0, @_);
+
+    have_sudo_access_to_btrfs() ? return 1 : get_logger->logconfess("yabsm: internal error: no sudo access rights to 'btrfs' while running as uid '$<'");
 }
 
 sub is_btrfs_dir { # No test
@@ -79,6 +91,17 @@ sub is_btrfs_dir { # No test
     return 0 unless -d $dir;
 
     return 0+('btrfs' eq `stat -f --printf=%T '$dir' 2>/dev/null`);
+}
+
+sub is_btrfs_dir_or_die { # No test
+
+    # Wrapper around is_btrfs_dir() that logdies if it returns false.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $dir = shift;
+
+    is_btrfs_dir($dir) ? return 1 : get_logger->logdie("yabsm: error: '$dir' is not a directory residing on a btrfs filesystem")
 }
 
 sub is_btrfs_subvolume { # No test

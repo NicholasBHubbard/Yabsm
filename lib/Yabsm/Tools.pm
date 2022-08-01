@@ -55,6 +55,17 @@ sub die_arg_count { # Has test
     get_logger->logconfess("yabsm: internal error: call to '$caller' passed $num_args args but takes $num_range_msg");
 }
 
+sub has_btrfs_progs { # No test
+
+    # Return 1 if btrfs-progs is installed on the OS and return 0
+    # otherwise.
+
+    0 == @_ or die_arg_count(0, 0, @_);
+
+    return 1 if `command -v btrfs 2>/dev/null`;
+    return 0;
+}
+
 sub is_btrfs_dir { # No test
 
     # Return 1 if $dir is a directory residing on a btrfs filesystem

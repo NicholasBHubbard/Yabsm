@@ -27,15 +27,13 @@
 #                               }
 #            );
 
-package Yabsm::ConfigParser;
+package Yabsm::Config::Parser;
 
 use strict;
 use warnings;
 use v5.16.3;
 
-# located using lib::relative in yabsm.pl
-use lib::relative '..';
-use Yabsm::Base;
+use Yabsm::Tools qw(die_arg_count);
 
 use Log::Log4perl 'get_logger';
 use Array::Utils 'array_minus';
@@ -57,6 +55,8 @@ sub parse_config_or_die {
 
     # Attempt to parse $file into a yabsm configuration data
     # structure.
+
+    1 >= @_ or die_arg_count(0, 1, @_);
 
     my $file = shift // '/etc/yabsmd.conf';
 

@@ -138,9 +138,15 @@ log4perl.appender.Logfile.layout.ConversionPattern = %d [%M]: %m{chomp}%n
     Yabsm::Base::schedule_snapshots($config_ref, $cron_scheduler);
     Yabsm::Base::schedule_backups($config_ref, $cron_scheduler);
 
+    my $uid = getpwnam('yabsmd');
+    unless (setuid $uid) {
+        get_logger->logdie("yabsm: error: could not switch to yabsmd user with uid $uid");
+    }
+
     my $pid = $cron_scheduler->run(detach => 1, pid_file => '/run/yabsmd.pid');
 
-    say "yabsmd started as pid $pid";
+    say $pid;
+    exit 0;
 }
 
 sub yabsmd_stop {
@@ -154,8 +160,7 @@ sub yabsmd_stop {
         }
     }
     else {
-        say STDERR "no running instance of yabsmd";
-        exit 1;
+        die "no running instance of yabsmd";
     }
 }
 

@@ -3,28 +3,23 @@
 #  Author:  Nicholas Hubbard
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
-#
-#  Testing for the Config.pm library.
+
+#  Testing for the Yabsm::Config::Parser library.
 
 use strict;
 use warnings;
 use v5.16.3;
 
+use Yabsm::Config::Parser qw(parse_config_or_die);
+
 use Test::More 'no_plan';
 use Test::Exception;
 use File::Temp 'tempfile';
 
-# Import Config.pm
-use FindBin '$Bin';
-use lib "$Bin/../lib";
-
-# Module to test
-use Yabsm::Config 'parse_config_or_die';
-
-# Change to directory of this test script.
-use Cwd 'chdir';
+# Change to directory of this test script. Needed to find the test configs.
 use File::Basename qw(basename dirname);
-chdir dirname $0;
+use File::chdir;
+local $CWD = dirname(__FILE__);
 
 # Test that all valid configs are accepted.
 foreach my $config (glob "test-configs/valid/*") {

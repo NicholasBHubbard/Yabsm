@@ -39,9 +39,6 @@ sub initialize_directories {
     # TODO init directories
     my $config_ref = shift // get_logger->logconfess(missing_arg());
 
-    get_logger->logdie("yabsm: error: initialize_directories() called while not root user")
-      if $<;
-
     # We need the main snapshot dir
     # every backup needs blank
     # every subvol needs blank
@@ -492,7 +489,7 @@ sub has_bootstrap { # No test. Is not pure.
     }
 }
 
-sub all_snaps { # No test. Is not pure.
+sub all_snapshots { # No test. Is not pure.
 
     # Gather all snapshots (full paths) of $subject and return them
     # sorted from newest to oldest. $subject can be any user defined

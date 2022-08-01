@@ -1,0 +1,588 @@
+#!/usr/bin/env/perl
+
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
+
+#  Testing for the Yabsm::Config::Query library.
+
+use strict;
+use warnings;
+use v5.16.3;
+
+use Yabsm::Config::Query;
+
+use Test::More 'no_plan';
+use Test::Exception;
+
+# Note that all foo_thing's have a maximum timeframes value.
+my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
+                               , bar => { mountpoint => '/' }
+                               , baz => { mountpoint => '/' }
+                               }
+                  , snaps   => { foo_snap => { subvol => 'foo'
+                                             , dir    =>  '/foo'
+                                             , timeframes => '5minute,hourly,daily,weekly,monthly'
+                                             , '5minute_keep' => 36
+                                             , hourly_keep => 48
+                                             , daily_keep => 365
+                                             , weekly_keep => 56
+                                             , monthly_keep => 12
+                                             , daily_time => '23:59'
+                                             , weekly_day => 'wednesday'
+                                             , weekly_time => '00:00'
+                                             , monthly_day => 31
+                                             , monthly_time => '23:59'
+                                             }
+                               , bar_snap => { subvol => 'bar'
+                                             , dir    => '/bar'
+                                             , timeframes => '5minute'
+                                             , '5minute_keep' => '24'
+                                             }
+                               , baz_snap => { subvol => 'baz'
+                                             , dir    => '/baz'
+                                             , timeframes => 'hourly'
+                                             , hourly_keep => '24'
+                                             }
+                               }
+                  , ssh_backups => { foo_ssh_backup => { subvol => 'foo'
+                                                       , ssh_dest => 'localhost'
+                                                       , dir    => '/foo'
+                                                       , timeframes => '5minute,hourly,daily,weekly,monthly'
+                                                       , '5minute_keep' => 36
+                                                       , hourly_keep => 48
+                                                       , daily_keep => 365
+                                                       , weekly_keep => 56
+                                                       , monthly_keep => 12
+                                                       , daily_time => '23:59'
+                                                       , weekly_day => 'wednesday'
+                                                       , weekly_time => '00:00'
+                                                       , monthly_day => 31
+                                                       , monthly_time => '23:59'
+                                                       }
+                                   , bar_ssh_backup => { subvol => 'bar'
+                                                       , ssh_dest => 'localhost'
+                                                       , dir => '/bar'
+                                                       , timeframes => 'hourly'
+                                                       , hourly_keep => 14
+                                                       }
+
+                                   , baz_ssh_backup => { subvol => 'baz'
+                                                       , ssh_dest => 'localhost'
+                                                       , dir => '/baz'
+                                                       , timeframes => 'daily'
+                                                       , daily_keep => 14
+                                                       , daily_time => '23:59'
+                                                       }
+                                   }
+                  , local_backups => { foo_local_backup => { subvol => 'foo'
+                                                           , dir    => '/foo'
+                                                           , timeframes => '5minute,hourly,daily,weekly,monthly'
+                                                           , '5minute_keep' => 36
+                                                           , hourly_keep => 48
+                                                           , daily_keep => 365
+                                                           , weekly_keep => 56
+                                                           , monthly_keep => 12
+                                                           , daily_time => '23:59'
+                                                           , weekly_day => 'wednesday'
+                                                           , weekly_time => '00:00'
+                                                           , monthly_day => 31
+                                                           , monthly_time => '23:59'
+                                                           }
+                                     , bar_local_backup => { subvol => 'bar'
+                                                           , dir    => '/bar'
+                                                           , timeframes => 'weekly'
+                                                           , weekly_keep => 56
+                                                           , weekly_day => 'monday'
+                                                           , weekly_time => '00:00'
+                                                           }
+
+                                     , baz_local_backup => { subvol => 'baz'
+                                                           , dir    => '/baz'
+                                                           , timeframes => 'monthly'
+                                                           , monthly_keep => 12
+                                                           , monthly_day => '30'
+                                                           , monthly_time => '00:00'
+                                                           }
+                                     }
+                  );
+
+                 ####################################
+                 #               TESTS              #
+                 ####################################
+
+{
+    my $n = 'subvol_exists';
+    my $f = \&Yabsm::Config::Query::subvol_exists;
+
+    is($f->('foo', \%TEST_CONFIG), 1, "$n - 1 when subvol exists");
+    is($f->('quux', \%TEST_CONFIG), 0, "$n - 0 when subvol doesn't exist");
+}
+
+{
+    my $n = 'snap_exists';
+    my $f = \&Yabsm::Config::Query::snap_exists;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 1, "$n - 1 when snap exists");
+    is($f->('quux', \%TEST_CONFIG), 0, "$n - 0 when snap doesn't exist");
+}
+
+{
+    my $n = 'ssh_backup_exists';
+    my $f = \&Yabsm::Config::Query::ssh_backup_exists;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 1, "$n - 1 when ssh_backup exists");
+    is($f->('quux', \%TEST_CONFIG), 0, "$n - 0 when ssh_backup doesn't exist");
+}
+
+{
+    my $n = 'local_backup_exists';
+    my $f = \&Yabsm::Config::Query::local_backup_exists;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 1, "$n - 1 when local_backup exists");
+    is($f->('quux', \%TEST_CONFIG), 0, "$n - 0 when local_backup doesn't exist");
+}
+
+{
+    my $n = 'all_subvols';
+    my $f = \&Yabsm::Config::Query::all_subvols;
+
+    is_deeply([ $f->(\%TEST_CONFIG) ], ['bar','baz','foo'], "$n -  correct subvol name list");
+}
+
+{
+    my $n = 'all_snaps';
+    my $f = \&Yabsm::Config::Query::all_snaps;
+
+    my @arr = $f->(\%TEST_CONFIG);
+
+    is_deeply([ $f->(\%TEST_CONFIG) ], ['bar_snap','baz_snap','foo_snap'], "$n -  correct snap name list");
+}
+
+{
+    my $n = 'all_ssh_backups';
+    my $f = \&Yabsm::Config::Query::all_ssh_backups;
+
+    is_deeply([ $f->(\%TEST_CONFIG) ], ['bar_ssh_backup', 'baz_ssh_backup','foo_ssh_backup'], "$n -  correct ssh_backup name list");
+}
+
+{
+    my $n = 'all_local_backups';
+    my $f = \&Yabsm::Config::Query::all_local_backups;
+
+    is_deeply([ $f->(\%TEST_CONFIG) ], ['bar_local_backup', 'baz_local_backup','foo_local_backup'], "$n -  correct local_backup name list");
+}
+
+{
+    my $n = 'subvol_mountpoint';
+    my $f = \&Yabsm::Config::Query::subvol_mountpoint;
+
+    is($f->('foo', \%TEST_CONFIG), '/', "$n - got correct mountpoint");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no subvol named 'quux'/, "$n - dies if non-existent subvol";
+}
+
+{
+    my $n = 'all_snaps_of_subvol';
+    my $f = \&Yabsm::Config::Query::all_snaps_of_subvol;
+
+    is_deeply([ $f->('foo', \%TEST_CONFIG) ], [ 'foo_snap' ], "$n -  correct snap list");
+}
+
+{
+    my $n = 'all_ssh_backups_of_subvol';
+    my $f = \&Yabsm::Config::Query::all_ssh_backups_of_subvol;
+
+    is_deeply([ $f->('foo', \%TEST_CONFIG) ], [ 'foo_ssh_backup' ], "$n -  correct ssh_backup list");
+}
+
+{
+    my $n = 'all_local_backups_of_subvol';
+    my $f = \&Yabsm::Config::Query::all_local_backups_of_subvol;
+
+    is_deeply([ $f->('foo', \%TEST_CONFIG) ], [ 'foo_local_backup' ], "$n -  correct local_backup list");
+}
+
+{
+    my $n = 'snap_subvol';
+    my $f = \&Yabsm::Config::Query::snap_subvol;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 'foo', "$n - correct subvol");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies on non-existent snap"
+}
+
+{
+    my $n = 'snap_dir';
+    my $f = \&Yabsm::Config::Query::snap_dir;
+
+    is($f->('foo_snap', \%TEST_CONFIG), '/foo', "$n - correct dir");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies on non-existent snap"
+}
+
+{
+    my $n = 'snap_timeframes';
+    my $f = \&Yabsm::Config::Query::snap_timeframes;
+
+    is_deeply([ $f->('foo_snap', \%TEST_CONFIG) ], [ '5minute', 'daily', 'hourly', 'monthly', 'weekly' ], "$n - correct timeframes comma seperated");
+    is_deeply([ $f->('bar_snap',  \%TEST_CONFIG )], [ '5minute' ], "$n - correct timeframes single timeframes");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies on non-existent snap"
+}
+
+{
+    my $n = 'ssh_backup_subvol';
+    my $f = \&Yabsm::Config::Query::ssh_backup_subvol;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 'foo', "$n - correct subvol");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies on non-existent ssh_backup";
+}
+
+{
+    my $n = 'ssh_backup_dir';
+    my $f = \&Yabsm::Config::Query::ssh_backup_dir;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), '/foo', "$n - correct dir");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies on non-existent ssh_backup";
+}
+
+{
+    my $n = 'ssh_backup_timeframes';
+    my $f = \&Yabsm::Config::Query::ssh_backup_timeframes;
+
+    is_deeply([ $f->('foo_ssh_backup', \%TEST_CONFIG) ], [ '5minute', 'daily', 'hourly', 'monthly', 'weekly' ], "$n - correct timeframes comma seperated");
+    is_deeply([ $f->('bar_ssh_backup', \%TEST_CONFIG) ], [ 'hourly' ], "$n - correct timeframes single timeframes");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies on non-existent ssh_backup";
+}
+
+{
+    my $n = 'ssh_backup_ssh_dest';
+    my $f = \&Yabsm::Config::Query::ssh_backup_ssh_dest;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 'localhost', "$n - correct ssh_dest");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies on non-existent ssh_backup";
+}
+
+{
+    my $n = 'local_backup_subvol';
+    my $f = \&Yabsm::Config::Query::local_backup_subvol;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 'foo', "$n - correct subvol");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies on non-existent local_backup";
+}
+
+{
+    my $n = 'local_backup_dir';
+    my $f = \&Yabsm::Config::Query::local_backup_dir;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), '/foo', "$n - correct dir");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies on non-existent local_backup";
+}
+
+{
+    my $n = 'local_backup_timeframes';
+    my $f = \&Yabsm::Config::Query::local_backup_timeframes;
+
+    is_deeply([ $f->('foo_local_backup', \%TEST_CONFIG) ], [ '5minute', 'daily', 'hourly', 'monthly', 'weekly' ], "$n - correct timeframes comma seperated");
+    is_deeply([ $f->('bar_local_backup', \%TEST_CONFIG) ], [ 'weekly' ], "$n - correct timeframes single timeframes");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies on non-existent local_backup";
+}
+
+{
+    my $n = 'snap_wants_timeframe';
+    my $f = \&Yabsm::Config::Query::snap_wants_timeframe;
+
+    is($f->('foo_snap', 'hourly', \%TEST_CONFIG), 1, "$n - succeeds when does want");
+    is($f->('bar_snap', 'hourly', \%TEST_CONFIG), 0, "$n - fails when doesn't want");
+    throws_ok { $f->('quux', 'daily', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n dies on non-existent snap";
+    throws_ok { $f->('foo_snap', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n dies on invalid timeframe";
+}
+
+{
+    my $n = 'ssh_backup_wants_timeframe';
+    my $f = \&Yabsm::Config::Query::ssh_backup_wants_timeframe;
+
+    is($f->('foo_ssh_backup', 'daily', \%TEST_CONFIG), 1, "$n - succeeds when does want");
+    is($f->('bar_ssh_backup', 'monthly', \%TEST_CONFIG), 0, "$n - fails when does want");
+    throws_ok { $f->('quux', 'daily', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n dies on non-existent ssh_backup";
+    throws_ok { $f->('foo_ssh_backup', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n dies on invalid timeframe";
+}
+
+{
+    my $n = 'local_backup_wants_timeframe';
+    my $f = \&Yabsm::Config::Query::local_backup_wants_timeframe;
+
+    is($f->('foo_local_backup', 'daily', \%TEST_CONFIG), 1, "$n - succeeds when does want");
+    is($f->('bar_local_backup', 'monthly', \%TEST_CONFIG), 0, "$n - fails when does want");
+    throws_ok { $f->('quux', 'daily', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n dies on non-existent local_backup";
+    throws_ok { $f->('foo_local_backup', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n dies on invalid timeframe";
+}
+
+{
+    my $n = 'snap_5minute_keep';
+    my $f = \&Yabsm::Config::Query::snap_5minute_keep;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 36, "$n - got correct 5minute_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('baz_snap', \%TEST_CONFIG) } qr/snap 'baz_snap' is not taking 5minute snapshots/, "$n - dies if not taking 5minute snapshots";
+}
+
+{
+    my $n = 'snap_hourly_keep';
+    my $f = \&Yabsm::Config::Query::snap_hourly_keep;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 48, "$n - got correct hourly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking hourly snapshots/, "$n - dies if not taking hourly snapshots";
+}
+
+{
+    my $n = 'snap_daily_keep';
+    my $f = \&Yabsm::Config::Query::snap_daily_keep;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 365, "$n - got correct daily_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking daily snapshots/, "$n - dies if not taking daily snapshots";
+}
+
+{
+    my $n = 'snap_daily_time';
+    my $f = \&Yabsm::Config::Query::snap_daily_time;
+
+    is($f->('foo_snap', \%TEST_CONFIG), '23:59', "$n - got correct daily_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking daily snapshots/, "$n - dies if not taking daily snapshots";
+}
+
+{
+    my $n = 'snap_weekly_keep';
+    my $f = \&Yabsm::Config::Query::snap_weekly_keep;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 56, "$n - got correct weekly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking weekly snapshots/, "$n - dies if not taking weekly snapshots";
+}
+
+{
+    my $n = 'snap_weekly_time';
+    my $f = \&Yabsm::Config::Query::snap_weekly_time;
+
+    is($f->('foo_snap', \%TEST_CONFIG), '00:00', "$n - got correct weekly_time value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking weekly snapshots/, "$n - dies if not taking weekly snapshots";
+}
+
+{
+    my $n = 'snap_weekly_day';
+    my $f = \&Yabsm::Config::Query::snap_weekly_day;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 'wednesday', "$n - got correct weekly_day value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking weekly snapshots/, "$n - dies if not taking weekly snapshots";
+}
+
+{
+    my $n = 'snap_monthly_keep';
+    my $f = \&Yabsm::Config::Query::snap_monthly_keep;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 12, "$n - got correct monthly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking monthly snapshots/, "$n - dies if not taking monthly snapshots";
+}
+
+{
+    my $n = 'snap_monthly_time';
+    my $f = \&Yabsm::Config::Query::snap_monthly_time;
+
+    is($f->('foo_snap', \%TEST_CONFIG), '23:59', "$n - got correct monthly_time value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking monthly snapshots/, "$n - dies if not taking monthly snapshots";
+}
+
+{
+    my $n = 'snap_monthly_day';
+    my $f = \&Yabsm::Config::Query::snap_monthly_day;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 31, "$n - got correct monthly_day value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking monthly snapshots/, "$n - dies if not taking monthly snapshots";
+}
+
+{
+    my $n = 'ssh_backup_5minute_keep';
+    my $f = \&Yabsm::Config::Query::ssh_backup_5minute_keep;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 36, "$n - got correct 5minute_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('baz_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'baz_ssh_backup' is not taking 5minute backups/, "$n - dies if not taking 5minute backups";
+}
+
+{
+    my $n = 'ssh_backup_hourly_keep';
+    my $f = \&Yabsm::Config::Query::ssh_backup_hourly_keep;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 48, "$n - got correct hourly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('baz_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'baz_ssh_backup' is not taking hourly backups/, "$n - dies if not taking hourly backups";
+}
+
+{
+    my $n = 'ssh_backup_daily_keep';
+    my $f = \&Yabsm::Config::Query::ssh_backup_daily_keep;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 365, "$n - got correct daily_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking daily backups/, "$n - dies if not taking daily backups";
+}
+
+{
+    my $n = 'ssh_backup_daily_time';
+    my $f = \&Yabsm::Config::Query::ssh_backup_daily_time;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), '23:59', "$n - got correct daily_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking daily backups/, "$n - dies if not taking daily backups";
+}
+
+{
+    my $n = 'ssh_backup_weekly_keep';
+    my $f = \&Yabsm::Config::Query::ssh_backup_weekly_keep;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 56, "$n - got correct weekly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking weekly backups/, "$n - dies if not taking weekly backups";
+}
+
+{
+    my $n = 'ssh_backup_weekly_time';
+    my $f = \&Yabsm::Config::Query::ssh_backup_weekly_time;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), '00:00', "$n - got correct weekly_time value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking weekly backups/, "$n - dies if not taking weekly backups";
+}
+
+{
+    my $n = 'ssh_backup_weekly_day';
+    my $f = \&Yabsm::Config::Query::ssh_backup_weekly_day;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 'wednesday', "$n - got correct weekly_day value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking weekly backups/, "$n - dies if not taking weekly backups";
+}
+
+{
+    my $n = 'ssh_backup_monthly_keep';
+    my $f = \&Yabsm::Config::Query::ssh_backup_monthly_keep;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 12, "$n - got correct monthly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
+}
+
+{
+    my $n = 'ssh_backup_monthly_time';
+    my $f = \&Yabsm::Config::Query::ssh_backup_monthly_time;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), '23:59', "$n - got correct monthly_time value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
+}
+
+{
+    my $n = 'ssh_backup_monthly_day';
+    my $f = \&Yabsm::Config::Query::ssh_backup_monthly_day;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 31, "$n - got correct monthly_day value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
+}
+
+{
+    my $n = 'local_backup_5minute_keep';
+    my $f = \&Yabsm::Config::Query::local_backup_5minute_keep;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 36, "$n - got correct 5minute_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('baz_local_backup', \%TEST_CONFIG) } qr/local_backup 'baz_local_backup' is not taking 5minute backups/, "$n - dies if not taking 5minute backups";
+}
+
+{
+    my $n = 'local_backup_hourly_keep';
+    my $f = \&Yabsm::Config::Query::local_backup_hourly_keep;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 48, "$n - got correct hourly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('baz_local_backup', \%TEST_CONFIG) } qr/local_backup 'baz_local_backup' is not taking hourly backups/, "$n - dies if not taking hourly backups";
+}
+
+{
+    my $n = 'local_backup_daily_keep';
+    my $f = \&Yabsm::Config::Query::local_backup_daily_keep;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 365, "$n - got correct daily_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('bar_local_backup', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking daily backups/, "$n - dies if not taking daily backups";
+}
+
+{
+    my $n = 'local_backup_daily_time';
+    my $f = \&Yabsm::Config::Query::local_backup_daily_time;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), '23:59', "$n - got correct daily_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('bar_local_backup', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking daily backups/, "$n - dies if not taking daily backups";
+}
+
+{
+    my $n = 'local_backup_weekly_keep';
+    my $f = \&Yabsm::Config::Query::local_backup_weekly_keep;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 56, "$n - got correct weekly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('baz_local_backup', \%TEST_CONFIG) } qr/local_backup 'baz_local_backup' is not taking weekly backups/, "$n - dies if not taking weekly backups";
+}
+
+{
+    my $n = 'local_backup_weekly_time';
+    my $f = \&Yabsm::Config::Query::local_backup_weekly_time;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), '00:00', "$n - got correct weekly_time value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('baz_local_backup', \%TEST_CONFIG) } qr/local_backup 'baz_local_backup' is not taking weekly backups/, "$n - dies if not taking weekly backups";
+}
+
+{
+    my $n = 'local_backup_weekly_day';
+    my $f = \&Yabsm::Config::Query::local_backup_weekly_day;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 'wednesday', "$n - got correct weekly_day value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('baz_local_backup', \%TEST_CONFIG) } qr/local_backup 'baz_local_backup' is not taking weekly backups/, "$n - dies if not taking weekly backups";
+}
+
+{
+    my $n = 'local_backup_monthly_keep';
+    my $f = \&Yabsm::Config::Query::local_backup_monthly_keep;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 12, "$n - got correct monthly_keep value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('bar_local_backup', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
+}
+
+{
+    my $n = 'local_backup_monthly_time';
+    my $f = \&Yabsm::Config::Query::local_backup_monthly_time;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), '23:59', "$n - got correct monthly_time value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('bar_local_backup', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
+}
+
+{
+    my $n = 'local_backup_monthly_day';
+    my $f = \&Yabsm::Config::Query::local_backup_monthly_day;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 31, "$n - got correct monthly_day value");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('bar_local_backup', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
+}
+
+1;

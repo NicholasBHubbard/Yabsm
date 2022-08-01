@@ -510,6 +510,26 @@ sub local_backup_wants_timeframe { # Is tested
     return 0;
 }
 
+sub snap_timeframe_keep { # Is tested
+
+    # Return snap $snap's ${tframe}_keep value.
+
+    3 == @_ or die_arg_count(3, 3, @_);
+
+    my $snap       = shift;
+    my $tframe     = shift;
+    my $config_ref = shift;
+
+    if    ($tframe eq '5minute') { return snap_5minute_keep($snap, $config_ref) }
+    elsif ($tframe eq 'hourly')  { return snap_hourly_keep($snap, $config_ref)  }
+    elsif ($tframe eq 'daily')   { return snap_daily_keep($snap, $config_ref)   }
+    elsif ($tframe eq 'weekly')  { return snap_weekly_keep($snap, $config_ref)  }
+    elsif ($tframe eq 'monthly') { return snap_monthly_keep($snap, $config_ref) }
+    else {
+        get_logger->logconfess("yabsm: internal error: no such timeframe '$tframe'");
+    }
+}
+
 sub snap_5minute_keep { # Is tested
 
     # Return snap $snap's 5minute_keep value. Logdie if $snap is not
@@ -718,6 +738,26 @@ sub snap_monthly_day { # Is tested
     }
 
     return $config_ref->{snaps}{$snap}{monthly_day};
+}
+
+sub ssh_backup_timeframe_keep { # Not tested
+
+    # Return ssh_backup $ssh_backup's ${tframe}_keep value.
+
+    3 == @_ or die_arg_count(3, 3, @_);
+
+    my $ssh_backup = shift;
+    my $tframe     = shift;
+    my $config_ref = shift;
+
+    if    ($tframe eq '5minute') { return ssh_backup_5minute_keep($ssh_backup, $config_ref) }
+    elsif ($tframe eq 'hourly')  { return ssh_backup_hourly_keep($ssh_backup, $config_ref)  }
+    elsif ($tframe eq 'daily')   { return ssh_backup_daily_keep($ssh_backup, $config_ref)   }
+    elsif ($tframe eq 'weekly')  { return ssh_backup_weekly_keep($ssh_backup, $config_ref)  }
+    elsif ($tframe eq 'monthly') { return ssh_backup_monthly_keep($ssh_backup, $config_ref) }
+    else {
+        get_logger->logconfess("yabsm: internal error: no such timeframe '$tframe'");
+    }
 }
 
 sub ssh_backup_5minute_keep { # Is tested
@@ -938,6 +978,26 @@ sub ssh_backup_monthly_day { # Is tested
     }
 
     return $config_ref->{ssh_backups}{$ssh_backup}{monthly_day};
+}
+
+sub local_backup_timeframe_keep { # Not tested
+
+    # Return local_backup $local_backup's ${tframe}_keep value.
+
+    3 == @_ or die_arg_count(3, 3, @_);
+
+    my $local_backup = shift;
+    my $tframe       = shift;
+    my $config_ref   = shift;
+
+    if    ($tframe eq '5minute') { return local_backup_5minute_keep($local_backup, $config_ref) }
+    elsif ($tframe eq 'hourly')  { return local_backup_hourly_keep($local_backup, $config_ref)  }
+    elsif ($tframe eq 'daily')   { return local_backup_daily_keep($local_backup, $config_ref)   }
+    elsif ($tframe eq 'weekly')  { return local_backup_weekly_keep($local_backup, $config_ref)  }
+    elsif ($tframe eq 'monthly') { return local_backup_monthly_keep($local_backup, $config_ref) }
+    else {
+        get_logger->logconfess("yabsm: internal error: no such timeframe '$tframe'");
+    }
 }
 
 sub local_backup_5minute_keep { # Is tested

@@ -316,6 +316,19 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
 }
 
 {
+    my $n = 'snap_timeframe_keep';
+    my $f = \&Yabsm::Config::Query::snap_timeframe_keep;
+
+    is($f->('foo_snap', '5minute', \%TEST_CONFIG), 36, "$n - got correct 5minute_keep value");
+    is($f->('foo_snap', 'hourly', \%TEST_CONFIG), 48, "$n - got correct hourly_keep value");
+    is($f->('foo_snap', 'daily', \%TEST_CONFIG), 365, "$n - got correct daily_keep value");
+    is($f->('foo_snap', 'weekly', \%TEST_CONFIG), 56, "$n - got correct weekly_keep value");
+    is($f->('foo_snap', 'monthly', \%TEST_CONFIG), 12, "$n - got correct monthly_keep value");
+    throws_ok { $f->('quux', '5minute', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('foo_snap', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n - dies if non-existent timeframe";
+}
+
+{
     my $n = 'snap_5minute_keep';
     my $f = \&Yabsm::Config::Query::snap_5minute_keep;
 
@@ -406,6 +419,19 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
 }
 
 {
+    my $n = 'ssh_backup_timeframe_keep';
+    my $f = \&Yabsm::Config::Query::ssh_backup_timeframe_keep;
+
+    is($f->('foo_ssh_backup', '5minute', \%TEST_CONFIG), 36, "$n - got correct 5minute_keep value");
+    is($f->('foo_ssh_backup', 'hourly', \%TEST_CONFIG), 48, "$n - got correct hourly_keep value");
+    is($f->('foo_ssh_backup', 'daily', \%TEST_CONFIG), 365, "$n - got correct daily_keep value");
+    is($f->('foo_ssh_backup', 'weekly', \%TEST_CONFIG), 56, "$n - got correct weekly_keep value");
+    is($f->('foo_ssh_backup', 'monthly', \%TEST_CONFIG), 12, "$n - got correct monthly_keep value");
+    throws_ok { $f->('quux', '5minute', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+    throws_ok { $f->('foo_ssh_backup', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n - dies if non-existent timeframe";
+}
+
+{
     my $n = 'ssh_backup_5minute_keep';
     my $f = \&Yabsm::Config::Query::ssh_backup_5minute_keep;
 
@@ -493,6 +519,19 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
     is($f->('foo_ssh_backup', \%TEST_CONFIG), 31, "$n - got correct monthly_day value");
     throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
     throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
+}
+
+{
+    my $n = 'local_backup_timeframe_keep';
+    my $f = \&Yabsm::Config::Query::local_backup_timeframe_keep;
+
+    is($f->('foo_local_backup', '5minute', \%TEST_CONFIG), 36, "$n - got correct 5minute_keep value");
+    is($f->('foo_local_backup', 'hourly', \%TEST_CONFIG), 48, "$n - got correct hourly_keep value");
+    is($f->('foo_local_backup', 'daily', \%TEST_CONFIG), 365, "$n - got correct daily_keep value");
+    is($f->('foo_local_backup', 'weekly', \%TEST_CONFIG), 56, "$n - got correct weekly_keep value");
+    is($f->('foo_local_backup', 'monthly', \%TEST_CONFIG), 12, "$n - got correct monthly_keep value");
+    throws_ok { $f->('quux', '5minute', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
+    throws_ok { $f->('foo_local_backup', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n - dies if non-existent timeframe";
 }
 
 {

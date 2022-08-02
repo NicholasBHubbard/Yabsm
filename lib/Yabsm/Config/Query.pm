@@ -1220,22 +1220,22 @@ sub local_backup_monthly_day { # Is tested
     return $config_ref->{local_backups}{$local_backup}{monthly_day};
 }
 
-sub is_timeframe { # No test
+sub is_timeframe { # Is tested
 
     # Return 1 if given a valid timeframe and return 0 otherwise.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
-    return shift =~ /^(5minute|hourly|daily|weekly|monthly)$/;
+    return 0+(shift =~ /^(5minute|hourly|daily|weekly|monthly)$/);
 }
 
-sub is_weekday { # No test
+sub is_weekday { # Is tested
 
     # Return 1 if given a valid week day and return 0 otherwise.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
-    return shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/;
+    return 0+(shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/);
 }
 
 1;

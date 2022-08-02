@@ -25,6 +25,8 @@ use Log::Log4perl 'get_logger';
 
 use Exporter 'import';
 our @EXPORT_OK = qw(
+    is_timeframe
+    is_weekday
     subvol_exists
     snap_exists
     ssh_backup_exists
@@ -50,6 +52,7 @@ our @EXPORT_OK = qw(
     snap_wants_timeframe
     ssh_backup_wants_timeframe
     local_backup_wants_timeframe
+    snap_timeframe_keep
     snap_5minute_keep
     snap_hourly_keep
     snap_daily_keep
@@ -60,6 +63,7 @@ our @EXPORT_OK = qw(
     snap_monthly_keep
     snap_monthly_time
     snap_monthly_day
+    ssh_backup_timeframe_keep
     ssh_backup_5minute_keep
     ssh_backup_hourly_keep
     ssh_backup_daily_keep
@@ -70,6 +74,7 @@ our @EXPORT_OK = qw(
     ssh_backup_monthly_keep
     ssh_backup_monthly_time
     ssh_backup_monthly_day
+    local_backup_timeframe_keep
     local_backup_5minute_keep
     local_backup_hourly_keep
     local_backup_daily_keep
@@ -87,6 +92,24 @@ our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
                  ####################################
                  #            SUBROUTINES           #
                  ####################################
+
+sub is_timeframe { # Is tested
+
+    # Return 1 if given a valid timeframe and return 0 otherwise.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    return 0+(shift =~ /^(5minute|hourly|daily|weekly|monthly)$/);
+}
+
+sub is_weekday { # Is tested
+
+    # Return 1 if given a valid week day and return 0 otherwise.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    return 0+(shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/);
+}
 
 sub subvol_exists { # Is tested
 
@@ -1218,24 +1241,6 @@ sub local_backup_monthly_day { # Is tested
     }
 
     return $config_ref->{local_backups}{$local_backup}{monthly_day};
-}
-
-sub is_timeframe { # Is tested
-
-    # Return 1 if given a valid timeframe and return 0 otherwise.
-
-    1 == @_ or die_arg_count(1, 1, @_);
-
-    return 0+(shift =~ /^(5minute|hourly|daily|weekly|monthly)$/);
-}
-
-sub is_weekday { # Is tested
-
-    # Return 1 if given a valid week day and return 0 otherwise.
-
-    1 == @_ or die_arg_count(1, 1, @_);
-
-    return 0+(shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/);
 }
 
 1;

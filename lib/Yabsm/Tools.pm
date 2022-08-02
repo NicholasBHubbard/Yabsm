@@ -109,7 +109,7 @@ sub is_btrfs_subvolume { # No test
     # Return 1 if $dir is a btrfs subvolume on this OS and return 0
     # otherwise.
     #
-    # Please read the follow StackOverflow answer from a btrfs
+    # Please read the follow StackOverflow post from a btrfs
     # maintainer (https://stackoverflow.com/a/32865333):
     #
     # A subvolume is identified by inode number 256, so you can check

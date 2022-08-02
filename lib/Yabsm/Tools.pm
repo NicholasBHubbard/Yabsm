@@ -176,7 +176,7 @@ sub safe_system { # No test
     my $status = system($system_command);
 
     unless (0 == $status) {
-        get_logger->logdie("yabsm: error: system command $system_command exited with status $status");
+        get_logger->logdie("yabsm: error: system command '$system_command' exited with status $status");
     }
 
     return $status;

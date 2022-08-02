@@ -1231,7 +1231,7 @@ sub is_timeframe { # No test
 
 sub is_weekday { # No test
 
-    # Return 1 if give a valid week day and return 0 otherwise.
+    # Return 1 if given a valid week day and return 0 otherwise.
 
     1 == @_ or die_arg_count(1, 1, @_);
 

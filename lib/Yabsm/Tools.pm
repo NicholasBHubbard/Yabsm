@@ -76,7 +76,9 @@ sub have_sudo_access_to_btrfs_or_die { # No test
 
     0 == @_ or die_arg_count(0, 0, @_);
 
-    have_sudo_access_to_btrfs() ? return 1 : get_logger->logconfess("yabsm: internal error: no sudo access rights to 'btrfs' while running as uid '$<'");
+    my $username = getpwuid $<;
+
+    have_sudo_access_to_btrfs() ? return 1 : get_logger->logconfess("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
 }
 
 sub is_btrfs_dir { # No test

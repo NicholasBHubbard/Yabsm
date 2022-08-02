@@ -624,4 +624,32 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
     throws_ok { $f->('bar_local_backup', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking monthly backups/, "$n - dies if not taking monthly backups";
 }
 
+{
+    my $n = 'is_timeframe';
+    my $f = \&Yabsm::Config::Query::is_timeframe;
+
+    is($f->('5minute'), 1, "$n - accepts '5minute'");
+    is($f->('hourly'), 1, "$n - accepts 'hourly'");
+    is($f->('daily'), 1, "$n - accepts 'daily'");
+    is($f->('weekly'), 1, "$n - accepts 'weekly'");
+    is($f->('monthly'), 1, "$n - accepts 'monthly'");
+    is($f->('Hourly'), 0, "$n - rejects if not lowercased");
+    is($f->('quux'), 0, "$n - rejects invalid timeframe");
+}
+
+{
+    my $n = 'is_weekday';
+    my $f = \&Yabsm::Config::Query::is_weekday;
+
+    is($f->('monday'), 1, "$n - accepts 'monday'");
+    is($f->('tuesday'), 1, "$n - accepts 'tuesday'");
+    is($f->('wednesday'), 1, "$n - accepts 'wednesday'");
+    is($f->('thursday'), 1, "$n - accepts 'thursday'");
+    is($f->('friday'), 1, "$n - accepts 'friday'");
+    is($f->('saturday'), 1, "$n - accepts 'saturday'");
+    is($f->('sunday'), 1, "$n - accepts 'sunday'");
+    is($f->('Sunday'), 0, "$n - rejects if not lowercased");
+    is($f->('quux'), 0, "$n - rejects invalid weekday");
+}
+
 1;

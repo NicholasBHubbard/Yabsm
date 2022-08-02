@@ -19,7 +19,7 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Tools qw(die_arg_count is_timeframe);
+use Yabsm::Tools qw(die_arg_count);
 
 use Log::Log4perl 'get_logger';
 
@@ -1218,6 +1218,24 @@ sub local_backup_monthly_day { # Is tested
     }
 
     return $config_ref->{local_backups}{$local_backup}{monthly_day};
+}
+
+sub is_timeframe { # No test
+
+    # Return 1 if given a valid timeframe and return 0 otherwise.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    return shift =~ /^(5minute|hourly|daily|weekly|monthly)$/;
+}
+
+sub is_weekday { # No test
+
+    # Return 1 if give a valid week day and return 0 otherwise.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    return shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/;
 }
 
 1;

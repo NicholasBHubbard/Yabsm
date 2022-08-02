@@ -147,24 +147,6 @@ sub is_btrfs_subvolume_or_die { # No test
     is_btrfs_subvolume($dir) ? return 1 : get_logger->logdie("yabsm: error: '$dir' is not a btrfs subvolume")
 }
 
-sub is_timeframe { # No test
-
-    # Return 1 if given a valid timeframe and return 0 otherwise.
-
-    1 == @_ or die_arg_count(1, 1, @_);
-
-    return shift =~ /^(5minute|hourly|daily|weekly|monthly)$/;
-}
-
-sub is_week_day { # No test
-
-    # Return 1 if give a valid week day and return 0 otherwise.
-
-    1 == @_ or die_arg_count(1, 1, @_);
-
-    return shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/;
-}
-
 sub safe_system { # No test
 
     # Wrapper around system that logdies if the system command exits

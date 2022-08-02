@@ -167,7 +167,8 @@ sub is_week_day { # No test
 
 sub safe_system { # No test
 
-    # Wrapper around system that logdies if the system command fails.
+    # Wrapper around system that logdies if the system command exits
+    # with a non-zero status.
 
     1 == @_ or die_arg_count(1, 1, @_);
 

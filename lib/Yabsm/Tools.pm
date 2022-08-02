@@ -81,7 +81,7 @@ sub have_sudo_access_to_btrfs_or_die { # No test
 
 sub is_btrfs_dir { # No test
 
-    # Return 1 if $dir is a directory residing on a btrfs filesystem
+    # Return 1 if $dir is a directory residing on a btrfs subvolume
     # and return 0 otherwise.
 
     1 == @_ or die_arg_count(1, 1, @_);

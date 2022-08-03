@@ -263,7 +263,7 @@ sub config_parser {
 
     # Top level parser
 
-    1 == @_ or die_arg_count(0, 1, @_);
+    1 == @_ or die_arg_count(1, 1, @_);
 
     my $self = shift;
 

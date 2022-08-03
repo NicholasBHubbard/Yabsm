@@ -37,9 +37,8 @@ use Yabsm::Tools qw(die_arg_count);
 
 use Log::Log4perl 'get_logger';
 use Array::Utils 'array_minus';
-
-use Feature::Compat::Try;
 use Regexp::Common 'net';
+use Feature::Compat::Try;
 
 use Parser::MGC;
 use base 'Parser::MGC';

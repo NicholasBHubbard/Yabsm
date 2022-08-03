@@ -91,6 +91,8 @@ sub grammar {
     # Return a hash of all the atomic grammar elements of the
     # yabsm config language.
 
+    0 == @_ or die_arg_count(0, 0, @_);
+
     my %grammar = (
         name          => qr/[a-zA-Z][-_a-zA-Z0-9]*/,
         subvol        => qr/[a-zA-Z][-_a-zA-Z0-9]*/,
@@ -130,6 +132,8 @@ sub grammar_msg {
     # linguistic description of their expected value. Used for
     # generating meaningful error messages.
 
+    0 == @_ or die_arg_count(0, 0, @_);
+
     my %grammar_msg = (
         name           => 'thing name',
         subvol         => 'subvol name',
@@ -164,6 +168,8 @@ sub subvol_settings_grammar {
 
     # Return a hash of a subvols key=val grammar.
 
+    0 == @_ or die_arg_count(0, 0, @_);
+
     my %grammar = grammar();
 
     my %subvol_settings_grammar = (
@@ -178,6 +184,8 @@ sub snap_settings_grammar {
     # Return a hash of a snaps key=val grammar. Optionally takes
     # a false value to exclude the timeframe subgrammar from the
     # returned grammar.
+
+    1 >= @_ or die_arg_count(0, 1, @_);
 
     my $include_tf = shift // 1;
 
@@ -201,6 +209,8 @@ sub ssh_backup_settings_grammar {
     # Return a hash of a ssh_backups key=val grammar. Optionally takes
     # a false value to exclude the timeframe subgrammar from the
     # returned grammar.
+
+    1 >= @_ or die_arg_count(0, 1, @_);
 
     my $include_tf = shift // 1;
 
@@ -226,6 +236,8 @@ sub local_backup_settings_grammar {
     # takes a false value to exclude the timeframe subgrammar from the
     # returned grammar.
 
+    1 >= @_ or die_arg_count(0, 1, @_);
+
     my $include_tf = shift // 1;
 
     my %grammar = grammar();
@@ -249,7 +261,11 @@ sub local_backup_settings_grammar {
 
 sub config_parser {
 
-    my $self = shift // get_logger->logconfess('TODO');
+    # Top level parser
+
+    1 == @_ or die_arg_count(0, 1, @_);
+
+    my $self = shift;
 
     # return this
     my %config;
@@ -317,11 +333,13 @@ sub settings_parser {
     # message generation. This method should be called from a wrapper
     # method.
 
+    3 == @_ or die_arg_count(3, 3, @_);
+
     my $self    = shift;
     my $type    = shift;
-    my %grammar = %{ +shift };
+    my $grammar = shift;
 
-    my @settings = keys %grammar;
+    my @settings = keys %{ $grammar };
     my $setting_regex = join '|', @settings;
 
     # return this
@@ -335,7 +353,7 @@ sub settings_parser {
 
         $self->maybe_expect('=') // $self->fail('expected "="');
 
-        my $value = $self->maybe_expect($grammar{$setting})
+        my $value = $self->maybe_expect($grammar->{$setting})
           // $self->fail('expected ' . grammar_msg->{$setting});
 
         $kvs{$setting} = $value;
@@ -345,24 +363,28 @@ sub settings_parser {
 }
 
 sub subvol_settings_parser {
+    1 == @_ or die_arg_count(1, 1, @_);
     my $self = shift;
     my $subvol_settings_grammar = subvol_settings_grammar();
     $self->settings_parser('subvol', $subvol_settings_grammar);
 }
 
 sub snap_settings_parser {
+    1 == @_ or die_arg_count(1, 1, @_);
     my $self = shift;
     my $snap_settings_grammar = snap_settings_grammar();
     $self->settings_parser('snap', $snap_settings_grammar);
 }
 
 sub ssh_backup_settings_parser {
+    1 == @_ or die_arg_count(1, 1, @_);
     my $self = shift;
     my $ssh_backup_settings_grammar = ssh_backup_settings_grammar();
     $self->settings_parser('ssh_backup', $ssh_backup_settings_grammar);
 }
 
 sub local_backup_settings_parser {
+    1 == @_ or die_arg_count(1, 1, @_);
     my $self = shift;
     my $local_backup_settings_grammar = local_backup_settings_grammar();
     $self->settings_parser('local_backup', $local_backup_settings_grammar);
@@ -379,7 +401,9 @@ sub check_config {
     # 1, otherwise return multiple values where the first value is 0
     # and the rest of the values are the corresponding error messages.
 
-    my $config_ref = shift // get_logger->logconfess('TODO');
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $config_ref = shift;
 
     my @error_msgs;
 
@@ -405,7 +429,9 @@ sub snap_errors {
     # by $config_ref are not missing required snap settings and
     # are snapshotting a defined subvol.
 
-    my $config_ref = shift // get_logger->logconfess('TODO');
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $config_ref = shift;
 
     # return this
     my @error_msgs;
@@ -446,7 +472,9 @@ sub ssh_backup_errors {
     # by $config_ref are not missing required ssh_backup settings and
     # are backing up a defined subvol.
 
-    my $config_ref = shift // get_logger->logconfess('TODO');
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $config_ref = shift;
 
     # return this
     my @error_msgs;
@@ -487,7 +515,9 @@ sub local_backup_errors {
     # referenced by $config_ref are not missing required local_backup
     # settings and are backing up a defined subvol
 
-    my $config_ref = shift // get_logger->logconfess('TODO');
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $config_ref = shift;
 
     # return this
     my @error_msgs;
@@ -529,9 +559,11 @@ sub required_timeframe_settings {
     # dynamically determine what settings are required for certain
     # config entities.
 
-    my $timeframes_val = shift // get_logger->logconfess('TODO');
+    1 == @_ or die_arg_count(1, 1, @_);
 
-    my @timeframes = split ',', $timeframes_val;
+    my $tframes = shift;
+
+    my @timeframes = split ',', $tframes;
 
     # return this
     my @required;

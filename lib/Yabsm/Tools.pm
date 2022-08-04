@@ -25,8 +25,8 @@ our @EXPORT_OK = qw(die_arg_count
                     is_btrfs_subvolume
                     is_btrfs_subvolume_or_die
                     is_timeframe
-                    safe_system
-                    safe_make_path
+                    system_or_die
+                    make_path_or_die
                    );
 
 our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
@@ -149,25 +149,21 @@ sub is_btrfs_subvolume_or_die { # No test
     is_btrfs_subvolume($dir) ? return 1 : get_logger->logdie("yabsm: error: '$dir' is not a btrfs subvolume")
 }
 
-sub safe_system { # No test
+sub system_or_die { # No test
 
     # Wrapper around system that logdies if the system command exits
     # with a non-zero status.
 
-    1 == @_ or die_arg_count(1, 1, @_);
-
-    my $system_command = shift;
-
-    my $status = system($system_command);
+    my $status = system @_;
 
     unless (0 == $status) {
-        get_logger->logdie("yabsm: error: system command '$system_command' exited with status $status");
+        get_logger->logdie("yabsm: internal error: system command '@_' exited with non-zero status '$status'");
     }
 
     return $status;
 }
 
-sub safe_make_path { # No test
+sub make_path_or_die { # No test
 
     # Wrapper around File::Path::make_path() that logdies if the path
     # cannot be created.
@@ -179,8 +175,10 @@ sub safe_make_path { # No test
     -d $path        and return 1;
     make_path $path and return 1;
 
+    my $username = getpwuid $<;
+
     # make_path sets $!
-    get_logger->logdie("yabsm: error: $!\n");
+    get_logger->logdie("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
 }
 
 1;

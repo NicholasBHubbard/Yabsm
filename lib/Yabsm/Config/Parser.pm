@@ -282,8 +282,8 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected subvol name');
+                exists $config{subvols}{$name} and $self->fail("subvol '$name' is already defined");
                 my $kvs = $self->scope_of('{', 'subvol_settings_parser' ,'}');
-                delete $config{subvols}{$name}; # allow overwrites
                 $config{subvols}{$name} = $kvs;
             },
             sub {
@@ -291,8 +291,8 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected snap name');
+                exists $config{snaps}{$name} and $self->fail("snap '$name' is already defined");
                 my $kvs = $self->scope_of('{', 'snap_settings_parser', '}');
-                delete $config{snaps}{$name}; # allow overwrites
                 $config{snaps}{$name} = $kvs;
             },
             sub {
@@ -300,8 +300,8 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected ssh_backup name');
+                exists $config{ssh_backups}{$name} and $self->fail("ssh_backup '$name' is already defined");
                 my $kvs = $self->scope_of('{', 'ssh_backup_settings_parser', '}');
-                delete $config{ssh_backups}{$name}; # allow overwrites
                 $config{ssh_backups}{$name} = $kvs;
             },
             sub {
@@ -309,8 +309,8 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected local_backup name');
+                exists $config{local_backups}{$name} and $self->fail("local_backup '$name' is already defined");
                 my $kvs = $self->scope_of('{', 'local_backup_settings_parser', '}');
-                delete $config{local_backups}{$name}; # allow overwrites
                 $config{local_backups}{$name} = $kvs;
             },
             sub {

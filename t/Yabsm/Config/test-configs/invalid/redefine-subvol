@@ -1,0 +1,17 @@
+# This config should fail because we are defining two
+# subvols with the same name.
+
+subvol foo {
+    mountpoint=/
+}
+
+subvol foo {
+    mountpoint=/home
+}
+
+snap foo {
+    subvol=foo
+    dir=/.snapshots/yabsm/foo
+    timeframes=5minute
+    5minute_keep=36
+}

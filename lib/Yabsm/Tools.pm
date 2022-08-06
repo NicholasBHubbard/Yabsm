@@ -193,7 +193,7 @@ sub nums_denote_valid_date_or_die { # No test
 
     unless ( nums_denote_valid_date(@_) ) {
         my ($yr, $mon, $day, $hr, $min) = @_;
-        get_logger->logconfess("yabsm: internal error: ${yr}_${mon}_${day}_$hr:$min is not a valid yr_mon_day_hr:min date");
+        get_logger->logconfess("yabsm: internal error: '${yr}_${mon}_${day}_$hr:$min' is not a valid yr_mon_day_hr:min date");
     }
 
     return 1;

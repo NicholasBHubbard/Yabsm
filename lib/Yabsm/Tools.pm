@@ -184,7 +184,7 @@ sub nums_denote_valid_date { # Is tested
     return 1;
 }
 
-sub nums_denote_valid_date_or_die { # No test
+sub nums_denote_valid_date_or_die { # Is tested
 
     # Wrapper around &nums_denote_valid_date that logdies if it
     # returns false.

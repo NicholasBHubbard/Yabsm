@@ -24,7 +24,8 @@ our @EXPORT_OK = qw(die_arg_count
                     is_btrfs_dir_or_die
                     is_btrfs_subvolume
                     is_btrfs_subvolume_or_die
-                    is_timeframe
+                    nums_denote_valid_date
+                    nums_denote_valid_date_or_die
                     system_or_die
                     make_path_or_die
                    );
@@ -147,6 +148,55 @@ sub is_btrfs_subvolume_or_die { # No test
     my $dir = shift;
 
     is_btrfs_subvolume($dir) ? return 1 : get_logger->logdie("yabsm: error: '$dir' is not a btrfs subvolume")
+}
+
+sub nums_denote_valid_date { # Is tested
+
+    # Return 1 if passed a year, month, month-day, hour, and minute
+    # that denote a valid date and return 0 otherwise.
+
+    5 == @_ or die_arg_count(5, 5, @_);
+
+    my ($yr, $mon, $day, $hr, $min) = @_;
+
+    return 0 unless $yr  >= 1;
+    return 0 unless $mon >= 1 && $mon <= 12;
+    return 0 unless $hr  >= 0 && $hr  <= 23;
+    return 0 unless $min >= 0 && $min <= 59;
+
+    # month days are a bit more complicated to figure out
+
+    if ($mon == 1 || $mon == 3 || $mon == 5 || $mon == 7 || $mon == 8 || $mon == 10 || $mon == 12) {
+        return 0 unless $day >= 1 && $day <= 31;
+    }
+    elsif ($mon == 4 || $mon == 6 || $mon == 9 || $mon == 11) {
+        return 0 unless $day >= 1 && $day <= 30;
+    }
+    else { # February
+        if ($yr % 4 == 0 && $yr % 100 != 0) { # leap year
+            return 0 unless $day >= 1 && $day <= 29;
+        }
+        else {
+            return 0 unless $day >= 1 && $day <= 28;
+        }
+    }
+
+    return 1;
+}
+
+sub nums_denote_valid_date_or_die { # No test
+
+    # Wrapper around &nums_denote_valid_date that logdies if it
+    # returns false.
+
+    5 == @_ or die_arg_count(5, 5, @_);
+
+    unless ( nums_denote_valid_date(@_) ) {
+        my ($yr, $mon, $day, $hr, $min) = @_;
+        get_logger->logconfess("yabsm: internal error: ${yr}_${mon}_${day}_$hr:$min is not a valid yr_mon_day_hr:min date");
+    }
+
+    return 1;
 }
 
 sub system_or_die { # No test

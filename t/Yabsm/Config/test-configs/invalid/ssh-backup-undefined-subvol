@@ -1,6 +1,8 @@
 # This config should fail because foo_ssh_backup is backing
 # up an undefined subvol.
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }

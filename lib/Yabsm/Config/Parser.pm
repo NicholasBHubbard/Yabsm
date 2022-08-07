@@ -196,7 +196,6 @@ sub snap_settings_grammar {
 
     my %snap_settings_grammar = (
         subvol     => $grammar{subvol},
-        dir        => $grammar{dir},
         timeframes => $grammar{timeframes},
         %timeframe_sub_grammar
     );
@@ -277,6 +276,14 @@ sub config_parser {
     $self->sequence_of( sub {
         $self->commit;
         $self->any_of(
+            sub {
+                $self->expect( 'yabsm_dir' );
+                $self->commit;
+                exists $config{yabsm_dir} and $self->fail('yabsm_dir is already defined');
+                $self->maybe_expect('=') // $self->fail(q(expected '='));
+                my $dir = $self->maybe_expect($grammar{dir}) // $self->fail(grammar_msg->{dir});
+                $config{yabsm_dir} = $dir;
+            },
             sub {
                 $self->expect( 'subvol' );
                 $self->commit;
@@ -406,6 +413,10 @@ sub check_config {
     my $config_ref = shift;
 
     my @error_msgs;
+
+    unless ($config_ref->{yabsm_dir}) {
+        push @error_msgs, q(yabsm: config error: missing required setting 'yabsm_dir');
+    }
 
     unless ($config_ref->{snaps} || $config_ref->{ssh_backups} || $config_ref->{local_backups}) {
         push @error_msgs, 'yabsm: config error: no defined snaps, ssh_backups, or local_backups';

@@ -1,6 +1,8 @@
 # This config shows that comments, blank lines, and leading/trailing whitespace
 # are ignored.
 
+yabsm_dir=/.snapshots/yabsm
+
 #comment
   # comment  
    subvol foo {#comment
@@ -10,7 +12,6 @@ mountpoint=/ #comment
 snap foo {   
   subvol=foo 
   #comment
-      dir=/.snapshots/yabsm/foo
 timeframes=5minute
     daily_time   =    23:59 #comment
                   weekly_day  =wednesday

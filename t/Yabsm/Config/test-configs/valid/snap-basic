@@ -1,12 +1,13 @@
 # This config defines a snap with max timeframes.
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }
 
 snap foo {
     subvol=foo
-    dir=/.snapshots/yabsm/foo
     timeframes=5minute,hourly,daily,weekly,monthly
     daily_time=23:59
     weekly_day=wednesday

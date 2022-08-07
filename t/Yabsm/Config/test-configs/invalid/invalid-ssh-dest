@@ -1,5 +1,7 @@
 # This config should fail because nick@192.foo is not a valid ssh_dest
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }

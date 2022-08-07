@@ -1,5 +1,7 @@
 # This config should fail because foo_backup is missing it's dir setting
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }

@@ -1,6 +1,8 @@
 # This config should fail because we are defining two
 # local_backups with the same name.
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }

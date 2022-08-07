@@ -1,6 +1,8 @@
 # This config shows that we can define multiple subvols, snaps,
 # ssh_backups, and local backups.
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
   mountpoint=/
 }
@@ -11,14 +13,12 @@ subvol bar {
 
 snap foo_snap {
     subvol=foo
-    dir=/.snapshots/yabsm/foo
     timeframes=5minute
     5minute_keep=1
 }
 
 snap bar_snap {
     subvol=bar
-    dir=/.snapshots/yabsm/bar
     timeframes=5minute
     5minute_keep=1
 }

@@ -1,5 +1,7 @@
 # This config defines a local_backup with max timeframes.
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }

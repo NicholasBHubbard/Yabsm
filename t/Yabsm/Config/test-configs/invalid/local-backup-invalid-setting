@@ -1,5 +1,7 @@
 # This config should fail because quux is not a valid local_backup setting
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }

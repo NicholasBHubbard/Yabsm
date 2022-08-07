@@ -1,6 +1,8 @@
 # This config should fail because the 5minute_keep value
 # is not an integer greater than 0
 
+yabsm_dir=/.snapshots/yabsm
+
 subvol foo {
     mountpoint=/
 }
@@ -9,5 +11,4 @@ snap foo {
     5minute_keep=0
     timeframes=5minute
     subvol=foo
-    dir=/.snapshots/yabsm/foo
 }

@@ -16,7 +16,8 @@ use Test::More 'no_plan';
 use Test::Exception;
 
 # Note that all foo_thing's have a maximum timeframes value.
-my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
+my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm'
+                  , subvols => { foo => { mountpoint => '/' }
                                , bar => { mountpoint => '/' }
                                , baz => { mountpoint => '/' }
                                }
@@ -120,11 +121,27 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
 }
 
 {
+    my $n = 'subvol_exists_or_die';
+    my $f = \&Yabsm::Config::Query::subvol_exists_or_die;
+
+    is($f->('foo', \%TEST_CONFIG), 1, "$n - 1 when subvol exists");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no subvol named 'quux'/, "$n - dies if subvol doesn't exist";
+}
+
+{
     my $n = 'snap_exists';
     my $f = \&Yabsm::Config::Query::snap_exists;
 
     is($f->('foo_snap', \%TEST_CONFIG), 1, "$n - 1 when snap exists");
     is($f->('quux', \%TEST_CONFIG), 0, "$n - 0 when snap doesn't exist");
+}
+
+{
+    my $n = 'snap_exists_or_die';
+    my $f = \&Yabsm::Config::Query::snap_exists_or_die;
+
+    is($f->('foo_snap', \%TEST_CONFIG), 1, "$n - 1 when snap exists");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if snap doesn't exist";
 }
 
 {
@@ -136,11 +153,27 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
 }
 
 {
+    my $n = 'ssh_backup_exists_or_die';
+    my $f = \&Yabsm::Config::Query::ssh_backup_exists_or_die;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 1, "$n - 1 when ssh_backup exists");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if ssh_backup doesn't exist";
+}
+
+{
     my $n = 'local_backup_exists';
     my $f = \&Yabsm::Config::Query::local_backup_exists;
 
     is($f->('foo_local_backup', \%TEST_CONFIG), 1, "$n - 1 when local_backup exists");
     is($f->('quux', \%TEST_CONFIG), 0, "$n - 0 when local_backup doesn't exist");
+}
+
+{
+    my $n = 'local_backup_exists_or_die';
+    my $f = \&Yabsm::Config::Query::local_backup_exists_or_die;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), 1, "$n - 1 when local_backup exists");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if local_backup doesn't exist";
 }
 
 {
@@ -296,6 +329,14 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
 }
 
 {
+    my $n = 'snap_wants_timeframe_or_die';
+    my $f = \&Yabsm::Config::Query::snap_wants_timeframe_or_die;
+
+    is($f->('foo_snap', 'hourly', \%TEST_CONFIG), 1, "$n - succeeds when does want");
+    throws_ok { $f->('bar_snap', 'hourly', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking hourly snapshots/, "$n - dies if doesn't want"
+}
+
+{
     my $n = 'ssh_backup_wants_timeframe';
     my $f = \&Yabsm::Config::Query::ssh_backup_wants_timeframe;
 
@@ -306,6 +347,14 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
 }
 
 {
+    my $n = 'ssh_backup_wants_timeframe_or_die';
+    my $f = \&Yabsm::Config::Query::ssh_backup_wants_timeframe_or_die;
+
+    is($f->('foo_ssh_backup', 'daily', \%TEST_CONFIG), 1, "$n - succeeds when does want");
+    throws_ok { $f->('bar_ssh_backup', 'monthly', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking monthly backups/, "$n - dies when does want";
+}
+
+{
     my $n = 'local_backup_wants_timeframe';
     my $f = \&Yabsm::Config::Query::local_backup_wants_timeframe;
 
@@ -313,6 +362,14 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
     is($f->('bar_local_backup', 'monthly', \%TEST_CONFIG), 0, "$n - fails when does want");
     throws_ok { $f->('quux', 'daily', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n dies on non-existent local_backup";
     throws_ok { $f->('foo_local_backup', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n dies on invalid timeframe";
+}
+
+{
+    my $n = 'local_backup_wants_timeframe_or_die';
+    my $f = \&Yabsm::Config::Query::local_backup_wants_timeframe_or_die;
+
+    is($f->('foo_local_backup', 'daily', \%TEST_CONFIG), 1, "$n - succeeds when does want");
+    throws_ok { $f->('bar_local_backup', 'monthly', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking monthly backups/, "$n - dies when does want";
 }
 
 {
@@ -638,6 +695,25 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
 }
 
 {
+    my $n = 'is_timeframe_or_die';
+    my $f = \&Yabsm::Config::Query::is_timeframe_or_die;
+
+    is($f->('5minute'), 1, "$n - accepts '5minute'");
+    is($f->('hourly'), 1, "$n - accepts 'hourly'");
+    is($f->('daily'), 1, "$n - accepts 'daily'");
+    is($f->('weekly'), 1, "$n - accepts 'weekly'");
+    is($f->('monthly'), 1, "$n - accepts 'monthly'");
+    throws_ok { $f->('quux') } qr/no such timeframe 'quux'/, "$n - dies if invalid timeframe";
+}
+
+{
+    my $n = 'yabsm_dir';
+    my $f = \&Yabsm::Config::Query::yabsm_dir;
+
+    is($f->(\%TEST_CONFIG), '/.snapshots/yabsm', "$n - returns correct yabsm_dir");
+}
+
+{
     my $n = 'is_weekday';
     my $f = \&Yabsm::Config::Query::is_weekday;
 
@@ -650,6 +726,20 @@ my %TEST_CONFIG = ( subvols => { foo => { mountpoint => '/' }
     is($f->('sunday'), 1, "$n - accepts 'sunday'");
     is($f->('Sunday'), 0, "$n - rejects if not lowercased");
     is($f->('quux'), 0, "$n - rejects invalid weekday");
+}
+
+{
+    my $n = 'is_weekday_or_die';
+    my $f = \&Yabsm::Config::Query::is_weekday_or_die;
+
+    is($f->('monday'), 1, "$n - accepts 'monday'");
+    is($f->('tuesday'), 1, "$n - accepts 'tuesday'");
+    is($f->('wednesday'), 1, "$n - accepts 'wednesday'");
+    is($f->('thursday'), 1, "$n - accepts 'thursday'");
+    is($f->('friday'), 1, "$n - accepts 'friday'");
+    is($f->('saturday'), 1, "$n - accepts 'saturday'");
+    is($f->('sunday'), 1, "$n - accepts 'sunday'");
+    throws_ok { $f->('quux') } qr/no such weekday 'quux'/, "$n - dies if invalid weekday";
 }
 
 1;

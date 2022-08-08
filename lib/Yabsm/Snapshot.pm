@@ -30,8 +30,8 @@ our @EXPORT_OK = qw( take_snapshot_or_die
                      snapshot_name_nums_or_die
                      nums_to_snapshot_name_or_die
                      current_time_snapshot_name
-                     sort_snapshots_or_die
-                     cmp_snapshots_or_die
+                     sort_snapshots
+                     cmp_snapshots
                    );
 
                  ####################################
@@ -201,7 +201,7 @@ sub current_time_snapshot_name { # Is tested
     return nums_to_snapshot_name_or_die($t->year, $t->mon, $t->mday, $t->hour, $t->min);
 }
 
-sub sort_snapshots_or_die { # Is tested
+sub sort_snapshots { # Is tested
 
     # Takes a reference to an array of snapshots and returns a list
     # of the snapshots sorted from newest to oldest. This function
@@ -213,12 +213,12 @@ sub sort_snapshots_or_die { # Is tested
 
     1 == @_ or die_arg_count(1, 1, @_);
 
-    my @sorted = sort { cmp_snapshots_or_die($a, $b) } @{ +shift };
+    my @sorted = sort { cmp_snapshots($a, $b) } @{ +shift };
 
     return wantarray ? @sorted : \@sorted;
 }
 
-sub cmp_snapshots_or_die { # Is tested
+sub cmp_snapshots { # Is tested
 
     # Compare two yabsm snapshots based off their times. Works with
     # both a path to a snapshot and just a snapshot name.

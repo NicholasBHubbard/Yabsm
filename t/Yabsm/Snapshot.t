@@ -108,8 +108,8 @@ if ($BTRFS_SUBVOLUME) {
 }
 
 {
-    my $n = 'cmp_snapshots_or_die';
-    my $f = \&Yabsm::Snapshot::cmp_snapshots_or_die;
+    my $n = 'cmp_snapshots';
+    my $f = \&Yabsm::Snapshot::cmp_snapshots;
 
     my $snap1 = 'yabsm-2022_05_14_10:30';
     my $snap2 = 'yabsm-2022_05_13_10:30';
@@ -123,8 +123,8 @@ if ($BTRFS_SUBVOLUME) {
 }
 
 {
-    my $n = 'sort_snapshots_or_die';
-    my $f = \&Yabsm::Snapshot::sort_snapshots_or_die;
+    my $n = 'sort_snapshots';
+    my $f = \&Yabsm::Snapshot::sort_snapshots;
 
     my @snaps        = ('yabsm-2022_05_13_10:30', 'yabsm-2022_05_13_11:30', 'yabsm-2022_05_13_09:30');
     my @snaps_sorted = ('yabsm-2022_05_13_11:30', 'yabsm-2022_05_13_10:30', 'yabsm-2022_05_13_09:30');

@@ -9,7 +9,9 @@
 #  This parser produces a multi-dimensional hash data structure with
 #  the following skeleton:
 #
-#  %config = ( subvols       => { foo => { mountpoint=/foo_dir }
+#  %config = ( yabsm_dir     => '/.snapshots/yabsm'
+#
+#              subvols       => { foo => { mountpoint=/foo_dir }
 #                               , bar => { mountpoint=/bar_dir }
 #                               , ...
 #                               },

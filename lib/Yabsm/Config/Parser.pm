@@ -102,7 +102,7 @@ sub grammar {
         mountpoint    => qr/\/[a-zA-Z0-9._:\-\/]*/,
         # timeframes example: hourly,monthly,daily
         timeframes    => qr/((5minute|hourly|daily|weekly|monthly),)+(5minute|hourly|daily|weekly|monthly)|(5minute|hourly|daily|weekly|monthly)/,
-        ssh_dest      => qr/[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)@($RE{net}{IPv4}{strict}|$RE{net}{IPv6})/,
+        ssh_dest      => qr/([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)@)?(([A-Za-z][A-Za-z0-9_-]*)|$RE{net}{IPv4}{strict}|$RE{net}{IPv6})/,
         opening_brace => qr/{/,
         closing_brace => qr/}/,
         equals_sign   => qr/=/,

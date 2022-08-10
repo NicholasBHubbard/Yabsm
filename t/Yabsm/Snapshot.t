@@ -25,8 +25,8 @@ Usage: Snapshot.t [arguments]
 
 Arguments:
   -h or --help   Print help (this message) and exit
-  -s <dir>       Use <dir> as subvolume to be snapshotted for running
-                 btrfs related tests. 
+  -s <dir>       Use <dir> as subvolume to be snapshotted and used for
+                 running btrfs related tests.
 END_USAGE
 
 my $HELP;

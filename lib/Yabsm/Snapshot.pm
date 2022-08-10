@@ -43,24 +43,25 @@ sub take_snapshot_or_die { # Is tested
     # This is the lowest level function for taking a snapshot. Given
     # the path to a btrfs subvolume ($subvolume) and the destination
     # path for the snapshot ($dest), takes a snapshot of $subvolume,
-    # names it after the current time, and places it in $dest. Returns
-    # the path of the new snapshot.
+    # names it after the current time (or an inputted name), and
+    # places it in $dest. Returns the path of the new snapshot.
     #
     # Performs sanity checking and dies unless $subvolume is a btrfs
     # subvolume, $dest is a directory residing on a btrfs filesystem,
     # and the current user can call the btrfs program using sudo
     # without the need for password authentication.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    2 == @_ || 3 == @_ or die_arg_count(2, 3, @_);
 
-    my $subvolume  = shift;
-    my $dest       = shift;
+    my $subvolume     = shift;
+    my $dest          = shift;
+    my $snapshot_name = shift // current_time_snapshot_name();
 
     is_btrfs_subvolume_or_die($subvolume);
     is_btrfs_dir_or_die($dest);
     have_sudo_access_to_btrfs_or_die();
 
-    my $snapshot = "$dest/" . current_time_snapshot_name();
+    my $snapshot = "$dest/" . $snapshot_name;
 
     system_or_die("sudo -n btrfs subvolume snapshot -r '$subvolume' '$snapshot' >/dev/null 2>&1");
 

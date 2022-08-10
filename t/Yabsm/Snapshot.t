@@ -158,7 +158,7 @@ if ($BTRFS_SUBVOLUME) {
         
         lives_ok { $f_del->($snapshot) } "$n_del - ran without dying";
         is(is_btrfs_subvolume($snapshot), 0, "$n_del - successfully deleted snapshot");
-        throws_ok { $f_del->('quux') } qr/'quux' is not a yabsm snapshot/, "$n_del - dies if given non-existent snapshot";
+        throws_ok { $f_del->('quux') } qr/'quux' is not a btrfs subvolume/, "$n_del - dies if given non-existent snapshot";
 
         throws_ok { $f_take->('quux', $BTRFS_DIR) } qr/'quux' is not a btrfs subvolume/, "$n_take - dies if invalid btrfs subvolume";
         throws_ok { $f_take->($BTRFS_SUBVOLUME, 'quux') } qr/'quux' is not a directory residing on a btrfs filesystem/, "$n_take - dies if target not btrfs dir";

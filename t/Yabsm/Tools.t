@@ -51,4 +51,5 @@ use Test::Exception;
     is($f->(2020,5,13,23,59), 1, "$n - succeeds if valid date");
     throws_ok { $f->(0,5,13,23,59) } qr/'0_5_13_23:59' does not denote a valid yr_mon_day_hr:min date/, "$n - dies if invalid date";
 }
+
 1;

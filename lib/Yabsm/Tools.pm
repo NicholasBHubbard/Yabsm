@@ -28,6 +28,7 @@ our @EXPORT_OK = qw(die_arg_count
                     nums_denote_valid_date_or_die
                     system_or_die
                     make_path_or_die
+                    root_or_die
                    );
 
 our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
@@ -229,6 +230,18 @@ sub make_path_or_die { # No test
 
     # make_path sets $!
     get_logger->logdie("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
+}
+
+sub root_or_die { # No test
+
+    # Die unless running as the root user.
+
+    unless (0 == $<) {
+        my $username = getpwuid $<;
+        get_logger->logconfess("yabsm: internal error: not running as root, running as '$username'");
+    }
+
+    return 1;
 }
 
 1;

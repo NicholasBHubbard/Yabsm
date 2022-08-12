@@ -16,7 +16,7 @@ use Test::More 'no_plan';
 use Test::Exception;
 
 # Note that all foo_thing's have a maximum timeframes value.
-my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm'
+my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
                   , subvols => { foo => { mountpoint => '/' }
                                , bar => { mountpoint => '/' }
                                , baz => { mountpoint => '/' }
@@ -710,7 +710,9 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm'
     my $n = 'yabsm_dir';
     my $f = \&Yabsm::Config::Query::yabsm_dir;
 
-    is($f->(\%TEST_CONFIG), '/.snapshots/yabsm', "$n - returns correct yabsm_dir");
+    # In the test config this value equals /.snapshots/yabsm/ (note
+    # the trailing '/').
+    is($f->(\%TEST_CONFIG), '/.snapshots/yabsm', "$n - returns correct yabsm_dir without trailing /");
 }
 
 {

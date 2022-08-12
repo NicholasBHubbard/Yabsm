@@ -152,13 +152,13 @@ sub is_weekday_or_die { # Is tested
 
 sub yabsm_dir { # Is tested
 
-    # Return the users yabsm_dir.
+    # Return the users yabsm_dir without trailing /'s.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
     my $config_ref = shift;
 
-    return $config_ref->{yabsm_dir};
+    return $config_ref->{yabsm_dir} =~ s/\/*$//r;
 }
 
 sub subvol_exists { # Is tested

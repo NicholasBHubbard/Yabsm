@@ -28,7 +28,8 @@ our @EXPORT_OK = qw(die_arg_count
                     nums_denote_valid_date_or_die
                     system_or_die
                     make_path_or_die
-                    root_or_die
+                    i_am_root
+                    i_am_root_or_die
                    );
 
 our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
@@ -174,11 +175,18 @@ sub nums_denote_valid_date { # Is tested
         return 0 unless $day >= 1 && $day <= 30;
     }
     else { # February
-        if ($yr % 4 == 0 && $yr % 100 != 0) { # leap year
-            return 0 unless $day >= 1 && $day <= 29;
+        my $is_leap_yr;
+
+        if    ($yr % 400 == 0) { $is_leap_yr = 1 }
+        elsif ($yr % 100 == 0) { $is_leap_yr = 0 }
+        elsif ($yr % 4   == 0) { $is_leap_yr = 1 }
+        else                   { $is_leap_yr = 0 }
+
+        if ($is_leap_yr) {
+            return 0 unless $day >= 1 && $day <= 29
         }
         else {
-            return 0 unless $day >= 1 && $day <= 28;
+            return 0 unless $day >= 1 && $day <= 28
         }
     }
 
@@ -232,11 +240,20 @@ sub make_path_or_die { # No test
     get_logger->logdie("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
 }
 
-sub root_or_die { # No test
+sub i_am_root { # No test
+
+    # Return 1 if current user is root and return 0 otherwise.
+
+    return 0 == $<;
+}
+
+sub i_am_root_or_die { # No test
 
     # Die unless running as the root user.
 
-    unless (0 == $<) {
+    0 == @_ or die_arg_count(0, 0, @_);
+
+    unless (i_am_root()) {
         my $username = getpwuid $<;
         get_logger->logconfess("yabsm: internal error: not running as root, running as '$username'");
     }

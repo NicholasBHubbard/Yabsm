@@ -45,13 +45,16 @@ our @EXPORT_OK = qw(is_timeframe
                     all_local_backups
                     subvol_mountpoint
                     snap_subvol
+                    snap_mountpoint
                     snap_dir
                     snap_timeframes
                     ssh_backup_subvol
+                    ssh_backup_mountpoint
                     ssh_backup_dir
                     ssh_backup_timeframes
                     ssh_backup_ssh_dest
                     local_backup_subvol
+                    local_backup_mountpoint
                     local_backup_dir
                     local_backup_timeframes
                     all_snaps_of_subvol
@@ -387,6 +390,24 @@ sub snap_subvol { # Is tested
     return $config_ref->{snaps}{$snap}{subvol};
 }
 
+sub snap_mountpoint { # Not tested
+
+    # Return the mountpoint of the subvol that $snap is snapshotting.
+
+    2 == @_ or die_arg_count(2, 2, @_);
+
+    my $snap       = shift;
+    my $config_ref = shift;
+
+    snap_exists_or_die($snap, $config_ref);
+
+    my $subvol = snap_subvol($snap, $config_ref);
+
+    subvol_exists_or_die($subvol, $config_ref);
+
+    return subvol_mountpoint($subvol, $config_ref);
+}
+
 sub snap_dir { # Is tested
 
     # Return $snap's dir value. If there is no snap named $snap then
@@ -431,6 +452,25 @@ sub ssh_backup_subvol { # Is tested
     ssh_backup_exists_or_die($ssh_backup, $config_ref);
 
     return $config_ref->{ssh_backups}{$ssh_backup}{subvol};
+}
+
+sub ssh_backup_mountpoint { # Not tested
+
+    # Return the mountpoint of the subvol that $ssh_backup is backing
+    # up.
+
+    2 == @_ or die_arg_count(2, 2, @_);
+
+    my $ssh_backup = shift;
+    my $config_ref = shift;
+
+    ssh_backup_exists_or_die($ssh_backup, $config_ref);
+
+    my $subvol = ssh_backup_subvol($ssh_backup, $config_ref);
+
+    subvol_exists_or_die($subvol, $config_ref);
+
+    return subvol_mountpoint($subvol, $config_ref);
 }
 
 sub ssh_backup_dir { # Is tested
@@ -494,6 +534,25 @@ sub local_backup_subvol { # Is tested
     local_backup_exists_or_die($local_backup, $config_ref);
 
     return $config_ref->{local_backups}{$local_backup}{subvol};
+}
+
+sub local_backup_mountpoint { # Not tested
+
+    # Return the mountpoint of the subvol that $local_backup is
+    # backing up.
+
+    2 == @_ or die_arg_count(2, 2, @_);
+
+    my $local_backup = shift;
+    my $config_ref   = shift;
+
+    local_backup_exists_or_die($local_backup, $config_ref);
+
+    my $subvol = local_backup_subvol($local_backup, $config_ref);
+
+    subvol_exists_or_die($subvol, $config_ref);
+
+    return subvol_mountpoint($subvol, $config_ref);
 }
 
 sub local_backup_dir { # Is tested

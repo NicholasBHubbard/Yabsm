@@ -261,6 +261,14 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 }
 
 {
+    my $n = 'snap_mountpoint';
+    my $f = \&Yabsm::Config::Query::snap_mountpoint;
+
+    is($f->('foo_snap', \%TEST_CONFIG), '/', "$n - correct mountpoint");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies on non-existent snap"
+}
+
+{
     my $n = 'snap_dir';
     my $f = \&Yabsm::Config::Query::snap_dir;
 
@@ -283,6 +291,14 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 
     is($f->('foo_ssh_backup', \%TEST_CONFIG), 'foo', "$n - correct subvol");
     throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies on non-existent ssh_backup";
+}
+
+{
+    my $n = 'ssh_backup_mountpoint';
+    my $f = \&Yabsm::Config::Query::ssh_backup_mountpoint;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), '/', "$n - correct mountpoint");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies on non-existent ssh_backup"
 }
 
 {
@@ -324,6 +340,14 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 
     is($f->('foo_local_backup', \%TEST_CONFIG), '/foo', "$n - correct dir");
     throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies on non-existent local_backup";
+}
+
+{
+    my $n = 'local_backup_mountpoint';
+    my $f = \&Yabsm::Config::Query::local_backup_mountpoint;
+
+    is($f->('foo_local_backup', \%TEST_CONFIG), '/', "$n - correct mountpoint");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies on non-existent local_backup"
 }
 
 {

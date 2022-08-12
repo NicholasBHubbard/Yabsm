@@ -283,7 +283,7 @@ sub local_backup_exists_or_die { # Is tested
     return 1;
 }
 
-sub backup_exists { # Not tested
+sub backup_exists { # Is tested
 
     # Return 1 if $backup is either an ssh_backup or a local_backup
     # and return 0 otherwise.
@@ -297,7 +297,7 @@ sub backup_exists { # Not tested
     return local_backup_exists($backup, $config_ref);
 }
 
-sub backup_exists_or_die { # Not tested
+sub backup_exists_or_die { # Is tested
 
     # Wrapper around &backup_exists that logdies if it returns false.
 
@@ -390,7 +390,7 @@ sub snap_subvol { # Is tested
     return $config_ref->{snaps}{$snap}{subvol};
 }
 
-sub snap_mountpoint { # Not tested
+sub snap_mountpoint { # Is tested
 
     # Return the mountpoint of the subvol that $snap is snapshotting.
 
@@ -423,7 +423,7 @@ sub snap_dir { # Is tested
     return $config_ref->{snaps}{$snap}{dir};
 }
 
-sub snap_timeframes { # No test
+sub snap_timeframes { # Is tested
 
     # Return a list of $snap's timeframes. If there is no snap named
     # $snap then logdie because things have gone haywire.
@@ -454,7 +454,7 @@ sub ssh_backup_subvol { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{subvol};
 }
 
-sub ssh_backup_mountpoint { # Not tested
+sub ssh_backup_mountpoint { # Is tested
 
     # Return the mountpoint of the subvol that $ssh_backup is backing
     # up.
@@ -536,7 +536,7 @@ sub local_backup_subvol { # Is tested
     return $config_ref->{local_backups}{$local_backup}{subvol};
 }
 
-sub local_backup_mountpoint { # Not tested
+sub local_backup_mountpoint { # Is tested
 
     # Return the mountpoint of the subvol that $local_backup is
     # backing up.

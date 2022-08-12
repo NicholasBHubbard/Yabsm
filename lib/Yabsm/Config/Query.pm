@@ -37,6 +37,8 @@ our @EXPORT_OK = qw(is_timeframe
                     ssh_backup_exists_or_die
                     local_backup_exists
                     local_backup_exists_or_die
+                    backup_exists
+                    backup_exists_or_die
                     all_subvols
                     all_snaps
                     all_ssh_backups
@@ -263,7 +265,8 @@ sub local_backup_exists { # Is tested
 
 sub local_backup_exists_or_die { # Is tested
 
-    # Wrapper around &local_backup_exists that logdies if it returns false.
+    # Wrapper around &local_backup_exists that logdies if it returns
+    # false.
 
     2 == @_ or die_arg_count(2, 2, @_);
 
@@ -272,6 +275,36 @@ sub local_backup_exists_or_die { # Is tested
 
     unless ( local_backup_exists($local_backup, $config_ref) ) {
         get_logger->logconfess("yabsm: internal error: no local_backup named '$local_backup'");
+    }
+
+    return 1;
+}
+
+sub backup_exists { # Not tested
+
+    # Return 1 if $backup is either an ssh_backup or a local_backup
+    # and return 0 otherwise.
+
+    2 == @_ or die_arg_count(2, 2, @_);
+
+    my $backup     = shift;
+    my $config_ref = shift;
+
+    return 1 if ssh_backup_exists($backup, $config_ref);
+    return local_backup_exists($backup, $config_ref);
+}
+
+sub backup_exists_or_die { # Not tested
+
+    # Wrapper around &backup_exists that logdies if it returns false.
+
+    2 == @_ or die_arg_count(2, 2, @_);
+
+    my $backup     = shift;
+    my $config_ref = shift;
+
+    unless ( backup_exists($backup, $config_ref) ) {
+        get_logger->logconfess("yabsm: internal error: no ssh_backup or local_backup named '$backup'");
     }
 
     return 1;

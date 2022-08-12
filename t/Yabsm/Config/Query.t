@@ -177,6 +177,23 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 }
 
 {
+    my $n = 'backup_exists';
+    my $f = \&Yabsm::Config::Query::backup_exists;
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 1, "$n - 1 if given ssh_backup");
+    is($f->('foo_local_backup', \%TEST_CONFIG), 1, "$n - 1 if given local_backup");
+    is($f->('quux', \%TEST_CONFIG), 0, "$n - 0 if given neither ssh_backup or local_backup");
+}
+
+{
+    my $n = 'backup_exists_or_die';
+    my $f = \&Yabsm::Config::Query::backup_exists_or_die;
+
+    is($f->('foo_ssh_backup', \%TEST_CONFIG), 1, "$n - 1 if given ssh_backup");
+    is($f->('foo_local_backup', \%TEST_CONFIG), 1, "$n - 1 if given local_backup");
+    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup or local_backup named 'quux'/, "$n - dies if neither ssh_backup or local_backup";
+}
+
+{
     my $n = 'all_subvols';
     my $f = \&Yabsm::Config::Query::all_subvols;
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env/perl
+#!/usr/bin/env perl
 
 #  Author:  Nicholas Hubbard
 #  WWW:     https://github.com/NicholasBHubbard/yabsm

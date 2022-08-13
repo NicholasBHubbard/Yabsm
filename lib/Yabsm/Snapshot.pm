@@ -101,7 +101,7 @@ sub is_snapshot_name { # Is tested
 
     1 == @_ or die_arg_count(1, 1, @_);
 
-    return 0 unless my @date_nums = shift =~ /^yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/;
+    return 0 unless my (undef, @date_nums) = shift =~ /^(\.BOOTSTRAP-)?yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/;
 
     return 0 unless nums_denote_valid_date(@date_nums);
 
@@ -117,7 +117,7 @@ sub is_snapshot_name_or_die { # Is tested
 
     my $snapshot_name = shift;
 
-    my @date_nums = $snapshot_name =~ /^yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/
+    my (undef, @date_nums) = $snapshot_name =~ /^(\.BOOTSTRAP-)?yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/
       or get_logger->logconfess("yabsm: internal error: '$snapshot_name' is not a valid yabsm snapshot name");
 
     nums_denote_valid_date_or_die(@date_nums);
@@ -125,7 +125,7 @@ sub is_snapshot_name_or_die { # Is tested
     return 1;
 }
 
-sub is_yabsm_snapshot { # Not tested
+sub is_yabsm_snapshot { # Is tested
 
     # Return 1 if $snapshot is a yabsm snapshot and return 0
     # otherwise.
@@ -137,7 +137,7 @@ sub is_yabsm_snapshot { # Not tested
     return is_snapshot_name(basename($snapshot)) && is_btrfs_subvolume($snapshot)
 }
 
-sub is_yabsm_snapshot_or_die { # Not tested
+sub is_yabsm_snapshot_or_die { # Is tested
 
     # Wrapper around is_yabsm_snapshot_name() that logdies if it
     # returns false.

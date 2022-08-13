@@ -146,19 +146,31 @@ if ($BTRFS_SUBVOLUME) {
 
     my $n_del  = 'delete_snapshot_or_die';
     my $f_del  = \&Yabsm::Snapshot::delete_snapshot_or_die;
+    
+    my $n_is_yabsm_snap = 'is_yabsm_snapshot';
+    my $f_is_yabsm_snap = \&Yabsm::Snapshot::is_yabsm_snapshot;
+
+    my $n_is_yabsm_snap_od = 'is_yabsm_snapshot_or_die';
+    my $f_is_yabsm_snap_od = \&Yabsm::Snapshot::is_yabsm_snapshot_or_die;
 
     my $snapshot;
 
   SKIP: {
-        skip "$n_take and $n_del - no btrfs subvolume passed with -s flag", 9 unless $BTRFS_SUBVOLUME;
+        skip "$n_take, $n_del, $n_is_yabsm_snap, and $n_is_yabsm_snap_od - no btrfs subvolume passed with -s flag", 13 unless $BTRFS_SUBVOLUME;
 
         lives_ok { $snapshot = $f_take->($BTRFS_SUBVOLUME, $BTRFS_DIR) } "$n_take - ran without dying";
         is(is_btrfs_subvolume($snapshot), 1, "$n_take - successfully created snapshot");
         throws_ok { $f_take->('quux', $BTRFS_DIR) } qr/'quux' is not a btrfs subvolume/, "$n_del - dies if given non-existent btrfs subvolume";
         
+        is($f_is_yabsm_snap->($snapshot), 1, "$n_is_yabsm_snap - returns 1 if yabsm snap");
+        lives_and { is $f_is_yabsm_snap_od->($snapshot), 1 } "$n_is_yabsm_snap_od - returns 1 if yabsm snap";
+
         lives_ok { $f_del->($snapshot) } "$n_del - ran without dying";
         is(is_btrfs_subvolume($snapshot), 0, "$n_del - successfully deleted snapshot");
         throws_ok { $f_del->('quux') } qr/'quux' is not a btrfs subvolume/, "$n_del - dies if given non-existent snapshot";
+
+        is($f_is_yabsm_snap->($snapshot), 0, "$n_is_yabsm_snap - returns 0 if not yabsm snap");
+        throws_ok { $f_is_yabsm_snap_od->($snapshot) } qr/'$snapshot' is not a btrfs subvolume/, "$n_is_yabsm_snap_od - dies if not yabsm snapshot";
 
         throws_ok { $f_take->('quux', $BTRFS_DIR) } qr/'quux' is not a btrfs subvolume/, "$n_take - dies if invalid btrfs subvolume";
         throws_ok { $f_take->($BTRFS_SUBVOLUME, 'quux') } qr/'quux' is not a directory residing on a btrfs filesystem/, "$n_take - dies if target not btrfs dir";

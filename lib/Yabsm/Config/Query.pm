@@ -403,8 +403,6 @@ sub snap_mountpoint { # Is tested
 
     my $subvol = snap_subvol($snap, $config_ref);
 
-    subvol_exists_or_die($subvol, $config_ref);
-
     return subvol_mountpoint($subvol, $config_ref);
 }
 
@@ -467,8 +465,6 @@ sub ssh_backup_mountpoint { # Is tested
     ssh_backup_exists_or_die($ssh_backup, $config_ref);
 
     my $subvol = ssh_backup_subvol($ssh_backup, $config_ref);
-
-    subvol_exists_or_die($subvol, $config_ref);
 
     return subvol_mountpoint($subvol, $config_ref);
 }
@@ -549,8 +545,6 @@ sub local_backup_mountpoint { # Is tested
     local_backup_exists_or_die($local_backup, $config_ref);
 
     my $subvol = local_backup_subvol($local_backup, $config_ref);
-
-    subvol_exists_or_die($subvol, $config_ref);
 
     return subvol_mountpoint($subvol, $config_ref);
 }

@@ -76,11 +76,8 @@ sub backup_bootstrap_snapshot { # Is tested
 
     is_btrfs_dir_or_die($bootstrap_dir);
 
-    opendir my $dh, $bootstrap_dir
-      or get_logger->logconfess("yabsm: internal error: cannot opendir '$bootstrap_dir'");
-
+    opendir my $dh, $bootstrap_dir or get_logger->logconfess("yabsm: internal error: cannot opendir '$bootstrap_dir'");
     my @boot_snapshots = map { $_ = "$bootstrap_dir/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh);
-
     closedir $dh;
 
     if (0 == @boot_snapshots) {

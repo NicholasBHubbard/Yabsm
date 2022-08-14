@@ -106,7 +106,7 @@ sub is_btrfs_dir_or_die { # No test
 
     my $dir = shift;
 
-    is_btrfs_dir($dir) ? return 1 : get_logger->logdie("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
+    is_btrfs_dir($dir) ? return 1 : get_logger->logconfess("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
 }
 
 sub is_btrfs_subvolume { # No test
@@ -149,7 +149,7 @@ sub is_btrfs_subvolume_or_die { # No test
 
     my $dir = shift;
 
-    is_btrfs_subvolume($dir) ? return 1 : get_logger->logdie("yabsm: internal error: '$dir' is not a btrfs subvolume")
+    is_btrfs_subvolume($dir) ? return 1 : get_logger->logconfess("yabsm: internal error: '$dir' is not a btrfs subvolume")
 }
 
 sub nums_denote_valid_date { # Is tested
@@ -216,7 +216,7 @@ sub system_or_die { # No test
     my $status = system @_;
 
     unless (0 == $status) {
-        get_logger->logdie("yabsm: internal error: system command '@_' exited with non-zero status '$status'");
+        get_logger->logconfess("yabsm: internal error: system command '@_' exited with non-zero status '$status'");
     }
 
     return $status;
@@ -237,7 +237,7 @@ sub make_path_or_die { # No test
     my $username = getpwuid $<;
 
     # make_path sets $!
-    get_logger->logdie("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
+    get_logger->logconfess("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
 }
 
 sub i_am_root { # No test

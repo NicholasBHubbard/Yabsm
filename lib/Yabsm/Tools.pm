@@ -106,7 +106,7 @@ sub is_btrfs_dir_or_die { # No test
 
     my $dir = shift;
 
-    is_btrfs_dir($dir) ? return 1 : get_logger->logdie("yabsm: error: '$dir' is not a directory residing on a btrfs filesystem")
+    is_btrfs_dir($dir) ? return 1 : get_logger->logdie("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
 }
 
 sub is_btrfs_subvolume { # No test
@@ -149,7 +149,7 @@ sub is_btrfs_subvolume_or_die { # No test
 
     my $dir = shift;
 
-    is_btrfs_subvolume($dir) ? return 1 : get_logger->logdie("yabsm: error: '$dir' is not a btrfs subvolume")
+    is_btrfs_subvolume($dir) ? return 1 : get_logger->logdie("yabsm: internal error: '$dir' is not a btrfs subvolume")
 }
 
 sub nums_denote_valid_date { # Is tested

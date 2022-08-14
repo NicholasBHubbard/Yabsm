@@ -65,6 +65,8 @@ sub backup_bootstrap_snapshot { # Is tested
     # If the backup $backup has a bootstrap snapshot return its path
     # and otherwise return undef.
 
+    3 == @_ or die_arg_count(3, 3, @_);
+
     my $backup      = shift;
     my $backup_type = shift;
     my $config_ref  = shift;

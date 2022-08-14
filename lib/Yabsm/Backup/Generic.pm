@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  TODO
+#  Functions needed for both SSH and local backups.
 
 package Yabsm::Backup::Generic;
 

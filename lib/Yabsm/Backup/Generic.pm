@@ -45,7 +45,8 @@ sub take_bootstrap_snapshot { # Is tested
     my $backup      = shift;
     my $backup_type = shift;
     my $config_ref  = shift;
-    
+
+    backup_exists_or_die($backup, $config_ref);
     is_backup_type_or_die($backup_type);
 
     my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);

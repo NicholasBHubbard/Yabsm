@@ -39,6 +39,8 @@ our @EXPORT_OK = qw( take_bootstrap_snapshot
 sub take_bootstrap_snapshot { # Is tested
 
     # Take a btrfs bootstrap snapshot of $backup and return its path.
+    # If there is already a bootstrap snapshot for $backup then delete
+    # it and take a new one.
 
     3 == @_ or die_arg_count(3, 3, @_);
 

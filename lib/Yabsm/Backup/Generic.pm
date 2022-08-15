@@ -51,23 +51,44 @@ sub take_bootstrap_snapshot { # Is tested
     my $backup_type = shift;
     my $config_ref  = shift;
 
-    backup_exists_or_die($backup, $config_ref);
-    is_backup_type_or_die($backup_type);
-
-    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
-
     my $mountpoint;
 
     if ($backup_type eq 'ssh') {
         $mountpoint = ssh_backup_mountpoint($backup, $config_ref);
     }
-    if ($backup_type eq 'local') {
+    elsif ($backup_type eq 'local') {
         $mountpoint = local_backup_mountpoint($backup, $config_ref);
     }
+    else { is_backup_type_or_die($backup_type) }
+    
+    if (my $bootstrap_snapshot = backup_bootstrap_snapshot($backup, $backup_type, $config_ref)) {
+        delete_snapshot_or_die($bootstrap_snapshot);
+    }
+    
+    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
 
     my $snapshot_name = '.BOOTSTRAP-' . current_time_snapshot_name();
     
     return take_snapshot_or_die($mountpoint, $bootstrap_dir, $snapshot_name);
+}
+
+sub maybe_take_bootstrap_snapshot { # Not tested
+
+    # If $backup does not already have a bootstrap snapshot then take
+    # a bootstrap snapshot and return its path. Otherwise return the
+    # path of the existing bootstrap snapshot.
+    
+    3 == @_ or die_arg_count(3, 3, @_);
+
+    my $backup      = shift;
+    my $backup_type = shift;
+    my $config_ref  = shift;
+    
+    if (my $bbs = backup_bootstrap_snapshot($backup, $backup_type, $config_ref)) {
+        return $bbs;
+    }
+
+    return take_bootstrap_snapshot($backup, $backup_type, $config_ref);
 }
 
 sub backup_bootstrap_snapshot { # Is tested
@@ -108,6 +129,7 @@ sub backup_bootstrap_snapshot { # Is tested
 sub bootstrap_snapshot_dir { # Is tested
 
     # Return the path to $ssh_backup's bootstrap snapshot directory.
+    # Logdie if the bootstrap snapshot directory does not exist.
 
     3 == @_ or die_arg_count(3, 3, @_);
 
@@ -123,7 +145,7 @@ sub bootstrap_snapshot_dir { # Is tested
     if ($backup_type eq 'local') {
         local_backup_exists_or_die($backup, $config_ref);
     }
-    
+
     return yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/bootstrap-snapshot";
 }
 
@@ -183,6 +205,56 @@ sub is_bootstrap_snapshot_name_or_die { # Is tested
     }
 
     return 1;
+}
+
+sub tmp_snapshot_dir { # Is tested
+
+    # Return path to $backup's tmp snapshot directory.
+
+    3 == @_ or die_arg_count(3, 3, @_);
+
+    my $backup      = shift;
+    my $backup_type = shift;
+    my $config_ref  = shift;
+
+    if ($backup_type eq 'ssh') {
+        ssh_backup_exists_or_die($backup, $config_ref);
+    }
+    elsif ($backup_type eq 'ssh') {
+        local_backup_exists_or_die($backup, $config_ref);
+    }
+    else {
+        is_backup_type_or_die($backup_type);
+    }
+
+    return yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
+}
+
+sub take_tmp_snapshot { # Is tested
+
+    # TODO
+
+    3 == @_ or die_arg_count(3, 3, @_);
+
+    my $backup      = shift;
+    my $backup_type = shift;
+    my $config_ref  = shift;
+
+    my $tmp_snapshot_dir = tmp_snapshot_dir($backup, $backup_type, $config_ref);
+
+    my $mountpoint;
+
+    if ($backup_type eq 'ssh')   {
+        $mountpoint = ssh_backup_mountpoint($backup, $config_ref);
+    }
+    elsif ($backup_type eq 'local') {
+        $mountpoint = local_backup_mountpoint($backup, $config_ref);
+    }
+    else {
+        is_backup_type_or_die($backup_type);
+    }
+    
+    return take_snapshot_or_die($mountpoint, $tmp_snapshot_dir);
 }
 
 sub is_backup_type_or_die { # Is tested

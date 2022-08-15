@@ -109,6 +109,31 @@ if (defined $BTRFS_SUBVOLUME) {
     throws_ok { $f->('foo_ssh_backup', 'quux', \%test_config) } qr/'quux' is not 'ssh' or 'local'/, "$n - dies if invalid backup type";
 }
 
+{
+    my $n = 'tmp_snapshot_dir';
+    my $f = \&Yabsm::Backup::Generic::tmp_snapshot_dir;
+
+    my %test_config = ( yabsm_dir => '/foo'
+                      , subvols => { foo => { mountpoint => '/' } }
+                      , ssh_backups => { foo_ssh_backup => { subvol         => 'foo'
+                                                           , ssh_dest       => 'yabsm-test@localhost'
+                                                           , dir            => '/bar'
+                                                           , timeframes     => '5minute'
+                                                           , '5minute_keep' => 12
+                                                           }
+                                       }
+                      , local_backups => { foo_local_backup => { subvol         => 'foo'
+                                                               , dir            => '/baz'
+                                                               , timeframes     => '5minute'
+                                                               , '5minute_keep' => 12
+                                                               }
+                                         }
+                      );
+    is($f->('foo_ssh_backup', 'ssh', \%test_config), '/foo/.yabsm-var/ssh_backups/foo_ssh_backup/tmp-snapshot', "$n - returns correct directory for ssh_backup");
+    is($f->('foo_local_backup', 'local', \%test_config), '/foo/.yabsm-var/local_backups/foo_local_backup/tmp-snapshot', "$n - returns correct directory for local_backup");
+    throws_ok { $f->('foo_ssh_backup', 'quux', \%test_config) } qr/'quux' is not 'ssh' or 'local'/, "$n - dies if invalid backup type";
+}
+
 
 SKIP: {
     skip 'btrfs dependent tests - no subvolume provided via -s flag', 11 unless $CAN_DO_BTRFS_TESTS;
@@ -127,6 +152,9 @@ SKIP: {
     my $bootstrap_dir = Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_local_backup', 'local', \%test_config);
     my $bootstrap_snapshot = "$bootstrap_dir/". '.BOOTSTRAP-' . Yabsm::Snapshot::current_time_snapshot_name();
 
+    my $tmp_snapshot_dir = Yabsm::Backup::Generic::tmp_snapshot_dir('foo_local_backup', 'local', \%test_config);
+    my $tmp_snapshot = "$tmp_snapshot_dir/". Yabsm::Snapshot::current_time_snapshot_name();
+
     my $n;
     my $f;
 
@@ -138,7 +166,15 @@ SKIP: {
     $f = \&Yabsm::Backup::Generic::take_bootstrap_snapshot;
     throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/'$bootstrap_dir' is not a directory residing on a btrfs filesystem/, "$n - dies if bootstrap directory doesn't exist";
 
+    $n = 'take_tmp_snapshot';
+    $f = \&Yabsm::Backup::Generic::take_tmp_snapshot;
+    throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/'$tmp_snapshot_dir' is not a directory residing on a btrfs filesystem/, "$n - dies if bootstrap directory doesn't exist";
+
     make_path_or_die($bootstrap_dir);
+    make_path_or_die($tmp_snapshot_dir);
+
+    lives_and { is $f->('foo_local_backup', 'local', \%test_config), $tmp_snapshot } "$n - takes a tmp snapshot";
+    Yabsm::Snapshot::delete_snapshot_or_die($tmp_snapshot);
 
     $n = 'backup_bootstrap_snapshot';
     $f = \&Yabsm::Backup::Generic::backup_bootstrap_snapshot;

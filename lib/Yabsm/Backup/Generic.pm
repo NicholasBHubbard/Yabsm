@@ -136,7 +136,7 @@ sub is_bootstrap_snapshot { # Is tested
     return 1;
 }
 
-sub is_bootstrap_snapshot_or_die { # Not tested
+sub is_bootstrap_snapshot_or_die { # Is tested
 
     # Wrapper around &is_bootstrap_snapshot that logdies if it returns
     # false.

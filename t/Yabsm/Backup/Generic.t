@@ -156,7 +156,7 @@ SKIP: {
     print $fh 'foo';
     close $fh;
 
-    throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/found multiple items in '$bootstrap_dir'/, "$n - dies if more than one bootstrap snapshot";
+    throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/found multiple files in '$bootstrap_dir'/, "$n - dies if more than one bootstrap snapshot";
 
     $n = 'is_bootstrap_snapshot';
     $f = \&Yabsm::Backup::Generic::is_bootstrap_snapshot;

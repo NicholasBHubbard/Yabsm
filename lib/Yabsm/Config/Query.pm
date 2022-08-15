@@ -273,8 +273,8 @@ sub local_backup_exists_or_die { # Is tested
 
     2 == @_ or die_arg_count(2, 2, @_);
 
-    my $local_backup       = shift;
-    my $config_ref = shift;
+    my $local_backup = shift;
+    my $config_ref   = shift;
 
     unless ( local_backup_exists($local_backup, $config_ref) ) {
         get_logger->logconfess("yabsm: internal error: no local_backup named '$local_backup'");

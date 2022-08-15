@@ -89,13 +89,13 @@ sub backup_bootstrap_snapshot { # Is tested
     if (0 == @boot_snapshots) {
         return undef;
     }
-    elsif (1 == @boot_snapshots) {
+    elsif (1 < @boot_snapshots) {
+        get_logger->logconfess("yabsm: internal error: found multiple files in '$bootstrap_dir': " . map { $_ = q('$_') } @boot_snapshots);
+    }
+    else {
         my $bootstrap_snapshot = shift @boot_snapshots;
         is_bootstrap_snapshot_or_die($bootstrap_snapshot);
         return $bootstrap_snapshot;
-    }
-    else {
-        get_logger->logconfess("yabsm: internal error: found multiple items in '$bootstrap_dir': " . map { $_ = q('$bootstrap_dir/$_') } @boot_snapshots);
     }
 }
 

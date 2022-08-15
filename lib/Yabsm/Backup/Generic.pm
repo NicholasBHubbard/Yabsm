@@ -4,6 +4,10 @@
 
 #  Functions needed for both SSH and local backups.
 
+use strict;
+use warnings;
+use v5.16.3;
+
 package Yabsm::Backup::Generic;
 
 use Yabsm::Tools qw( :ALL );

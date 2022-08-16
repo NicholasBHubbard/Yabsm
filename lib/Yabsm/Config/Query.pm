@@ -475,14 +475,16 @@ sub ssh_backup_dir { # Is tested
     # ssh_backup named $ssh_backup then logdie because things have
     # gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    3 == @_ or die_arg_count(3, 3, @_);
 
     my $ssh_backup = shift;
+    my $tframe     = shift;
     my $config_ref = shift;
 
     ssh_backup_exists_or_die($ssh_backup, $config_ref);
+    is_timeframe_or_die($tframe);
 
-    return $config_ref->{ssh_backups}{$ssh_backup}{dir};
+    return $config_ref->{ssh_backups}{$ssh_backup}{dir} =~ s/\/*$//r . "/$tframe";
 }
 
 sub ssh_backup_timeframes { # Is tested
@@ -551,18 +553,18 @@ sub local_backup_mountpoint { # Is tested
 
 sub local_backup_dir { # Is tested
 
-    # Return $local_backup's local_backup dir value. If there is no
-    # local_backup named $local_backup then logdie because things have
-    # gone haywire.
+    # Return $local_backup's local_backup dir value for $tframe.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    3 == @_ or die_arg_count(3, 3, @_);
 
     my $local_backup = shift;
+    my $tframe       = shift;
     my $config_ref   = shift;
 
     local_backup_exists_or_die($local_backup, $config_ref);
+    is_timeframe_or_die($tframe);
 
-    return $config_ref->{local_backups}{$local_backup}{dir};
+    return $config_ref->{local_backups}{$local_backup}{dir} =~ s/\/*$//r . "/$tframe";
 }
 
 sub local_backup_timeframes { # Is tested

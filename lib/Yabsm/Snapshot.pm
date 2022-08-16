@@ -40,16 +40,16 @@ our @EXPORT_OK = qw( take_snapshot
 
 sub take_snapshot { # Is tested
 
-    # This is the lowest level function for taking a snapshot. Given
-    # the path to a btrfs subvolume ($subvolume) and the destination
-    # path for the snapshot ($dest), takes a snapshot of $subvolume,
-    # names it after the current time (or an inputted name), and
-    # places it in $dest. Returns the path of the new snapshot.
+    # This is the lowest level function for taking a snapshot. Given the path to
+    # a btrfs subvolume ($subvolume) and the destination path for the snapshot
+    # ($dest), takes a snapshot of $subvolume, names it after the current time
+    # (or an inputted name), and places it in $dest. Returns the path of the new
+    # snapshot.
     #
-    # Performs sanity checking and dies unless $subvolume is a btrfs
-    # subvolume, $dest is a directory residing on a btrfs filesystem,
-    # and the current user can call the btrfs program using sudo
-    # without the need for password authentication.
+    # Performs sanity checking and dies unless $subvolume is a btrfs subvolume,
+    # $dest is a directory residing on a btrfs filesystem, and the current user
+    # can call the btrfs program using sudo without the need for password
+    # authentication.
 
     2 == @_ || 3 == @_ or die_arg_count(2, 3, @_);
 
@@ -70,13 +70,12 @@ sub take_snapshot { # Is tested
 
 sub delete_snapshot { # Is tested
 
-    # This is the lowest level function for deleting a snapshot. Takes
-    # the path to a yabsm snapshot ($snapshot), deletes it and returns
-    # it back.
+    # This is the lowest level function for deleting a snapshot. Takes the path
+    # to a yabsm snapshot ($snapshot), deletes it and returns it back.
     #
-    # Performs sanity checking and dies unless $snapshot is a yabsm
-    # snapshot, and the current user can call the btrfs program with
-    # sudo without the need for password authentication.
+    # Performs sanity checking and dies unless $snapshot is a yabsm snapshot,
+    # and the current user can call the btrfs program with sudo without the need
+    # for password authentication.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
@@ -93,11 +92,10 @@ sub delete_snapshot { # Is tested
 sub is_snapshot_name { # Is tested
 
     # Return 1 if passed a valid yabsm snapshot name and return 0
-    # otherwise. Does checking to ensure that the denoted date is
-    # valid.
+    # otherwise. Does checking to ensure that the denoted date is valid.
     #
-    # It is important to note that this function rejects directory
-    # paths even if their basename is a valid yabsm snapshot name.
+    # It is important to note that this function rejects directory paths even if
+    # their basename is a valid yabsm snapshot name.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
@@ -127,8 +125,7 @@ sub is_snapshot_name_or_die { # Is tested
 
 sub is_yabsm_snapshot { # Is tested
 
-    # Return 1 if $snapshot is a yabsm snapshot and return 0
-    # otherwise.
+    # Return 1 if $snapshot is a yabsm snapshot and return 0 otherwise.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
@@ -160,8 +157,8 @@ sub is_yabsm_snapshot_or_die { # Is tested
 sub snapshot_name_nums_or_die { # Is tested
 
     # Take a snapshot name and return a list containing, in order, the
-    # corresponding year, month, day, hour, and minute. Kill program
-    # if $snapshot_name is not a valid yabsm snapshot name.
+    # corresponding year, month, day, hour, and minute. Kill program if
+    # $snapshot_name is not a valid yabsm snapshot name.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
@@ -204,13 +201,12 @@ sub current_time_snapshot_name { # Is tested
 
 sub sort_snapshots { # Is tested
 
-    # Takes a reference to an array of snapshots and returns a list
-    # of the snapshots sorted from newest to oldest. This function
-    # works with both paths to snapshots and plain snapshots names.
+    # Takes a reference to an array of snapshots and returns a list of the
+    # snapshots sorted from newest to oldest. This function works with both
+    # paths to snapshots and plain snapshots names.
     #
-    # If called in list context returns list of sorted snapshots. If
-    # called in scalar context returns a reference to the list of
-    # sorted snapshots.
+    # If called in list context returns list of sorted snapshots. If called in
+    # scalar context returns a reference to the list of sorted snapshots.
 
     1 == @_ or die_arg_count(1, 1, @_);
 
@@ -221,8 +217,8 @@ sub sort_snapshots { # Is tested
 
 sub cmp_snapshots { # Is tested
 
-    # Compare two yabsm snapshots based off their times. Works with
-    # both a path to a snapshot and just a snapshot name.
+    # Compare two yabsm snapshots based off their times. Works with both a path
+    # to a snapshot and just a snapshot name.
     #
     # Return -1 if $snapshot1 is newer than $snapshot2
     # Return 1  if $snapshot1 is older than $snapshot2

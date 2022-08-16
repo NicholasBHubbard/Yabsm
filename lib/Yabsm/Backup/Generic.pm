@@ -13,8 +13,8 @@ package Yabsm::Backup::Generic;
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 
-use Yabsm::Snapshot qw( take_snapshot_or_die 
-                        delete_snapshot_or_die
+use Yabsm::Snapshot qw( take_snapshot 
+                        delete_snapshot
                         current_time_snapshot_name
                       );
 
@@ -31,7 +31,7 @@ our @EXPORT_OK = qw( take_bootstrap_snapshot
                      is_bootstrap_snapshot_name 
                      is_bootstrap_snapshot_name_or_die 
                      backup_tmp_snapshot_dir 
-                     take_backup_tmp_snapshot 
+                     take_tmp_snapshot 
                      is_backup_type_or_die 
                    );
 
@@ -62,14 +62,14 @@ sub take_bootstrap_snapshot { # Is tested
     else { is_backup_type_or_die($backup_type) }
     
     if (my $bootstrap_snapshot = backup_bootstrap_snapshot($backup, $backup_type, $config_ref)) {
-        delete_snapshot_or_die($bootstrap_snapshot);
+        delete_snapshot($bootstrap_snapshot);
     }
     
     my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
 
     my $snapshot_name = '.BOOTSTRAP-' . current_time_snapshot_name();
     
-    return take_snapshot_or_die($mountpoint, $bootstrap_dir, $snapshot_name);
+    return take_snapshot($mountpoint, $bootstrap_dir, $snapshot_name);
 }
 
 sub maybe_take_bootstrap_snapshot { # Not tested
@@ -254,7 +254,7 @@ sub take_tmp_snapshot { # Is tested
         is_backup_type_or_die($backup_type);
     }
     
-    return take_snapshot_or_die($mountpoint, $tmp_snapshot_dir);
+    return take_snapshot($mountpoint, $tmp_snapshot_dir);
 }
 
 sub is_backup_type_or_die { # Is tested

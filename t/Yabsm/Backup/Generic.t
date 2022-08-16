@@ -174,7 +174,7 @@ SKIP: {
     make_path_or_die($tmp_snapshot_dir);
 
     lives_and { is $f->('foo_local_backup', 'local', \%test_config), $tmp_snapshot } "$n - takes a tmp snapshot";
-    Yabsm::Snapshot::delete_snapshot_or_die($tmp_snapshot);
+    Yabsm::Snapshot::delete_snapshot($tmp_snapshot);
 
     $n = 'backup_bootstrap_snapshot';
     $f = \&Yabsm::Backup::Generic::backup_bootstrap_snapshot;
@@ -207,5 +207,5 @@ SKIP: {
 
     unlink "$bootstrap_dir/foo";
 
-    Yabsm::Snapshot::delete_snapshot_or_die($bootstrap_snapshot);
+    Yabsm::Snapshot::delete_snapshot($bootstrap_snapshot);
 }

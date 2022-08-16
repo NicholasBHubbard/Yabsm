@@ -21,8 +21,8 @@ use File::Basename qw(basename);
 use Time::Piece;
 
 use Exporter 'import';
-our @EXPORT_OK = qw( take_snapshot_or_die
-                     delete_snapshot_or_die
+our @EXPORT_OK = qw( take_snapshot
+                     delete_snapshot
                      is_snapshot_name
                      is_snapshot_name_or_die
                      is_yabsm_snapshot
@@ -38,7 +38,7 @@ our @EXPORT_OK = qw( take_snapshot_or_die
                  #            SUBROUTINES           #
                  ####################################
 
-sub take_snapshot_or_die { # Is tested
+sub take_snapshot { # Is tested
 
     # This is the lowest level function for taking a snapshot. Given
     # the path to a btrfs subvolume ($subvolume) and the destination
@@ -68,7 +68,7 @@ sub take_snapshot_or_die { # Is tested
     return $snapshot;
 }
 
-sub delete_snapshot_or_die { # Is tested
+sub delete_snapshot { # Is tested
 
     # This is the lowest level function for deleting a snapshot. Takes
     # the path to a yabsm snapshot ($snapshot), deletes it and returns

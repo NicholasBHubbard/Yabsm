@@ -141,11 +141,11 @@ if ($BTRFS_SUBVOLUME) {
 }
 
 {
-    my $n_take = 'take_snapshot_or_die';
-    my $f_take = \&Yabsm::Snapshot::take_snapshot_or_die;
+    my $n_take = 'take_snapshot';
+    my $f_take = \&Yabsm::Snapshot::take_snapshot;
 
-    my $n_del  = 'delete_snapshot_or_die';
-    my $f_del  = \&Yabsm::Snapshot::delete_snapshot_or_die;
+    my $n_del  = 'delete_snapshot';
+    my $f_del  = \&Yabsm::Snapshot::delete_snapshot;
     
     my $n_is_yabsm_snap = 'is_yabsm_snapshot';
     my $f_is_yabsm_snap = \&Yabsm::Snapshot::is_yabsm_snapshot;

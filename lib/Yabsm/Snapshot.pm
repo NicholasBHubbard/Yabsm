@@ -63,7 +63,7 @@ sub take_snapshot { # Is tested
 
     my $snapshot = "$dest/" . $snapshot_name;
 
-    system_or_die("sudo -n btrfs subvolume snapshot -r '$subvolume' '$snapshot' >/dev/null 2>&1");
+    system_or_die('sudo', '-n', 'btrfs', 'subvolume', 'snapshot', '-r', $subvolume, $snapshot);
 
     return $snapshot;
 }
@@ -84,7 +84,7 @@ sub delete_snapshot { # Is tested
     is_yabsm_snapshot_or_die($snapshot);
     have_sudo_access_to_btrfs_or_die();
 
-    system_or_die("sudo -n btrfs subvol delete '$snapshot' >/dev/null 2>&1");
+    system_or_die('sudo', '-n', 'btrfs', 'subvolume', 'delete', $snapshot);
 
     return $snapshot;
 }

@@ -72,7 +72,7 @@ my %TEST_CONFIG = ( yabsm_dir   => "$BTRFS_DIR"
                                                        , ssh_dest       => 'yabsm-test@localhost'
                                                        , dir            => "$BTRFS_DIR/foo_ssh_backup"
                                                        , timeframes     => '5minute'
-                                                       , '5minute_keep' => 2
+                                                       , '5minute_keep' => 1
                                                        }
                                    }
                   );

@@ -79,6 +79,7 @@ my %TEST_CONFIG = ( yabsm_dir   => "$BTRFS_DIR"
 
 my $BACKUP_DIR      = Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', '5minute', \%TEST_CONFIG);
 my $BACKUP_DIR_BASE = dirname($BACKUP_DIR);
+my $BACKUP          = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_name();
 my $BOOTSTRAP_DIR   = Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
 my $TMP_DIR         = Yabsm::Backup::Generic::tmp_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
 
@@ -109,7 +110,6 @@ throws_ok { $f->($SSH, 'foo_ssh_backup','5minute', \%TEST_CONFIG) } qr/remote co
 cleanup_snapshots();
 make_path_or_die($BACKUP_DIR_BASE);
 system('chown', '-R', 'yabsm-test', $BTRFS_DIR);
-my $BACKUP = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_name();
 lives_and { is $f->($SSH, 'foo_ssh_backup','5minute', \%TEST_CONFIG), $BACKUP } "$n - successfully performs backup";
 
 done_testing();
@@ -141,7 +141,7 @@ sub cleanup_snapshots {
         }
     }
 
-    closedir $dh;
+    closedir $dh if $dh;
 }
 
 cleanup_snapshots();

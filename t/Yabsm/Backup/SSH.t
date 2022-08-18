@@ -120,21 +120,21 @@ done_testing();
 
 sub cleanup_snapshots {
 
-    opendir(my $dh, $BOOTSTRAP_DIR);
+    opendir(my $dh, $BOOTSTRAP_DIR) if -d $BOOTSTRAP_DIR;
     if ($dh) {
         for (map { $_ = "$BOOTSTRAP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             Yabsm::Snapshot::delete_snapshot($_);
         }
     }
 
-    opendir($dh, $TMP_DIR);
+    opendir($dh, $TMP_DIR) if -d $TMP_DIR;
     if ($dh) {
         for (map { $_ = "$TMP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             Yabsm::Snapshot::delete_snapshot($_);
         }
     }
 
-    opendir($dh, $BACKUP_DIR);
+    opendir($dh, $BACKUP_DIR) if -d $BACKUP_DIR;
     if ($dh) {
         for (map { $_ = "$BACKUP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             Yabsm::Snapshot::delete_snapshot($_);

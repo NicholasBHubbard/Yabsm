@@ -99,8 +99,8 @@ lives_and { is $f->($SSH, 'echo foo'), "foo\n" } "$n - returns correct output in
 lives_and { is_deeply [$f->($SSH, 'echo foo; echo bar')], ["foo\n","bar\n"] } "$n - returns correct output in list context";
 throws_ok { $f->($SSH, 'false') } qr/remote command 'false' failed at 'yabsm-test\@localhost'/, "$n - dies if command fails";
 
-$n = 'ssh_do_backup';
-$f = \&Yabsm::Backup::SSH::ssh_do_backup;
+$n = 'ssh_backup_do_backup';
+$f = \&Yabsm::Backup::SSH::ssh_backup_do_backup;
 throws_ok {  $f->($SSH,'foo_ssh_backup','5minute',\%TEST_CONFIG) } qr/'$BOOTSTRAP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies unless bootstrap dir exists";
 make_path_or_die($BOOTSTRAP_DIR);
 throws_ok {  $f->($SSH,'foo_ssh_backup','5minute',\%TEST_CONFIG) } qr/'$TMP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies unless tmp snapshot dir exists";

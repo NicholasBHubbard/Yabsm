@@ -19,7 +19,7 @@ use Log::Log4perl 'get_logger';
 use File::Basename qw(basename dirname);
 
 use Exporter 'import';
-our @EXPORT_OK = qw( ssh_do_backup
+our @EXPORT_OK = qw( ssh_backup_do_backup
                      new_ssh_conn
                      ssh_system_or_die
                    );
@@ -28,7 +28,7 @@ our @EXPORT_OK = qw( ssh_do_backup
                  #            SUBROUTINES           #
                  ####################################
 
-sub ssh_do_backup { # Is tested
+sub ssh_backup_do_backup { # Is tested
 
     # Perform a $tframe ssh_backup for $ssh_backup.
     #

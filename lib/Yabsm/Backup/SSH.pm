@@ -72,8 +72,8 @@ sub ssh_backup_do_backup { # Is tested
     elsif ($num_backups <= $to_keep) {
         ;
     }
-    # User changed their settings to keep less backups than they
-    # were keeping prior.
+    # User changed their settings to keep less backups than they were keeping
+    # prior.
     else {
         for (; $num_backups > $to_keep; $num_backups--) {
             my $oldest = pop @remote_backups;

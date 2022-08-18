@@ -30,7 +30,7 @@ our @EXPORT_OK = qw( take_bootstrap_snapshot
                      is_bootstrap_snapshot_or_die 
                      is_bootstrap_snapshot_name 
                      is_bootstrap_snapshot_name_or_die 
-                     backup_tmp_snapshot_dir 
+                     tmp_snapshot_dir 
                      take_tmp_snapshot 
                      is_backup_type_or_die 
                    );
@@ -232,7 +232,8 @@ sub tmp_snapshot_dir { # Is tested
 
 sub take_tmp_snapshot { # Is tested
 
-    # TODO
+    # Take a tmp snapshot for $backup. A tmp snapshot is necessary for taking an
+    # incremental backup with 'btrfs send -p'.
 
     3 == @_ or die_arg_count(3, 3, @_);
 

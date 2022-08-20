@@ -52,4 +52,12 @@ use Test::Exception;
     throws_ok { $f->(0,5,13,23,59) } qr/'0_5_13_23:59' does not denote a valid yr_mon_day_hr:min date/, "$n - dies if invalid date";
 }
 
+{
+    my $n = 'system_or_die';
+    my $f = \&Yabsm::Tools::system_or_die;
+
+    lives_and { is $f->('true'), 1 } "$n - succeeds if command succeeds";
+    throws_ok { $f->('false') } qr/yabsm: internal error: system command 'false' exited with non-zero status/, "$n - dies if command fails";
+}
+
 1;

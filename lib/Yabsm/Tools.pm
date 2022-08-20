@@ -205,7 +205,7 @@ sub nums_denote_valid_date_or_die { # Is tested
     return 1;
 }
 
-sub system_or_die { # No test
+sub system_or_die { # Is tested
 
     # Wrapper around system that logdies if the system command exits
     # with a non-zero status. Redirects STDOUT and STDERR to /dev/null.
@@ -228,7 +228,7 @@ sub system_or_die { # No test
         get_logger->logconfess("yabsm: internal error: system command '@_' exited with non-zero status '$status'");
     }
 
-    return $status;
+    return 1;
 }
 
 sub make_path_or_die { # No test
@@ -264,7 +264,7 @@ sub i_am_root_or_die { # No test
 
     unless (i_am_root()) {
         my $username = getpwuid $<;
-        get_logger->logconfess("yabsm: internal error: not running as root, running as '$username'");
+        get_logger->logconfess("yabsm: internal error: not running as root - running as '$username'");
     }
 
     return 1;

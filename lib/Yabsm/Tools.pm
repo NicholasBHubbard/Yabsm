@@ -208,9 +208,21 @@ sub nums_denote_valid_date_or_die { # Is tested
 sub system_or_die { # No test
 
     # Wrapper around system that logdies if the system command exits
-    # with a non-zero status.
+    # with a non-zero status. Redirects STDOUT and STDERR to /dev/null.
+
+    open my $NULLFD, '>', '/dev/null';
+    open my $OLD_STDOUT, '>&', STDOUT;
+    open my $OLD_STDERR, '>&', STDERR;
+    open STDOUT, '>&', $NULLFD;
+    open STDERR, '>&', $NULLFD;
 
     my $status = system @_;
+
+    open STDOUT, '>&', $OLD_STDOUT;
+    open STDERR, '>&', $OLD_STDERR;
+    close $NULLFD;
+    close $OLD_STDOUT;
+    close $OLD_STDERR;
 
     unless (0 == $status) {
         get_logger->logconfess("yabsm: internal error: system command '@_' exited with non-zero status '$status'");

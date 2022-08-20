@@ -38,7 +38,7 @@ our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
                  #            SUBROUTINES           #
                  ####################################
 
-sub die_arg_count { # Has test
+sub die_arg_count { # Is tested
 
     # logconfess if $num_args is not in range $lower to $upper. Used
     # for ensuring that subroutines are passed the correct number or
@@ -62,7 +62,7 @@ sub die_arg_count { # Has test
     get_logger->logconfess("yabsm: internal error: call to '$caller' passed $num_args args but takes $num_range_msg");
 }
 
-sub have_sudo_access_to_btrfs { # No test
+sub have_sudo_access_to_btrfs { # Not tested
 
     # Return 1 if we can run `btrfs` with `sudo -n` and return 0
     # otherwise.
@@ -72,7 +72,7 @@ sub have_sudo_access_to_btrfs { # No test
     return 0+(0 == system('sudo -n btrfs --help >/dev/null 2>&1'));
 }
 
-sub have_sudo_access_to_btrfs_or_die { # No test
+sub have_sudo_access_to_btrfs_or_die { # Not tested
 
     # Wrapper around have_sudo_access_to_btrfs() that logdies if it
     # returns false.
@@ -84,7 +84,7 @@ sub have_sudo_access_to_btrfs_or_die { # No test
     have_sudo_access_to_btrfs() ? return 1 : get_logger->logconfess("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
 }
 
-sub is_btrfs_dir { # No test
+sub is_btrfs_dir { # Not tested
 
     # Return 1 if $dir is a directory residing on a btrfs subvolume
     # and return 0 otherwise.
@@ -98,7 +98,7 @@ sub is_btrfs_dir { # No test
     return 0+('btrfs' eq `stat -f --printf=%T '$dir' 2>/dev/null`);
 }
 
-sub is_btrfs_dir_or_die { # No test
+sub is_btrfs_dir_or_die { # Not tested
 
     # Wrapper around is_btrfs_dir() that logdies if it returns false.
 
@@ -109,7 +109,7 @@ sub is_btrfs_dir_or_die { # No test
     is_btrfs_dir($dir) ? return 1 : get_logger->logconfess("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
 }
 
-sub is_btrfs_subvolume { # No test
+sub is_btrfs_subvolume { # Not tested
 
     # Return 1 if $dir is a btrfs subvolume on this OS and return 0
     # otherwise.
@@ -140,7 +140,7 @@ sub is_btrfs_subvolume { # No test
     return 0+('256' eq `stat --printf=%i '$dir' 2>/dev/null`);
 }
 
-sub is_btrfs_subvolume_or_die { # No test
+sub is_btrfs_subvolume_or_die { # Not tested
 
     # Wrapper around is_btrfs_subvolume() that logdies if it returns
     # false.
@@ -231,7 +231,7 @@ sub system_or_die { # Is tested
     return 1;
 }
 
-sub make_path_or_die { # No test
+sub make_path_or_die { # Not tested
 
     # Wrapper around File::Path::make_path() that logdies if the path
     # cannot be created.
@@ -245,18 +245,17 @@ sub make_path_or_die { # No test
 
     my $username = getpwuid $<;
 
-    # make_path sets $!
     get_logger->logconfess("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
 }
 
-sub i_am_root { # No test
+sub i_am_root { # Not tested
 
     # Return 1 if current user is root and return 0 otherwise.
 
     return 0+(0 == $<);
 }
 
-sub i_am_root_or_die { # No test
+sub i_am_root_or_die { # Not tested
 
     # Die unless running as the root user.
 

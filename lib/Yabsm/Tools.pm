@@ -253,7 +253,7 @@ sub i_am_root { # No test
 
     # Return 1 if current user is root and return 0 otherwise.
 
-    return 0 == $<;
+    return 0+(0 == $<);
 }
 
 sub i_am_root_or_die { # No test

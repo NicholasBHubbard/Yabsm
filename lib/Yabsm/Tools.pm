@@ -182,12 +182,9 @@ sub nums_denote_valid_date { # Is tested
         elsif ($yr % 4   == 0) { $is_leap_yr = 1 }
         else                   { $is_leap_yr = 0 }
 
-        if ($is_leap_yr) {
-            return 0 unless $day >= 1 && $day <= 29
-        }
-        else {
-            return 0 unless $day >= 1 && $day <= 28
-        }
+        my $upper = $is_leap_yr ? 29 : 28;
+
+        return 0 unless $day >= 1 && $day <= $upper;
     }
 
     return 1;

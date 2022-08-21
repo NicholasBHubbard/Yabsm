@@ -468,19 +468,19 @@ sub snap_mountpoint { # Is tested
     return subvol_mountpoint($subvol, $config_ref);
 }
 
-sub snap_dir { # Is tested
+sub snap_dest { # Is tested
 
-    # Return $snap's dir value. If there is no snap named $snap then
-    # logdie because things have gone haywire.
+    # Return $snap's destination for $tframe snaps.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    3 == @_ or die_arg_count(3, 3, @_);
 
     my $snap       = shift;
+    my $tframe     = shift;
     my $config_ref = shift;
 
-    snap_exists_or_die($snap, $config_ref);
+    snap_wants_timeframe_or_die($snap, $tframe, $config_ref);
 
-    return $config_ref->{snaps}{$snap}{dir};
+    return yabsm_dir($config_ref) . "/$snap/$tframe";
 }
 
 sub snap_timeframes { # Is tested

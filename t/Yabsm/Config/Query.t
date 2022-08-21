@@ -22,7 +22,6 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
                                , baz => { mountpoint => '/' }
                                }
                   , snaps   => { foo_snap => { subvol => 'foo'
-                                             , dir    =>  '/foo'
                                              , timeframes => '5minute,hourly,daily,weekly,monthly'
                                              , '5minute_keep' => 36
                                              , hourly_keep => 48
@@ -36,12 +35,10 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
                                              , monthly_time => '23:59'
                                              }
                                , bar_snap => { subvol => 'bar'
-                                             , dir    => '/bar'
                                              , timeframes => '5minute'
                                              , '5minute_keep' => '24'
                                              }
                                , baz_snap => { subvol => 'baz'
-                                             , dir    => '/baz'
                                              , timeframes => 'hourly'
                                              , hourly_keep => '24'
                                              }
@@ -269,11 +266,12 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 }
 
 {
-    my $n = 'snap_dir';
-    my $f = \&Yabsm::Config::Query::snap_dir;
+    my $n = 'snap_dest';
+    my $f = \&Yabsm::Config::Query::snap_dest;
 
-    is($f->('foo_snap', \%TEST_CONFIG), '/foo', "$n - correct dir");
-    throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies on non-existent snap"
+    is($f->('foo_snap', '5minute', \%TEST_CONFIG), '/.snapshots/yabsm/foo_snap/5minute', "$n - correct dir");
+    throws_ok { $f->('quux', '5minute', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
+    throws_ok { $f->('foo_snap', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n - dies if non-existent timeframe";
 }
 
 {

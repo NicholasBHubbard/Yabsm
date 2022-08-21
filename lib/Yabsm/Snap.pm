@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  TODO
+#  Provides the &do_snap subroutine.
 
 use strict;
 use warnings;
@@ -28,10 +28,8 @@ sub do_snap { # Not tested
     my $tframe     = shift;
     my $config_ref = shift;
 
-    snap_wants_timeframe_or_die($snap, $tframe, $config_ref);
-
     my $mountpoint = snap_mountpoint($snap, $config_ref);
-    my $snap_dest  = snap_dest();
+    my $snap_dest  = snap_dest($snap, $tframe, $config_ref);
 
     my $snapshot = take_snapshot($mountpoint, $snap_dest);
 

@@ -46,7 +46,7 @@ print $USAGE and exit 0 if $HELP;
                  #         ENSURE ENVIRONMENT       #
                  ####################################
 
-$^O =~ /linux/i or plan skip_all => 'Core functionality only works on Linux';
+have_prerequisites() or plan skip_all => 'Missing OS prerequisites';
 
 defined $BTRFS_SUBVOLUME or plan skip_all => 'Failed to provide btrfs subvolume';
 

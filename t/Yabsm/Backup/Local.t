@@ -80,8 +80,8 @@ my $BACKUP          = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_na
                  #              TESTS               #
                  ####################################
 
-my $n = 'local_backup_do_backup';
-my $f = \&Yabsm::Backup::Local::local_backup_do_backup;
+my $n = 'do_local_backup';
+my $f = \&Yabsm::Backup::Local::do_local_backup;
 
 throws_ok { $f->('foo_local_backup', '5minute', \%TEST_CONFIG) } qr/'$BOOTSTRAP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies if backup directory doesn't exist";
 cleanup_snapshots();

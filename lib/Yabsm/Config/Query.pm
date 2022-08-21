@@ -28,6 +28,8 @@ our @EXPORT_OK = qw(is_timeframe
                     is_timeframe_or_die
                     is_weekday
                     is_weekday_or_die
+                    time_hour
+                    time_minute
                     yabsm_dir
                     subvol_exists
                     subvol_exists_or_die
@@ -153,6 +155,66 @@ sub is_weekday_or_die { # Is tested
     }
 
     return 1;
+}
+
+sub weekday_number { # Not tested
+
+    # Return the number associated with $weekday which is a string
+    # representation of a weekday. Monday is considered the first day of the
+    # week.
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $weekday = shift;
+
+    is_weekday_or_die($weekday);
+
+    $weekday eq 'monday'    and return 1;
+    $weekday eq 'tuesday'   and return 2;
+    $weekday eq 'wednesday' and return 3;
+    $weekday eq 'thursday'  and return 4;
+    $weekday eq 'friday'    and return 5;
+    $weekday eq 'saturday'  and return 6;
+    $weekday eq 'sunday'    and return 7;
+}
+
+sub is_time_or_die { # Not tested
+
+    # TODO
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    return 0+(shift =~ /^\d\d:\d\d$/);
+}
+
+sub time_hour { # Not tested
+
+    # TODO
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $time = shift;
+
+    is_time_or_die($time);
+
+    my ($hour) = $time =~ /^(\d\d):\d\d$/;
+
+    return 0+$hour;
+}
+
+sub time_minute { # Not tested
+
+    # TODO
+
+    1 == @_ or die_arg_count(1, 1, @_);
+
+    my $time = shift;
+
+    is_time_or_die($time);
+
+    my ($minute) = $time =~ /^\d\d:(\d\d)$/;
+
+    return 0+$minute;
 }
 
 sub yabsm_dir { # Is tested
@@ -691,7 +753,6 @@ sub ssh_backup_wants_timeframe { # Is tested
     my $config_ref = shift;
 
     ssh_backup_exists_or_die($ssh_backup, $config_ref);
-
     is_timeframe_or_die($tframe);
 
     return 1 if grep { $tframe eq $_ } ssh_backup_timeframes($ssh_backup, $config_ref);

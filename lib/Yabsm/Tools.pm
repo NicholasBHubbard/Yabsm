@@ -17,7 +17,9 @@ use Time::Piece;
 use File::Path qw(make_path);
 
 use Exporter 'import';
-our @EXPORT_OK = qw(die_arg_count
+our @EXPORT_OK = qw(have_prerequisites
+                    have_prerequisites_or_die
+                    arg_count_or_die
                     have_sudo_access_to_btrfs
                     have_sudo_access_to_btrfs_or_die
                     is_btrfs_dir
@@ -38,36 +40,68 @@ our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
                  #            SUBROUTINES           #
                  ####################################
 
-sub die_arg_count { # Is tested
+sub have_prerequisites { # Not tested
 
-    # logconfess if $num_args is not in range $lower to $upper. Used
-    # for ensuring that subroutines are passed the correct number or
-    # arguments. Subs should use this subroutine using an expression
-    # like '1 == @_ or die_arg_count(1, 1, @_)'.
+    # Return 1 if we are running on a Linux OS and have sudo, OpenSSH, and
+    # btrfs-progs installed.
 
-    my $lower    = shift // get_logger->logconfess('yabsm: internal error: missing required arg');
-    my $upper    = shift // get_logger->logconfess('yabsm: internal error: missing required arg');
-    my $num_args = @_    // get_logger->logconfess('yabsm: internal error: missing required arg');
+    return 0 unless $^O =~ /linux/i;
+    return 0 unless 0 == system('which btrfs >/dev/null 2>&1');
+    return 0 unless `ssh -V 2>&1` =~ /^OpenSSH/;
+    return 0 unless 0 == system('which sudo >/dev/null 2>&1');
+
+    return 1;
+}
+
+sub have_prerequisites_or_die { # Not tested
+
+    # Like &have_prerequisites except logdie if the prerequisites are not met.
+
+    unless ($^O =~ /linux/i) {
+        get_logger->logdie("yabsm: internal error: not a Linux OS, this is a '$^O' OS");
+    }
+
+    unless (0 == system('which btrfs >/dev/null 2>&1')) {
+        get_logger->logdie('yabsm: internal error: btrfs-progs not installed');
+    }
+
+    unless (`ssh -V 2>/dev/null` =~ /^OpenSSH/) {
+        get_logger->logdie('yabsm: internal error: OpenSSH not installed');
+    }
+
+    unless (0 == system('which sudo >/dev/null 2>&1')) {
+        get_logger->logdie('yabsm: internal error: sudo not installed');
+    }
+
+    return 1;
+}
+
+sub arg_count_or_die { # Is tested
+
+    # Logdie unless $num_args is in range $lower-$upper.
+
+    my $lower    = shift;
+    my $upper    = shift;
+    my $num_args = @_;
 
     ($lower, $upper) = ($upper, $lower) if $lower > $upper;
 
-    if ($lower <= $num_args && $num_args <= $upper) {
-        get_logger->logconfess("yabsm: internal error: called die_arg_count() but arg count is in range")
+    unless ($lower <= $num_args && $num_args <= $upper) {
+        my $caller = ( caller(1) )[3];
+        my $expected_plural = $lower == 1 ? '': 's';
+        my $got_plural = $num_args == 1 ? '' : 's';
+        my $arg_range_msg = $lower == $upper ? "$lower arg$expected_plural" : "$lower-$upper args";
+        get_logger->logconfess("yabsm: internal error: called '$caller' with $num_args arg$got_plural but it expects $arg_range_msg");
     }
 
-    my $caller = ( caller(1) )[3];
-
-    my $num_range_msg = $lower == $upper ? "$lower arg" : "$lower-$upper args";
-
-    get_logger->logconfess("yabsm: internal error: call to '$caller' passed $num_args args but takes $num_range_msg");
+    return 1;
 }
 
 sub have_sudo_access_to_btrfs { # Not tested
 
-    # Return 1 if we can run `btrfs` with `sudo -n` and return 0
-    # otherwise.
+    # Return 1 if we can run 'btrfs' with 'sudo -n' and return 0 otherwise.
 
-    0 == @_ or die_arg_count(0, 0, @_);
+    arg_count_or_die(0, 0, @_);
 
     return 0+(0 == system('sudo -n btrfs --help >/dev/null 2>&1'));
 }
@@ -77,7 +111,7 @@ sub have_sudo_access_to_btrfs_or_die { # Not tested
     # Wrapper around have_sudo_access_to_btrfs() that logdies if it
     # returns false.
 
-    0 == @_ or die_arg_count(0, 0, @_);
+    arg_count_or_die(0, 0, @_);
 
     my $username = getpwuid $<;
 
@@ -89,7 +123,7 @@ sub is_btrfs_dir { # Not tested
     # Return 1 if $dir is a directory residing on a btrfs subvolume
     # and return 0 otherwise.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $dir = shift;
 
@@ -102,7 +136,7 @@ sub is_btrfs_dir_or_die { # Not tested
 
     # Wrapper around is_btrfs_dir() that logdies if it returns false.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $dir = shift;
 
@@ -131,7 +165,7 @@ sub is_btrfs_subvolume { # Not tested
     #
     # stat -f --format=%T /path
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $dir = shift;
 
@@ -145,7 +179,7 @@ sub is_btrfs_subvolume_or_die { # Not tested
     # Wrapper around is_btrfs_subvolume() that logdies if it returns
     # false.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $dir = shift;
 
@@ -157,7 +191,7 @@ sub nums_denote_valid_date { # Is tested
     # Return 1 if passed a year, month, month-day, hour, and minute
     # that denote a valid date and return 0 otherwise.
 
-    5 == @_ or die_arg_count(5, 5, @_);
+    arg_count_or_die(5, 5, @_);
 
     my ($yr, $mon, $day, $hr, $min) = @_;
 
@@ -195,7 +229,7 @@ sub nums_denote_valid_date_or_die { # Is tested
     # Wrapper around &nums_denote_valid_date that logdies if it
     # returns false.
 
-    5 == @_ or die_arg_count(5, 5, @_);
+    arg_count_or_die(5, 5, @_);
 
     unless ( nums_denote_valid_date(@_) ) {
         my ($yr, $mon, $day, $hr, $min) = @_;
@@ -236,7 +270,7 @@ sub make_path_or_die { # Not tested
     # Wrapper around File::Path::make_path() that logdies if the path
     # cannot be created.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $path = shift;
 
@@ -259,7 +293,7 @@ sub i_am_root_or_die { # Not tested
 
     # Die unless running as the root user.
 
-    0 == @_ or die_arg_count(0, 0, @_);
+    arg_count_or_die(0, 0, @_);
 
     unless (i_am_root()) {
         my $username = getpwuid $<;

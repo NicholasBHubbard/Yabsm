@@ -20,13 +20,13 @@ use Test::Exception;
                  ####################################
 
 {
-    my $n = 'die_arg_count';
-    my $f = \&Yabsm::Tools::die_arg_count;
+    my $n = 'arg_count_or_die';
+    my $f = \&Yabsm::Tools::arg_count_or_die;
 
-    throws_ok { $f->(1,1,73,37) } qr/passed 2 args but takes 1 arg/, "$n - dies with single number range";
-    throws_ok { $f->(1,2,73,37,42) } qr/passed 3 args but takes 1-2 args/, "$n - dies with bounded range";
-    throws_ok { $f->(2,1,73,37,42) } qr/passed 3 args but takes 1-2 args/, "$n - swaps upper lower ranges";
-    throws_ok { $f->(1,1,73) } qr/called die_arg_count\(\) but arg count is in range/, "$n - detects valid arg range";
+    lives_ok { $f->(1,2,73,37) } "$n - lives if correct number of args";
+    throws_ok { $f->(1,1,73,37) } qr/called 'main::__ANON__' with 2 args but it expects 1 arg/, "$n - dies with single number range";
+    throws_ok { $f->(1,2,73,37,42) } qr/called 'main::__ANON__' with 3 args but it expects 1-2 args/, "$n - dies with bounded range";
+    throws_ok { $f->(2,1,73,37,42) } qr/called 'main::__ANON__' with 3 args but it expects 1-2 args/, "$n - swaps upper lower ranges";
 }
 
 {

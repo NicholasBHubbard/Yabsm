@@ -35,7 +35,7 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Tools qw(die_arg_count);
+use Yabsm::Tools qw(arg_count_or_die);
 
 use Log::Log4perl 'get_logger';
 use Array::Utils 'array_minus';
@@ -57,7 +57,7 @@ sub parse_config_or_die {
     # Attempt to parse $file into a yabsm configuration data
     # structure.
 
-    1 >= @_ or die_arg_count(0, 1, @_);
+    arg_count_or_die(0, 1, @_);
 
     my $file = shift // '/etc/yabsmd.conf';
 
@@ -93,7 +93,7 @@ sub grammar {
     # Return a hash of all the atomic grammar elements of the
     # yabsm config language.
 
-    0 == @_ or die_arg_count(0, 0, @_);
+    arg_count_or_die(0, 0, @_);
 
     my %grammar = (
         name          => qr/[a-zA-Z][-_a-zA-Z0-9]*/,
@@ -134,7 +134,7 @@ sub grammar_msg {
     # linguistic description of their expected value. Used for
     # generating meaningful error messages.
 
-    0 == @_ or die_arg_count(0, 0, @_);
+    arg_count_or_die(0, 0, @_);
 
     my %grammar_msg = (
         name           => 'thing name',
@@ -170,7 +170,7 @@ sub subvol_settings_grammar {
 
     # Return a hash of a subvols key=val grammar.
 
-    0 == @_ or die_arg_count(0, 0, @_);
+    arg_count_or_die(0, 0, @_);
 
     my %grammar = grammar();
 
@@ -187,7 +187,7 @@ sub snap_settings_grammar {
     # a false value to exclude the timeframe subgrammar from the
     # returned grammar.
 
-    1 >= @_ or die_arg_count(0, 1, @_);
+    arg_count_or_die(0, 1, @_);
 
     my $include_tf = shift // 1;
 
@@ -211,7 +211,7 @@ sub ssh_backup_settings_grammar {
     # a false value to exclude the timeframe subgrammar from the
     # returned grammar.
 
-    1 >= @_ or die_arg_count(0, 1, @_);
+    arg_count_or_die(0, 1, @_);
 
     my $include_tf = shift // 1;
 
@@ -237,7 +237,7 @@ sub local_backup_settings_grammar {
     # takes a false value to exclude the timeframe subgrammar from the
     # returned grammar.
 
-    1 >= @_ or die_arg_count(0, 1, @_);
+    arg_count_or_die(0, 1, @_);
 
     my $include_tf = shift // 1;
 
@@ -264,7 +264,7 @@ sub config_parser {
 
     # Top level parser
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $self = shift;
 
@@ -342,7 +342,7 @@ sub settings_parser {
     # message generation. This method should be called from a wrapper
     # method.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $self    = shift;
     my $type    = shift;
@@ -372,28 +372,28 @@ sub settings_parser {
 }
 
 sub subvol_settings_parser {
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
     my $self = shift;
     my $subvol_settings_grammar = subvol_settings_grammar();
     $self->settings_parser('subvol', $subvol_settings_grammar);
 }
 
 sub snap_settings_parser {
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
     my $self = shift;
     my $snap_settings_grammar = snap_settings_grammar();
     $self->settings_parser('snap', $snap_settings_grammar);
 }
 
 sub ssh_backup_settings_parser {
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
     my $self = shift;
     my $ssh_backup_settings_grammar = ssh_backup_settings_grammar();
     $self->settings_parser('ssh_backup', $ssh_backup_settings_grammar);
 }
 
 sub local_backup_settings_parser {
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
     my $self = shift;
     my $local_backup_settings_grammar = local_backup_settings_grammar();
     $self->settings_parser('local_backup', $local_backup_settings_grammar);
@@ -410,7 +410,7 @@ sub check_config {
     # 1, otherwise return multiple values where the first value is 0
     # and the rest of the values are the corresponding error messages.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -442,7 +442,7 @@ sub snap_errors {
     # by $config_ref are not missing required snap settings and
     # are snapshotting a defined subvol.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -485,7 +485,7 @@ sub ssh_backup_errors {
     # by $config_ref are not missing required ssh_backup settings and
     # are backing up a defined subvol.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -528,7 +528,7 @@ sub local_backup_errors {
     # referenced by $config_ref are not missing required local_backup
     # settings and are backing up a defined subvol
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -572,7 +572,7 @@ sub required_timeframe_settings {
     # dynamically determine what settings are required for certain
     # config entities.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $tframes = shift;
 

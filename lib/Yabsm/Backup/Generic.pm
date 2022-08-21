@@ -45,7 +45,7 @@ sub take_bootstrap_snapshot { # Is tested
     # If there is already a bootstrap snapshot for $backup then delete
     # it and take a new one.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
@@ -78,7 +78,7 @@ sub maybe_take_bootstrap_snapshot { # Not tested
     # a bootstrap snapshot and return its path. Otherwise return the
     # path of the existing bootstrap snapshot.
     
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
@@ -96,7 +96,7 @@ sub backup_bootstrap_snapshot { # Is tested
     # If the backup $backup has a bootstrap snapshot return its path
     # and otherwise return undef.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
@@ -131,7 +131,7 @@ sub bootstrap_snapshot_dir { # Is tested
     # Return the path to $ssh_backup's bootstrap snapshot directory.
     # Logdie if the bootstrap snapshot directory does not exist.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
@@ -154,7 +154,7 @@ sub is_bootstrap_snapshot { # Is tested
     # Return 1 if $bootstrap_snapshot is a btrfs subvolume that has a
     # basename that is a valid yabsm bootstrap snapshot name.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $bootstrap_snapshot = shift;
 
@@ -169,7 +169,7 @@ sub is_bootstrap_snapshot_or_die { # Is tested
     # Wrapper around &is_bootstrap_snapshot that logdies if it returns
     # false.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $snapshot = shift;
 
@@ -186,7 +186,7 @@ sub is_bootstrap_snapshot_name { # Is tested
     #
     # Note that this function does not accept file paths.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     return 0+(shift =~ /^\.BOOTSTRAP-yabsm-\d{4}_\d{2}_\d{2}_\d{2}:\d{2}$/);
 }
@@ -196,7 +196,7 @@ sub is_bootstrap_snapshot_name_or_die { # Is tested
     # Wrapper around is_bootstrap_snapshot_name that logdies if it
     # returns false.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $snapshot_name = shift;
 
@@ -211,7 +211,7 @@ sub tmp_snapshot_dir { # Is tested
 
     # Return path to $backup's tmp snapshot directory.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
@@ -235,7 +235,7 @@ sub take_tmp_snapshot { # Is tested
     # Take a tmp snapshot for $backup. A tmp snapshot is necessary for taking an
     # incremental backup with 'btrfs send -p'.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
@@ -262,7 +262,7 @@ sub is_backup_type_or_die { # Is tested
 
     # Logdie unless $backup_type equals 'ssh' or 'local'.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $backup_type = shift;
 

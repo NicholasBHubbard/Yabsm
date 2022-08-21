@@ -12,31 +12,33 @@ package Yabsm::Backup::Local;
 
 use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot take_tmp_snapshot);
 use Yabsm::Snapshot qw( delete_snapshot sort_snapshots );
-use Yabsm::Tools qw( die_arg_count system_or_die);
+use Yabsm::Tools qw( arg_count_or_die system_or_die);
 use Yabsm::Config::Query qw( :ALL );
 
 use Log::Log4perl 'get_logger';
 use File::Basename qw(basename dirname);
 
 use Exporter 'import';
-our @EXPORT_OK = qw( local_backup_do_backup );
+our @EXPORT_OK = qw( do_local_backup );
 
                  ####################################
                  #            SUBROUTINES           #
                  ####################################
 
-sub local_backup_do_backup {
+sub do_local_backup {
 
     # Perform a $tframe local_backup for $local_backup.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $local_backup = shift;
     my $tframe       = shift;
     my $config_ref   = shift;
 
+    local_backup_wants_timeframe_or_die($local_backup, $tframe, $config_ref);
+
     my $backup_dir         = local_backup_dir($local_backup, $tframe, $config_ref);
-    my $backup_dir_base    = dirname($backup_dir); # without $tframe
+    my $backup_dir_base    = dirname($backup_dir);
     my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($local_backup, 'local', $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($local_backup, 'local', $config_ref);
 
@@ -52,7 +54,7 @@ sub local_backup_do_backup {
     # backup.
     if ($num_backups == $to_keep + 1) {
         my $oldest = pop @backups;
-        system_or_die('sudo', '-n', 'btrfs', 'subvolume', 'delete', $oldest);
+        delete_snapshot($oldest);
     }
     # We havent reached the backup quota yet so we don't delete anything
     elsif ($num_backups <= $to_keep) {
@@ -63,7 +65,7 @@ sub local_backup_do_backup {
     else {
         for (; $num_backups > $to_keep; $num_backups--) {
             my $oldest = pop @backups;
-            system_or_die('sudo', '-n', 'btrfs', 'subvolume', 'delete', $oldest);
+            delete_snapshot($oldest);
         }
     }
 

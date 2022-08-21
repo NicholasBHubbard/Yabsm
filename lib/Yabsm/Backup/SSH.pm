@@ -12,7 +12,7 @@ package Yabsm::Backup::SSH;
 
 use Yabsm::Snapshot qw(delete_snapshot sort_snapshots);
 use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot take_tmp_snapshot);
-use Yabsm::Tools 'die_arg_count';
+use Yabsm::Tools 'arg_count_or_die';
 use Yabsm::Config::Query qw( :ALL );
 
 use Net::OpenSSH;
@@ -20,7 +20,7 @@ use Log::Log4perl 'get_logger';
 use File::Basename qw(basename dirname);
 
 use Exporter 'import';
-our @EXPORT_OK = qw( ssh_backup_do_backup
+our @EXPORT_OK = qw( do_ssh_backup
                      new_ssh_conn
                      ssh_system_or_die
                    );
@@ -29,22 +29,26 @@ our @EXPORT_OK = qw( ssh_backup_do_backup
                  #            SUBROUTINES           #
                  ####################################
 
-sub ssh_backup_do_backup { # Is tested
+sub do_ssh_backup { # Is tested
 
     # Perform a $tframe ssh_backup for $ssh_backup.
     #
     # In order to be able to perform the backup the remote user must have sudo
     # access to btrfs-progs, and read+write permission on the remote backup dir.
 
-    4 == @_ or die_arg_count(4, 4, @_);
+    arg_count_or_die(4, 4, @_);
 
     my $ssh        = shift;
     my $ssh_backup = shift;
     my $tframe     = shift;
     my $config_ref = shift;
 
+    $ssh //= new_ssh_conn($ssh_backup, 0, $config_ref) // return undef;
+
+    ssh_backup_wants_timeframe_or_die($ssh_backup, $tframe, $config_ref);
+
     my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
-    my $backup_dir_base    = dirname($backup_dir); # without $tframe
+    my $backup_dir_base    = dirname($backup_dir);
     my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $config_ref);
 
@@ -66,7 +70,7 @@ sub ssh_backup_do_backup { # Is tested
     # backup.
     if ($num_backups == $to_keep + 1) {
         my $oldest = pop @remote_backups;
-        ssh_system_or_die($ssh, "sudo -n btrfs subvol delete '$oldest'");
+        ssh_system_or_die($ssh, "sudo -n btrfs subvolume delete '$oldest'");
     }
     # We havent reached the backup quota yet so we don't delete anything
     elsif ($num_backups <= $to_keep) {
@@ -77,7 +81,7 @@ sub ssh_backup_do_backup { # Is tested
     else {
         for (; $num_backups > $to_keep; $num_backups--) {
             my $oldest = pop @remote_backups;
-            ssh_system_or_die($ssh, "sudo -n btrfs subvol delete '$oldest'");
+            ssh_system_or_die($ssh, "sudo -n btrfs subvolume delete '$oldest'");
         }
     }
 
@@ -90,7 +94,7 @@ sub new_ssh_conn { # Is tested
     # If a connection cannot be established logdie if $or_die and otherwise
     # return undef.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $ssh_backup = shift;
     my $or_die     = shift;
@@ -115,7 +119,7 @@ sub ssh_system_or_die { # Is tested
 
     # Like Net::OpenSSH::capture but logdie if the command fails.
 
-    2 == @_ || 3 == @_ or die_arg_count(2, 3, @_);
+    arg_count_or_die(2, 3, @_);
 
     my $ssh  = shift;
     my %opts = ref $_[0] eq 'HASH' ? %{ shift() } : ();

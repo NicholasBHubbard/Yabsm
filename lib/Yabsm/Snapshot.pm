@@ -51,7 +51,7 @@ sub take_snapshot { # Is tested
     # can call the btrfs program using sudo without the need for password
     # authentication.
 
-    2 == @_ || 3 == @_ or die_arg_count(2, 3, @_);
+    arg_count_or_die(2, 3, @_);
 
     my $subvolume     = shift;
     my $dest          = shift;
@@ -77,7 +77,7 @@ sub delete_snapshot { # Is tested
     # and the current user can call the btrfs program with sudo without the need
     # for password authentication.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $snapshot = shift;
 
@@ -97,7 +97,7 @@ sub is_snapshot_name { # Is tested
     # It is important to note that this function rejects directory paths even if
     # their basename is a valid yabsm snapshot name.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     return 0 unless my (@date_nums) = shift =~ /^(?:\.BOOTSTRAP-)?yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/;
 
@@ -111,7 +111,7 @@ sub is_snapshot_name_or_die { # Is tested
     # Like &is_snapshot_name but logdie if $snapshot_name is not a
     # valid yabsm snapshot name.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $snapshot_name = shift;
 
@@ -127,7 +127,7 @@ sub is_yabsm_snapshot { # Is tested
 
     # Return 1 if $snapshot is a yabsm snapshot and return 0 otherwise.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $snapshot = shift;
 
@@ -139,7 +139,7 @@ sub is_yabsm_snapshot_or_die { # Is tested
     # Wrapper around is_yabsm_snapshot_name() that logdies if it
     # returns false.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $snapshot = shift;
 
@@ -160,7 +160,7 @@ sub snapshot_name_nums_or_die { # Is tested
     # corresponding year, month, day, hour, and minute. Kill program if
     # $snapshot_name is not a valid yabsm snapshot name.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $snapshot_name = shift;
 
@@ -177,7 +177,7 @@ sub nums_to_snapshot_name_or_die { # Is tested
     # day, hour, and minute and return a snapshot name of the
     # corresponding time.
 
-    5 == @_ or die_arg_count(5, 5, @_);
+    arg_count_or_die(5, 5, @_);
 
     my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
 
@@ -192,7 +192,7 @@ sub current_time_snapshot_name { # Is tested
 
     # Return a snapshot name corresponding to the current time.
 
-    0 == @_ or die_arg_count(0, 0, @_);
+    arg_count_or_die(0, 0, @_);
 
     my $t = localtime();
 
@@ -208,7 +208,7 @@ sub sort_snapshots { # Is tested
     # If called in list context returns list of sorted snapshots. If called in
     # scalar context returns a reference to the list of sorted snapshots.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my @sorted = sort { cmp_snapshots($a, $b) } @{ +shift };
 
@@ -224,7 +224,7 @@ sub cmp_snapshots { # Is tested
     # Return 1  if $snapshot1 is older than $snapshot2
     # Return 0  if $snapshot1 and $snapshot2 are the same
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snapshot1 = shift;
     my $snapshot2 = shift;

@@ -19,7 +19,7 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Tools qw(die_arg_count);
+use Yabsm::Tools qw(arg_count_or_die);
 
 use Log::Log4perl 'get_logger';
 
@@ -113,7 +113,7 @@ sub is_timeframe { # Is tested
 
     # Return 1 if given a valid timeframe and return 0 otherwise.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     return 0+(shift =~ /^(5minute|hourly|daily|weekly|monthly)$/);
 }
@@ -122,7 +122,7 @@ sub is_timeframe_or_die { # Is tested
 
     # Wrapper around &is_timeframe that logdies if it returns false.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $tframe = shift;
 
@@ -137,7 +137,7 @@ sub is_weekday { # Is tested
 
     # Return 1 if given a valid week day and return 0 otherwise.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     return 0+(shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/);
 }
@@ -146,7 +146,7 @@ sub is_weekday_or_die { # Is tested
 
     # Wrapper around &is_weekday that logdies if it returns false.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $weekday = shift;
 
@@ -163,7 +163,7 @@ sub weekday_number { # Not tested
     # representation of a weekday. Monday is considered the first day of the
     # week.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $weekday = shift;
 
@@ -182,7 +182,7 @@ sub is_time_or_die { # Not tested
 
     # TODO
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     return 0+(shift =~ /^\d\d:\d\d$/);
 }
@@ -191,7 +191,7 @@ sub time_hour { # Not tested
 
     # TODO
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $time = shift;
 
@@ -206,7 +206,7 @@ sub time_minute { # Not tested
 
     # TODO
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $time = shift;
 
@@ -221,7 +221,7 @@ sub yabsm_dir { # Is tested
 
     # Return the users yabsm_dir without trailing /'s.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -233,7 +233,7 @@ sub subvol_exists { # Is tested
     # Return 1 if $subvol is a subvol defined in $config_ref and
     # return 0 otherwise.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $subvol     = shift;
     my $config_ref = shift;
@@ -245,7 +245,7 @@ sub subvol_exists_or_die { # Is tested
 
     # Wrapper around &subvol_exists that logdies if it returns false.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $subvol     = shift;
     my $config_ref = shift;
@@ -262,7 +262,7 @@ sub snap_exists { # Is tested
     # Return 1 if $snap is a snap defined in $config_ref and
     # return 0 otherwise.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap     = shift;
     my $config_ref = shift;
@@ -274,7 +274,7 @@ sub snap_exists_or_die { # Is tested
 
     # Wrapper around &snap_exists that logdies if it returns false.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -291,7 +291,7 @@ sub ssh_backup_exists { # Is tested
     # Return 1 if $ssh_backup is a ssh_backup defined in $config_ref
     # and return 0 otherwise.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -303,7 +303,7 @@ sub ssh_backup_exists_or_die { # Is tested
 
     # Wrapper around &ssh_backup_exists that logdies if it returns false.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup       = shift;
     my $config_ref = shift;
@@ -320,7 +320,7 @@ sub local_backup_exists { # Is tested
     # Return 1 if $local_backup is a lcoal_backup defined in
     # $config_ref and return 0 otherwise.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -333,7 +333,7 @@ sub local_backup_exists_or_die { # Is tested
     # Wrapper around &local_backup_exists that logdies if it returns
     # false.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -350,7 +350,7 @@ sub backup_exists { # Is tested
     # Return 1 if $backup is either an ssh_backup or a local_backup
     # and return 0 otherwise.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $backup     = shift;
     my $config_ref = shift;
@@ -363,7 +363,7 @@ sub backup_exists_or_die { # Is tested
 
     # Wrapper around &backup_exists that logdies if it returns false.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $backup     = shift;
     my $config_ref = shift;
@@ -379,7 +379,7 @@ sub all_subvols { # Is tested
 
     # Return a list of all the subvol names defined in $config_ref.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -390,7 +390,7 @@ sub all_snaps { # Is tested
 
     # Return a list of all the snap names defined in $config_ref.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -402,7 +402,7 @@ sub all_ssh_backups { # Is tested
     # Return a list of all the ssh_backup names defined in
     # $config_ref.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -414,7 +414,7 @@ sub all_local_backups { # Is tested
     # Return a list of all the local_backup names defined in
     # $config_ref.
 
-    1 == @_ or die_arg_count(1, 1, @_);
+    arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
@@ -426,7 +426,7 @@ sub subvol_mountpoint { # Is tested
     # Return the the subvol $subvol's mountpoint value. Logdie if
     # there $subvol is not a defined subvol.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $subvol     = shift;
     my $config_ref = shift;
@@ -442,7 +442,7 @@ sub snap_subvol { # Is tested
     # there is no snap named $snap then logdie because things have
     # gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -456,7 +456,7 @@ sub snap_mountpoint { # Is tested
 
     # Return the mountpoint of the subvol that $snap is snapshotting.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -472,7 +472,7 @@ sub snap_dest { # Is tested
 
     # Return $snap's destination for $tframe snaps.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $snap       = shift;
     my $tframe     = shift;
@@ -488,7 +488,7 @@ sub snap_timeframes { # Is tested
     # Return a list of $snap's timeframes. If there is no snap named
     # $snap then logdie because things have gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -504,7 +504,7 @@ sub ssh_backup_subvol { # Is tested
     # If there is no ssh_backup named $ssh_backup then logdie because
     # things have gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -519,7 +519,7 @@ sub ssh_backup_mountpoint { # Is tested
     # Return the mountpoint of the subvol that $ssh_backup is backing
     # up.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -537,7 +537,7 @@ sub ssh_backup_dir { # Is tested
     # ssh_backup named $ssh_backup then logdie because things have
     # gone haywire.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $ssh_backup = shift;
     my $tframe     = shift;
@@ -554,7 +554,7 @@ sub ssh_backup_timeframes { # Is tested
     # ssh_backup named $ssh_backup then logdie because things have
     # gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -569,7 +569,7 @@ sub ssh_backup_ssh_dest { # Is tested
     # Return $ssh_backup's ssh_dest value. If there is no ssh_backup
     # named $ssh_backup then logdie because things have gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -585,7 +585,7 @@ sub local_backup_subvol { # Is tested
     # If there is no local_backup named $local_backup then logdie
     # because things have gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -600,7 +600,7 @@ sub local_backup_mountpoint { # Is tested
     # Return the mountpoint of the subvol that $local_backup is
     # backing up.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -616,7 +616,7 @@ sub local_backup_dir { # Is tested
 
     # Return $local_backup's local_backup dir value for $tframe.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $local_backup = shift;
     my $tframe       = shift;
@@ -633,7 +633,7 @@ sub local_backup_timeframes { # Is tested
     # local_backup named $local_backup then logdie because things have
     # gone haywire.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -648,7 +648,7 @@ sub all_snaps_of_subvol { # Is tested
     # Return a list of all the snaps in $config_ref that
     # are snapshotting $subvol.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $subvol     = shift;
     my $config_ref = shift;
@@ -668,7 +668,7 @@ sub all_ssh_backups_of_subvol { # Is tested
     # Return a list of all the ssh_backups in $config_ref that
     # are backing up $subvol.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $subvol     = shift;
     my $config_ref = shift;
@@ -688,7 +688,7 @@ sub all_local_backups_of_subvol { # Is tested
     # Return a list of all the local_backups in $config_ref that
     # are backing up $subvol.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $subvol     = shift;
     my $config_ref = shift;
@@ -708,7 +708,7 @@ sub snap_wants_timeframe { # Is tested
     # Return 1 if the snap $snap wants snapshots in timeframe $tframe
     # and return 0 otherwise;
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $snap       = shift;
     my $tframe     = shift;
@@ -726,7 +726,7 @@ sub snap_wants_timeframe_or_die { # Is tested
     # Wrapper around &snap_wants_timeframe that logdies if it returns
     # false.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $snap       = shift;
     my $tframe     = shift;
@@ -744,7 +744,7 @@ sub ssh_backup_wants_timeframe { # Is tested
     # Return 1 if the ssh_backup $ssh_backup wants backups in
     # timeframe $tframe and return 0 otherwise.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $ssh_backup = shift;
     my $tframe     = shift;
@@ -762,7 +762,7 @@ sub ssh_backup_wants_timeframe_or_die { # Is tested
     # Wrapper around &ssh_backup_wants_timeframe that logdies if it
     # returns false.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $ssh_backup = shift;
     my $tframe     = shift;
@@ -780,7 +780,7 @@ sub local_backup_wants_timeframe { # Is tested
     # Return 1 if the local_backup $local_backup wants backups in
     # timeframe $tframe and return 0 otherwise.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $local_backup = shift;
     my $tframe       = shift;
@@ -799,7 +799,7 @@ sub local_backup_wants_timeframe_or_die { # Is tested
     # Wrapper around &local_backup_wants_timeframe that logdies if it
     # returns false.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $local_backup = shift;
     my $tframe       = shift;
@@ -816,7 +816,7 @@ sub snap_timeframe_keep { # Is tested
 
     # Return snap $snap's ${tframe}_keep value.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $snap       = shift;
     my $tframe     = shift;
@@ -837,7 +837,7 @@ sub snap_5minute_keep { # Is tested
     # Return snap $snap's 5minute_keep value. Logdie if $snap is not
     # a defined snap or is not taking 5minute snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -853,7 +853,7 @@ sub snap_hourly_keep { # Is tested
     # Return snap $snap's hourly_keep value. Logdie if $snap is not
     # a defined snap or is not taking hourly snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -869,7 +869,7 @@ sub snap_daily_keep { # Is tested
     # Return snap $snap's daily_keep value. Logdie if $snap is not
     # a defined snap or is not taking daily snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -885,7 +885,7 @@ sub snap_daily_time { # Is tested
     # Return snap $snap's daily_time value. Logdie if $snap is not
     # a defined snap or is not taking daily snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -901,7 +901,7 @@ sub snap_weekly_keep { # Is tested
     # Return snap $snap's weekly_keep value. Logdie if $snap is not
     # a defined snap or is not taking weekly snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -917,7 +917,7 @@ sub snap_weekly_time { # Is tested
     # Return snap $snap's weekly_time value. Logdie if $snap is not
     # a defined snap or is not taking weekly snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -933,7 +933,7 @@ sub snap_weekly_day { # Is tested
     # Return snap $snap's weekly_day value. Logdie if $snap is not
     # a defined snap or is not taking weekly snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -949,7 +949,7 @@ sub snap_monthly_keep { # Is tested
     # Return snap $snap's monthly_keep value. Logdie if $snap is not
     # a defined snap or is not taking monthly snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -965,7 +965,7 @@ sub snap_monthly_time { # Is tested
     # Return snap $snap's monthly_time value. Logdie if $snap is not a
     # defined snap or is not taking monthly snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -981,7 +981,7 @@ sub snap_monthly_day { # Is tested
     # Return snap $snap's monthly_day value. Logdie if $snap is not a
     # a defined snap or is not taking monthly snapshots.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $snap       = shift;
     my $config_ref = shift;
@@ -996,7 +996,7 @@ sub ssh_backup_timeframe_keep { # Is tested
 
     # Return ssh_backup $ssh_backup's ${tframe}_keep value.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $ssh_backup = shift;
     my $tframe     = shift;
@@ -1018,7 +1018,7 @@ sub ssh_backup_5minute_keep { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking 5minute
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1035,7 +1035,7 @@ sub ssh_backup_hourly_keep { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking hourly
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1052,7 +1052,7 @@ sub ssh_backup_daily_keep { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking daily
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1069,7 +1069,7 @@ sub ssh_backup_daily_time { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking daily
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1086,7 +1086,7 @@ sub ssh_backup_weekly_keep { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking weekly
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1103,7 +1103,7 @@ sub ssh_backup_weekly_time { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking weekly
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1120,7 +1120,7 @@ sub ssh_backup_weekly_day { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking weekly
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1137,7 +1137,7 @@ sub ssh_backup_monthly_keep { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking monthly
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1154,7 +1154,7 @@ sub ssh_backup_monthly_time { # Is tested
     # $ssh_backup is not a defined ssh_backup or is not taking monthly
     # backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1171,7 +1171,7 @@ sub ssh_backup_monthly_day { # Is tested
     # $ssh_backup is not a a defined ssh_backup or is not taking
     # monthly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
     my $config_ref = shift;
@@ -1186,7 +1186,7 @@ sub local_backup_timeframe_keep { # Is tested
 
     # Return local_backup $local_backup's ${tframe}_keep value.
 
-    3 == @_ or die_arg_count(3, 3, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $local_backup = shift;
     my $tframe       = shift;
@@ -1208,7 +1208,7 @@ sub local_backup_5minute_keep { # Is tested
     # if $local_backup is not a defined local_backup or is not taking
     # 5minute backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1225,7 +1225,7 @@ sub local_backup_hourly_keep { # Is tested
     # $local_backup is not a defined local_backup or is not taking
     # hourly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1242,7 +1242,7 @@ sub local_backup_daily_keep { # Is tested
     # $local_backup is not a defined local_backup or is not taking
     # daily backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1259,7 +1259,7 @@ sub local_backup_daily_time { # Is tested
     # $local_backup is not a defined local_backup or is not taking
     # daily backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1276,7 +1276,7 @@ sub local_backup_weekly_keep { # Is tested
     # $local_backup is not a defined local_backup or is not taking
     # weekly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1293,7 +1293,7 @@ sub local_backup_weekly_time { # Is tested
     # $local_backup is not a defined local_backup or is not taking
     # weekly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1310,7 +1310,7 @@ sub local_backup_weekly_day { # Is tested
     # $local_backup is not a defined local_backup or is not taking
     # weekly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1327,7 +1327,7 @@ sub local_backup_monthly_keep { # Is tested
     # if $local_backup is not a defined local_backup or is not taking
     # monthly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1344,7 +1344,7 @@ sub local_backup_monthly_time { # Is tested
     # if $local_backup is not a defined local_backup or is not taking
     # monthly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;
@@ -1361,7 +1361,7 @@ sub local_backup_monthly_day { # Is tested
     # $local_backup is not a a defined local_backup or is not taking
     # monthly backups.
 
-    2 == @_ or die_arg_count(2, 2, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
     my $config_ref   = shift;

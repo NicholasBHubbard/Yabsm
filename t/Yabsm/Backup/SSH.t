@@ -67,7 +67,7 @@ my $BTRFS_DIR = tempdir( 'yabsm-SSH.t-tmpXXXXXX', DIR => $BTRFS_SUBVOLUME, CLEAN
                  ####################################
 
 my %TEST_CONFIG = ( yabsm_dir   => "$BTRFS_DIR"
-                  , subvols     => { foo            => { mountpoint     => '/' } }
+                  , subvols     => { foo            => { mountpoint     => $BTRFS_SUBVOLUME } }
                   , ssh_backups => { foo_ssh_backup => { subvol         => 'foo'
                                                        , ssh_dest       => 'yabsm-test@localhost'
                                                        , dir            => "$BTRFS_DIR/foo_ssh_backup"

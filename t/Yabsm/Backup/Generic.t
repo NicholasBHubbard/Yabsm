@@ -85,7 +85,7 @@ if (defined $BTRFS_SUBVOLUME) {
     my $f = \&Yabsm::Backup::Generic::bootstrap_snapshot_dir;
 
     my %test_config = ( yabsm_dir => '/foo'
-                      , subvols => { foo => { mountpoint => '/' } }
+                      , subvols => { foo => { mountpoint => $BTRFS_SUBVOLUME } }
                       , ssh_backups => { foo_ssh_backup => { subvol         => 'foo'
                                                            , ssh_dest       => 'yabsm-test@localhost'
                                                            , dir            => '/bar'

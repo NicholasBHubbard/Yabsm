@@ -543,8 +543,7 @@ sub ssh_backup_dir { # Is tested
     my $tframe     = shift;
     my $config_ref = shift;
 
-    ssh_backup_exists_or_die($ssh_backup, $config_ref);
-    is_timeframe_or_die($tframe);
+    ssh_backup_wants_timeframe_or_die($ssh_backup, $tframe, $config_ref);
 
     return $config_ref->{ssh_backups}{$ssh_backup}{dir} =~ s/\/*$//r . "/$tframe";
 }
@@ -623,8 +622,7 @@ sub local_backup_dir { # Is tested
     my $tframe       = shift;
     my $config_ref   = shift;
 
-    local_backup_exists_or_die($local_backup, $config_ref);
-    is_timeframe_or_die($tframe);
+    local_backup_wants_timeframe_or_die($local_backup, $tframe, $config_ref);
 
     return $config_ref->{local_backups}{$local_backup}{dir} =~ s/\/*$//r . "/$tframe";
 }

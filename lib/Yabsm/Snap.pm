@@ -22,7 +22,7 @@ our @EXPORT_OK = qw(do_snap);
 
 sub do_snap { # Not tested
 
-    # TODO
+    # Perform a single $tframe snap of $snap.
 
     my $snap       = shift;
     my $tframe     = shift;

@@ -48,6 +48,7 @@ our @EXPORT_OK = qw(is_timeframe
                     subvol_mountpoint
                     snap_subvol
                     snap_mountpoint
+                    snap_dest
                     snap_dir
                     snap_timeframes
                     ssh_backup_subvol

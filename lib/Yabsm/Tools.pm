@@ -15,11 +15,14 @@ use v5.16.3;
 use Carp 'confess';
 use Time::Piece;
 use File::Path qw(make_path);
+use Log::Log4perl 'get_logger';
+use Feature::Compat::Try;
 
 use Exporter 'import';
 our @EXPORT_OK = qw(have_prerequisites
                     have_prerequisites_or_die
                     arg_count_or_die
+                    with_error_log
                     have_sudo_access_to_btrfs
                     have_sudo_access_to_btrfs_or_die
                     is_btrfs_dir
@@ -58,19 +61,19 @@ sub have_prerequisites_or_die { # Not tested
     # Like &have_prerequisites except logdie if the prerequisites are not met.
 
     unless ($^O =~ /linux/i) {
-        get_logger->logdie("yabsm: internal error: not a Linux OS, this is a '$^O' OS");
+        die "yabsm: internal error: not a Linux OS, this is a '$^O' OS\n";
     }
 
     unless (0 == system('which btrfs >/dev/null 2>&1')) {
-        get_logger->logdie('yabsm: internal error: btrfs-progs not installed');
+        die 'yabsm: internal error: btrfs-progs not installed'."\n";
     }
 
     unless (`ssh -V 2>/dev/null` =~ /^OpenSSH/) {
-        get_logger->logdie('yabsm: internal error: OpenSSH not installed');
+        die 'yabsm: internal error: OpenSSH not installed'."\n";
     }
 
     unless (0 == system('which sudo >/dev/null 2>&1')) {
-        get_logger->logdie('yabsm: internal error: sudo not installed');
+        die 'yabsm: internal error: sudo not installed'."\n";
     }
 
     return 1;
@@ -95,6 +98,21 @@ sub arg_count_or_die { # Is tested
     }
 
     return 1;
+}
+
+sub with_error_log { # Not tested
+
+    # TODO
+
+    my $sub  = shift;
+    my @args = @_;
+
+    try {
+        $sub->(@args);
+    }
+    catch ($e) {
+        get_logger->warn($e);
+    }
 }
 
 sub have_sudo_access_to_btrfs { # Not tested

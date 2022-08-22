@@ -60,4 +60,13 @@ use Test::Exception;
     throws_ok { $f->('false') } qr/yabsm: internal error: system command 'false' exited with non-zero status/, "$n - dies if command fails";
 }
 
+{
+    my $n = 'with_error_catch_log';
+    my $f = \&Yabsm::Tools::with_error_catch_log;
+
+    my $sub = sub { my $arg1 = shift; my $arg2 = shift; die "died - args $arg1 $arg2" };
+
+    lives_ok { $f->($sub, 'foo', 'bar') } "$n - catches and logs errors";
+}
+
 1;

@@ -22,7 +22,7 @@ use Exporter 'import';
 our @EXPORT_OK = qw(have_prerequisites
                     have_prerequisites_or_die
                     arg_count_or_die
-                    with_error_log
+                    with_error_catch_log
                     have_sudo_access_to_btrfs
                     have_sudo_access_to_btrfs_or_die
                     is_btrfs_dir
@@ -100,9 +100,11 @@ sub arg_count_or_die { # Is tested
     return 1;
 }
 
-sub with_error_log { # Not tested
+sub with_error_catch_log { # Is tested
 
-    # TODO
+    # Calls $sub with @args within a Feature::Compat::Try try/catch block, to
+    # catch exceptions and log them with Log::Log4Perl instead of killing the
+    # program.
 
     my $sub  = shift;
     my @args = @_;

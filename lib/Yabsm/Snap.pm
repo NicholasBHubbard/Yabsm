@@ -33,13 +33,13 @@ sub do_snap { # Is tested
 
     my $snapshot = take_snapshot($mountpoint, $snap_dest);
 
-    my @snaps     = sort_snapshots([ glob "$snap_dest/*" ]);
-    my $num_snaps = scalar @snaps;
+    my @snapshots = sort_snapshots([ glob "$snap_dest/*" ]);
+    my $num_snaps = scalar @snapshots;
     my $to_keep   = snap_timeframe_keep($snap, $tframe, $config_ref);
 
     # There is 1 more snap than should be kept because we just performed a snap.
     if ($num_snaps == $to_keep + 1) {
-        my $oldest = pop @snaps;
+        my $oldest = pop @snapshots;
         snapshot_delete($oldest);
     }
     # We havent reached the quota yet so we don't delete anything
@@ -50,7 +50,7 @@ sub do_snap { # Is tested
     # prior.
     else {
         for (; $num_snaps > $to_keep; $num_snaps--) {
-            my $oldest = pop @snaps;
+            my $oldest = pop @snapshots;
             delete_snapshot($oldest);
         }
     }

@@ -384,7 +384,7 @@ sub all_subvols { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys $config_ref->{subvols};
+    return sort keys %{ $config_ref->{subvols} };
 }
 
 sub all_snaps { # Is tested
@@ -395,7 +395,7 @@ sub all_snaps { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys $config_ref->{snaps};
+    return sort keys %{ $config_ref->{snaps} };
 }
 
 sub all_ssh_backups { # Is tested
@@ -407,7 +407,7 @@ sub all_ssh_backups { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys $config_ref->{ssh_backups};
+    return sort keys %{ $config_ref->{ssh_backups} };
 }
 
 sub all_local_backups { # Is tested
@@ -419,7 +419,7 @@ sub all_local_backups { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys $config_ref->{local_backups};
+    return sort keys %{ $config_ref->{local_backups} };
 }
 
 sub subvol_mountpoint { # Is tested

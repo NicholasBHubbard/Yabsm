@@ -68,7 +68,7 @@ sub have_prerequisites_or_die { # Not tested
         die 'yabsm: internal error: btrfs-progs not installed'."\n";
     }
 
-    unless (`ssh -V 2>/dev/null` =~ /^OpenSSH/) {
+    unless (`ssh -V 2>&1` =~ /^OpenSSH/) {
         die 'yabsm: internal error: OpenSSH not installed'."\n";
     }
 

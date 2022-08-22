@@ -21,7 +21,7 @@ use v5.16.3;
 
 use Yabsm::Tools qw(arg_count_or_die);
 
-use Log::Log4perl 'get_logger';
+use Carp 'confess';
 
 use Exporter 'import';
 our @EXPORT_OK = qw(is_timeframe
@@ -128,7 +128,7 @@ sub is_timeframe_or_die { # Is tested
     my $tframe = shift;
 
     unless ( is_timeframe($tframe) ) {
-        get_logger->logconfess("yabsm: internal error: no such timeframe '$tframe'");
+        confess("yabsm: internal error: no such timeframe '$tframe'");
     }
 
     return 1;
@@ -152,7 +152,7 @@ sub is_weekday_or_die { # Is tested
     my $weekday = shift;
 
     unless ( is_weekday($weekday) ) {
-        get_logger->logconfess("yabsm: internal error: no such weekday '$weekday'");
+        confess("yabsm: internal error: no such weekday '$weekday'");
     }
 
     return 1;
@@ -252,7 +252,7 @@ sub subvol_exists_or_die { # Is tested
     my $config_ref = shift;
 
     unless ( subvol_exists($subvol, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: no subvol named '$subvol'");
+        confess("yabsm: internal error: no subvol named '$subvol'");
     }
 
     return 1;
@@ -281,7 +281,7 @@ sub snap_exists_or_die { # Is tested
     my $config_ref = shift;
 
     unless ( snap_exists($snap, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: no snap named '$snap'");
+        confess("yabsm: internal error: no snap named '$snap'");
     }
 
     return 1;
@@ -310,7 +310,7 @@ sub ssh_backup_exists_or_die { # Is tested
     my $config_ref = shift;
 
     unless ( ssh_backup_exists($ssh_backup, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: no ssh_backup named '$ssh_backup'");
+        confess("yabsm: internal error: no ssh_backup named '$ssh_backup'");
     }
 
     return 1;
@@ -340,7 +340,7 @@ sub local_backup_exists_or_die { # Is tested
     my $config_ref   = shift;
 
     unless ( local_backup_exists($local_backup, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: no local_backup named '$local_backup'");
+        confess("yabsm: internal error: no local_backup named '$local_backup'");
     }
 
     return 1;
@@ -370,7 +370,7 @@ sub backup_exists_or_die { # Is tested
     my $config_ref = shift;
 
     unless ( backup_exists($backup, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: no ssh_backup or local_backup named '$backup'");
+        confess("yabsm: internal error: no ssh_backup or local_backup named '$backup'");
     }
 
     return 1;
@@ -734,7 +734,7 @@ sub snap_wants_timeframe_or_die { # Is tested
     my $config_ref = shift;
 
     unless ( snap_wants_timeframe($snap, $tframe, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: snap '$snap' is not taking $tframe snapshots");
+        confess("yabsm: internal error: snap '$snap' is not taking $tframe snapshots");
     }
 
     return 1;
@@ -770,7 +770,7 @@ sub ssh_backup_wants_timeframe_or_die { # Is tested
     my $config_ref = shift;
 
     unless ( ssh_backup_wants_timeframe($ssh_backup, $tframe, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: ssh_backup '$ssh_backup' is not taking $tframe backups");
+        confess("yabsm: internal error: ssh_backup '$ssh_backup' is not taking $tframe backups");
     }
 
     return 1;
@@ -807,7 +807,7 @@ sub local_backup_wants_timeframe_or_die { # Is tested
     my $config_ref   = shift;
 
     unless ( local_backup_wants_timeframe($local_backup, $tframe, $config_ref) ) {
-        get_logger->logconfess("yabsm: internal error: local_backup '$local_backup' is not taking $tframe backups");
+        confess("yabsm: internal error: local_backup '$local_backup' is not taking $tframe backups");
     }
 
     return 1;

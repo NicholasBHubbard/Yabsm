@@ -16,7 +16,6 @@ use Yabsm::Tools 'arg_count_or_die';
 use Yabsm::Config::Query qw( :ALL );
 
 use Net::OpenSSH;
-use Log::Log4perl 'get_logger';
 use File::Basename qw(basename dirname);
 
 use Exporter 'import';
@@ -112,7 +111,7 @@ sub new_ssh_conn { # Is tested
     ! $ssh->error and return $ssh;
     ! $or_die     and return undef;
 
-    get_logger->logdie("yabsm: ssh error: cannot establish SSH connection to '$ssh_dest': ".$ssh->error);
+    die "yabsm: ssh error: cannot establish SSH connection to '$ssh_dest': ".$ssh->error."\n";
 }
 
 sub ssh_system_or_die { # Is tested
@@ -130,7 +129,7 @@ sub ssh_system_or_die { # Is tested
     if ($ssh->error) {
         my $user = $ssh->get_user;
         my $host = $ssh->get_host;
-        get_logger->logdie("yabsm: ssh error: remote command '$cmd' failed at '$user\@$host': ".$ssh->error."\n");
+        die "yabsm: ssh error: remote command '$cmd' failed at '$user\@$host': ".$ssh->error."\n";
     }
 
     return wantarray ? @out : $out;

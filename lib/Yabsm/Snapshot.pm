@@ -16,7 +16,7 @@ use v5.16.3;
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 
-use Log::Log4perl qw(get_logger);
+use Carp 'confess';
 use File::Basename qw(basename);
 use Time::Piece;
 
@@ -116,7 +116,7 @@ sub is_snapshot_name_or_die { # Is tested
     my $snapshot_name = shift;
 
     my (@date_nums) = $snapshot_name =~ /^(?:\.BOOTSTRAP-)?yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/
-      or get_logger->logconfess("yabsm: internal error: '$snapshot_name' is not a valid yabsm snapshot name");
+      or confess("yabsm: internal error: '$snapshot_name' is not a valid yabsm snapshot name");
 
     nums_denote_valid_date_or_die(@date_nums);
 
@@ -144,11 +144,11 @@ sub is_yabsm_snapshot_or_die { # Is tested
     my $snapshot = shift;
 
     unless ( is_btrfs_subvolume($snapshot) ) {
-        get_logger->logconfess("yabsm: internal error: '$snapshot' is not a btrfs subvolume");
+        confess("yabsm: internal error: '$snapshot' is not a btrfs subvolume");
     }
 
     unless ( is_snapshot_name(basename($snapshot)) ) {
-        get_logger->logconfess("yabsm: internal error: '$snapshot' does not have a valid yabsm snapshot name");
+        confess("yabsm: internal error: '$snapshot' does not have a valid yabsm snapshot name");
     }
 
     return 1;

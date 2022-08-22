@@ -12,7 +12,7 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Log::Log4perl qw(get_logger);
+use Carp 'confess';
 use Time::Piece;
 use File::Path qw(make_path);
 
@@ -91,7 +91,7 @@ sub arg_count_or_die { # Is tested
         my $expected_plural = $lower == 1 ? '': 's';
         my $got_plural = $num_args == 1 ? '' : 's';
         my $arg_range_msg = $lower == $upper ? "$lower arg$expected_plural" : "$lower-$upper args";
-        get_logger->logconfess("yabsm: internal error: called '$caller' with $num_args arg$got_plural but it expects $arg_range_msg");
+        confess("yabsm: internal error: called '$caller' with $num_args arg$got_plural but it expects $arg_range_msg");
     }
 
     return 1;
@@ -115,7 +115,7 @@ sub have_sudo_access_to_btrfs_or_die { # Not tested
 
     my $username = getpwuid $<;
 
-    have_sudo_access_to_btrfs() ? return 1 : get_logger->logconfess("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
+    have_sudo_access_to_btrfs() ? return 1 : confess("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
 }
 
 sub is_btrfs_dir { # Not tested
@@ -140,7 +140,7 @@ sub is_btrfs_dir_or_die { # Not tested
 
     my $dir = shift;
 
-    is_btrfs_dir($dir) ? return 1 : get_logger->logconfess("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
+    is_btrfs_dir($dir) ? return 1 : confess("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
 }
 
 sub is_btrfs_subvolume { # Not tested
@@ -183,7 +183,7 @@ sub is_btrfs_subvolume_or_die { # Not tested
 
     my $dir = shift;
 
-    is_btrfs_subvolume($dir) ? return 1 : get_logger->logconfess("yabsm: internal error: '$dir' is not a btrfs subvolume")
+    is_btrfs_subvolume($dir) ? return 1 : confess("yabsm: internal error: '$dir' is not a btrfs subvolume")
 }
 
 sub nums_denote_valid_date { # Is tested
@@ -233,7 +233,7 @@ sub nums_denote_valid_date_or_die { # Is tested
 
     unless ( nums_denote_valid_date(@_) ) {
         my ($yr, $mon, $day, $hr, $min) = @_;
-        get_logger->logconfess("yabsm: internal error: '${yr}_${mon}_${day}_$hr:$min' does not denote a valid yr_mon_day_hr:min date");
+        confess("yabsm: internal error: '${yr}_${mon}_${day}_$hr:$min' does not denote a valid yr_mon_day_hr:min date");
     }
 
     return 1;
@@ -259,7 +259,7 @@ sub system_or_die { # Is tested
     close $OLD_STDERR;
 
     unless (0 == $status) {
-        get_logger->logconfess("yabsm: internal error: system command '@_' exited with non-zero status '$status'");
+        confess("yabsm: internal error: system command '@_' exited with non-zero status '$status'");
     }
 
     return 1;
@@ -279,7 +279,7 @@ sub make_path_or_die { # Not tested
 
     my $username = getpwuid $<;
 
-    get_logger->logconfess("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
+    confess("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
 }
 
 sub i_am_root { # Not tested
@@ -297,7 +297,7 @@ sub i_am_root_or_die { # Not tested
 
     unless (i_am_root()) {
         my $username = getpwuid $<;
-        get_logger->logconfess("yabsm: internal error: not running as root - running as '$username'");
+        confess("yabsm: internal error: not running as root - running as '$username'");
     }
 
     return 1;

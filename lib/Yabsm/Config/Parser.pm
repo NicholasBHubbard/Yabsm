@@ -37,7 +37,7 @@ use v5.16.3;
 
 use Yabsm::Tools qw(arg_count_or_die);
 
-use Log::Log4perl 'get_logger';
+use Carp 'confess';
 use Array::Utils 'array_minus';
 use Regexp::Common 'net';
 use Feature::Compat::Try;
@@ -588,7 +588,7 @@ sub required_timeframe_settings {
         elsif ($tframe eq 'weekly')  { push @required, qw(weekly_keep weekly_time weekly_day) }
         elsif ($tframe eq 'monthly') { push @required, qw(monthly_keep monthly_time monthly_day) }
         else {
-           get_logger->logconfess("yabsm: internal error: no such timeframe '$tframe'");
+            confess("yabsm: internal error: no such timeframe '$tframe'");
         }
     }
 

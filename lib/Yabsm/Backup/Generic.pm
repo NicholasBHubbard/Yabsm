@@ -18,7 +18,7 @@ use Yabsm::Snapshot qw( take_snapshot
                         current_time_snapshot_name
                       );
 
-use Log::Log4perl 'get_logger';
+use Carp 'confess';
 use File::Basename 'basename';
 
 use Exporter 'import';
@@ -109,7 +109,7 @@ sub backup_bootstrap_snapshot { # Is tested
 
     is_btrfs_dir_or_die($bootstrap_dir);
 
-    opendir my $dh, $bootstrap_dir or get_logger->logconfess("yabsm: internal error: cannot opendir '$bootstrap_dir'");
+    opendir my $dh, $bootstrap_dir or confess("yabsm: internal error: cannot opendir '$bootstrap_dir'");
     my @boot_snapshots = map { $_ = "$bootstrap_dir/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh);
     closedir $dh;
 
@@ -117,7 +117,7 @@ sub backup_bootstrap_snapshot { # Is tested
         return undef;
     }
     elsif (1 < @boot_snapshots) {
-        get_logger->logconfess("yabsm: internal error: found multiple files in '$bootstrap_dir': " . map { $_ = q('$_') } @boot_snapshots);
+        confess("yabsm: internal error: found multiple files in '$bootstrap_dir': " . map { $_ = q('$_') } @boot_snapshots);
     }
     else {
         my $bootstrap_snapshot = shift @boot_snapshots;
@@ -201,7 +201,7 @@ sub is_bootstrap_snapshot_name_or_die { # Is tested
     my $snapshot_name = shift;
 
     unless ( is_bootstrap_snapshot_name($snapshot_name) ) {
-        get_logger->logconfess("yabsm: internal error: '$snapshot_name' is not a valid yabsm bootstrap snapshot name");
+        confess("yabsm: internal error: '$snapshot_name' is not a valid yabsm bootstrap snapshot name");
     }
 
     return 1;
@@ -267,7 +267,7 @@ sub is_backup_type_or_die { # Is tested
     my $backup_type = shift;
 
     unless ( $backup_type =~ /^(ssh|local)$/ ) {
-        get_logger->logconfess("yabsm: internal error: '$backup_type' is not 'ssh' or 'local'");
+        confess("yabsm: internal error: '$backup_type' is not 'ssh' or 'local'");
     }
 
     return 1;

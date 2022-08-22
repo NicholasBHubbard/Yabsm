@@ -15,7 +15,6 @@ use Yabsm::Snapshot qw( delete_snapshot sort_snapshots );
 use Yabsm::Tools qw( arg_count_or_die system_or_die);
 use Yabsm::Config::Query qw( :ALL );
 
-use Log::Log4perl 'get_logger';
 use File::Basename qw(basename dirname);
 
 use Exporter 'import';

@@ -68,6 +68,8 @@ if ($BTRFS_SUBVOLUME) {
     is($f->('/home/yabsm-2020_04_31_23:59'), 0, "$n - understands month days");
     is($f->('yabsm-2020_02_29_23:59'), 1, "$n - understands leap years");
     is($f->('yabsm-2021_02_29_23:59'), 0, "$n - understands leap years");
+    is($f->('.BOOTSTRAP-yabsm-2020_05_13_23:59'), 1, "$n - accepts .BOOTSTRAP prefix");
+    is($f->('.BOOTSTRAP-yabsm-2020_05_13_23:59', 0), 0, "$n - optionally reject .BOOTSTRAP prefix");
 }
 
 {
@@ -75,7 +77,9 @@ if ($BTRFS_SUBVOLUME) {
     my $f = \&Yabsm::Snapshot::is_snapshot_name_or_die;
 
     is($f->('yabsm-2020_05_13_23:59'), 1, "$n - succeeds with 1");
+    is($f->('.BOOTSTRAP-yabsm-2020_05_13_23:59'), 1, "$n - accepts .BOOTSTRAP prefix");
     throws_ok { $f->('quux') } qr/'quux' is not a valid yabsm snapshot name/, "$n - dies if invalid snapshot name";
+    throws_ok { $f->('.BOOTSTRAP-yabsm-2020_05_13_23:59', 0) } qr/'.BOOTSTRAP-yabsm-2020_05_13_23:59' is not a valid yabsm snapshot name/, "$n - optionally reject .BOOTSTRAP prefix";
     throws_ok { $f->('yabsm-2020_12_32_23:59') } qr/'2020_12_32_23:59' does not denote a valid yr_mon_day_hr:min date/, "$n - dies if invalid snapshot name";
 }
 

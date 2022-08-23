@@ -97,9 +97,14 @@ sub is_snapshot_name { # Is tested
     # It is important to note that this function rejects directory paths even if
     # their basename is a valid yabsm snapshot name.
 
-    arg_count_or_die(1, 1, @_);
+    arg_count_or_die(1, 2, @_);
 
-    return 0 unless my (@date_nums) = shift =~ /^(?:\.BOOTSTRAP-)?yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/;
+    my $snapshot_name   = shift;
+    my $allow_bootstrap = shift // 1;
+
+    my $bootstrap_prefix_rx = $allow_bootstrap ? '(?:\.BOOTSTRAP-)?' : '';
+
+    return 0 unless my (@date_nums) = $snapshot_name =~ /^${bootstrap_prefix_rx}yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/;
 
     return 0 unless nums_denote_valid_date(@date_nums);
 
@@ -111,11 +116,14 @@ sub is_snapshot_name_or_die { # Is tested
     # Like &is_snapshot_name but logdie if $snapshot_name is not a
     # valid yabsm snapshot name.
 
-    arg_count_or_die(1, 1, @_);
+    arg_count_or_die(1, 2, @_);
 
-    my $snapshot_name = shift;
+    my $snapshot_name   = shift;
+    my $allow_bootstrap = shift // 1;
 
-    my (@date_nums) = $snapshot_name =~ /^(?:\.BOOTSTRAP-)?yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/
+    my $bootstrap_prefix_rx = $allow_bootstrap ? '(?:\.BOOTSTRAP-)?' : '';
+
+    my (@date_nums) = $snapshot_name =~ /^${bootstrap_prefix_rx}yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/
       or confess("yabsm: internal error: '$snapshot_name' is not a valid yabsm snapshot name");
 
     nums_denote_valid_date_or_die(@date_nums);
@@ -127,11 +135,12 @@ sub is_yabsm_snapshot { # Is tested
 
     # Return 1 if $snapshot is a yabsm snapshot and return 0 otherwise.
 
-    arg_count_or_die(1, 1, @_);
+    arg_count_or_die(1, 2, @_);
 
-    my $snapshot = shift;
+    my $snapshot        = shift;
+    my $allow_bootstrap = shift // 1;
 
-    return is_snapshot_name(basename($snapshot)) && is_btrfs_subvolume($snapshot)
+    return is_snapshot_name(basename($snapshot), $allow_bootstrap) && is_btrfs_subvolume($snapshot)
 }
 
 sub is_yabsm_snapshot_or_die { # Is tested

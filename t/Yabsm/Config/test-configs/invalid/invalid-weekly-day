@@ -6,7 +6,7 @@ subvol foo {
     mountpoint=/
 }
 
-snap foo {
+snap foo_snap {
     weekly_day=quux
     timeframes=weekly
     subvol=foo

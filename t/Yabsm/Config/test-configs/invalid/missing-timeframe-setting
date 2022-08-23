@@ -7,7 +7,7 @@ subvol foo {
     mountpoint=/
 }
 
-snap foo {
+snap foo_snap {
     ###hourly_keep=1
     subvol=foo
     timeframes=5minute,hourly

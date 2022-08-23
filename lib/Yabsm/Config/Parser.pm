@@ -287,7 +287,10 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected subvol name');
-                exists $config{subvols}{$name} and $self->fail("subvol '$name' is already defined");
+                exists $config{subvols}{$name}       and $self->fail("already have a subvol named '$name'");
+                exists $config{snaps}{$name}         and $self->fail("already have a snap named '$name'");
+                exists $config{ssh_backups}{$name}   and $self->fail("already have a ssh_backup named '$name'");
+                exists $config{local_backups}{$name} and $self->fail("already have a local_backup named '$name'");
                 my $kvs = $self->scope_of('{', 'subvol_settings_parser' ,'}');
                 $config{subvols}{$name} = $kvs;
             },
@@ -296,7 +299,10 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected snap name');
-                exists $config{snaps}{$name} and $self->fail("snap '$name' is already defined");
+                exists $config{subvols}{$name}       and $self->fail("already have a subvol named '$name'");
+                exists $config{snaps}{$name}         and $self->fail("already have a snap named '$name'");
+                exists $config{ssh_backups}{$name}   and $self->fail("already have a ssh_backup named '$name'");
+                exists $config{local_backups}{$name} and $self->fail("already have a local_backup named '$name'");
                 my $kvs = $self->scope_of('{', 'snap_settings_parser', '}');
                 $config{snaps}{$name} = $kvs;
             },
@@ -305,7 +311,10 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected ssh_backup name');
-                exists $config{ssh_backups}{$name} and $self->fail("ssh_backup '$name' is already defined");
+                exists $config{subvols}{$name}       and $self->fail("already have a subvol named '$name'");
+                exists $config{snaps}{$name}         and $self->fail("already have a snap named '$name'");
+                exists $config{ssh_backups}{$name}   and $self->fail("already have a ssh_backup named '$name'");
+                exists $config{local_backups}{$name} and $self->fail("already have a local_backup named '$name'");
                 my $kvs = $self->scope_of('{', 'ssh_backup_settings_parser', '}');
                 $config{ssh_backups}{$name} = $kvs;
             },
@@ -314,7 +323,10 @@ sub config_parser {
                 $self->commit;
                 my $name = $self->maybe_expect( $grammar{name} );
                 $name // $self->fail('expected local_backup name');
-                exists $config{local_backups}{$name} and $self->fail("local_backup '$name' is already defined");
+                exists $config{subvols}{$name}       and $self->fail("already have a subvol named '$name'");
+                exists $config{snaps}{$name}         and $self->fail("already have a snap named '$name'");
+                exists $config{ssh_backups}{$name}   and $self->fail("already have a ssh_backup named '$name'");
+                exists $config{local_backups}{$name} and $self->fail("already have a local_backup named '$name'");
                 my $kvs = $self->scope_of('{', 'local_backup_settings_parser', '}');
                 $config{local_backups}{$name} = $kvs;
             },

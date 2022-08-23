@@ -6,7 +6,7 @@ subvol foo {
     mountpoint=/
 }
 
-snap foo {
+snap foo_snap {
     quux=bar
     subvol=foo
     timeframes=5minute

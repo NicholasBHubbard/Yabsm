@@ -7,7 +7,7 @@ subvol foo {
     quux=bar
 }
 
-snap foo {
+snap foo_snap {
     subvol=foo
     timeframes=5minute
     5minute_keep=1

@@ -9,7 +9,7 @@ yabsm_dir=/.snapshots/yabsm
 mountpoint=/ #comment
 } #comment
 # comment
-snap foo {   
+snap foo_snap {   
   subvol=foo 
   #comment
 timeframes=5minute
@@ -29,7 +29,7 @@ timeframes=5minute
     monthly_keep=  12 #comment
 }#comment
 
-     ssh_backup foo_backup {#comment
+     ssh_backup foo_ssh_backup {#comment
     subvol=foo#comment
 ssh_dest=bar@192.168.1.12#comment
   dir=/backups#comment
@@ -47,7 +47,7 @@ timeframes=5minute,hourly,daily,weekly,monthly#comment
 }#comment
 #comment
 
-local_backup foo_backup {#comment
+local_backup foo_local_backup {#comment
     subvol=foo#comment
     dir=/backups#comment
     timeframes  =5minute,hourly,daily,weekly,monthly#comment

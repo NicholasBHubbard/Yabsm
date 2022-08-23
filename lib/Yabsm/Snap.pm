@@ -10,7 +10,7 @@ use v5.16.3;
 
 package Yabsm::Snap;
 
-use Yabsm::Snapshot qw(take_snapshot delete_snapshot sort_snapshots);
+use Yabsm::Snapshot qw(take_snapshot delete_snapshot sort_snapshots is_snapshot_name);
 use Yabsm::Config::Query qw ( :ALL );
 
 use Exporter 'import';
@@ -33,7 +33,12 @@ sub do_snap { # Is tested
 
     my $snapshot = take_snapshot($mountpoint, $snap_dest);
 
-    my @snapshots = sort_snapshots([ glob "$snap_dest/*" ]);
+    my @snapshots = sort_snapshots(do {
+        opendir my $dh, $snap_dest or confess("yabsm: internal error: cannot opendir '$snap_dest'");
+        my @snapshots = map { $_ = "$snap_dest/$_" } grep { is_snapshot_name($_, 0) } readdir($dh);
+        closedir $dh;
+        \@snapshots;
+    });
     my $num_snaps = scalar @snapshots;
     my $to_keep   = snap_timeframe_keep($snap, $tframe, $config_ref);
 

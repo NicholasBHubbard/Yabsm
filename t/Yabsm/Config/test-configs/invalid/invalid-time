@@ -6,7 +6,7 @@ subvol foo {
     mountpoint=/
 }
 
-snap foo {
+snap foo_snap {
      daily_time=1:59
      subvol=foo
      timeframes=daily

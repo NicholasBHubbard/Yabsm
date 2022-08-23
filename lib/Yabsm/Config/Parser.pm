@@ -54,12 +54,11 @@ our @EXPORT_OK = qw( parse_config_or_die );
 
 sub parse_config_or_die {
 
-    # Attempt to parse $file into a yabsm configuration data
-    # structure.
+    # Attempt to parse $file into a yabsm configuration data structure.
 
     arg_count_or_die(0, 1, @_);
 
-    my $file = shift // '/etc/yabsmd.conf';
+    my $file = shift // '/etc/yabsm.conf';
 
     # Initialize the Parser::MGC parser object
     my $parser = __PACKAGE__->new( toplevel => 'config_parser'
@@ -70,7 +69,7 @@ sub parse_config_or_die {
 
     my $config_ref = do {
         try { $parser->from_file($file) }
-        catch ($e) { die "yabsm: config error: $e\n" }
+        catch ($e) { die "yabsm: config error: $e" }
     };
 
     my ($config_valid, @error_msgs) = check_config($config_ref);
@@ -90,8 +89,8 @@ sub parse_config_or_die {
 
 sub grammar {
 
-    # Return a hash of all the atomic grammar elements of the
-    # yabsm config language.
+    # Return a hash of all the atomic grammar elements of the yabsm config
+    # language.
 
     arg_count_or_die(0, 0, @_);
 
@@ -130,9 +129,9 @@ sub grammar {
 
 sub grammar_msg {
 
-    # Return a hash that associates grammar non-terminals to a
-    # linguistic description of their expected value. Used for
-    # generating meaningful error messages.
+    # Return a hash that associates grammar non-terminals to a linguistic
+    # description of their expected value. Used for generating meaningful error
+    # messages.
 
     arg_count_or_die(0, 0, @_);
 
@@ -183,9 +182,8 @@ sub subvol_settings_grammar {
 
 sub snap_settings_grammar {
 
-    # Return a hash of a snaps key=val grammar. Optionally takes
-    # a false value to exclude the timeframe subgrammar from the
-    # returned grammar.
+    # Return a hash of a snaps key=val grammar. Optionally takes a false value
+    # to exclude the timeframe subgrammar from the returned grammar.
 
     arg_count_or_die(0, 1, @_);
 
@@ -207,9 +205,8 @@ sub snap_settings_grammar {
 
 sub ssh_backup_settings_grammar {
 
-    # Return a hash of a ssh_backups key=val grammar. Optionally takes
-    # a false value to exclude the timeframe subgrammar from the
-    # returned grammar.
+    # Return a hash of a ssh_backups key=val grammar. Optionally takes a false
+    # value to exclude the timeframe subgrammar from the returned grammar.
 
     arg_count_or_die(0, 1, @_);
 
@@ -233,9 +230,8 @@ sub ssh_backup_settings_grammar {
 
 sub local_backup_settings_grammar {
 
-    # Return a hash of a local_backups key=val grammar. Optionally
-    # takes a false value to exclude the timeframe subgrammar from the
-    # returned grammar.
+    # Return a hash of a local_backups key=val grammar. Optionally takes a false
+    # value to exclude the timeframe subgrammar from the returned grammar.
 
     arg_count_or_die(0, 1, @_);
 
@@ -335,11 +331,10 @@ sub config_parser {
 
 sub settings_parser {
 
-    # Abstract method that parses a sequence of key=val pairs
-    # based off of the input grammar %grammar. The arg $type
-    # is simply a string that is either 'subvol', 'snap',
-    # 'ssh_backup', or 'local_backup' and is only used for error
-    # message generation. This method should be called from a wrapper
+    # Abstract method that parses a sequence of key=val pairs based off of the
+    # input grammar %grammar. The arg $type is simply a string that is either
+    # 'subvol', 'snap', 'ssh_backup', or 'local_backup' and is only used for
+    # error message generation. This method should be called from a wrapper
     # method.
 
     arg_count_or_die(3, 3, @_);
@@ -405,10 +400,10 @@ sub local_backup_settings_parser {
 
 sub check_config {
 
-    # Ensure that $config_ref references a valid yabsm configuration.
-    # If the config is valid return a list containing only the value
-    # 1, otherwise return multiple values where the first value is 0
-    # and the rest of the values are the corresponding error messages.
+    # Ensure that $config_ref references a valid yabsm configuration.  If the
+    # config is valid return a list containing only the value 1, otherwise
+    # return multiple values where the first value is 0 and the rest of the
+    # values are the corresponding error messages.
 
     arg_count_or_die(1, 1, @_);
 
@@ -438,9 +433,9 @@ sub check_config {
 
 sub snap_errors {
 
-    # Ensure that all the snaps defined in the config referenced
-    # by $config_ref are not missing required snap settings and
-    # are snapshotting a defined subvol.
+    # Ensure that all the snaps defined in the config referenced by $config_ref
+    # are not missing required snap settings and are snapshotting a defined
+    # subvol.
 
     arg_count_or_die(1, 1, @_);
 
@@ -449,8 +444,8 @@ sub snap_errors {
     # return this
     my @error_msgs;
 
-    # Base required settings. Passing 0 to snap_settings_grammar
-    # excludes timeframe settings from the returned hash.
+    # Base required settings. Passing 0 to snap_settings_grammar excludes
+    # timeframe settings from the returned hash.
     my @base_required_settings = keys snap_settings_grammar(0);
 
     foreach my $snap (keys %{ $config_ref->{snaps} }) {
@@ -481,9 +476,9 @@ sub snap_errors {
 
 sub ssh_backup_errors {
 
-    # Ensure that all the ssh_backups defined in the config referenced
-    # by $config_ref are not missing required ssh_backup settings and
-    # are backing up a defined subvol.
+    # Ensure that all the ssh_backups defined in the config referenced by
+    # $config_ref are not missing required ssh_backup settings and are backing
+    # up a defined subvol.
 
     arg_count_or_die(1, 1, @_);
 
@@ -492,8 +487,8 @@ sub ssh_backup_errors {
     # return this
     my @error_msgs;
 
-    # Base required settings. Passing 0 to ssh_backup_settings_grammar
-    # excludes timeframe settings from the returned hash.
+    # Base required settings. Passing 0 to ssh_backup_settings_grammar excludes
+    # timeframe settings from the returned hash.
     my @base_required_settings = keys ssh_backup_settings_grammar(0);
 
     foreach my $ssh_backup (keys %{ $config_ref->{ssh_backups} }) {
@@ -524,9 +519,9 @@ sub ssh_backup_errors {
 
 sub local_backup_errors {
 
-    # Ensure that all the local_backups defined in the config
-    # referenced by $config_ref are not missing required local_backup
-    # settings and are backing up a defined subvol
+    # Ensure that all the local_backups defined in the config referenced by
+    # $config_ref are not missing required local_backup settings and are backing
+    # up a defined subvol
 
     arg_count_or_die(1, 1, @_);
 
@@ -567,10 +562,9 @@ sub local_backup_errors {
 
 sub required_timeframe_settings {
 
-    # Given a timeframes value like 'hourly,daily,monthly' returns a
-    # list of required settings. This subroutine is used to
-    # dynamically determine what settings are required for certain
-    # config entities.
+    # Given a timeframes value like 'hourly,daily,monthly' returns a list of
+    # required settings. This subroutine is used to dynamically determine what
+    # settings are required for certain config entities.
 
     arg_count_or_die(1, 1, @_);
 

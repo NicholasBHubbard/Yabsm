@@ -88,8 +88,8 @@ if ($BTRFS_SUBVOLUME) {
 }
 
 {
-    my $n = 'nums_to_snapshot_name_or_die';
-    my $f = \&Yabsm::Snapshot::nums_to_snapshot_name_or_die;
+    my $n = 'nums_to_snapshot_name';
+    my $f = \&Yabsm::Snapshot::nums_to_snapshot_name;
 
     is($f->(2020, 5, 13, 1, 5), 'yabsm-2020_05_13_01:05', "$n - produces snapshot name");
     throws_ok { $f->(2020, 13, 13, 1, 5) } qr/'2020_13_13_01:05' does not denote a valid yr_mon_day_hr:min date/, "$n - dies if invalid snapshot name";

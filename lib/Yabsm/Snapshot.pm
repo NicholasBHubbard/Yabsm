@@ -28,7 +28,7 @@ our @EXPORT_OK = qw( take_snapshot
                      is_yabsm_snapshot
                      is_yabsm_snapshot_or_die
                      snapshot_name_nums
-                     nums_to_snapshot_name_or_die
+                     nums_to_snapshot_name
                      current_time_snapshot_name
                      sort_snapshots
                      cmp_snapshots
@@ -171,7 +171,7 @@ sub snapshot_name_nums { # Is tested
     return ($yr, $mon, $day, $hr, $min);
 }
 
-sub nums_to_snapshot_name_or_die { # Is tested
+sub nums_to_snapshot_name { # Is tested
 
     # Take 5 integer arguments representing in order the year, month,
     # day, hour, and minute and return a snapshot name of the
@@ -196,7 +196,7 @@ sub current_time_snapshot_name { # Is tested
 
     my $t = localtime();
 
-    return nums_to_snapshot_name_or_die($t->year, $t->mon, $t->mday, $t->hour, $t->min);
+    return nums_to_snapshot_name($t->year, $t->mon, $t->mday, $t->hour, $t->min);
 }
 
 sub sort_snapshots { # Is tested

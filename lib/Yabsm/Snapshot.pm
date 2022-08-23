@@ -32,6 +32,11 @@ our @EXPORT_OK = qw( take_snapshot
                      current_time_snapshot_name
                      sort_snapshots
                      cmp_snapshots
+                     snapshots_eq
+                     snapshot_newer
+                     snapshot_older
+                     snapshot_newer_or_eq
+                     snapshot_older_or_eq
                    );
 
                  ####################################
@@ -247,6 +252,69 @@ sub cmp_snapshots { # Is tested
     }
 
     return 0;
+}
+
+sub snapshots_eq { # Is tested
+
+    # Return 1 if $snapshot1 and $snapshot2 denote the same time and return 0
+    # otherwise.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $snapshot1 = shift;
+    my $snapshot2 = shift;
+
+    return 0+(0 == cmp_snapshots($snapshot1, $snapshot2));
+}
+
+sub snapshot_newer { # Is tested
+
+    # Return 1 if $snapshot1 is newer than $snapshot2 and return 0 otherwise.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $snapshot1 = shift;
+    my $snapshot2 = shift;
+
+    return 0+(-1 == cmp_snapshots($snapshot1, $snapshot2));
+}
+
+sub snapshot_older { # Is tested
+
+    # Return 1 if $snapshot1 is older than $snapshot2 and return 0 otherwise.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $snapshot1 = shift;
+    my $snapshot2 = shift;
+
+    return 0+(1 == cmp_snapshots($snapshot1, $snapshot2));
+}
+
+sub snapshot_newer_or_eq { # Is tested
+
+    # Return 1 if $snapshot1 is newer or equal to $snapshot2 and return 0
+    # otherwise.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $snapshot1 = shift;
+    my $snapshot2 = shift;
+
+    return 0+(cmp_snapshots($snapshot1, $snapshot2) <= 0);
+}
+
+sub snapshot_older_or_eq { # Is tested
+
+    # Return 1 if $snapshot1 is newer or equal to $snapshot2 and return 0
+    # otherwise.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $snapshot1 = shift;
+    my $snapshot2 = shift;
+
+    return 0+(cmp_snapshots($snapshot1, $snapshot2) >= 0);
 }
 
 1;

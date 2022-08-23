@@ -145,6 +145,65 @@ if ($BTRFS_SUBVOLUME) {
 }
 
 {
+    my $n = 'snapshots_eq';
+    my $f = \&Yabsm::Snapshot::snapshots_eq;
+
+    my $snap1 = 'yabsm-2022_05_13_23:59';
+    my $snap2 = 'yabsm-2021_05_13_23:59';
+
+    is $f->($snap1, $snap1), 1, "$n - true if snapshots equal";
+    is $f->($snap1, $snap2), 0, "$n - false if snapshots not equal";
+}
+
+{
+    my $n = 'snapshot_newer';
+    my $f = \&Yabsm::Snapshot::snapshot_newer;
+
+    my $snap1 = 'yabsm-2022_05_13_23:59';
+    my $snap2 = 'yabsm-2021_05_13_23:59';
+
+    is $f->($snap1, $snap2), 1, "$n - true if snapshot newer";
+    is $f->($snap2, $snap1), 0, "$n - false if snapshot older";
+    is $f->($snap1, $snap1), 0, "$n - false if snapshots equal";
+}
+
+{
+    my $n = 'snapshot_older';
+    my $f = \&Yabsm::Snapshot::snapshot_older;
+
+    my $snap1 = 'yabsm-2022_05_13_23:59';
+    my $snap2 = 'yabsm-2021_05_13_23:59';
+
+    is $f->($snap2, $snap1), 1, "$n - true if snapshot older";
+    is $f->($snap1, $snap2), 0, "$n - false if snapshot newer";
+    is $f->($snap1, $snap1), 0, "$n - false if snapshots equal";
+}
+
+{
+    my $n = 'snapshot_newer_or_eq';
+    my $f = \&Yabsm::Snapshot::snapshot_newer_or_eq;
+
+    my $snap1 = 'yabsm-2022_05_13_23:59';
+    my $snap2 = 'yabsm-2021_05_13_23:59';
+
+    is $f->($snap1, $snap2), 1, "$n - true if snapshot newer";
+    is $f->($snap1, $snap1), 1, "$n - true if snapshots equal";
+    is $f->($snap2, $snap1), 0, "$n - false if snapshot older";
+}
+
+{
+    my $n = 'snapshot_older_or_eq';
+    my $f = \&Yabsm::Snapshot::snapshot_older_or_eq;
+
+    my $snap1 = 'yabsm-2022_05_13_23:59';
+    my $snap2 = 'yabsm-2021_05_13_23:59';
+
+    is $f->($snap2, $snap1), 1, "$n - true if snapshot older";
+    is $f->($snap1, $snap1), 1, "$n - true if snapshots equal";
+    is $f->($snap1, $snap2), 0, "$n - false if snapshot newer";
+}
+
+{
     my $n_take = 'take_snapshot';
     my $f_take = \&Yabsm::Snapshot::take_snapshot;
 

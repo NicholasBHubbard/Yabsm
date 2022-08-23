@@ -80,8 +80,8 @@ if ($BTRFS_SUBVOLUME) {
 }
 
 {
-    my $n = 'snapshot_name_nums_or_die';
-    my $f = \&Yabsm::Snapshot::snapshot_name_nums_or_die;
+    my $n = 'snapshot_name_nums';
+    my $f = \&Yabsm::Snapshot::snapshot_name_nums;
 
     is_deeply([ $f->('yabsm-2020_05_13_23:59') ], [2020,5,13,23,59], "$n - produces correct number list");
     throws_ok { $f->('yabsm-2020_5_13_23:59') } qr/'yabsm-2020_5_13_23:59' is not a valid yabsm snapshot name/, "$n - dies if passed invalid snapshot name";

@@ -27,7 +27,7 @@ our @EXPORT_OK = qw( take_snapshot
                      is_snapshot_name_or_die
                      is_yabsm_snapshot
                      is_yabsm_snapshot_or_die
-                     snapshot_name_nums_or_die
+                     snapshot_name_nums
                      nums_to_snapshot_name_or_die
                      current_time_snapshot_name
                      sort_snapshots
@@ -154,7 +154,7 @@ sub is_yabsm_snapshot_or_die { # Is tested
     return 1;
 }
 
-sub snapshot_name_nums_or_die { # Is tested
+sub snapshot_name_nums { # Is tested
 
     # Take a snapshot name and return a list containing, in order, the
     # corresponding year, month, day, hour, and minute. Kill program if
@@ -229,8 +229,8 @@ sub cmp_snapshots { # Is tested
     my $snapshot1 = shift;
     my $snapshot2 = shift;
 
-    my @nums1 = snapshot_name_nums_or_die(basename $snapshot1);
-    my @nums2 = snapshot_name_nums_or_die(basename $snapshot2);
+    my @nums1 = snapshot_name_nums(basename $snapshot1);
+    my @nums2 = snapshot_name_nums(basename $snapshot2);
 
     for (my $i = 0; $i <= $#nums1; $i++) {
         return -1 if $nums1[$i] > $nums2[$i];

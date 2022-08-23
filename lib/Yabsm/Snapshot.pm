@@ -229,8 +229,8 @@ sub cmp_snapshots { # Is tested
     my $snapshot1 = shift;
     my $snapshot2 = shift;
 
-    my @nums1 = snapshot_name_nums(basename $snapshot1);
-    my @nums2 = snapshot_name_nums(basename $snapshot2);
+    my @nums1 = snapshot_name_nums(basename($snapshot1));
+    my @nums2 = snapshot_name_nums(basename($snapshot2));
 
     for (my $i = 0; $i <= $#nums1; $i++) {
         return -1 if $nums1[$i] > $nums2[$i];

@@ -61,7 +61,7 @@ sub do_ssh_backup { # Is tested
 
     # Delete old backups
 
-    my @remote_backups = sort_snapshots([ ssh_system_or_die($ssh, "ls '$backup_dir'")]);
+    my @remote_backups = sort_snapshots([ map { $_ = "$backup_dir/$_" } grep { is_snapshot_name($_, 0) } ssh_system_or_die($ssh, "ls '$backup_dir'")]);
     my $num_backups    = scalar @remote_backups;
     my $to_keep        = ssh_backup_timeframe_keep($ssh_backup, $tframe, $config_ref);
 

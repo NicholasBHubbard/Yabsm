@@ -45,7 +45,12 @@ sub do_local_backup {
 
     delete_snapshot($tmp_snapshot);
 
-    my @backups     = sort_snapshots([ glob "$backup_dir/*" ]);
+    my @backups = sort_snapshots(do {
+        opendir my $dh, $backup_dir or confess("yabsm: internal error: cannot opendir '$backup_dir'");
+        my @backups = map { $_ = "$backup_dir/$_" } grep { is_snapshot_name($_, 0) } readdir($dh);
+        closedir $dh;
+        \@backups;
+    });
     my $num_backups = scalar @backups;
     my $to_keep     = local_backup_timeframe_keep($local_backup, $tframe, $config_ref);
 

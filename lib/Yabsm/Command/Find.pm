@@ -296,9 +296,9 @@ sub answer_closest_query { # Is tested
             }
             else {
                 my $last_snapshot = $snapshots[$i - 1];
-                my $target_epoch = Time::Piece->strptime((join '/', snapshot_name_nums(basename($target))), '%Y/%m/%d/%H/%M')->epoch;
-                my $this_epoch = Time::Piece->strptime((join '/', snapshot_name_nums(basename($this_snapshot))), '%Y/%m/%d/%H/%M')->epoch;
-                my $last_epoch = Time::Piece->strptime((join '/', snapshot_name_nums(basename($last_snapshot))), '%Y/%m/%d/%H/%M')->epoch;
+                my $target_epoch = Time::Piece->strptime(join('/', snapshot_name_nums(basename($target))), '%Y/%m/%d/%H/%M')->epoch;
+                my $this_epoch = Time::Piece->strptime(join('/', snapshot_name_nums(basename($this_snapshot))), '%Y/%m/%d/%H/%M')->epoch;
+                my $last_epoch = Time::Piece->strptime(join('/', snapshot_name_nums(basename($last_snapshot))), '%Y/%m/%d/%H/%M')->epoch;
                 my $last_target_diff = abs($last_epoch - $target_epoch);
                 my $this_target_diff = abs($this_epoch - $target_epoch);
                 if ($last_target_diff <= $this_target_diff) {

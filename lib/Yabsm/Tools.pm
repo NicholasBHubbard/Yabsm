@@ -58,7 +58,7 @@ sub have_prerequisites { # Not tested
 
 sub have_prerequisites_or_die { # Not tested
 
-    # Like &have_prerequisites except logdie if the prerequisites are not met.
+    # Like &have_prerequisites except die if the prerequisites are not met.
 
     unless ($^O =~ /linux/i) {
         die "yabsm: internal error: not a Linux OS, this is a '$^O' OS\n";
@@ -81,7 +81,7 @@ sub have_prerequisites_or_die { # Not tested
 
 sub arg_count_or_die { # Is tested
 
-    # Logdie unless $num_args is in range $lower-$upper.
+    # Carp::Confess unless $num_args is in range $lower-$upper.
 
     my $lower    = shift;
     my $upper    = shift;
@@ -128,7 +128,7 @@ sub have_sudo_access_to_btrfs { # Not tested
 
 sub have_sudo_access_to_btrfs_or_die { # Not tested
 
-    # Wrapper around have_sudo_access_to_btrfs() that logdies if it
+    # Wrapper around have_sudo_access_to_btrfs() that Carp::Confess's if it
     # returns false.
 
     arg_count_or_die(0, 0, @_);
@@ -154,7 +154,7 @@ sub is_btrfs_dir { # Not tested
 
 sub is_btrfs_dir_or_die { # Not tested
 
-    # Wrapper around is_btrfs_dir() that logdies if it returns false.
+    # Wrapper around is_btrfs_dir() that Carp::Confess's if it returns false.
 
     arg_count_or_die(1, 1, @_);
 
@@ -196,7 +196,7 @@ sub is_btrfs_subvolume { # Not tested
 
 sub is_btrfs_subvolume_or_die { # Not tested
 
-    # Wrapper around is_btrfs_subvolume() that logdies if it returns
+    # Wrapper around is_btrfs_subvolume() that Carp::Confess's if it returns
     # false.
 
     arg_count_or_die(1, 1, @_);
@@ -246,7 +246,7 @@ sub nums_denote_valid_date { # Is tested
 
 sub nums_denote_valid_date_or_die { # Is tested
 
-    # Wrapper around &nums_denote_valid_date that logdies if it
+    # Wrapper around &nums_denote_valid_date that Carp::Confess's if it
     # returns false.
 
     arg_count_or_die(5, 5, @_);
@@ -261,7 +261,7 @@ sub nums_denote_valid_date_or_die { # Is tested
 
 sub system_or_die { # Is tested
 
-    # Wrapper around system that logdies if the system command exits
+    # Wrapper around system that Carp::Confess's if the system command exits
     # with a non-zero status. Redirects STDOUT and STDERR to /dev/null.
 
     open my $NULLFD, '>', '/dev/null';
@@ -314,7 +314,7 @@ sub yabsm_group_exists { # Not tested
 
 sub make_path_or_die { # Not tested
 
-    # Wrapper around File::Path::make_path() that logdies if the path
+    # Wrapper around File::Path::make_path() that Carp::Confess's if the path
     # cannot be created.
 
     arg_count_or_die(1, 1, @_);

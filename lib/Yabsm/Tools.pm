@@ -15,7 +15,8 @@ use v5.16.3;
 use Carp 'confess';
 use Time::Piece;
 use File::Path qw(make_path);
-use Log::Log4perl 'get_logger';
+
+use Log::Log4perl;
 use Feature::Compat::Try;
 
 use Exporter 'import';
@@ -113,7 +114,7 @@ sub with_error_catch_log { # Is tested
         $sub->(@args);
     }
     catch ($e) {
-        get_logger->warn($e);
+        Log::Log4Perl::get_logger->warn($e);
     }
 }
 

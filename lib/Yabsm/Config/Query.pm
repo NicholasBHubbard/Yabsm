@@ -226,7 +226,7 @@ sub yabsm_dir { # Is tested
 
     my $config_ref = shift;
 
-    return $config_ref->{yabsm_dir} =~ s/\/*$//r;
+    return $config_ref->{yabsm_dir} =~ s/\/+$//r;
 }
 
 sub subvol_exists { # Is tested
@@ -471,7 +471,8 @@ sub snap_mountpoint { # Is tested
 
 sub snap_dest { # Is tested
 
-    # Return $snap's destination for $tframe snaps.
+    # Return $snap's destination. Optionally pass a timeframe via the $tframe
+    # value to append "/$tframe" to the returned dir.
 
     arg_count_or_die(3, 3, @_);
 
@@ -479,9 +480,17 @@ sub snap_dest { # Is tested
     my $tframe     = shift;
     my $config_ref = shift;
 
-    snap_wants_timeframe_or_die($snap, $tframe, $config_ref);
+    snap_exists_or_die($snap, $config_ref);
 
-    return yabsm_dir($config_ref) . "/$snap/$tframe";
+    my $dest = yabsm_dir($config_ref) . "/$snap";
+
+    if ($tframe) {
+        snap_wants_timeframe_or_die($snap, $tframe, $config_ref);
+        return "$dest/$tframe";
+    }
+    else {
+        return $dest;
+    }
 }
 
 sub snap_timeframes { # Is tested
@@ -534,9 +543,8 @@ sub ssh_backup_mountpoint { # Is tested
 
 sub ssh_backup_dir { # Is tested
 
-    # Return $ssh_backup's ssh_backup dir value. If there is no
-    # ssh_backup named $ssh_backup then logdie because things have
-    # gone haywire.
+    # Return $ssh_backup's ssh_backup dir value. Optionally pass a timeframe via
+    # the $tframe value to append "/$tframe" to the returned dir.
 
     arg_count_or_die(3, 3, @_);
 
@@ -544,9 +552,17 @@ sub ssh_backup_dir { # Is tested
     my $tframe     = shift;
     my $config_ref = shift;
 
-    ssh_backup_wants_timeframe_or_die($ssh_backup, $tframe, $config_ref);
+    ssh_backup_exists_or_die($ssh_backup, $config_ref);
 
-    return $config_ref->{ssh_backups}{$ssh_backup}{dir} =~ s/\/*$//r . "/$tframe";
+    my $dir = $config_ref->{ssh_backups}{$ssh_backup}{dir} =~ s/\/+$//r;
+
+    if ($tframe) {
+        ssh_backup_wants_timeframe_or_die($ssh_backup, $tframe, $config_ref);
+        return "$dir/$tframe";
+    }
+    else {
+        return $dir;
+    }
 }
 
 sub ssh_backup_timeframes { # Is tested
@@ -615,7 +631,8 @@ sub local_backup_mountpoint { # Is tested
 
 sub local_backup_dir { # Is tested
 
-    # Return $local_backup's local_backup dir value for $tframe.
+    # Return $local_backup's local_backup dir value. Optionally pass a timeframe
+    # via the $tframe value to append "/$tframe" to the returned dir.
 
     arg_count_or_die(3, 3, @_);
 
@@ -623,9 +640,17 @@ sub local_backup_dir { # Is tested
     my $tframe       = shift;
     my $config_ref   = shift;
 
-    local_backup_wants_timeframe_or_die($local_backup, $tframe, $config_ref);
+    local_backup_exists_or_die($local_backup, $config_ref);
 
-    return $config_ref->{local_backups}{$local_backup}{dir} =~ s/\/*$//r . "/$tframe";
+    my $dir = $config_ref->{local_backups}{$local_backup}{dir} =~ s/\/+$//r;
+
+    if ($tframe) {
+        local_backup_wants_timeframe_or_die($local_backup, $tframe, $config_ref);
+        return "$dir/$tframe";
+    }
+    else {
+        return $dir;
+    }
 }
 
 sub local_backup_timeframes { # Is tested

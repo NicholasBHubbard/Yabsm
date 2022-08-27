@@ -269,7 +269,8 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
     my $n = 'snap_dest';
     my $f = \&Yabsm::Config::Query::snap_dest;
 
-    is($f->('foo_snap', '5minute', \%TEST_CONFIG), '/.snapshots/yabsm/foo_snap/5minute', "$n - correct dir");
+    is($f->('foo_snap', '5minute', \%TEST_CONFIG), '/.snapshots/yabsm/foo_snap/5minute', "$n - correct dir with timeframe");
+    is($f->('foo_snap', undef, \%TEST_CONFIG), '/.snapshots/yabsm/foo_snap', "$n - correct dir without timeframe");
     throws_ok { $f->('quux', '5minute', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
     throws_ok { $f->('foo_snap', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n - dies if non-existent timeframe";
 }
@@ -303,7 +304,8 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
     my $n = 'ssh_backup_dir';
     my $f = \&Yabsm::Config::Query::ssh_backup_dir;
 
-    is($f->('foo_ssh_backup', 'hourly', \%TEST_CONFIG), '/foo/hourly', "$n - correct dir");
+    is($f->('foo_ssh_backup', 'hourly', \%TEST_CONFIG), '/foo/hourly', "$n - correct dir with timeframe");
+    is($f->('foo_ssh_backup', undef, \%TEST_CONFIG), '/foo', "$n - correct dir without timeframe");
     throws_ok { $f->('quux', 'hourly', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies on non-existent ssh_backup";
     throws_ok { $f->('foo_ssh_backup', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n - dies on non-existent ssh_backup";
 }
@@ -337,7 +339,8 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
     my $n = 'local_backup_dir';
     my $f = \&Yabsm::Config::Query::local_backup_dir;
 
-    is($f->('foo_local_backup', 'hourly', \%TEST_CONFIG), '/foo/hourly', "$n - correct dir");
+    is($f->('foo_local_backup', 'hourly', \%TEST_CONFIG), '/foo/hourly', "$n - correct dir with timeframe");
+    is($f->('foo_local_backup', undef, \%TEST_CONFIG), '/foo', "$n - correct dir without timeframe");
     throws_ok { $f->('quux', 'hourly', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies on non-existent local_backup";
     throws_ok { $f->('foo_local_backup', 'quux', \%TEST_CONFIG) } qr/no such timeframe 'quux'/, "$n - dies on non-existent ssh_backup";
 }

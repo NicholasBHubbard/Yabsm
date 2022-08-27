@@ -102,7 +102,7 @@ sub arg_count_or_die { # Is tested
 
 sub with_error_catch_log { # Is tested
 
-    # Calls $sub with @args within a Feature::Compat::Try try/catch block, to
+    # Call $sub with @args within a Feature::Compat::Try try/catch block, to
     # catch exceptions and log them with Log::Log4Perl instead of killing the
     # program.
 

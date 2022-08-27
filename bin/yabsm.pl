@@ -4,8 +4,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  This is the toplevel script of yabsm. The actual program that is
-#  installed on the end users system is this script but fatpacked.
+#  TODO
 
 our $VERSION = '3.11';
 

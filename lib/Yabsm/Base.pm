@@ -725,11 +725,11 @@ sub literal_time_to_snapstring { # Has test. Is pure.
     # literal time forms
     my $yr_mon_day_hr_min = qr/^(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
     my $yr_mon_day        = qr/^(\d{4})-(\d{1,2})-(\d{1,2})$/;
-    my $mon_day           = qr/^(\d{1,2})-(\d{1,2})$/;
-    my $mon_day_hr        = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
     my $mon_day_hr_min    = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
-    my $day_hr_min        = qr/^(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
+    my $mon_day_hr        = qr/^(\d{1,2})-(\d{1,2})-(\d{1,2})$/;
+    my $mon_day           = qr/^(\d{1,2})-(\d{1,2})$/;
     my $hr_min            = qr/^(\d{1,2}):(\d{1,2})$/;
+    my $day_hr_min        = qr/^(\d{1,2})-(\d{1,2}):(\d{1,2})$/;
 
     if ($lit_time =~ $yr_mon_day_hr_min) {
         return nums_to_snapstring($1, $2, $3, $4, $5);
@@ -1685,14 +1685,14 @@ sub die_missing_arg {
     get_logger->logconfess("yabsm: internal error: call to '$caller' missing a required arg");
 }
 
-sub die_arg_count {
+sub arg_count_or_die {
 
     my $lower    = shift // die_missing_arg();
     my $upper    = shift // die_missing_arg();
     my $num_args = @_    // die_missing_arg();
 
     if ($lower <= $num_args && $num_args <= $upper) {
-        get_logger->logconfess("yabsm: internal error: called die_arg_count() but arg count is in range")
+        get_logger->logconfess("yabsm: internal error: called arg_count_or_die() but arg count is in range")
     }
 
     my $caller = ( caller(1) )[3];

@@ -486,10 +486,10 @@ log4perl.appender.Logfile.layout.ConversionPattern = %d [%M]: %m{chomp}%n
 
 sub install_signal_handlers { # Not tested
 
-    # Handle all signals with a default action of terminate or dump so we
-    # remove /run/yabsmd.pid before terminating.
+    # Install a handler for all signals with a default action of terminate or
+    # dump to ensure we remove /run/yabsmd.pid before exiting.
     #
-    # Handle SIGHUP to restart yabsmd.
+    # Handle SIGHUP by restarting yabsmd.
 
     # Restart the daemon on a SIGHUP.
     $SIG{HUP}    = \&yabsmd_restart;

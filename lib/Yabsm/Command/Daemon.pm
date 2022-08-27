@@ -76,7 +76,7 @@ log4perl.appender.Logfile.layout.ConversionPattern = %d [%M]: %m{chomp}%n
         \$log_config;
     });
 
-    # Daemons restart on a SIGHUP.
+    # Restart the daemon on a SIGHUP.
     $SIG{HUP}    = \&yabsmd_restart;
 
     # Gracefully exit on any signal that has a default action of terminate or

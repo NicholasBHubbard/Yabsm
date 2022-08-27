@@ -341,7 +341,7 @@ sub create_yabsm_user_and_group { # Not tested
 
     unless (yabsm_user_exists()) {
         # useradd will automatically create a group named 'yabsm'.
-        system_or_die('useradd', '-m', yabsm_user_home($config_ref), 'yabsm');
+        system_or_die('useradd', '-m', yabsm_user_home($config_ref), '-k', '/dev/null', 'yabsm');
         system_or_die('passwd', '--lock', 'yabsm');
     }
 

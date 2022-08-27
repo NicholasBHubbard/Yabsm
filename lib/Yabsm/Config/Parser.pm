@@ -60,6 +60,9 @@ sub parse_config_or_die {
 
     my $file = shift // '/etc/yabsm.conf';
 
+    -f $file or die "yabsm: config error: no such file '$file'\n";
+    -r $file or die "yabsm: config error: can not read file '$file'\n";
+
     # Initialize the Parser::MGC parser object
     my $parser = __PACKAGE__->new( toplevel => 'config_parser'
                                  , patterns => { comment => &grammar->{comment}

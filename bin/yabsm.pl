@@ -41,9 +41,10 @@ sub unabbreviate_cmd {
 
     my $cmd = shift;
 
-    if    ($cmd eq 'c')       { return 'config' }
-    elsif ($cmd eq 'f')       { return 'find'   }
-    else                      { return $cmd     }
+    if    ($cmd eq 'd') { return 'daemon' }
+    elsif ($cmd eq 'c') { return 'config' }
+    elsif ($cmd eq 'f') { return 'find'   }
+    else                { return $cmd     }
 }
 
                  ####################################

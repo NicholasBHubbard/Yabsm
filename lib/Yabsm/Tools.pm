@@ -113,7 +113,8 @@ sub with_error_catch_log { # Is tested
         $sub->(@args);
     }
     catch ($e) {
-        Log::Log4Perl->get_logger->error($e);
+        my $logger = Log::Log4perl::get_logger;
+        $logger->error($e);
     }
 }
 

@@ -63,8 +63,8 @@ sub yabsmd_start {
     }
 
     have_prerequisites_or_die();
-    my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group();
     my $config_ref = parse_config_or_die();
+    my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
     install_signal_handlers();
     init_log4perl();
     create_runtime_dirs($config_ref);
@@ -451,7 +451,7 @@ sub init_log4perl { # Not tested
 
     i_am_root_or_die();
 
-    my $log_file = '/var/log/yabsmd.log';
+    my $log_file = '/var/log/yabsmd';
     
     unless (yabsm_user_exists()) {
         die q(yabsm: internal error: cannot find user named 'yabsm')."\n";

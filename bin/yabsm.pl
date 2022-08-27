@@ -27,12 +27,12 @@ use Yabsm::Command::Daemon;
 use Yabsm::Command::Config;
 use Yabsm::Command::Find;
 
-# command dispatch table
-my %run_command =
-  ( 'daemon' => \&Yabsm::Command::Daemon::main
-  , 'config' => \&Yabsm::Command::Config::main
-  , 'find'   => \&Yabsm::Command::Find::main
-  );
+# subcommand dispatch table
+my %run_subcommand = (
+    'daemon' => \&Yabsm::Command::Daemon::main,
+    'config' => \&Yabsm::Command::Config::main,
+    'find'   => \&Yabsm::Command::Find::main
+);
 
 sub unabbreviate_cmd {
 
@@ -59,8 +59,8 @@ if ($cmd eq '--version') { say $VERSION and exit 0 }
 
 my $full_cmd = unabbreviate_cmd($cmd);
 
-exists $run_command{ $full_cmd} || (usage() and exit 1);
+exists $run_subcommand{ $full_cmd} || (usage() and exit 1);
 
-$run_command{ $full_cmd }->(@ARGV);
+$run_subcommand{ $full_cmd }->(@ARGV);
 
 exit 0;

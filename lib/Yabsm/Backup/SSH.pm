@@ -19,9 +19,9 @@ use Net::OpenSSH;
 use File::Basename qw(basename dirname);
 
 use Exporter 'import';
-our @EXPORT_OK = qw( do_ssh_backup
-                     new_ssh_conn
-                     ssh_system_or_die
+our @EXPORT_OK = qw(do_ssh_backup
+                    new_ssh_conn
+                    ssh_system_or_die
                    );
 
                  ####################################

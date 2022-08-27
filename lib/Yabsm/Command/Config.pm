@@ -13,9 +13,6 @@ package Yabsm::Command::Config;
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Config::Parser 'parse_config_or_die';
-use POSIX;
-
-use Net::OpenSSH;
 
                  ####################################
                  #               MAIN               #

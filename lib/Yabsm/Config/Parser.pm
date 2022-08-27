@@ -72,7 +72,7 @@ sub parse_config_or_die {
 
     my $config_ref = do {
         try { $parser->from_file($file) }
-        catch ($e) { die "yabsm: config error: $e" }
+        catch ($e) { $e =~ s/\s+$// ; die "yabsm: config error: $e\n" }
     };
 
     my ($config_valid, @error_msgs) = check_config($config_ref);

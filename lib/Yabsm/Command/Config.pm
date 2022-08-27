@@ -18,12 +18,11 @@ use Yabsm::Config::Parser 'parse_config_or_die';
                  #               MAIN               #
                  ####################################
 
-my $usage = 'usage: yabsm config <check|subvols|snaps|ssh_backups|local_backups|backups'."\n";
+my $usage = 'usage: yabsm config <check ?file|subvols|snaps|ssh_backups|local_backups|backups'."\n";
 
 sub main {
 
     my $cmd = shift or die $usage;
-    @_ and die $usage;
 
     if    ($cmd eq 'subvols'       ) { print_subvols(@_)       }
     elsif ($cmd eq 'snaps'         ) { print_snaps(@_)         }

@@ -62,5 +62,3 @@ my $full_cmd = unabbreviate_cmd($cmd);
 exists $run_subcommand{ $full_cmd} || (usage() and exit 1);
 
 $run_subcommand{ $full_cmd }->(@ARGV);
-
-exit 0;

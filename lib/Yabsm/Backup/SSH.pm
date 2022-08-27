@@ -10,7 +10,7 @@ use v5.16.3;
 
 package Yabsm::Backup::SSH;
 
-use Yabsm::Snapshot qw(delete_snapshot sort_snapshots);
+use Yabsm::Snapshot qw(delete_snapshot sort_snapshots is_snapshot_name);
 use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot take_tmp_snapshot);
 use Yabsm::Tools 'arg_count_or_die';
 use Yabsm::Config::Query qw( :ALL );

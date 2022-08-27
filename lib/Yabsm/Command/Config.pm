@@ -21,7 +21,7 @@ use Net::OpenSSH;
                  #               MAIN               #
                  ####################################
 
-my $usage = 'usage: yabsm config <subvols|snaps|ssh_backups|local_backups|backups|check|check_ssh_backup SSH_BACKUP>'."\n";
+my $usage = 'usage: yabsm config <subvols|snaps|ssh_backups|local_backups|backups|check'."\n";
 
 sub main {
 

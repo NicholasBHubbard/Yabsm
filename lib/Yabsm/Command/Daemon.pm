@@ -467,7 +467,7 @@ sub init_log4perl { # Not tested
     my $yabsm_uid = getpwnam('yabsm');
     my $yabsm_gid = getgrnam('yabsm');
     chown $yabsm_uid, $yabsm_gid, $log_file;
-    chmod 0422, $log_file;
+    chmod 0644, $log_file;
 
     Log::Log4perl::init(do {
         my $log_config = qq(

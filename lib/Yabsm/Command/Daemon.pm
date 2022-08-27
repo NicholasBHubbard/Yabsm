@@ -69,7 +69,6 @@ sub yabsmd_start {
     init_log4perl();
     create_runtime_dirs($config_ref);
 
-    # Make sure pid file is owned by yabsm.
     open my $pid_fh, '>', '/run/yabsmd.pid'
       or die q(yabsm: internal error: cannot not open file '/run/yabsmd.pid' for writing)."\n";
     close $pid_fh;

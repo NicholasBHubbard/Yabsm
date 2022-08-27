@@ -37,7 +37,6 @@ our @EXPORT_OK = qw(have_prerequisites
                     i_am_root
                     i_am_root_or_die
                    );
-
 our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
 
                  ####################################
@@ -114,7 +113,7 @@ sub with_error_catch_log { # Is tested
         $sub->(@args);
     }
     catch ($e) {
-        Log::Log4Perl::get_logger->warn($e);
+        Log::Log4Perl->get_logger->warn($e);
     }
 }
 
@@ -284,33 +283,6 @@ sub system_or_die { # Is tested
     }
 
     return 1;
-}
-
-sub yabsm_user_exists { # Not tested
-
-    # Return 1 if there exists a locked user on the system named 'yabsm'.
-
-    arg_count_or_die(0, 0, @_);
-
-    unless (0 == system('getent passwd yabsm >/dev/null 2>&1')) {
-        return 0;
-    }
-
-    unless ('L' eq (split ' ', `passwd -S yabsm`)[1]) {
-        return 0;
-    }
-
-    return 1;
-}
-
-sub yabsm_group_exists { # Not tested
-
-    # Return 1 if there exists on the system a user and group named 'yabsm' and
-    # return 0 otherwise.
-
-    arg_count_or_die(0, 0, @_);
-
-    return 0+(0 == system('getent group yabsm >/dev/null 2>&1'));
 }
 
 sub make_path_or_die { # Not tested

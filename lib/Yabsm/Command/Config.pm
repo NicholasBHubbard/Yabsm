@@ -79,7 +79,7 @@ sub print_backups {
 sub check_config {
     1 >= @_ or die $usage;
     my $file = shift // '/etc/yabsm.conf';
-    my $config_ref = parse_config_or_die($file);
+    parse_config_or_die($file);
     say 'all good';
 }
 

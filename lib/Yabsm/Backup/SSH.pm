@@ -111,7 +111,7 @@ sub new_ssh_conn { # Is tested
     ! $ssh->error and return $ssh;
     ! $or_die     and return undef;
 
-    die "yabsm: ssh error: cannot establish SSH connection to '$ssh_dest': ".$ssh->error."\n";
+    die "yabsm: ssh error: $ssh_dest: cannot establish SSH connection: ".$ssh->error."\n";
 }
 
 sub ssh_system_or_die { # Is tested

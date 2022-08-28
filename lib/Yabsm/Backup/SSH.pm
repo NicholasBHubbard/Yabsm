@@ -18,9 +18,12 @@ use Yabsm::Config::Query qw( :ALL );
 use Net::OpenSSH;
 use File::Basename qw(basename);
 
+use Carp qw(confess);
+
 use Exporter 'import';
 our @EXPORT_OK = qw(do_ssh_backup
                     new_ssh_conn
+                    check_ssh_backup_config_or_die
                     ssh_system_or_die
                    );
 
@@ -46,12 +49,13 @@ sub do_ssh_backup { # Is tested
 
     ssh_backup_wants_timeframe_or_die($ssh_backup, $tframe, $config_ref);
 
+    check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
+
     my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
     my $backup_dir_base    = ssh_backup_dir($ssh_backup, undef, $config_ref);
     my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $config_ref);
 
-    ssh_system_or_die( $ssh, "[ -d '$backup_dir_base' ] && [ -r '$backup_dir_base' ] && [ -w '$backup_dir_base' ]");
     ssh_system_or_die( $ssh, "mkdir '$backup_dir' >/dev/null 2>&1");
     ssh_system_or_die( $ssh
                      , {stdin_file => ['-|', "sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot'"]}
@@ -134,12 +138,12 @@ sub ssh_system_or_die { # Is tested
     return wantarray ? @out : $out;
 }
 
-sub check_ssh_backup_or_die { # Not tested
+sub check_ssh_backup_config_or_die { # Not tested
 
     # Ensure that the $ssh_backup's ssh destination server is configured
     # properly and die with useful errors if not.
 
-    arg_count_or_die(2, 2, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $ssh        = shift;
     my $ssh_backup = shift;
@@ -147,20 +151,55 @@ sub check_ssh_backup_or_die { # Not tested
 
     $ssh //= new_ssh_conn($ssh_backup, 1, $config_ref);
 
-    my $backup_dir = ssh_backup_dir($ssh_backup, undef, $config_ref);
+    my $backup_dir       = ssh_backup_dir($ssh_backup, undef, $config_ref);
+    my $ssh_dest         = ssh_backup_ssh_dest($ssh_backup, $config_ref);
+    my $ssh_error_prefix = "yabsm: ssh error: $ssh_dest: ";
 
-    my $shell_program = <<"EOS"
+    my $shell_program = qq(
+ERRORS=''
+
+add_error() {
+    if [ -z "\$ERRORS" ]; then
+        ERRORS="$ssh_error_prefix\$1"
+    else
+        ERRORS="\${ERRORS}\n$ssh_error_prefix\$1"
+    fi
+}
+
+if ! which btrfs >/dev/null 2>&1; then
+   add_error 'btrfs-progs not in path'
+fi
+
+if ! sudo -n btrfs --help >/dev/null 2>&1; then
+    add_error 'do not have root sudo access to btrfs-progs'
+fi
+
 if ! [ -d '$backup_dir' ]; then
-    echo 'yabsm: error: no such directory \'$backup_dir\'' 1>&2
-    return 1;
+    add_error 'no such directory \'$backup_dir\''
+else
+    if ! [ -r '$backup_dir' && -w '$backup_dir' ]; then
+        add_error 'do not have r+w permission on \'$backup_dir\''
+    fi
+
+    if ! btrfs property list '$backup_dir' >/dev/null 2>&1; then
+        add_error '\'$backup_dir\' is not a directory residing on a btrfs filesystem'
+    fi
 fi
 
-if ! [ -r '$backup_dir' && -w '$backup_dir' ]; then
-    echo 'yabsm: error: no r+w permission on \'$backup_dir\'' 1>&2
-    return 1;
+if [ -n '\$ERRORS' ]; then
+    1>&2 echo "\$ERRORS"
+    exit 1
+else
+    exit 0
 fi
+);
+    my (undef, $err) = $ssh->capture2($shell_program);
 
-EOS
+    if ($err) {
+        die $err;
+    }
+
+    return 1;
 }
 
 1;

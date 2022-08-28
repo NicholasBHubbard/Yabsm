@@ -136,7 +136,8 @@ sub ssh_system_or_die { # Is tested
 
 sub check_ssh_backup_or_die { # Not tested
 
-    # Ensure that the ssh_backup server is configured properly.
+    # Ensure that the $ssh_backup's ssh destination server is configured
+    # properly and die with useful errors if not.
 
     arg_count_or_die(2, 2, @_);
 

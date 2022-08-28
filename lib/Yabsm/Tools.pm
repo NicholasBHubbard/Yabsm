@@ -169,22 +169,7 @@ sub is_btrfs_subvolume { # Not tested
     # Return 1 if $dir is a btrfs subvolume on this OS and return 0
     # otherwise.
     #
-    # Please read the follow StackOverflow post from a btrfs
-    # maintainer (https://stackoverflow.com/a/32865333):
-    #
-    # A subvolume is identified by inode number 256, so you can check
-    # it simply by
-    #
-    # if [ `stat --format=%i /path` -eq 256 ]; then ...; fi
-    #
-    # There's also a so called empty-subvolume, ie. if a nested
-    # subvolume is snapshotted, this entity will exist in place of the
-    # original subvolume. Its inode number is 2.
-    #
-    # For a generally reliable check whether any directory is a
-    # subvolume, the filesystem type should be verified as well
-    #
-    # stat -f --format=%T /path
+    # A btrfs subvolume is identified by inode number 256
 
     arg_count_or_die(1, 1, @_);
 

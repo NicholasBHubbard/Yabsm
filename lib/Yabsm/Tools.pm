@@ -150,7 +150,7 @@ sub is_btrfs_dir { # Not tested
 
     return 0 unless -d $dir;
 
-    return 0+('btrfs' eq `stat -f --printf=%T '$dir' 2>/dev/null`);
+    return 0+(0 == system("btrfs property list '$dir' >/dev/null 2>&1"));
 }
 
 sub is_btrfs_dir_or_die { # Not tested
@@ -192,7 +192,9 @@ sub is_btrfs_subvolume { # Not tested
 
     return 0 unless is_btrfs_dir($dir);
 
-    return 0+('256' eq `stat --printf=%i '$dir' 2>/dev/null`);
+    my $inode_num = (split /\s+/, `ls -di '$dir' 2>/dev/null`)[0];
+
+    return 0+(256 == $inode_num);
 }
 
 sub is_btrfs_subvolume_or_die { # Not tested

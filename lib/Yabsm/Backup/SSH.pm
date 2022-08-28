@@ -127,9 +127,8 @@ sub ssh_system_or_die { # Is tested
     wantarray ? my @out = $ssh->capture(\%opts, $cmd) : my $out = $ssh->capture(\%opts, $cmd);
 
     if ($ssh->error) {
-        my $user = $ssh->get_user;
         my $host = $ssh->get_host;
-        die "yabsm: ssh error: remote command '$cmd' failed at '$user\@$host': ".$ssh->error."\n";
+        confess "yabsm: ssh error: $host: remote command '$cmd' failed: ".$ssh->error;
     }
 
     return wantarray ? @out : $out;

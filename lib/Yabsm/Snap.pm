@@ -45,7 +45,7 @@ sub do_snap { # Is tested
     # There is 1 more snap than should be kept because we just performed a snap.
     if ($num_snaps == $to_keep + 1) {
         my $oldest = pop @snapshots;
-        snapshot_delete($oldest);
+        delete_snapshot($oldest);
     }
     # We havent reached the quota yet so we don't delete anything
     elsif ($num_snaps <= $to_keep) {

@@ -460,7 +460,7 @@ sub init_log4perl { # Not tested
         die q(yabsm: internal error: cannot find group named 'yabsm')."\n";
     }
 
-    open my $log_fh, '>', $log_file
+    open my $log_fh, '>>', $log_file
       or die "yabsm: internal error: cannot open '$log_file' for writing\n";
     close $log_fh;
 
@@ -471,7 +471,7 @@ sub init_log4perl { # Not tested
 
     Log::Log4perl::init(do {
         my $log_config = qq(
-log4perl.category.Yabsm.Base       = ALL, Logfile
+log4perl.category.Yabsm            = ALL, Logfile
 log4perl.appender.Logfile          = Log::Log4perl::Appender::File
 log4perl.appender.Logfile.filename = $log_file
 log4perl.appender.Logfile.mode     = append

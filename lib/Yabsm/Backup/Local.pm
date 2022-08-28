@@ -15,7 +15,7 @@ use Yabsm::Snapshot qw( delete_snapshot sort_snapshots );
 use Yabsm::Tools qw( arg_count_or_die system_or_die);
 use Yabsm::Config::Query qw( :ALL );
 
-use File::Basename qw(basename dirname);
+use File::Basename qw(basename);
 
 use Exporter 'import';
 our @EXPORT_OK = qw( do_local_backup );
@@ -37,7 +37,7 @@ sub do_local_backup {
     local_backup_wants_timeframe_or_die($local_backup, $tframe, $config_ref);
 
     my $backup_dir         = local_backup_dir($local_backup, $tframe, $config_ref);
-    my $backup_dir_base    = dirname($backup_dir);
+    my $backup_dir_base    = local_backup_dir($local_backup, undef, $config_ref);
     my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($local_backup, 'local', $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($local_backup, 'local', $config_ref);
 

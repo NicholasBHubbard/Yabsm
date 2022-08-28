@@ -16,7 +16,7 @@ use Yabsm::Tools 'arg_count_or_die';
 use Yabsm::Config::Query qw( :ALL );
 
 use Net::OpenSSH;
-use File::Basename qw(basename dirname);
+use File::Basename qw(basename);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(do_ssh_backup
@@ -47,7 +47,7 @@ sub do_ssh_backup { # Is tested
     ssh_backup_wants_timeframe_or_die($ssh_backup, $tframe, $config_ref);
 
     my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
-    my $backup_dir_base    = dirname($backup_dir);
+    my $backup_dir_base    = ssh_backup_dir($ssh_backup, undef, $config_ref);
     my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $config_ref);
 
@@ -133,6 +133,34 @@ sub ssh_system_or_die { # Is tested
     }
 
     return wantarray ? @out : $out;
+}
+
+sub check_ssh_backup_or_die { # Not tested
+
+    # Ensure that the ssh_backup server is configured properly.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $ssh        = shift;
+    my $ssh_backup = shift;
+    my $config_ref = shift;
+
+    $ssh //= new_ssh_conn($ssh_backup, 1, $config_ref);
+
+    my $backup_dir = ssh_backup_dir($ssh_backup, undef, $config_ref);
+
+    my $shell_program = <<"EOS"
+if ! [ -d '$backup_dir' ]; then
+    echo 'yabsm: error: no such directory \'$backup_dir\'' 1>&2
+    return 1;
+fi
+
+if ! [ -r '$backup_dir' && -w '$backup_dir' ]; then
+    echo 'yabsm: error: no r+w permission on \'$backup_dir\'' 1>&2
+    return 1;
+fi
+
+EOS
 }
 
 1;

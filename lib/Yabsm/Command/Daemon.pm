@@ -547,7 +547,7 @@ sub create_yabsm_user_ssh_key { # Not tested
 
         unless ($< == $yabsm_uid && $( == $yabsm_gid) {
             my $username = getpwuid $<;
-            die "yabsm: error: cannot create yabsm users SSH key when running as user '$username'\n";
+            die "yabsm: error: cannot create SSH for user 'yabsm' key when running as user '$username'\n";
         }
 
         my $yabsm_user_home = yabsm_user_home($config_ref);

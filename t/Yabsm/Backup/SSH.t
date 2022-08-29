@@ -92,7 +92,7 @@ my $f;
 
 $n = 'new_ssh_conn';
 $f = \&Yabsm::Backup::SSH::new_ssh_conn;
-throws_ok { $f->('quux', 1, \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
+throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
 
 $n = 'ssh_system_or_die';
 $f = \&Yabsm::Backup::SSH::ssh_system_or_die;

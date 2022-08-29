@@ -34,9 +34,6 @@ our @EXPORT_OK = qw(do_ssh_backup
 sub do_ssh_backup { # Is tested
 
     # Perform a $tframe ssh_backup for $ssh_backup.
-    #
-    # In order to be able to perform the backup the remote user must have sudo
-    # access to btrfs-progs, and read+write permission on the remote backup dir.
 
     arg_count_or_die(4, 4, @_);
 
@@ -45,7 +42,7 @@ sub do_ssh_backup { # Is tested
     my $tframe     = shift;
     my $config_ref = shift;
 
-    $ssh //= new_ssh_conn($ssh_backup, 0, $config_ref) // return undef;
+    $ssh //= new_ssh_conn($ssh_backup, $config_ref);
 
     check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
 
@@ -91,14 +88,12 @@ sub do_ssh_backup { # Is tested
 
 sub new_ssh_conn { # Is tested
 
-    # Return a Net::OpenSSH connection object to $ssh_backup's ssh destination.
-    # If a connection cannot be established logdie if $or_die and otherwise
-    # return undef.
+    # Return a Net::OpenSSH connection object to $ssh_backup's ssh destination or
+    # die if a connection cannot be established.
 
-    arg_count_or_die(3, 3, @_);
+    arg_count_or_die(2, 2, @_);
 
     my $ssh_backup = shift;
-    my $or_die     = shift;
     my $config_ref = shift;
 
     my $ssh_dest = ssh_backup_ssh_dest($ssh_backup, $config_ref);
@@ -111,10 +106,11 @@ sub new_ssh_conn { # Is tested
         kill_ssh_on_timeout => 1
     );
 
-    ! $ssh->error and return $ssh;
-    ! $or_die     and return undef;
+    if ($ssh->error) {
+        die "yabsm: ssh error: $ssh_dest: cannot establish SSH connection: ".$ssh->error."\n";
+    }
 
-    die "yabsm: ssh error: $ssh_dest: cannot establish SSH connection: ".$ssh->error."\n";
+    return $ssh;
 }
 
 sub ssh_system_or_die { # Is tested
@@ -149,7 +145,7 @@ sub check_ssh_backup_config_or_die { # Is tested
     my $ssh_backup = shift;
     my $config_ref = shift;
 
-    $ssh //= new_ssh_conn($ssh_backup, 1, $config_ref);
+    $ssh //= new_ssh_conn($ssh_backup, $config_ref);
 
     my $backup_dir  = ssh_backup_dir($ssh_backup, undef, $config_ref);
     my $ssh_dest    = ssh_backup_ssh_dest($ssh_backup, $config_ref);

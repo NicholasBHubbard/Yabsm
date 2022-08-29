@@ -53,7 +53,7 @@ is_btrfs_subvolume($BTRFS_SUBVOLUME) or plan skip_all => q('$BTRFS_SUBVOLUME' is
 
 i_am_root() or plan skip_all => 'Must be root user';
 
-my $SSH = Net::OpenSSH->new( 'yabsm-test@localhost' );
+my $SSH = Net::OpenSSH->new( 'yabsm-test@localhost', remote_shell => 'sh' );
 
 $SSH->error and plan skip_all => q(Could not connect to 'yabsm-test@localhost': ) . $SSH->error;
 

@@ -155,7 +155,7 @@ sub check_ssh_backup_config_or_die { # Is tested
     my $ssh_dest    = ssh_backup_ssh_dest($ssh_backup, $config_ref);
     my $remote_user = $ssh->get_user;
 
-    my $shell_program = qq(
+    my (undef, $stderr) = $ssh->capture2(qq(
 ERRORS=''
 
 add_error() {
@@ -166,18 +166,21 @@ add_error() {
     fi
 }
 
+HAVE_BTRFS=true
+
 if ! which btrfs >/dev/null 2>&1; then
+   HAVE_BTRFS=false
    add_error "btrfs-progs not in '${remote_user}'s path"
 fi
 
-if ! sudo -n btrfs --help >/dev/null 2>&1; then
+if [ "\$HAVE_BTRFS" = true ] && ! sudo -n btrfs --help >/dev/null 2>&1; then
     add_error "user '$remote_user' does not have root sudo access to btrfs-progs"
 fi
 
 if ! [ -d '$backup_dir' ] || ! [ -r '$backup_dir' ] || ! [ -w '$backup_dir' ]; then
     add_error "no directory named '$backup_dir' that is readable+writable to user '$remote_user'"
 else
-    if ! btrfs property list '$backup_dir' >/dev/null 2>&1; then
+    if [ "\$HAVE_BTRFS" = true ] && ! btrfs property list '$backup_dir' >/dev/null 2>&1; then
         add_error "'$backup_dir' is not a directory residing on a btrfs filesystem"
     fi
 fi
@@ -188,8 +191,7 @@ if [ -n '\$ERRORS' ]; then
 else
     exit 0
 fi
-);
-    my (undef, $stderr) = $ssh->capture2($shell_program);
+));
 
     chomp $stderr;
 

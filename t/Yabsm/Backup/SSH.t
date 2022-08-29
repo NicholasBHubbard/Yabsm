@@ -102,7 +102,6 @@ throws_ok { $f->($SSH, 'false') } qr/remote command 'false' failed/, "$n - dies 
 
 $n = 'check_ssh_backup_config_or_die';
 $f = \&Yabsm::Backup::SSH::check_ssh_backup_config_or_die;
-# throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/could not find directory '$BACKUP_DIR_BASE'/, "$n - dies unless backup dir exists";
 throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm-test'/, "$n - dies unless backup dir exists";
 make_path_or_die($BACKUP_DIR_BASE);
 throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm-test'/, "$n - dies unless backup dir is readable and writable by remote user";

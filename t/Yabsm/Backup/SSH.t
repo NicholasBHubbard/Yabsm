@@ -78,7 +78,7 @@ my %TEST_CONFIG = ( yabsm_dir   => "$BTRFS_DIR"
                   );
 
 my $BACKUP_DIR      = Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', '5minute', \%TEST_CONFIG);
-my $BACKUP_DIR_BASE = dirname($BACKUP_DIR);
+my $BACKUP_DIR_BASE = Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', undef, \%TEST_CONFIG);
 my $BACKUP          = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_name();
 my $BOOTSTRAP_DIR   = Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
 my $TMP_DIR         = Yabsm::Backup::Generic::tmp_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
@@ -98,19 +98,25 @@ $n = 'ssh_system_or_die';
 $f = \&Yabsm::Backup::SSH::ssh_system_or_die;
 lives_and { is $f->($SSH, 'echo foo'), "foo\n" } "$n - returns correct output in scalar context";
 lives_and { is_deeply [$f->($SSH, 'echo foo; echo bar')], ["foo\n","bar\n"] } "$n - returns correct output in list context";
-throws_ok { $f->($SSH, 'false') } qr/remote command 'false' failed at 'yabsm-test\@localhost'/, "$n - dies if command fails";
+throws_ok { $f->($SSH, 'false') } qr/remote command 'false' failed/, "$n - dies if command fails";
+
+$n = 'check_ssh_backup_config_or_die';
+$f = \&Yabsm::Backup::SSH::check_ssh_backup_config_or_die;
+# throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/could not find directory '$BACKUP_DIR_BASE'/, "$n - dies unless backup dir exists";
+throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm-test'/, "$n - dies unless backup dir exists";
+make_path_or_die($BACKUP_DIR_BASE);
+throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm-test'/, "$n - dies unless backup dir is readable and writable by remote user";
+system_or_die(qq(chown -R yabsm-test '$BTRFS_DIR'));
+lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), 1 } "$n - lives if properly configured";
 
 $n = 'do_ssh_backup';
 $f = \&Yabsm::Backup::SSH::do_ssh_backup;
-throws_ok {  $f->($SSH,'foo_ssh_backup','5minute',\%TEST_CONFIG) } qr/'$BOOTSTRAP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies unless bootstrap dir exists";
+throws_ok { $f->($SSH, 'foo_ssh_backup', 'monthly', \%TEST_CONFIG) } qr/ssh_backup 'foo_ssh_backup' is not taking monthly backups/, "$n - dies if not taking tframe backups";
+throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/'$BOOTSTRAP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies if bootstrap dir doesn't exist";
 make_path_or_die($BOOTSTRAP_DIR);
-throws_ok {  $f->($SSH,'foo_ssh_backup','5minute',\%TEST_CONFIG) } qr/'$TMP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies unless tmp snapshot dir exists";
+throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/'$TMP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies if tmp dir doesn't exist";
 make_path_or_die($TMP_DIR);
-throws_ok { $f->($SSH, 'foo_ssh_backup','5minute', \%TEST_CONFIG) } qr/remote command '\[ -d '$BACKUP_DIR_BASE' \] && \[ -r '$BACKUP_DIR_BASE' \] && \[ -w '$BACKUP_DIR_BASE' \]/, "$n - fails unless r+w permission on backup dir";
-cleanup_snapshots();
-make_path_or_die($BACKUP_DIR_BASE);
-system('chown', '-R', 'yabsm-test', $BTRFS_DIR);
-lives_and { is $f->($SSH, 'foo_ssh_backup','5minute', \%TEST_CONFIG), $BACKUP } "$n - successfully performs backup";
+lives_and { is $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG), $BACKUP } "$n - performs succesfull backup";
 
 done_testing();
 

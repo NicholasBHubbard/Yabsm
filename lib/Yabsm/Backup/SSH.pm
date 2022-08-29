@@ -47,8 +47,6 @@ sub do_ssh_backup { # Is tested
 
     $ssh //= new_ssh_conn($ssh_backup, 0, $config_ref) // return undef;
 
-    ssh_backup_wants_timeframe_or_die($ssh_backup, $tframe, $config_ref);
-
     check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
 
     my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
@@ -131,14 +129,15 @@ sub ssh_system_or_die { # Is tested
     wantarray ? my @out = $ssh->capture(\%opts, $cmd) : my $out = $ssh->capture(\%opts, $cmd);
 
     if ($ssh->error) {
+        my $user = $ssh->get_user;
         my $host = $ssh->get_host;
-        confess "yabsm: ssh error: $host: remote command '$cmd' failed: ".$ssh->error;
+        confess "yabsm: ssh error: $user\@$host: remote command '$cmd' failed: ".$ssh->error;
     }
 
     return wantarray ? @out : $out;
 }
 
-sub check_ssh_backup_config_or_die { # Not tested
+sub check_ssh_backup_config_or_die { # Is tested
 
     # Ensure that the $ssh_backup's ssh destination server is configured
     # properly and die with useful errors if not.
@@ -151,38 +150,34 @@ sub check_ssh_backup_config_or_die { # Not tested
 
     $ssh //= new_ssh_conn($ssh_backup, 1, $config_ref);
 
-    my $backup_dir       = ssh_backup_dir($ssh_backup, undef, $config_ref);
-    my $ssh_dest         = ssh_backup_ssh_dest($ssh_backup, $config_ref);
-    my $ssh_error_prefix = "yabsm: ssh error: $ssh_dest: ";
+    my $backup_dir  = ssh_backup_dir($ssh_backup, undef, $config_ref);
+    my $ssh_dest    = ssh_backup_ssh_dest($ssh_backup, $config_ref);
+    my $remote_user = $ssh->get_user;
 
     my $shell_program = qq(
 ERRORS=''
 
 add_error() {
     if [ -z "\$ERRORS" ]; then
-        ERRORS="$ssh_error_prefix\$1"
+        ERRORS="yabsm: ssh error: $ssh_dest: \$1"
     else
-        ERRORS="\${ERRORS}\n$ssh_error_prefix\$1"
+        ERRORS="\${ERRORS}\nyabsm: ssh error: $ssh_dest: \$1"
     fi
 }
 
 if ! which btrfs >/dev/null 2>&1; then
-   add_error 'btrfs-progs not in path'
+   add_error "btrfs-progs not in '${remote_user}'s path"
 fi
 
 if ! sudo -n btrfs --help >/dev/null 2>&1; then
-    add_error 'do not have root sudo access to btrfs-progs'
+    add_error "user '$remote_user' does not have root sudo access to btrfs-progs"
 fi
 
-if ! [ -d '$backup_dir' ]; then
-    add_error 'no such directory \'$backup_dir\''
+if ! [ -d '$backup_dir' ] || ! [ -r '$backup_dir' ] || ! [ -w '$backup_dir' ]; then
+    add_error "no directory named '$backup_dir' that is readable+writable to user '$remote_user'"
 else
-    if ! [ -r '$backup_dir' && -w '$backup_dir' ]; then
-        add_error 'do not have r+w permission on \'$backup_dir\''
-    fi
-
     if ! btrfs property list '$backup_dir' >/dev/null 2>&1; then
-        add_error '\'$backup_dir\' is not a directory residing on a btrfs filesystem'
+        add_error "'$backup_dir' is not a directory residing on a btrfs filesystem"
     fi
 fi
 
@@ -193,10 +188,12 @@ else
     exit 0
 fi
 );
-    my (undef, $err) = $ssh->capture2($shell_program);
+    my (undef, $stderr) = $ssh->capture2($shell_program);
 
-    if ($err) {
-        die $err;
+    chomp $stderr;
+
+    if ($stderr) {
+        die "$stderr\n";
     }
 
     return 1;

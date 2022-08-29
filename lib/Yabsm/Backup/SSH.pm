@@ -186,14 +186,12 @@ else
 fi
 
 if [ -n '\$ERRORS' ]; then
-    1>&2 echo "\$ERRORS"
+    1>&2 printf %s "\$ERRORS"
     exit 1
 else
     exit 0
 fi
 ));
-
-    chomp $stderr;
 
     if ($stderr) {
         die "$stderr\n";

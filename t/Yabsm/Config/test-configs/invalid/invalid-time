@@ -7,7 +7,7 @@ subvol foo {
 }
 
 snap foo_snap {
-     daily_time=1:59
+     daily_times=1:59
      subvol=foo
      timeframes=daily
      daily_keep=1

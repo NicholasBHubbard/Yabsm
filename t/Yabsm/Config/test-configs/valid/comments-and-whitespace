@@ -13,7 +13,7 @@ snap foo_snap {
   subvol=foo 
   #comment
 timeframes=5minute
-    daily_time   =    23:59 #comment
+    daily_times   =    23:59,12:30 #comment
                   weekly_day  =wednesday
     weekly_time= 00:00 #comment
     #comment
@@ -34,7 +34,7 @@ timeframes=5minute
 ssh_dest=bar@192.168.1.12#comment
   dir=/backups#comment
 timeframes=5minute,hourly,daily,weekly,monthly#comment
-       daily_time=23:59#comment
+       daily_times=23:59#comment
   weekly_day=wednesday#comment
     weekly_time=00:00#comment
  monthly_day  =31#comment
@@ -51,7 +51,7 @@ local_backup foo_local_backup {#comment
     subvol=foo#comment
     dir=/backups#comment
     timeframes  =5minute,hourly,daily,weekly,monthly#comment
-    daily_time  =23:59#comment
+    daily_times  =23:59#comment
        weekly_day=wednesday#comment
   weekly_time  =00:00#comment
       monthly_day=31#comment

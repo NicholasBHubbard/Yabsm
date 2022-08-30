@@ -111,17 +111,20 @@ sub grammar {
         comment       => qr/[\s\t]*#.*/,
         whitespace    => qr/[\s\t\n]+/,
         timeframe_sub_grammar => {
-            #keep
+
             '5minute_keep' => qr/[1-9][0-9]*/,
             hourly_keep    => qr/[1-9][0-9]*/,
             daily_keep     => qr/[1-9][0-9]*/,
             weekly_keep    => qr/[1-9][0-9]*/,
             monthly_keep   => qr/[1-9][0-9]*/,
-            #time
-            daily_time     => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/,
+
+            # comma seperated hh:mm's
+            daily_times    => qr/(((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]),)+((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])|(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/,
+
+            # hh:mm
             weekly_time    => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/,
             monthly_time   => qr/(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/,
-            #day
+
             weekly_day     => qr/[1-7]|monday|tuesday|wednesday|thursday|friday|saturday|sunday/,
             monthly_day    => qr/3[01]|[12][0-9]|[1-9]/ # 1-31
         }
@@ -157,9 +160,9 @@ sub grammar_msg {
         weekly_keep    => 'positive integer',
         monthly_keep   => 'positive integer',
         #time
-        daily_time     => 'time in "hh:mm" form',
-        weekly_time    => 'time in "hh:mm" form',
-        monthly_time   => 'time in "hh:mm" form',
+        daily_times    => q(comma seperated list of times in 'hh:mm' form'),
+        weekly_time    => q(time in 'hh:mm' form),
+        monthly_time   => q(time in 'hh:mm' form),
         #day
         weekly_day     => 'week day',
         monthly_day    => 'month day'
@@ -593,7 +596,7 @@ sub required_timeframe_settings {
     foreach my $tframe (@timeframes) {
         if    ($tframe eq '5minute') { push @required, qw(5minute_keep) }
         elsif ($tframe eq 'hourly')  { push @required, qw(hourly_keep) }
-        elsif ($tframe eq 'daily')   { push @required, qw(daily_keep daily_time) }
+        elsif ($tframe eq 'daily')   { push @required, qw(daily_keep daily_times) }
         elsif ($tframe eq 'weekly')  { push @required, qw(weekly_keep weekly_time weekly_day) }
         elsif ($tframe eq 'monthly') { push @required, qw(monthly_keep monthly_time monthly_day) }
         else {

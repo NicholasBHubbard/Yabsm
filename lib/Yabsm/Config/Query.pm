@@ -73,7 +73,7 @@ our @EXPORT_OK = qw(is_timeframe
                     snap_5minute_keep
                     snap_hourly_keep
                     snap_daily_keep
-                    snap_daily_time
+                    snap_daily_times
                     snap_weekly_keep
                     snap_weekly_time
                     snap_weekly_day
@@ -84,7 +84,7 @@ our @EXPORT_OK = qw(is_timeframe
                     ssh_backup_5minute_keep
                     ssh_backup_hourly_keep
                     ssh_backup_daily_keep
-                    ssh_backup_daily_time
+                    ssh_backup_daily_times
                     ssh_backup_weekly_keep
                     ssh_backup_weekly_time
                     ssh_backup_weekly_day
@@ -95,7 +95,7 @@ our @EXPORT_OK = qw(is_timeframe
                     local_backup_5minute_keep
                     local_backup_hourly_keep
                     local_backup_daily_keep
-                    local_backup_daily_time
+                    local_backup_daily_times
                     local_backup_weekly_keep
                     local_backup_weekly_time
                     local_backup_weekly_day
@@ -906,10 +906,9 @@ sub snap_daily_keep { # Is tested
     return $config_ref->{snaps}{$snap}{daily_keep};
 }
 
-sub snap_daily_time { # Is tested
+sub snap_daily_times { # Is tested
 
-    # Return snap $snap's daily_time value. Logdie if $snap is not
-    # a defined snap or is not taking daily snapshots.
+    # Return a list of snap $snap's daily_times values.
 
     arg_count_or_die(2, 2, @_);
 
@@ -919,7 +918,10 @@ sub snap_daily_time { # Is tested
     snap_exists_or_die($snap, $config_ref);
     snap_wants_timeframe_or_die($snap, 'daily', $config_ref);
 
-    return $config_ref->{snaps}{$snap}{daily_time};
+    my @times = split ',', $config_ref->{snaps}{$snap}{daily_times};
+
+    # remove duplicates
+    return sort keys %{{ map { $_ => 1 } @times }};
 }
 
 sub snap_weekly_keep { # Is tested
@@ -1089,11 +1091,9 @@ sub ssh_backup_daily_keep { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{daily_keep};
 }
 
-sub ssh_backup_daily_time { # Is tested
+sub ssh_backup_daily_times { # Is tested
 
-    # Return ssh_backup $ssh_backup's daily_time value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking daily
-    # backups.
+    # Return a list of ssh_backup $ssh_backup's daily_times values.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1103,7 +1103,10 @@ sub ssh_backup_daily_time { # Is tested
     ssh_backup_exists_or_die($ssh_backup, $config_ref);
     ssh_backup_wants_timeframe_or_die($ssh_backup, 'daily', $config_ref);
 
-    return $config_ref->{ssh_backups}{$ssh_backup}{daily_time};
+    my @times = split ',', $config_ref->{ssh_backups}{$ssh_backup}{daily_times};
+
+    # remove duplicates
+    return sort keys %{{ map { $_ => 1 } @times }};
 }
 
 sub ssh_backup_weekly_keep { # Is tested
@@ -1279,21 +1282,22 @@ sub local_backup_daily_keep { # Is tested
     return $config_ref->{local_backups}{$local_backup}{daily_keep};
 }
 
-sub local_backup_daily_time { # Is tested
+sub local_backup_daily_times { # Is tested
 
-    # Return local_backup $local_backup's daily_time value. Logdie if
-    # $local_backup is not a defined local_backup or is not taking
-    # daily backups.
+    # Return a list of local_backup $local_backup's daily_times values.
 
     arg_count_or_die(2, 2, @_);
 
     my $local_backup = shift;
-    my $config_ref   = shift;
+    my $config_ref = shift;
 
     local_backup_exists_or_die($local_backup, $config_ref);
     local_backup_wants_timeframe_or_die($local_backup, 'daily', $config_ref);
 
-    return $config_ref->{local_backups}{$local_backup}{daily_time};
+    my @times = split ',', $config_ref->{local_backups}{$local_backup}{daily_times};
+
+    # remove duplicates
+    return sort keys %{{ map { $_ => 1 } @times }};
 }
 
 sub local_backup_weekly_keep { # Is tested

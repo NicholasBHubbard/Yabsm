@@ -10,7 +10,7 @@ local_backup foo_backup {
     subvol=foo
     dir=/backups
     timeframes=5minute,hourly,daily,weekly,monthly
-    daily_time=23:59
+    daily_times=04:30,23:59
     weekly_day=wednesday
     weekly_time=00:00
     monthly_day=31

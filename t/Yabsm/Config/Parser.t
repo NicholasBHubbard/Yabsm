@@ -44,7 +44,7 @@ subvol root {
 snap home_snap {
     subvol=home
     timeframes=5minute,hourly,daily,weekly,monthly
-    daily_time=23:59
+    daily_times=23:59,12:30
     weekly_day=wednesday
     weekly_time=00:00
     monthly_day=31
@@ -60,7 +60,7 @@ snap root_snap {
     subvol=root
     timeframes=hourly,daily
     hourly_keep=72
-    daily_time=07:03
+    daily_times=07:03
     daily_keep=14
 }
 ssh_backup root_my_server {
@@ -111,7 +111,7 @@ my %expected_config = (
         home_snap => {
             monthly_day => '31',
             subvol => 'home',
-            daily_time => '23:59',
+            daily_times => '23:59,12:30',
             hourly_keep => '48',
             monthly_time => '23:59',
             monthly_keep => '12',
@@ -125,7 +125,7 @@ my %expected_config = (
         root_snap => {
             daily_keep => '14',
             subvol => 'root',
-            daily_time => '07:03',
+            daily_times => '07:03',
             hourly_keep => '72',
             timeframes => 'hourly,daily'
         }

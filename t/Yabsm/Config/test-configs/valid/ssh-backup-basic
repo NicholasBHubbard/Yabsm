@@ -11,7 +11,7 @@ ssh_backup foo_backup {
     ssh_dest=nick@192.168.1.12
     dir=/backups
     timeframes=5minute,hourly,daily,weekly,monthly
-    daily_time=23:59
+    daily_times=23:59
     weekly_day=wednesday
     weekly_time=00:00
     monthly_day=31

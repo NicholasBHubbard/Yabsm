@@ -9,7 +9,7 @@ subvol foo {
 snap foo_snap {
     subvol=foo
     timeframes=5minute,hourly,daily,weekly,monthly
-    daily_time=23:59
+    daily_times=23:59
     weekly_day=wednesday
     weekly_time=00:00
     monthly_day=31

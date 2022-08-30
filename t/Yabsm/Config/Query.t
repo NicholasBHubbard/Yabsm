@@ -28,7 +28,7 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
                                              , daily_keep => 365
                                              , weekly_keep => 56
                                              , monthly_keep => 12
-                                             , daily_time => '23:59'
+                                             , daily_times => '23:59,12:30,12:30'
                                              , weekly_day => 'wednesday'
                                              , weekly_time => '00:00'
                                              , monthly_day => 31
@@ -52,7 +52,7 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
                                                        , daily_keep => 365
                                                        , weekly_keep => 56
                                                        , monthly_keep => 12
-                                                       , daily_time => '23:59'
+                                                       , daily_times => '23:59,12:30,12:30'
                                                        , weekly_day => 'wednesday'
                                                        , weekly_time => '00:00'
                                                        , monthly_day => 31
@@ -70,7 +70,7 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
                                                        , dir => '/baz'
                                                        , timeframes => 'daily'
                                                        , daily_keep => 14
-                                                       , daily_time => '23:59'
+                                                       , daily_times => '23:59'
                                                        }
                                    }
                   , local_backups => { foo_local_backup => { subvol => 'foo'
@@ -81,7 +81,7 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
                                                            , daily_keep => 365
                                                            , weekly_keep => 56
                                                            , monthly_keep => 12
-                                                           , daily_time => '23:59'
+                                                           , daily_times => '23:59,12:30,12:30'
                                                            , weekly_day => 'wednesday'
                                                            , weekly_time => '00:00'
                                                            , monthly_day => 31
@@ -457,10 +457,10 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 }
 
 {
-    my $n = 'snap_daily_time';
-    my $f = \&Yabsm::Config::Query::snap_daily_time;
+    my $n = 'snap_daily_times';
+    my $f = \&Yabsm::Config::Query::snap_daily_times;
 
-    is($f->('foo_snap', \%TEST_CONFIG), '23:59', "$n - got correct daily_keep value");
+    is_deeply([$f->('foo_snap', \%TEST_CONFIG)], ['12:30','23:59'], "$n - got correct daily_times values (removed dups)");
     throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no snap named 'quux'/, "$n - dies if non-existent snap";
     throws_ok { $f->('bar_snap', \%TEST_CONFIG) } qr/snap 'bar_snap' is not taking daily snapshots/, "$n - dies if not taking daily snapshots";
 }
@@ -560,10 +560,10 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 }
 
 {
-    my $n = 'ssh_backup_daily_time';
-    my $f = \&Yabsm::Config::Query::ssh_backup_daily_time;
+    my $n = 'ssh_backup_daily_times';
+    my $f = \&Yabsm::Config::Query::ssh_backup_daily_times;
 
-    is($f->('foo_ssh_backup', \%TEST_CONFIG), '23:59', "$n - got correct daily_keep value");
+    is_deeply([$f->('foo_ssh_backup', \%TEST_CONFIG)], ['12:30', '23:59'], "$n - got correct daily_times value (remove dups)");
     throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
     throws_ok { $f->('bar_ssh_backup', \%TEST_CONFIG) } qr/ssh_backup 'bar_ssh_backup' is not taking daily backups/, "$n - dies if not taking daily backups";
 }
@@ -663,10 +663,10 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 }
 
 {
-    my $n = 'local_backup_daily_time';
-    my $f = \&Yabsm::Config::Query::local_backup_daily_time;
+    my $n = 'local_backup_daily_times';
+    my $f = \&Yabsm::Config::Query::local_backup_daily_times;
 
-    is($f->('foo_local_backup', \%TEST_CONFIG), '23:59', "$n - got correct daily_keep value");
+    is_deeply([$f->('foo_local_backup', \%TEST_CONFIG)], ['12:30','23:59'], "$n - got correct daily_times value (removes dups)");
     throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no local_backup named 'quux'/, "$n - dies if non-existent local_backup";
     throws_ok { $f->('bar_local_backup', \%TEST_CONFIG) } qr/local_backup 'bar_local_backup' is not taking daily backups/, "$n - dies if not taking daily backups";
 }

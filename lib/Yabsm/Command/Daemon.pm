@@ -169,13 +169,14 @@ sub create_cron_scheduler {
             );
         }
         if (snap_wants_timeframe($snap, 'daily', $config_ref)) {
-            my $time = snap_daily_time($snap, $config_ref);
-            my $hr   = time_hour($time);
-            my $min  = time_minute($time);
-            $cron_scheduler->add_entry(
-                "$min $hr * * *",
-                sub { with_error_catch_log(\&Yabsm::Snap::do_snap, $snap, 'daily', $config_ref) }
-            );
+            for my $time (snap_daily_times($snap, $config_ref)) {
+                my $hr   = time_hour($time);
+                my $min  = time_minute($time);
+                $cron_scheduler->add_entry(
+                    "$min $hr * * *",
+                    sub { with_error_catch_log(\&Yabsm::Snap::do_snap, $snap, 'daily', $config_ref) }
+                );
+            }
         }
         if (snap_wants_timeframe($snap, 'weekly', $config_ref)) {
             my $time = snap_weekly_time($snap, $config_ref);
@@ -213,13 +214,14 @@ sub create_cron_scheduler {
             );
         }
         if (ssh_backup_wants_timeframe($ssh_backup, 'daily', $config_ref)) {
-            my $time = ssh_backup_daily_time($ssh_backup, $config_ref);
-            my $hr   = time_hour($time);
-            my $min  = time_minute($time);
-            $cron_scheduler->add_entry(
-                "$min $hr * * *",
-                sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'daily', $config_ref) }
-            );
+            for my $time (ssh_backup_daily_times($ssh_backup, $config_ref)) {
+                my $hr   = time_hour($time);
+                my $min  = time_minute($time);
+                $cron_scheduler->add_entry(
+                    "$min $hr * * *",
+                    sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, $ssh_backup, 'daily', $config_ref) }
+                );
+            }
         }
         if (ssh_backup_wants_timeframe($ssh_backup, 'weekly', $config_ref)) {
             my $time = ssh_backup_weekly_time($ssh_backup, $config_ref);
@@ -257,13 +259,14 @@ sub create_cron_scheduler {
             );
         }
         if (local_backup_wants_timeframe($local_backup, 'daily', $config_ref)) {
-            my $time = local_backup_daily_time($local_backup, $config_ref);
-            my $hr   = time_hour($time);
-            my $min  = time_minute($time);
-            $cron_scheduler->add_entry(
-                "$min $hr * * *",
-                sub { with_error_catch_log(\&Yabsm::Backup::Local::do_local_backup, $local_backup, 'daily', $config_ref) }
-            );
+            for my $time (local_backup_daily_times($local_backup, $config_ref)) {
+                my $hr   = time_hour($time);
+                my $min  = time_minute($time);
+                $cron_scheduler->add_entry(
+                    "$min $hr * * *",
+                    sub { with_error_catch_log(\&Yabsm::Backup::Local::do_local_backup, $local_backup, 'daily', $config_ref) }
+                );
+            }
         }
         if (local_backup_wants_timeframe($local_backup, 'weekly', $config_ref)) {
             my $time = local_backup_weekly_time($local_backup, $config_ref);

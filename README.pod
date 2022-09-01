@@ -3,10 +3,23 @@
 Yabsm is a btrfs snapshot management system. 
 
 =over 4
-=item * Seperate snapshots into 5minute, hourly, daily, weekly, and monthly timeframe categories
-=item * Cycle out old snapshots on a per-timeframe basis
-=item * Remote and local incremental snapshots transferring
-=item * Query language for locating snapshots.
+
+=item *
+
+Seperate snapshots into 5minute, hourly, daily, weekly, and monthly timeframe categories
+
+=item *
+
+Cycle out old snapshots on a per-timeframe basis
+
+=item *
+
+Remote and local incremental snapshots transferring
+
+=item *
+
+Query language for locating snapshots.
+
 =back
 
 =cut

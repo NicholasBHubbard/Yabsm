@@ -26,8 +26,13 @@ Provides a simple query language for locating snapshots and backups.
 
 =head1 Snapshots vs Backups
 
-The difference between a snapshot and a backup can be a little confusing. When
-we talk about a snapshot we mean C<btrfs subvolume snapshot -r>
+The difference between a snapshot and a backup can be a little confusing. 
+
+When we talk about a snapshot we mean a read-only subvolume created with the
+C<btrfs subvolume snapshot -r> command.
+
+A backup is a snapshot that has been transferred to another btrfs filesystem via
+a combination of C<btrfs send> and C<btrfs receive>.
 
 =cut
 

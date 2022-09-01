@@ -2,6 +2,8 @@
 
 Yabsm is a btrfs snapshot management system. 
 
+Its most important features are
+
 =over 4
 
 =item *

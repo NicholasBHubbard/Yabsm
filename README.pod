@@ -1,7 +1,7 @@
 =head1 What is Yabsm?
 
-Yabsm is a btrfs snapshot and backup management system with the following 
-features.
+Yabsm is a btrfs snapshot and backup management system that provides the 
+following features.
 
 =over 4
 

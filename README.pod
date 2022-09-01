@@ -7,7 +7,7 @@ following features.
 
 =item *
 
-Takes readonly snapshots and perform both remote and local incremental backups.
+Takes readonly snapshots and performs remote and local incremental backups.
 
 =item *
 

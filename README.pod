@@ -1,26 +1,25 @@
 =head1 What is Yabsm?
 
-Yabsm is a btrfs snapshot management system. 
-
-Its most important features are
+Yabsm is a btrfs snapshot and backup management system.
 
 =over 4
 
 =item *
 
-Seperate snapshots into 5minute, hourly, daily, weekly, and monthly timeframe categories
+Take readonly snapshots and perform both remote and local incremental backups.
 
 =item *
 
-Cycle out old snapshots on a per-timeframe basis
+Seperate snapshots and backups into 5minute, hourly, daily, weekly, and monthly
+timeframe categories
 
 =item *
 
-Remote and local incremental snapshots transferring
+Cycle out old snapshots and backups on a per-timeframe basis
 
 =item *
 
-Query language for locating snapshots.
+Query language for locating snapshots and backups.
 
 =back
 

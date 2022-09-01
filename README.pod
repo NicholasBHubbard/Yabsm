@@ -24,9 +24,10 @@ Provides a simple query language for locating snapshots and backups.
 
 =back
 
-=head1 Snapshots vs Backup
+=head1 Snapshots vs Backups
 
-foo
+The difference between a snapshot and a backup can be a little confusing. When
+we talk about a snapshot we mean C<btrfs subvolume snapshot -r>
 
 =cut
 

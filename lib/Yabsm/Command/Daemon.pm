@@ -479,7 +479,7 @@ log4perl.appender.Logfile          = Log::Log4perl::Appender::File
 log4perl.appender.Logfile.filename = $log_file
 log4perl.appender.Logfile.mode     = append
 log4perl.appender.Logfile.layout   = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.Logfile.layout.ConversionPattern = %d [%M]: %m{chomp}%n
+log4perl.appender.Logfile.layout.ConversionPattern = [%d] %m{chomp}%n
 );
         \$log_config;
     });
@@ -500,7 +500,7 @@ sub install_signal_handlers { # Not tested
     # Gracefully exit on any signal that has a default action of terminate or
     # dump.
     my $cleanup_and_exit = sub {
-        unlink '/run/yabsmd.pid';
+        unlink '/run/yabsmd.pid' if -f '/run/yabsmd.pid';
         exit 0;
     };
 
@@ -560,7 +560,7 @@ sub create_yabsm_user_ssh_key { # Not tested
         my $pub_key  = "$ssh_dir/id_ed25519.pub";
 
         unless (-f $priv_key && -f $pub_key) {
-            system_or_die('ssh-keygen', '-q', '-t', 'ed25519', '-f', "$yabsm_user_home/.ssh/id_ed25519", '-N', '');
+            system_or_die('ssh-keygen', '-q', '-t', 'ed25519', '-f', $priv_key, '-N', '');
             chown $yabsm_uid, $yabsm_gid, $priv_key, $pub_key;
             chmod 0600, $priv_key;
             chmod 0644, $pub_key;

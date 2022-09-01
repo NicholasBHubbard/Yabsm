@@ -1,4 +1,4 @@
-=item What is Yabsm
+=head1 What is Yabsm
 
 foo
 

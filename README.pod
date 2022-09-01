@@ -1,11 +1,10 @@
-=head1 What is Yabsm
+=head1 What is Yabsm?
 
-foo
+Yabsm is a btrfs snapshot manager and backup system that allows you to seperate
+your snapshots and backups into 5minute, hourly, daily, weekly, and monthly 
+timeframes.
 
 =cut
-
-Yabsm is a btrfs snapshot manager that runs as a daemon and allows you to
-snapshot and backup your btrfs filesystem. 
 
 # Features
 * Features

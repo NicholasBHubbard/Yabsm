@@ -24,6 +24,10 @@ Provides a simple query language for locating snapshots and backups.
 
 =back
 
+=head1 Snapshots vs Backup
+
+foo
+
 =cut
 
 # Features

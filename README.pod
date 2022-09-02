@@ -50,11 +50,11 @@ Perl
 
 =item *
 
-btrfs-progs
+OpenSSH
 
 =item *
 
-OpenSSH
+btrfs-progs
 
 =item *
 
@@ -62,34 +62,38 @@ sudo
 
 =back
 
-# Installation
-* Installation
+=head1 Installation
+
+TODO
+
+=head1 Starting the Yabsm Daemon
+
   TODO
 
-# Starting yabsmd
-* Starting yabsmd
-  TODO
+=head1 Configuration
 
-# Configuration
-* Configuration
-
-Yabsm in configured via the =/etc/yabsm.conf= file.
+Yabsm in configured via the C</etc/yabsm.conf> file.
 
 On installation this file will not exist, but there will be a file
-=/etc/yabsmd.conf.example= that you can use to help you build your
+C</etc/yabsmd.conf.example> that you can use to help you build your
 configuration.
 
-You can run the command =yabsm config check= that will check your config and
-output useful error messages to STDERR if there are any problems with the
-config.
+You can run the command C<yabsm config check> that will check your config and
+output useful error messages to STDERR if there are any problems.
 
-*** Configuration Grammar
+=head1 Configuration Grammar
     
+You must specify a C<yabsm_dir> that yabsm will use for storing snapshots and 
+using as a cache for holding objects needed for performing backups. Most commonly
+this directory is C</.snapshots/yabsm>.
+
+C<yabsm_dir=/.snapshots/yabsm>
+
 There are 4 different configuration objects, =subvols=, =snaps=, =ssh_backups=,
 and =local_backups=.
 
 A =subvol= is the simplest configuration object, and is used to give a name to
-a [[https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes][btrfs subvolume]] on your system. A subvol definition accepts one field called
+a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called
 =mountpoint= which takes a value that is a path to a subvolume.
 
 #+BEGIN_SRC
@@ -111,11 +115,11 @@ snap home_snap {
     daily_times=11:00,17:30
 }
 
-* Contributing
+=head1 CONTRIBUTING
 
-See [[./CONTRIBUTING][CONTRIBUTING]].
+TODO
 
-* License
+=head1 License
 
 MIT
 

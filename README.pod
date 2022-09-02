@@ -81,7 +81,7 @@ configuration.
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages to STDERR if there are any problems.
 
-=head3 Configuration Grammar
+=head2 Configuration Grammar
     
 You must specify a C<yabsm_dir> that yabsm will use for storing snapshots and 
 using as a cache for holding objects needed for performing backups. Most commonly

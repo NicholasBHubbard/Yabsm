@@ -1,3 +1,5 @@
+=pod
+
 =head1 What is Yabsm?
 
 Yabsm is a btrfs snapshot and backup management system that provides the 
@@ -38,22 +40,27 @@ L<btrfs snapshots|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#su
 
 L<btrfs send/receive|https://btrfs.readthedocs.io/en/latest/Send-receive.html>
 
-=cut
+=head1 Dependencies
 
-# Features
-* Features
-  + Organize snapshots into 5minute, hourly, daily, weekly and monthly timeframe
-    categories.
-  + Cycle out old snapshots on a per-timeframe basis.
-  + Remote and local incremental snapshot transferring.
-  + Query language for locating snapshots and backups.
+=over 4
 
-# Dependencies
-* Dependencies
-  Perl
-  btrfs-progs
-  OpenSSH
-  sudo
+=item *
+
+Perl
+
+=item *
+
+btrfs-progs
+
+=item *
+
+OpenSSH
+
+=item *
+
+sudo
+
+=back
 
 # Installation
 * Installation
@@ -111,3 +118,5 @@ See [[./CONTRIBUTING][CONTRIBUTING]].
 * License
 
 MIT
+
+=cut

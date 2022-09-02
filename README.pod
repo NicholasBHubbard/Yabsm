@@ -81,7 +81,7 @@ configuration.
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages to STDERR if there are any problems.
 
-Please browse through these L<TODO|example configurations> for inspiration.
+Please browse through these L<example configurations|TODO> for inspiration.
 
 =head2 Configuration Grammar
     

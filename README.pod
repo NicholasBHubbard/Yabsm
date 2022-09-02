@@ -46,19 +46,19 @@ L<btrfs send/receive|https://btrfs.readthedocs.io/en/latest/Send-receive.html>
 
 =item *
 
-Perl
+L<Perl|https://perldoc.perl.org/>
 
 =item *
 
-OpenSSH
+L<OpenSSH|https://www.openssh.com/>
 
 =item *
 
-btrfs-progs
+L<Sudo|https://www.sudo.ws/>
 
 =item *
 
-sudo
+L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =back
 

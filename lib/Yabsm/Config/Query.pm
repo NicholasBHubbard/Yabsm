@@ -2,14 +2,8 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Provides functions for querying the Yabsm configuration hash that
-#  is produced with Yabsm::Config::Parser::parse_config_or_die().
-
-#  Note that all subroutines assume they are passed a valid
-#  configuration.  We can make this assumption because the only
-#  function that can produce a config (Yabsm::Config::Parser::parse_config_or_die)
-#  is designed so it can only produce a valid config (excluding OS
-#  level misconfigurations).
+#  Provides functions for querying the Yabsm configuration hash that is produced
+#  by Yabsm::Config::Parser::parse_config_or_die().
 #
 #  See t/Yabsm/Config/Query.t for this libraries tests.
 
@@ -158,7 +152,7 @@ sub is_weekday_or_die { # Is tested
     return 1;
 }
 
-sub weekday_number { # Not tested
+sub weekday_number { # Is tested
 
     # Return the number associated with $weekday which is a string
     # representation of a weekday. Monday is considered the first day of the
@@ -179,18 +173,39 @@ sub weekday_number { # Not tested
     $weekday eq 'sunday'    and return 7;
 }
 
-sub is_time_or_die { # Not tested
+sub is_time { # Is tested
 
-    # TODO
+    # Return 1 if passed a valid 'hh:mm' time and return 0 otherwise.
 
     arg_count_or_die(1, 1, @_);
 
-    return 0+(shift =~ /^\d\d:\d\d$/);
+    my ($hr, $min) = shift =~ /^(\d\d):(\d\d)$/
+      or return 0;
+
+    $hr  >= 0 && $hr  <= 23 or return 0;
+    $min >= 0 && $min <= 59 or return 0;
+
+    return 1;
 }
 
-sub time_hour { # Not tested
+sub is_time_or_die { # Is tested
 
-    # TODO
+    # Wrapper around &is_time that Carp::Confess's if it returns false.
+
+    arg_count_or_die(1, 1, @_);
+
+    my $time = shift;
+
+    unless ( is_time($time) ) {
+        confess("yabsm: internal error: '$time' is not a valid 'hh:mm' time");
+    }
+
+    return 1;
+}
+
+sub time_hour { # Is tested
+
+    # Return the hour of a 'hh:mm' time.
 
     arg_count_or_die(1, 1, @_);
 
@@ -198,14 +213,14 @@ sub time_hour { # Not tested
 
     is_time_or_die($time);
 
-    my ($hour) = $time =~ /^(\d\d):\d\d$/;
+    my ($hr) = $time =~ /^(\d\d):\d\d$/;
 
-    return 0+$hour;
+    return 0+$hr;
 }
 
-sub time_minute { # Not tested
+sub time_minute { # Is tested
 
-    # TODO
+    # Return the minute of a 'hh:mm' time.
 
     arg_count_or_die(1, 1, @_);
 
@@ -213,9 +228,9 @@ sub time_minute { # Not tested
 
     is_time_or_die($time);
 
-    my ($minute) = $time =~ /^\d\d:(\d\d)$/;
+    my ($min) = $time =~ /^\d\d:(\d\d)$/;
 
-    return 0+$minute;
+    return 0+$min;
 }
 
 sub yabsm_dir { # Is tested

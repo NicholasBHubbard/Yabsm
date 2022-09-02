@@ -785,7 +785,57 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
     is($f->('friday'), 1, "$n - accepts 'friday'");
     is($f->('saturday'), 1, "$n - accepts 'saturday'");
     is($f->('sunday'), 1, "$n - accepts 'sunday'");
+    throws_ok { $f->('SUNDAY') } qr/no such weekday 'SUNDAY'/, "$n - dies if not lowercase";
     throws_ok { $f->('quux') } qr/no such weekday 'quux'/, "$n - dies if invalid weekday";
+}
+
+{
+    my $n = 'weekday_number';
+    my $f = \&Yabsm::Config::Query::weekday_number;
+
+    is $f->('monday'), 1, "$n - monday first day of week";
+    is $f->('tuesday'), 2, "$n - tuesday second day of week";
+    is $f->('wednesday'), 3, "$n - wednesday third day of week";
+    is $f->('thursday'), 4, "$n - thursday fourth day of week";
+    is $f->('friday'), 5, "$n - friday fifth day of week";
+    is $f->('saturday'), 6, "$n - saturday sixth day of week";
+    is $f->('sunday'), 7, "$n - sunday seventh day of week";
+    throws_ok { $f->('quux') } qr/no such weekday 'quux'/, "$n - dies if invalid weekday";
+}
+
+{
+    my $n = 'is_time';
+    my $f = \&Yabsm::Config::Query::is_time;
+
+    is $f->('23:59'), 1, "$n - accepts valid time";
+    is $f->('23-59'), 0, "$n - rejects if not colon seperated";
+    is $f->('00:00'), 1, "$n - accepts 00:00";
+    is $f->('24:30'), 0, "$n - reject hour out of range";
+    is $f->('12:60'), 0, "$n - rejects minute out of range";
+}
+
+{
+    my $n = 'is_time_or_die';
+    my $f = \&Yabsm::Config::Query::is_time_or_die;
+
+    is $f->('23:59'), 1, "$n - accepts valid time";
+    throws_ok { $f->('quux') } qr/'quux' is not a valid 'hh:mm' time/, "$n - dies if invalid time";
+}
+
+{
+    my $n = 'time_hour';
+    my $f = \&Yabsm::Config::Query::time_hour;
+
+    is $f->('23:59'), 23, "$n - return correct hour";
+    throws_ok { $f->('quux') } qr/'quux' is not a valid 'hh:mm' time/, "$n - dies if invalid time";
+}
+
+{
+    my $n = 'time_minute';
+    my $f = \&Yabsm::Config::Query::time_minute;
+
+    is $f->('23:59'), 59, "$n - return correct minute";
+    throws_ok { $f->('quux') } qr/'quux' is not a valid 'hh:mm' time/, "$n - dies if invalid time";
 }
 
 1;

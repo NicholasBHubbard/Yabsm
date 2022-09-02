@@ -88,15 +88,13 @@ Please browse through the L<example configurations|TODO> for inspiration.
 You must specify a C<yabsm_dir> that yabsm will use for storing snapshots and 
 using as a cache for holding objects needed for performing backups. Most commonly
 this directory is C</.snapshots/yabsm>. Yabsm will take this directory literally
-so you will almost certainly want the path to end in C<yabsm>. If this directory
-doesn't exist the yabsm daemon will create it automatically.
+so you almost certainly want the path to end in C</yabsm>. If this directory
+doesn't exist the yabsm daemon will create it automatically when it starts.
 
-There are 4 different configuration objects, =subvols=, =snaps=, =ssh_backups=,
+There are 4 different configuration objects; =subvols=, =snaps=, =ssh_backups=,
 and =local_backups=.
 
-A =subvol= is the simplest configuration object, and is used to give a name to
-a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called
-=mountpoint= which takes a value that is a path to a subvolume.
+A =subvol= is the simplest configuration object, and is used to give a name to a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called =mountpoint= which takes a value that is a path to a subvolume.
 
 #+BEGIN_SRC
 subvol home_subvol {

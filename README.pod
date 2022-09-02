@@ -91,8 +91,8 @@ this directory is C</.snapshots/yabsm>. Yabsm will take this directory literally
 so you almost certainly want the path to end in C</yabsm>. If this directory
 doesn't exist the yabsm daemon will create it automatically when it starts.
 
-There are 4 different configuration objects; =subvols=, =snaps=, =ssh_backups=,
-and =local_backups=.
+There are 4 different configuration objects; I<subvols>, I<snaps>, I<ssh_backups>,
+and I<local_backups>.
 
 A =subvol= is the simplest configuration object, and is used to give a name to a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called =mountpoint= which takes a value that is a path to a subvolume.
 

@@ -35,6 +35,7 @@ A backup is a snapshot that has been transferred to another btrfs filesystem via
 a combination of C<btrfs send> and C<btrfs receive>.
 
 L<btrfs snapshots|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
+
 L<btrfs send/receive|https://btrfs.readthedocs.io/en/latest/Send-receive.html>
 
 =cut

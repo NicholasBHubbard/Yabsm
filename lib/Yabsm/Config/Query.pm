@@ -321,7 +321,7 @@ sub ssh_backup_exists_or_die { # Is tested
 
     arg_count_or_die(2, 2, @_);
 
-    my $ssh_backup       = shift;
+    my $ssh_backup = shift;
     my $config_ref = shift;
 
     unless ( ssh_backup_exists($ssh_backup, $config_ref) ) {

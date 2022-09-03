@@ -115,7 +115,7 @@ sub is_timeframe { # Is tested
 
 sub is_timeframe_or_die { # Is tested
 
-    # Wrapper around &is_timeframe that logdies if it returns false.
+    # Wrapper around &is_timeframe that Carp::Confess's if it returns false.
 
     arg_count_or_die(1, 1, @_);
 
@@ -139,7 +139,7 @@ sub is_weekday { # Is tested
 
 sub is_weekday_or_die { # Is tested
 
-    # Wrapper around &is_weekday that logdies if it returns false.
+    # Wrapper around &is_weekday that Carp::Confess's if it returns false.
 
     arg_count_or_die(1, 1, @_);
 
@@ -154,9 +154,8 @@ sub is_weekday_or_die { # Is tested
 
 sub weekday_number { # Is tested
 
-    # Return the number associated with $weekday which is a string
-    # representation of a weekday. Monday is considered the first day of the
-    # week.
+    # Return the number associated with $weekday which is a string representation
+    # of a weekday. Monday is considered the first day of the week.
 
     arg_count_or_die(1, 1, @_);
 
@@ -246,8 +245,8 @@ sub yabsm_dir { # Is tested
 
 sub subvol_exists { # Is tested
 
-    # Return 1 if $subvol is a subvol defined in $config_ref and
-    # return 0 otherwise.
+    # Return 1 if $subvol is a subvol defined in $config_ref and return 0
+    # otherwise.
 
     arg_count_or_die(2, 2, @_);
 
@@ -259,7 +258,7 @@ sub subvol_exists { # Is tested
 
 sub subvol_exists_or_die { # Is tested
 
-    # Wrapper around &subvol_exists that logdies if it returns false.
+    # Wrapper around &subvol_exists that Carp::Confess's if it returns false.
 
     arg_count_or_die(2, 2, @_);
 
@@ -275,8 +274,7 @@ sub subvol_exists_or_die { # Is tested
 
 sub snap_exists { # Is tested
 
-    # Return 1 if $snap is a snap defined in $config_ref and
-    # return 0 otherwise.
+    # Return 1 if $snap is a snap defined in $config_ref and return 0 otherwise.
 
     arg_count_or_die(2, 2, @_);
 
@@ -288,7 +286,7 @@ sub snap_exists { # Is tested
 
 sub snap_exists_or_die { # Is tested
 
-    # Wrapper around &snap_exists that logdies if it returns false.
+    # Wrapper around &snap_exists that Carp::Confess's if it returns false.
 
     arg_count_or_die(2, 2, @_);
 
@@ -304,8 +302,8 @@ sub snap_exists_or_die { # Is tested
 
 sub ssh_backup_exists { # Is tested
 
-    # Return 1 if $ssh_backup is a ssh_backup defined in $config_ref
-    # and return 0 otherwise.
+    # Return 1 if $ssh_backup is a ssh_backup defined in $config_ref and return 0
+    # otherwise.
 
     arg_count_or_die(2, 2, @_);
 
@@ -317,7 +315,7 @@ sub ssh_backup_exists { # Is tested
 
 sub ssh_backup_exists_or_die { # Is tested
 
-    # Wrapper around &ssh_backup_exists that logdies if it returns false.
+    # Wrapper around &ssh_backup_exists that Carp::Confess's if it returns false.
 
     arg_count_or_die(2, 2, @_);
 
@@ -333,8 +331,8 @@ sub ssh_backup_exists_or_die { # Is tested
 
 sub local_backup_exists { # Is tested
 
-    # Return 1 if $local_backup is a lcoal_backup defined in
-    # $config_ref and return 0 otherwise.
+    # Return 1 if $local_backup is a lcoal_backup defined in $config_ref and
+    # return 0 otherwise.
 
     arg_count_or_die(2, 2, @_);
 
@@ -346,7 +344,7 @@ sub local_backup_exists { # Is tested
 
 sub local_backup_exists_or_die { # Is tested
 
-    # Wrapper around &local_backup_exists that logdies if it returns
+    # Wrapper around &local_backup_exists that Carp::Confess's if it returns
     # false.
 
     arg_count_or_die(2, 2, @_);
@@ -363,8 +361,8 @@ sub local_backup_exists_or_die { # Is tested
 
 sub backup_exists { # Is tested
 
-    # Return 1 if $backup is either an ssh_backup or a local_backup
-    # and return 0 otherwise.
+    # Return 1 if $backup is either an ssh_backup or a local_backup and return 0
+    # otherwise.
 
     arg_count_or_die(2, 2, @_);
 
@@ -377,7 +375,7 @@ sub backup_exists { # Is tested
 
 sub backup_exists_or_die { # Is tested
 
-    # Wrapper around &backup_exists that logdies if it returns false.
+    # Wrapper around &backup_exists that Carp::Confess's if it returns false.
 
     arg_count_or_die(2, 2, @_);
 
@@ -415,8 +413,7 @@ sub all_snaps { # Is tested
 
 sub all_ssh_backups { # Is tested
 
-    # Return a list of all the ssh_backup names defined in
-    # $config_ref.
+    # Return a list of all the ssh_backup names defined in $config_ref.
 
     arg_count_or_die(1, 1, @_);
 
@@ -427,8 +424,7 @@ sub all_ssh_backups { # Is tested
 
 sub all_local_backups { # Is tested
 
-    # Return a list of all the local_backup names defined in
-    # $config_ref.
+    # Return a list of all the local_backup names defined in $config_ref.
 
     arg_count_or_die(1, 1, @_);
 
@@ -439,8 +435,7 @@ sub all_local_backups { # Is tested
 
 sub subvol_mountpoint { # Is tested
 
-    # Return the the subvol $subvol's mountpoint value. Logdie if
-    # there $subvol is not a defined subvol.
+    # Return the the subvol $subvol's mountpoint value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -454,9 +449,7 @@ sub subvol_mountpoint { # Is tested
 
 sub snap_subvol { # Is tested
 
-    # Return the name of the subvol that $snap is snapshotting. If
-    # there is no snap named $snap then logdie because things have
-    # gone haywire.
+    # Return the name of the subvol that $snap is snapshotting.
 
     arg_count_or_die(2, 2, @_);
 
@@ -510,8 +503,7 @@ sub snap_dest { # Is tested
 
 sub snap_timeframes { # Is tested
 
-    # Return a list of $snap's timeframes. If there is no snap named
-    # $snap then logdie because things have gone haywire.
+    # Return a list of $snap's timeframes.
 
     arg_count_or_die(2, 2, @_);
 
@@ -526,8 +518,6 @@ sub snap_timeframes { # Is tested
 sub ssh_backup_subvol { # Is tested
 
     # Return the name of the subvol that $ssh_backup is backing up.
-    # If there is no ssh_backup named $ssh_backup then logdie because
-    # things have gone haywire.
 
     arg_count_or_die(2, 2, @_);
 
@@ -541,8 +531,7 @@ sub ssh_backup_subvol { # Is tested
 
 sub ssh_backup_mountpoint { # Is tested
 
-    # Return the mountpoint of the subvol that $ssh_backup is backing
-    # up.
+    # Return the mountpoint of the subvol that $ssh_backup is backing up.
 
     arg_count_or_die(2, 2, @_);
 
@@ -582,9 +571,7 @@ sub ssh_backup_dir { # Is tested
 
 sub ssh_backup_timeframes { # Is tested
 
-    # Return a list of $ssh_backups's timeframes. If there is no
-    # ssh_backup named $ssh_backup then logdie because things have
-    # gone haywire.
+    # Return a list of $ssh_backups's timeframes.
 
     arg_count_or_die(2, 2, @_);
 
@@ -598,8 +585,7 @@ sub ssh_backup_timeframes { # Is tested
 
 sub ssh_backup_ssh_dest { # Is tested
 
-    # Return $ssh_backup's ssh_dest value. If there is no ssh_backup
-    # named $ssh_backup then logdie because things have gone haywire.
+    # Return $ssh_backup's ssh_dest value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -614,8 +600,6 @@ sub ssh_backup_ssh_dest { # Is tested
 sub local_backup_subvol { # Is tested
 
     # Return the name of the subvol that $local_backup is backing up.
-    # If there is no local_backup named $local_backup then logdie
-    # because things have gone haywire.
 
     arg_count_or_die(2, 2, @_);
 
@@ -629,8 +613,7 @@ sub local_backup_subvol { # Is tested
 
 sub local_backup_mountpoint { # Is tested
 
-    # Return the mountpoint of the subvol that $local_backup is
-    # backing up.
+    # Return the mountpoint of the subvol that $local_backup is backing up.
 
     arg_count_or_die(2, 2, @_);
 
@@ -670,9 +653,7 @@ sub local_backup_dir { # Is tested
 
 sub local_backup_timeframes { # Is tested
 
-    # Return a list of $local_backups's timeframes. If there is no
-    # local_backup named $local_backup then logdie because things have
-    # gone haywire.
+    # Return a list of $local_backups's timeframes.
 
     arg_count_or_die(2, 2, @_);
 
@@ -686,8 +667,8 @@ sub local_backup_timeframes { # Is tested
 
 sub all_snaps_of_subvol { # Is tested
 
-    # Return a list of all the snaps in $config_ref that
-    # are snapshotting $subvol.
+    # Return a list of all the snaps in $config_ref that are snapshotting
+    # $subvol.
 
     arg_count_or_die(2, 2, @_);
 
@@ -706,8 +687,8 @@ sub all_snaps_of_subvol { # Is tested
 
 sub all_ssh_backups_of_subvol { # Is tested
 
-    # Return a list of all the ssh_backups in $config_ref that
-    # are backing up $subvol.
+    # Return a list of all the ssh_backups in $config_ref that are backing up
+    # $subvol.
 
     arg_count_or_die(2, 2, @_);
 
@@ -726,8 +707,8 @@ sub all_ssh_backups_of_subvol { # Is tested
 
 sub all_local_backups_of_subvol { # Is tested
 
-    # Return a list of all the local_backups in $config_ref that
-    # are backing up $subvol.
+    # Return a list of all the local_backups in $config_ref that are backing up
+    # $subvol.
 
     arg_count_or_die(2, 2, @_);
 
@@ -746,8 +727,8 @@ sub all_local_backups_of_subvol { # Is tested
 
 sub snap_wants_timeframe { # Is tested
 
-    # Return 1 if the snap $snap wants snapshots in timeframe $tframe
-    # and return 0 otherwise;
+    # Return 1 if the snap $snap wants snapshots in timeframe $tframe and return
+    # 0 otherwise;
 
     arg_count_or_die(3, 3, @_);
 
@@ -764,7 +745,7 @@ sub snap_wants_timeframe { # Is tested
 
 sub snap_wants_timeframe_or_die { # Is tested
 
-    # Wrapper around &snap_wants_timeframe that logdies if it returns
+    # Wrapper around &snap_wants_timeframe that Carp::Confess's if it returns
     # false.
 
     arg_count_or_die(3, 3, @_);
@@ -782,8 +763,8 @@ sub snap_wants_timeframe_or_die { # Is tested
 
 sub ssh_backup_wants_timeframe { # Is tested
 
-    # Return 1 if the ssh_backup $ssh_backup wants backups in
-    # timeframe $tframe and return 0 otherwise.
+    # Return 1 if the ssh_backup $ssh_backup wants backups in timeframe $tframe
+    # and return 0 otherwise.
 
     arg_count_or_die(3, 3, @_);
 
@@ -800,7 +781,7 @@ sub ssh_backup_wants_timeframe { # Is tested
 
 sub ssh_backup_wants_timeframe_or_die { # Is tested
 
-    # Wrapper around &ssh_backup_wants_timeframe that logdies if it
+    # Wrapper around &ssh_backup_wants_timeframe that Carp::Confess's if it
     # returns false.
 
     arg_count_or_die(3, 3, @_);
@@ -818,8 +799,8 @@ sub ssh_backup_wants_timeframe_or_die { # Is tested
 
 sub local_backup_wants_timeframe { # Is tested
 
-    # Return 1 if the local_backup $local_backup wants backups in
-    # timeframe $tframe and return 0 otherwise.
+    # Return 1 if the local_backup $local_backup wants backups in timeframe
+    # $tframe and return 0 otherwise.
 
     arg_count_or_die(3, 3, @_);
 
@@ -837,7 +818,7 @@ sub local_backup_wants_timeframe { # Is tested
 
 sub local_backup_wants_timeframe_or_die { # Is tested
 
-    # Wrapper around &local_backup_wants_timeframe that logdies if it
+    # Wrapper around &local_backup_wants_timeframe that Carp::Confess's if it
     # returns false.
 
     arg_count_or_die(3, 3, @_);
@@ -875,8 +856,7 @@ sub snap_timeframe_keep { # Is tested
 
 sub snap_5minute_keep { # Is tested
 
-    # Return snap $snap's 5minute_keep value. Logdie if $snap is not
-    # a defined snap or is not taking 5minute snapshots.
+    # Return snap $snap's 5minute_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -891,8 +871,7 @@ sub snap_5minute_keep { # Is tested
 
 sub snap_hourly_keep { # Is tested
 
-    # Return snap $snap's hourly_keep value. Logdie if $snap is not
-    # a defined snap or is not taking hourly snapshots.
+    # Return snap $snap's hourly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -907,8 +886,7 @@ sub snap_hourly_keep { # Is tested
 
 sub snap_daily_keep { # Is tested
 
-    # Return snap $snap's daily_keep value. Logdie if $snap is not
-    # a defined snap or is not taking daily snapshots.
+    # Return snap $snap's daily_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -941,8 +919,7 @@ sub snap_daily_times { # Is tested
 
 sub snap_weekly_keep { # Is tested
 
-    # Return snap $snap's weekly_keep value. Logdie if $snap is not
-    # a defined snap or is not taking weekly snapshots.
+    # Return snap $snap's weekly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -957,8 +934,7 @@ sub snap_weekly_keep { # Is tested
 
 sub snap_weekly_time { # Is tested
 
-    # Return snap $snap's weekly_time value. Logdie if $snap is not
-    # a defined snap or is not taking weekly snapshots.
+    # Return snap $snap's weekly_time value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -973,8 +949,7 @@ sub snap_weekly_time { # Is tested
 
 sub snap_weekly_day { # Is tested
 
-    # Return snap $snap's weekly_day value. Logdie if $snap is not
-    # a defined snap or is not taking weekly snapshots.
+    # Return snap $snap's weekly_day value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -989,8 +964,7 @@ sub snap_weekly_day { # Is tested
 
 sub snap_monthly_keep { # Is tested
 
-    # Return snap $snap's monthly_keep value. Logdie if $snap is not
-    # a defined snap or is not taking monthly snapshots.
+    # Return snap $snap's monthly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1005,8 +979,7 @@ sub snap_monthly_keep { # Is tested
 
 sub snap_monthly_time { # Is tested
 
-    # Return snap $snap's monthly_time value. Logdie if $snap is not a
-    # defined snap or is not taking monthly snapshots.
+    # Return snap $snap's monthly_time value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1021,8 +994,7 @@ sub snap_monthly_time { # Is tested
 
 sub snap_monthly_day { # Is tested
 
-    # Return snap $snap's monthly_day value. Logdie if $snap is not a
-    # a defined snap or is not taking monthly snapshots.
+    # Return snap $snap's monthly_day value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1057,9 +1029,7 @@ sub ssh_backup_timeframe_keep { # Is tested
 
 sub ssh_backup_5minute_keep { # Is tested
 
-    # Return ssh_backup $ssh_backup's 5minute_keep value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking 5minute
-    # backups.
+    # Return ssh_backup $ssh_backup's 5minute_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1074,9 +1044,7 @@ sub ssh_backup_5minute_keep { # Is tested
 
 sub ssh_backup_hourly_keep { # Is tested
 
-    # Return ssh_backup $ssh_backup's hourly_keep value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking hourly
-    # backups.
+    # Return ssh_backup $ssh_backup's hourly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1091,9 +1059,7 @@ sub ssh_backup_hourly_keep { # Is tested
 
 sub ssh_backup_daily_keep { # Is tested
 
-    # Return ssh_backup $ssh_backup's daily_keep value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking daily
-    # backups.
+    # Return ssh_backup $ssh_backup's daily_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1126,9 +1092,7 @@ sub ssh_backup_daily_times { # Is tested
 
 sub ssh_backup_weekly_keep { # Is tested
 
-    # Return ssh_backup $ssh_backup's weekly_keep value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking weekly
-    # backups.
+    # Return ssh_backup $ssh_backup's weekly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1143,9 +1107,7 @@ sub ssh_backup_weekly_keep { # Is tested
 
 sub ssh_backup_weekly_time { # Is tested
 
-    # Return ssh_backup $ssh_backup's weekly_time value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking weekly
-    # backups.
+    # Return ssh_backup $ssh_backup's weekly_time value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1160,9 +1122,7 @@ sub ssh_backup_weekly_time { # Is tested
 
 sub ssh_backup_weekly_day { # Is tested
 
-    # Return ssh_backup $ssh_backup's weekly_day value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking weekly
-    # backups.
+    # Return ssh_backup $ssh_backup's weekly_day value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1177,9 +1137,7 @@ sub ssh_backup_weekly_day { # Is tested
 
 sub ssh_backup_monthly_keep { # Is tested
 
-    # Return ssh_backup $ssh_backup's monthly_keep value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking monthly
-    # backups.
+    # Return ssh_backup $ssh_backup's monthly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1194,9 +1152,7 @@ sub ssh_backup_monthly_keep { # Is tested
 
 sub ssh_backup_monthly_time { # Is tested
 
-    # Return ssh_backup $ssh_backup's monthly_time value. Logdie if
-    # $ssh_backup is not a defined ssh_backup or is not taking monthly
-    # backups.
+    # Return ssh_backup $ssh_backup's monthly_time value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1211,9 +1167,7 @@ sub ssh_backup_monthly_time { # Is tested
 
 sub ssh_backup_monthly_day { # Is tested
 
-    # Return ssh_backup $ssh_backup's monthly_day value. Logdie if
-    # $ssh_backup is not a a defined ssh_backup or is not taking
-    # monthly backups.
+    # Return ssh_backup $ssh_backup's monthly_day value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1248,9 +1202,7 @@ sub local_backup_timeframe_keep { # Is tested
 
 sub local_backup_5minute_keep { # Is tested
 
-    # Return local_backup $local_backup's 5minute_keep value. Logdie
-    # if $local_backup is not a defined local_backup or is not taking
-    # 5minute backups.
+    # Return local_backup $local_backup's 5minute_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1265,9 +1217,7 @@ sub local_backup_5minute_keep { # Is tested
 
 sub local_backup_hourly_keep { # Is tested
 
-    # Return local_backup $local_backup's hourly_keep value. Logdie if
-    # $local_backup is not a defined local_backup or is not taking
-    # hourly backups.
+    # Return local_backup $local_backup's hourly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1282,9 +1232,7 @@ sub local_backup_hourly_keep { # Is tested
 
 sub local_backup_daily_keep { # Is tested
 
-    # Return local_backup $local_backup's daily_keep value. Logdie if
-    # $local_backup is not a defined local_backup or is not taking
-    # daily backups.
+    # Return local_backup $local_backup's daily_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1317,9 +1265,7 @@ sub local_backup_daily_times { # Is tested
 
 sub local_backup_weekly_keep { # Is tested
 
-    # Return local_backup $local_backup's weekly_keep value. Logdie if
-    # $local_backup is not a defined local_backup or is not taking
-    # weekly backups.
+    # Return local_backup $local_backup's weekly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1334,9 +1280,7 @@ sub local_backup_weekly_keep { # Is tested
 
 sub local_backup_weekly_time { # Is tested
 
-    # Return local_backup $local_backup's weekly_time value. Logdie if
-    # $local_backup is not a defined local_backup or is not taking
-    # weekly backups.
+    # Return local_backup $local_backup's weekly_time value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1351,9 +1295,7 @@ sub local_backup_weekly_time { # Is tested
 
 sub local_backup_weekly_day { # Is tested
 
-    # Return local_backup $local_backup's weekly_day value. Logdie if
-    # $local_backup is not a defined local_backup or is not taking
-    # weekly backups.
+    # Return local_backup $local_backup's weekly_day value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1368,9 +1310,7 @@ sub local_backup_weekly_day { # Is tested
 
 sub local_backup_monthly_keep { # Is tested
 
-    # Return local_backup $local_backup's monthly_keep value. Logdie
-    # if $local_backup is not a defined local_backup or is not taking
-    # monthly backups.
+    # Return local_backup $local_backup's monthly_keep value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1385,9 +1325,7 @@ sub local_backup_monthly_keep { # Is tested
 
 sub local_backup_monthly_time { # Is tested
 
-    # Return local_backup $local_backup's monthly_time value. Logdie
-    # if $local_backup is not a defined local_backup or is not taking
-    # monthly backups.
+    # Return local_backup $local_backup's monthly_time value.
 
     arg_count_or_die(2, 2, @_);
 
@@ -1402,9 +1340,7 @@ sub local_backup_monthly_time { # Is tested
 
 sub local_backup_monthly_day { # Is tested
 
-    # Return local_backup $local_backup's monthly_day value. Logdie if
-    # $local_backup is not a a defined local_backup or is not taking
-    # monthly backups.
+    # Return local_backup $local_backup's monthly_day value.
 
     arg_count_or_die(2, 2, @_);
 

@@ -500,7 +500,7 @@ sub install_signal_handlers { # Not tested
     # Gracefully exit on any signal that has a default action of terminate or
     # dump.
     my $cleanup_and_exit = sub {
-        unlink '/run/yabsmd.pid' if -f '/run/yabsmd.pid';
+        unlink '/run/yabsmd.pid';
         exit 0;
     };
 

@@ -96,15 +96,11 @@ and I<local_backups>.
 
 A =subvol= is the simplest configuration object, and is used to give a name to a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called =mountpoint= which takes a value that is a path to a subvolume.
 
-C< 
-
+=pod
 subvol home_subvol {
-
     mountpoint=/home
-
 }
-
->
+=cut
 
 A =snap= defines a
 

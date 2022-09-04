@@ -83,22 +83,40 @@ output useful error messages to STDERR if there are any problems.
 
 Please browse through the L<example configurations|TODO> for inspiration.
 
-=head2 Configuration Grammar
-    
-You must specify a C<yabsm_dir> that yabsm will use for storing snapshots and 
-using as a cache for holding objects needed for performing backups. Most commonly
-this directory is C</.snapshots/yabsm>. Yabsm will take this directory literally
-so you almost certainly want the path to end in C</yabsm>. If this directory
-doesn't exist the yabsm daemon will create it automatically when it starts.
+=head2 Configuration Grammar 
 
-There are 4 different configuration objects; I<subvols>, I<snaps>, I<ssh_backups>,
+First things first: You must specify a C<yabsm_dir> that yabsm will use for
+storing snapshots and using as a cache for holding objects needed for performing
+backups. Most commonly this directory is C</.snapshots/yabsm>. Yabsm will take
+this directory literally so you almost certainly want the path to end in
+C</yabsm>. If this directory doesn't exist the yabsm daemon will create it
+automatically when it starts.
+
+There are 4 different configuration objects: I<subvols>, I<snaps>, I<ssh_backups>,
 and I<local_backups>.
 
-A =subvol= is the simplest configuration object, and is used to give a name to a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called =mountpoint= which takes a value that is a path to a subvolume.
+A subvol is the simplest configuration object, and is used to give a name to a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called =mountpoint= which takes a value that is a path to a subvolume.
 
     subvol home_subvol {
         mountpoint=/home
     }
+
+Before we can understand I<snaps>, I<ssh_backups>, and I<local_backups>, we need
+to understand timeframes, which work the same for each of these configuration 
+objects. To specify the timeframes you want you set the value of the C<timeframes>
+setting to a comma seperated list of timeframe values.
+
+    timeframes=5minute,hourly,daily,weekly,monthly
+
+Each timeframe you specify adds new required settings for the configuration 
+object. Here is a table that shows the timeframe settings.
+
+    5minute -> 5minute_keep
+    hourly  -> hourly_keep
+    daily   -> daily_keep,   daily_times
+    weekly  -> weekly_keep,  weekly_time,  weekly_day
+    monthly -> monthly_keep, monthly_time, monthly_day
+   
 
 =head1 CONTRIBUTING
 

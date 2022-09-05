@@ -760,6 +760,13 @@ my %TEST_CONFIG = ( yabsm_dir => '/.snapshots/yabsm/'
 }
 
 {
+    my $n = 'yabsm_user_home';
+    my $f = \&Yabsm::Config::Query::yabsm_user_home;
+
+    is $f->(\%TEST_CONFIG), '/.snapshots/yabsm/.yabsm-var/yabsm-user-home', "$n - returns correct yabsm user home";
+}
+
+{
     my $n = 'is_weekday';
     my $f = \&Yabsm::Config::Query::is_weekday;
 

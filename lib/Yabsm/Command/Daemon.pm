@@ -417,15 +417,6 @@ sub add_yabsm_user_btrfs_sudoer_rule { # Not tested
     return $file;
 }
 
-sub yabsm_user_home { # Not tested
-
-    # Return the yabsm users home directory.
-
-    arg_count_or_die(1, 1, @_);
-
-    return yabsm_dir( shift ) . '/.yabsm-var/yabsm-user-home';
-}
-
 sub yabsmd_pid { # Not tested
 
     # If there is a running instance of yabsmd return its pid and otherwise

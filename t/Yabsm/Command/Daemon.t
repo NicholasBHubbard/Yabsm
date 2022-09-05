@@ -72,10 +72,6 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
 my $n;
 my $f;
 
-$n = 'yabsm_user_home';
-$f = \&Yabsm::Command::Daemon::yabsm_user_home;
-is($f->(\%TEST_CONFIG), "$BTRFS_DIR/.yabsm-var/yabsm-user-home", "$n - returns yabsm users home directory");
-
 $n = 'create_yabsm_user';
 $f = \&Yabsm::Command::Daemon::create_yabsm_user;
 SKIP: {

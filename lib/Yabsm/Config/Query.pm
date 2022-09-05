@@ -243,6 +243,15 @@ sub yabsm_dir { # Is tested
     return $config_ref->{yabsm_dir} =~ s/\/+$//r;
 }
 
+sub yabsm_user_home { # Is tested
+
+    # Return the yabsm users home directory.
+
+    arg_count_or_die(1, 1, @_);
+
+    return yabsm_dir( shift ) . '/.yabsm-var/yabsm-user-home';
+}
+
 sub subvol_exists { # Is tested
 
     # Return 1 if $subvol is a subvol defined in $config_ref and return 0

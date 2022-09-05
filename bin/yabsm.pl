@@ -25,12 +25,14 @@ END_USAGE
 use Yabsm::Command::Daemon;
 use Yabsm::Command::Config;
 use Yabsm::Command::Find;
+use Yabsm::Command::SSH;
 
 # subcommand dispatch table
 my %run_subcommand = (
     'daemon' => \&Yabsm::Command::Daemon::main,
     'config' => \&Yabsm::Command::Config::main,
-    'find'   => \&Yabsm::Command::Find::main
+    'find'   => \&Yabsm::Command::Find::main,
+    'ssh'    => \&Yabsm::Command::SSH::main
 );
 
 sub unabbreviate_cmd {

@@ -89,7 +89,7 @@ C</etc/yabsmd.conf.example> that you can use to help you build your
 configuration.
 
 You can run the command C<yabsm config check> that will check your config and
-output useful error messages to STDERR if there are any problems.
+output useful error messages if there are any problems.
 
 Please browse through the L<example configurations|TODO> for inspiration.
 

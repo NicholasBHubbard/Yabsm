@@ -127,9 +127,9 @@ I<hh:mm> times. Yabsm will perform the snapshot/backup everyday at all the given
 times.
 
 The weekly timeframe requires a C<weekly_day> setting that takes a day of week
-string such as I<monday>, or I<saturday> and a I<weekly_time> setting that takes a
-I<hh:mm> time. The weekly snapshot/backup will be performed on the given day of 
-the week at the given time.
+string such as I<monday>, I<thursday>, or I<saturday> and a I<weekly_time>
+setting that takes a I<hh:mm> time. The weekly snapshot/backup will be performed
+on the given day of the week at the given time.
 
 The monthly timeframe requires a C<monthly_day> setting that takes an integer
 between 1-31 and a C<monthly_time> setting that takes a I<hh:mm> time. The 

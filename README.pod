@@ -157,8 +157,8 @@ given time.
 
 =head3 Snaps
 
-A snap represents a L<snapshot|Snapshots vs Backups> configuration for some 
-L<subvol|Subvols>.
+A snap represents a L<snapshot/"Snapshots vs Backups"> configuration for some 
+L<subvol/"Subvols">.
 
 
 =head1 CONTRIBUTING

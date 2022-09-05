@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Provides functions for finding snapshots via a snapshot finding DSL.
+#  Provides functionality for finding snapshots via a snapshot finding DSL.
 #
 #  See t/Yabsm/Snapshot.pm for this libraries tests.
 

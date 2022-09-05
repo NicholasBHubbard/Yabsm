@@ -184,14 +184,14 @@ A I<ssh_backup> represents a backup configuration that sends snapshots over a
 network via SSH. See this example of a I<ssh_backup> that backs up I<home_subvol>
 to larry@192.168.1.73:/backups/yabsm/laptop_home:
 
-ssh_backup home_subvol_larry_server {
-    subvol=home_subvol
-    ssh_dest=larry@192.168.1.73
-    dir=/backups/yabsm/laptop_home
-    timeframes=daily
-    daily_keep=31
-    daily_times=23:59 
-}
+    ssh_backup home_subvol_larry_server {
+        subvol=home_subvol
+        ssh_dest=larry@192.168.1.73
+        dir=/backups/yabsm/laptop_home
+        timeframes=daily
+        daily_keep=31
+        daily_times=23:59 
+    }
 
 The difficult part of configuring a I<ssh_backup> is not writing the 
 configuration, but rather making sure the SSH server is properly configured. For

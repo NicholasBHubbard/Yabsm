@@ -78,7 +78,7 @@ and status the yabsm daemon.
 
 The yabsm daemon must be started as root so it can initialize its runtime 
 environment, but after the initialization it switches itself to a locked user
-named I<yabsm>. This detail is important when we talk about setting up SSH keys.
+named I<yabsm>.
 
 =head1 Configuration
 

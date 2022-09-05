@@ -224,8 +224,8 @@ by running the command.
 
     # yabsm ssh check SSH_BACKUP
 
-This command will fail with useful error messages if there are any of the above
-conditions fail.
+This command will fail with useful error messages if any of the above conditions 
+are not true.
 
 =head1 CONTRIBUTING
 

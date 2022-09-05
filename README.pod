@@ -104,19 +104,37 @@ A subvol is the simplest configuration object, and is used to give a name to a L
 Before we can understand I<snaps>, I<ssh_backups>, and I<local_backups>, we need
 to understand timeframes, which work the same for each of these configuration 
 objects. To specify the timeframes you want you set the value of the C<timeframes>
-setting to a comma seperated list of timeframe values.
+setting to a comma seperated list of timeframe values. For example this is how
+you specify that you want every timeframe:
 
     timeframes=5minute,hourly,daily,weekly,monthly
 
 Each timeframe you specify adds new required settings for the configuration 
-object. Here is a table that shows the timeframe settings.
+object. Here is a table that shows the timeframe settings:
 
     5minute -> 5minute_keep
     hourly  -> hourly_keep
     daily   -> daily_keep,   daily_times
     weekly  -> weekly_keep,  weekly_time,  weekly_day
     monthly -> monthly_keep, monthly_time, monthly_day
-   
+ 
+Any C<*_keep> setting defines how many snapshots/backups you want to keep at one
+time for the configuration object. For example A common configuration is to keep
+48 hourly snapshots so you can go back 2 days in one-hour increments.
+
+The C<daily_times> setting for daily snapshots takes a comma seperated list of
+I<hh:mm> times. Yabsm will perform the snapshot/backup everyday at all the given
+times.
+
+The weekly timeframe requires a C<weekly_day> setting that takes a day of week
+string such as I<monday>, or I<saturday> and a <weekly_time> setting that takes a
+I<hh:mm> time. The weekly snapshot/backup will be performed on the given day of 
+the week at the given time.
+
+The monthly timeframe requires a C<monthly_day> setting that takes an integer
+between 1-31 and a C<monthly_time> setting that takes a I<hh:mm> time. The 
+monthly snapshot/backup will be performed on the given day of the month at the 
+given time.
 
 =head1 CONTRIBUTING
 

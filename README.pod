@@ -7,22 +7,13 @@ following features.
 
 =over 4
 
-=item *
+=item * Takes readonly snapshots and performs remote and local incremental backups.
 
-Takes readonly snapshots and performs remote and local incremental backups.
+=item * Seperates snapshots and backups into 5minute, hourly, daily, weekly, and monthly timeframe categories
 
-=item *
+=item * Cycles out old snapshots and backups on a per-timeframe basis
 
-Seperates snapshots and backups into 5minute, hourly, daily, weekly, and monthly
-timeframe categories
-
-=item *
-
-Cycles out old snapshots and backups on a per-timeframe basis
-
-=item *
-
-Provides a simple query language for locating snapshots and backups.
+=item * Provides a simple query language for locating snapshots and backups.
 
 =back
 

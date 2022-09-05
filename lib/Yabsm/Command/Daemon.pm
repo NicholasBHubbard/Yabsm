@@ -55,7 +55,7 @@ sub yabsmd_start {
 
     arg_count_or_die(0, 0, @_);
 
-    die q(yabsm: error: permission denied)."\n" unless i_am_root();
+    die 'yabsm: error: permission denied'."\n" unless i_am_root();
  
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {

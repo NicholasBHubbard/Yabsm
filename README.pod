@@ -105,9 +105,24 @@ A subvol is the simplest configuration object, and is used to give a name to a L
 
 =head3 Timeframes
 
-Before we can understand I<snaps>, I<ssh_backups>, and I<local_backups>, we need
-to understand timeframes, which work the same for each of these configuration 
-objects. To specify the timeframes you want you set the value of the C<timeframes>
+We need to understand timeframes gefore we can understand I<snaps>,
+I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
+daily, weekly, and monthly. 
+
+I<snaps>, <ssh_backups>, and I<local_backups> are configured to use one or more
+timeframes. For example an I<ssh_backup> may be configured to use the I<hourly> 
+and I<weekly> categories, which means that we want to perform the backups every
+hour an once a week.
+
+The following table describes in plain english what each timeframe means.
+
+    5minute -> Every 5minutes
+    hourly  -> At the beginning of every hour
+    daily   -> Everyday at one or more times of the day
+    weekly  -> Once a week on a specific weekday at a specific time
+    monthly -> Once a month on a specific day at a specific time
+
+To specify the timeframes you want you set the value of the C<timeframes>
 setting to a comma seperated list of timeframe values. For example this is how
 you specify that you want every timeframe:
 
@@ -141,6 +156,8 @@ monthly snapshot/backup will be performed on the given day of the month at the
 given time.
 
 =head3 Snaps
+
+A snap 
 
 =head1 CONTRIBUTING
 

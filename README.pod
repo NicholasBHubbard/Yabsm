@@ -7,13 +7,22 @@ following features.
 
 =over 4
 
-=item * Takes readonly snapshots and performs remote and local incremental backups.
+=item *
 
-=item * Seperates snapshots and backups into 5minute, hourly, daily, weekly, and monthly timeframe categories
+Takes readonly snapshots and performs remote and local incremental backups.
 
-=item * Cycles out old snapshots and backups on a per-timeframe basis
+=item *
 
-=item * Provides a simple query language for locating snapshots and backups.
+Seperates snapshots and backups into 5minute, hourly, daily, weekly, and monthly
+timeframe categories
+
+=item *
+
+Cycles out old snapshots and backups on a per-timeframe basis
+
+=item *
+
+Provides a simple query language for locating snapshots and backups.
 
 =back
 
@@ -159,9 +168,8 @@ given time.
 
 =head3 Snaps
 
-A I<snap> represents a L<snapshot|/"Snapshots vs Backups"> configuration for some
-L<subvol|/"Subvols">. Here is an example of a I<snap> that snapshots
-I<home_subvol> twice a day.
+A I<snap> represents a snapshot configuration for some I<subvol>. Here is an
+example of a I<snap> that snapshots I<home_subvol> twice a day.
 
     snap home_subvol_snap {
         subvol=home_subvol
@@ -172,9 +180,9 @@ I<home_subvol> twice a day.
 
 =head3 SSH Backups 
 
-A I<ssh_backup> represents a L<backup|/"Snapshots vs Backups"> configuration that
-sends snapshots over a network via SSH. See this example of a I<ssh_backup> that
-backs up I<home_subvol> to larry@192.168.1.73:/backups/yabsm/laptop_home:
+A I<ssh_backup> represents a backup configuration that sends snapshots over a
+network via SSH. See this example of a I<ssh_backup> that backs up I<home_subvol>
+to larry@192.168.1.73:/backups/yabsm/laptop_home:
 
 ssh_backup home_subvol_larry_server {
     subvol=home_subvol

@@ -182,7 +182,7 @@ example of a I<snap> that snapshots I<home_subvol> twice a day.
 
 A I<ssh_backup> represents a backup configuration that sends snapshots over a
 network via SSH. See this example of a I<ssh_backup> that backs up I<home_subvol>
-to larry@192.168.1.73:/backups/yabsm/laptop_home:
+to C<larry@192.168.1.73:/backups/yabsm/laptop_home>:
 
     ssh_backup home_subvol_larry_server {
         subvol=home_subvol

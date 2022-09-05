@@ -219,6 +219,14 @@ The SSH user has root access to btrfs-progs via sudo.
 
 =back
 
+Yabsm allows you to check that an I<ssh_backups> server is configured correctly
+by running the command.
+
+    # yabsm ssh check SSH_BACKUP
+
+This command will fail with useful error messages if there are any of the above
+conditions fail.
+
 =head1 CONTRIBUTING
 
 TODO

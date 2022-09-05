@@ -103,7 +103,8 @@ sub new_ssh_conn { # Is tested
         batch_mode   => 1, # Don't even try asking for a password
         remote_shell => 'sh',
         timeout      => 5,
-        kill_ssh_on_timeout => 1
+        kill_ssh_on_timeout => 1,
+        master_opts => [ '-q' ]
     );
 
     if ($ssh->error) {

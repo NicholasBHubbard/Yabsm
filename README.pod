@@ -201,9 +201,9 @@ a server to be properly configured it must satisfy the following conditions:
 
 =item *
 
-The hosts I<yabsm> user can sign into the SSH destination (I<ssh_dest>) using
-key based authentication. To achieve this you must add the I<yabsm> users SSH
-key (available via C<# yabsm ssh print-key>) to the SSH user's (i.e. larry)
+The hosts I<yabsm> user can sign into the SSH destination (I<ssh_dest>) using key
+based authentication. To achieve this you must add the I<yabsm> users SSH key
+(available via C<# yabsm ssh print-key>) to the SSH user's
 C<$HOME/.ssh/authorized_keys> file.
 
 =item *

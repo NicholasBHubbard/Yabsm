@@ -95,11 +95,15 @@ automatically when it starts.
 There are 4 different configuration objects: I<subvols>, I<snaps>, I<ssh_backups>,
 and I<local_backups>.
 
+=head3 Subvols
+
 A subvol is the simplest configuration object, and is used to give a name to a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called =mountpoint= which takes a value that is a path to a subvolume.
 
     subvol home_subvol {
         mountpoint=/home
     }
+
+=head3 Timeframes
 
 Before we can understand I<snaps>, I<ssh_backups>, and I<local_backups>, we need
 to understand timeframes, which work the same for each of these configuration 
@@ -135,6 +139,8 @@ The monthly timeframe requires a C<monthly_day> setting that takes an integer
 between 1-31 and a C<monthly_time> setting that takes a I<hh:mm> time. The 
 monthly snapshot/backup will be performed on the given day of the month at the 
 given time.
+
+=head3 Snaps
 
 =head1 CONTRIBUTING
 

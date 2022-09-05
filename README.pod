@@ -202,7 +202,9 @@ a server to be properly configured it must satisfy the following conditions:
 =item *
 
 The hosts I<yabsm> user can sign into the SSH destination (I<ssh_dest>) using
-key based authentication.
+key based authentication. To achieve this you must add the I<yabsm> users SSH
+key (available via C<# yabsm ssh print-key>) to the SSH user's (i.e. larry)
+C<$HOME/.ssh/authorized_keys> file.
 
 =item *
 
@@ -211,11 +213,13 @@ filesystem.
 
 =item *
 
-The SSH user has read and write permission on the backup directory.
+The SSH user (i.e. larry) has read and write permission on the backup directory.
 
 =item *
 
-The SSH user has root access to btrfs-progs via sudo.
+The SSH user has root access to btrfs-progs via sudo. To do this you can add a
+file containing the string C<larry ALL=(root) NOPASSWD /sbin/btrfs> to
+a file in C</etc/sudoers.d>.
 
 =back
 

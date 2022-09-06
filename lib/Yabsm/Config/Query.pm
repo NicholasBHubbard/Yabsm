@@ -25,6 +25,7 @@ our @EXPORT_OK = qw(is_timeframe
                     time_hour
                     time_minute
                     yabsm_dir
+                    yabsm_user_home
                     subvol_exists
                     subvol_exists_or_die
                     snap_exists

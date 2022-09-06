@@ -5,7 +5,7 @@
 #  Provides functions for taking and cycling snapshots based off of
 #  the user config.
 #
-#  See t/Yabsm/Snapshot.pm for this libraries tests.
+#  See t/Snapshot.t for this libraries tests.
 
 package Yabsm::Snapshot;
 
@@ -21,22 +21,22 @@ use File::Basename qw(basename);
 use Time::Piece;
 
 use Exporter 'import';
-our @EXPORT_OK = qw( take_snapshot
-                     delete_snapshot
-                     is_snapshot_name
-                     is_snapshot_name_or_die
-                     is_yabsm_snapshot
-                     is_yabsm_snapshot_or_die
-                     snapshot_name_nums
-                     nums_to_snapshot_name
-                     current_time_snapshot_name
-                     sort_snapshots
-                     cmp_snapshots
-                     snapshots_eq
-                     snapshot_newer
-                     snapshot_older
-                     snapshot_newer_or_eq
-                     snapshot_older_or_eq
+our @EXPORT_OK = qw(take_snapshot
+                    delete_snapshot
+                    is_snapshot_name
+                    is_snapshot_name_or_die
+                    is_yabsm_snapshot
+                    is_yabsm_snapshot_or_die
+                    snapshot_name_nums
+                    nums_to_snapshot_name
+                    current_time_snapshot_name
+                    sort_snapshots
+                    cmp_snapshots
+                    snapshots_eq
+                    snapshot_newer
+                    snapshot_older
+                    snapshot_newer_or_eq
+                    snapshot_older_or_eq
                    );
 
                  ####################################

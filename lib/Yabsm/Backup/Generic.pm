@@ -16,6 +16,7 @@ use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Snapshot qw( take_snapshot 
                         delete_snapshot
                         current_time_snapshot_name
+                        is_snapshot_name
                       );
 
 use Carp 'confess';
@@ -243,6 +244,12 @@ sub take_tmp_snapshot { # Is tested
 
     my $tmp_snapshot_dir = tmp_snapshot_dir($backup, $backup_type, $config_ref);
 
+    # Remove any old tmp snapshots
+    opendir my $dh, $tmp_snapshot_dir or confess("yabsm: internal error: cannot opendir '$tmp_snapshot_dir'");
+    my @tmp_snapshots = map { $_ = "$tmp_snapshot_dir/$_" } grep { is_snapshot_name($_, 0) } readdir($dh);
+    closedir $dh;
+    delete_snapshot($_) for @tmp_snapshots;
+    
     my $mountpoint;
 
     if ($backup_type eq 'ssh')   {

@@ -96,6 +96,22 @@ sub new_ssh_conn { # Is tested
     my $ssh_backup = shift;
     my $config_ref = shift;
 
+    my $home_dir = (getpwuid $<)[7]
+      or die q(yabsm: error: user ') . scalar(getpwuid $<) . q(' does not have a home directory);
+
+    my $priv_key = "$home_dir/.ssh/id_ed25519";
+    my $pub_key  = "$home_dir/.ssh/id_ed25519.pub";
+
+    unless (-f $priv_key) {
+        my $username = getpwuid $<;
+        die "yabsm: error: cannot not find '$username' users private SSH key '$priv_key'\n";
+    }
+
+    unless (-f $pub_key) {
+        my $username = getpwuid $<;
+        die "yabsm: error: cannot not find '$username' users SSH public SSH key '$pub_key'\n";
+    }
+
     my $ssh_dest = ssh_backup_ssh_dest($ssh_backup, $config_ref);
 
     my $ssh = Net::OpenSSH->new(

@@ -23,17 +23,17 @@ use Carp 'confess';
 use File::Basename 'basename';
 
 use Exporter 'import';
-our @EXPORT_OK = qw( take_bootstrap_snapshot 
-                     maybe_take_bootstrap_snapshot 
-                     backup_bootstrap_snapshot 
-                     bootstrap_snapshot_dir 
-                     is_bootstrap_snapshot 
-                     is_bootstrap_snapshot_or_die 
-                     is_bootstrap_snapshot_name 
-                     is_bootstrap_snapshot_name_or_die 
-                     tmp_snapshot_dir 
-                     take_tmp_snapshot 
-                     is_backup_type_or_die 
+our @EXPORT_OK = qw(take_bootstrap_snapshot 
+                    maybe_take_bootstrap_snapshot 
+                    backup_bootstrap_snapshot 
+                    bootstrap_snapshot_dir 
+                    is_bootstrap_snapshot 
+                    is_bootstrap_snapshot_or_die 
+                    is_bootstrap_snapshot_name 
+                    is_bootstrap_snapshot_name_or_die 
+                    tmp_snapshot_dir 
+                    take_tmp_snapshot 
+                    is_backup_type_or_die 
                    );
 
                  ####################################

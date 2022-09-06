@@ -63,10 +63,15 @@ sub yabsmd_start {
     }
 
     have_prerequisites_or_die();
-    my $config_ref = parse_config_or_die();
-    my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
+
     install_signal_handlers();
+
     init_log4perl();
+
+    my $config_ref = parse_config_or_die();
+
+    my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
+
     create_runtime_dirs($config_ref);
 
     open my $pid_fh, '>', '/run/yabsmd.pid'
@@ -75,8 +80,8 @@ sub yabsmd_start {
     chown $yabsm_uid, $yabsm_gid, '/run/yabsmd.pid';
     chmod 0644, '/run/yabsmd.pid';
 
-    POSIX::setuid($yabsm_uid);
     POSIX::setgid($yabsm_gid);
+    POSIX::setuid($yabsm_uid);
 
     create_yabsm_user_ssh_key(0, $config_ref);
 
@@ -343,7 +348,8 @@ sub yabsmd_pid { # Not tested
 
     my $pid_file_pid;
     if (open my $fh, '<', '/run/yabsmd.pid') {
-        chomp($pid_file_pid = <$fh>);
+        $pid_file_pid = <$fh>;
+        chomp $pid_file_pid if $pid_file_pid;
         close $fh;
     }
 
@@ -451,9 +457,10 @@ sub create_yabsm_user_ssh_key { # Not tested
         my $yabsm_uid = getpwnam('yabsm') or confess(q(yabsm: internal error: cannot find user named 'yabsm'));
         my $yabsm_gid = getgrnam('yabsm') or confess(q(yabsm: internal error: cannot find group named 'yabsm'));
 
-        unless ($< == $yabsm_uid && $( == $yabsm_gid) {
-            my $username = getpwuid $<;
-            die "yabsm: error: cannot create SSH key for user 'yabsm' when running as user '$username'\n";
+        unless (POSIX::getuid() == $yabsm_uid && POSIX::getgid() == $yabsm_gid) {
+            my $username  = getpwuid POSIX::getuid();
+            my $groupname = getgrgid POSIX::getgid();
+            confess "yabsm: internal error: expected to be running as user and group yabsm but instead running as user '$username' and group '$groupname'";
         }
 
         my $yabsm_user_home = yabsm_user_home($config_ref);

@@ -13,13 +13,13 @@ package Yabsm::Backup::Generic;
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 
-use Yabsm::Snapshot qw( take_snapshot 
-                        delete_snapshot
-                        current_time_snapshot_name
-                        is_snapshot_name
+use Yabsm::Snapshot qw(take_snapshot 
+                       delete_snapshot
+                       current_time_snapshot_name
+                       is_snapshot_name
                       );
 
-use Carp 'confess';
+use Carp q(confess);
 use File::Basename 'basename';
 
 use Exporter 'import';

@@ -177,7 +177,7 @@ sub is_btrfs_subvolume { # Not tested
 
     return 0 unless is_btrfs_dir($dir);
 
-    my $inode_num = (split /\s+/, `ls -di '$dir' 2>/dev/null`)[0];
+    my $inode_num = (split /\s+/, `ls -di '$dir' 2>/dev/null`, 2)[0];
 
     return 0+(256 == $inode_num);
 }

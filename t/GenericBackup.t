@@ -164,7 +164,7 @@ SKIP: {
 
     $n = 'take_tmp_snapshot';
     $f = \&Yabsm::Backup::Generic::take_tmp_snapshot;
-    throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/'$tmp_snapshot_dir' is not a directory residing on a btrfs filesystem/, "$n - dies if bootstrap directory doesn't exist";
+    throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/cannot opendir '$tmp_snapshot_dir'/, "$n - dies if bootstrap directory doesn't exist";
 
     make_path_or_die($bootstrap_dir);
     make_path_or_die($tmp_snapshot_dir);

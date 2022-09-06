@@ -11,14 +11,14 @@ use v5.16.3;
 package Yabsm::Backup::Local;
 
 use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot take_tmp_snapshot);
-use Yabsm::Snapshot qw( delete_snapshot sort_snapshots );
-use Yabsm::Tools qw( arg_count_or_die system_or_die);
+use Yabsm::Snapshot qw(delete_snapshot sort_snapshots);
+use Yabsm::Tools qw(arg_count_or_die system_or_die);
 use Yabsm::Config::Query qw( :ALL );
 
 use File::Basename qw(basename);
 
 use Exporter 'import';
-our @EXPORT_OK = qw( do_local_backup );
+our @EXPORT_OK = qw(do_local_backup);
 
                  ####################################
                  #            SUBROUTINES           #

@@ -1,0 +1,15 @@
+# This config should fail because nick@192.foo is not a valid ssh_dest
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+ssh_backup foo_backup {
+    ssh_dest=nick@192.foo
+    subvol=foo
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=1
+}

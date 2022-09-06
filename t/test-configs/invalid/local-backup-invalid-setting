@@ -1,0 +1,15 @@
+# This config should fail because quux is not a valid local_backup setting
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+local_backup foo_backup {
+    quux=bar
+    subvol=foo
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=1
+}

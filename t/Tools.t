@@ -1,0 +1,72 @@
+#!/usr/bin/env perl
+
+#  Author:  Nicholas Hubbard
+#  WWW:     https://github.com/NicholasBHubbard/yabsm
+#  License: MIT
+
+#  Testing for the Yabsm::Tools library.
+
+use strict;
+use warnings;
+use v5.16.3;
+
+use Yabsm::Tools;
+
+use Test::More 'no_plan';
+use Test::Exception;
+
+                 ####################################
+                 #               TESTS              #
+                 ####################################
+
+{
+    my $n = 'arg_count_or_die';
+    my $f = \&Yabsm::Tools::arg_count_or_die;
+
+    lives_ok { $f->(1,2,73,37) } "$n - lives if correct number of args";
+    throws_ok { $f->(1,1,73,37) } qr/called 'main::__ANON__' with 2 args but it expects 1 arg/, "$n - dies with single number range";
+    throws_ok { $f->(1,2,73,37,42) } qr/called 'main::__ANON__' with 3 args but it expects 1-2 args/, "$n - dies with bounded range";
+    throws_ok { $f->(2,1,73,37,42) } qr/called 'main::__ANON__' with 3 args but it expects 1-2 args/, "$n - swaps upper lower ranges";
+}
+
+{
+    my $n = 'nums_denote_valid_date';
+    my $f = \&Yabsm::Tools::nums_denote_valid_date;
+
+    is($f->(2020,5,13,23,59), 1, "$n - succeeds if valid date");
+    is($f->(0,5,13,23,59), 0, "$n - fails if invalid year");
+    is($f->(2020,13,13,23,59), 0, "$n - fails if invalid month");
+    is($f->(2020,5,32,23,59), 0, "$n - fails if invalid month day");
+    is($f->(2020,5,13,24,59), 0, "$n - fails if invalid hour");
+    is($f->(2020,5,13,23,60), 0, "$n - fails if invalid minute");
+    is($f->(2020,4,31,23,59), 0, "$n - understands number of days in different months");
+    is($f->(2019,2,29,23,59), 0, "$n - understands non leap year february");
+    is($f->(2020,2,29,23,59), 1, "$n - understands leap year february");
+}
+
+{
+    my $n = 'nums_denote_valid_date_or_die';
+    my $f = \&Yabsm::Tools::nums_denote_valid_date_or_die;
+
+    is($f->(2020,5,13,23,59), 1, "$n - succeeds if valid date");
+    throws_ok { $f->(0,5,13,23,59) } qr/'0_5_13_23:59' does not denote a valid yr_mon_day_hr:min date/, "$n - dies if invalid date";
+}
+
+{
+    my $n = 'system_or_die';
+    my $f = \&Yabsm::Tools::system_or_die;
+
+    lives_and { is $f->('true'), 1 } "$n - succeeds if command succeeds";
+    throws_ok { $f->('false') } qr/yabsm: internal error: system command 'false' exited with non-zero status/, "$n - dies if command fails";
+}
+
+{
+    my $n = 'with_error_catch_log';
+    my $f = \&Yabsm::Tools::with_error_catch_log;
+
+    my $sub = sub { my $arg1 = shift; my $arg2 = shift; die "died - args $arg1 $arg2" };
+
+    lives_ok { $f->($sub, 'foo', 'bar') } "$n - catches and logs errors";
+}
+
+1;

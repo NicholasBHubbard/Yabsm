@@ -1,0 +1,23 @@
+# This config defines a local_backup with max timeframes.
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+local_backup foo_backup {
+    subvol=foo
+    dir=/backups
+    timeframes=5minute,hourly,daily,weekly,monthly
+    daily_times=04:30,23:59
+    weekly_day=wednesday
+    weekly_time=00:00
+    monthly_day=31
+    monthly_time=23:59
+    5minute_keep=36
+    hourly_keep=48
+    daily_keep=365
+    weekly_keep=56
+    monthly_keep=12
+}

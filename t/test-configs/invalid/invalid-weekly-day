@@ -1,0 +1,15 @@
+# This config should fail because quux is not a valid week day
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo_snap {
+    weekly_day=quux
+    timeframes=weekly
+    subvol=foo
+    weekly_keep=1
+    weekly_time=23:59
+}

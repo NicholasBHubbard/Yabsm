@@ -1,0 +1,16 @@
+# This config should fail because foo_ssh_backup is backing
+# up an undefined subvol.
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+ssh_backup foo_ssh_backup {
+    subvol=bar
+    ssh_dest=nick@192.168.1.12
+    dir=/.snapshots/yabsm/bar
+    timeframes=5minute
+    5minute_keep=1
+}

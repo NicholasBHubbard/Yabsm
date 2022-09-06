@@ -1,0 +1,20 @@
+# This config should fail because we are defining two
+# snaps with the same name.
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo_snap {
+    subvol=foo
+    timeframes=5minute
+    5minute_keep=36
+}
+
+snap foo_snap {
+    subvol=foo
+    timeframes=5minute
+    5minute_keep=1
+}

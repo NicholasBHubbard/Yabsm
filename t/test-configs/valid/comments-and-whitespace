@@ -1,0 +1,65 @@
+# This config shows that comments, blank lines, and leading/trailing whitespace
+# are ignored.
+
+yabsm_dir=/.snapshots/yabsm
+
+#comment
+  # comment  
+   subvol foo {#comment
+mountpoint=/ #comment
+} #comment
+# comment
+snap foo_snap {   
+  subvol=foo 
+  #comment
+timeframes=5minute
+    daily_times   =    23:59,12:30 #comment
+                  weekly_day  =wednesday
+    weekly_time= 00:00 #comment
+    #comment
+    monthly_day= 31
+    #comment
+    monthly_time =23:59
+    #comment
+    5minute_keep = 36
+    #####comment
+    hourly_keep= 48 #####comment
+    daily_keep=    365#####comment
+    weekly_keep    =56   #####comment
+    monthly_keep=  12 #comment
+}#comment
+
+     ssh_backup foo_ssh_backup {#comment
+    subvol=foo#comment
+ssh_dest=bar@192.168.1.12#comment
+  dir=/backups#comment
+timeframes=5minute,hourly,daily,weekly,monthly#comment
+       daily_times=23:59#comment
+  weekly_day=wednesday#comment
+    weekly_time=00:00#comment
+ monthly_day  =31#comment
+  monthly_time=23:59#comment
+    5minute_keep=36#comment
+  hourly_keep=48#comment
+  daily_keep=365#comment
+       weekly_keep=56#comment
+    monthly_keep=12#comment
+}#comment
+#comment
+
+local_backup foo_local_backup {#comment
+    subvol=foo#comment
+    dir=/backups#comment
+    timeframes  =5minute,hourly,daily,weekly,monthly#comment
+    daily_times  =23:59#comment
+       weekly_day=wednesday#comment
+  weekly_time  =00:00#comment
+      monthly_day=31#comment
+monthly_time=23:59#comment
+        5minute_keep=36#comment
+                hourly_keep=48#comment
+      daily_keep=365#comment
+ weekly_keep=56#comment
+    monthly_keep=12#comment
+}#comment
+#comment

@@ -1,0 +1,15 @@
+# This config should fail because 3foo_backup is not
+# a valid local_backup name.
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+local_backup 3foo_backup {
+    subvol=foo
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=1
+}

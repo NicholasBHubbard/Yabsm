@@ -1,0 +1,14 @@
+# This config should fail because foo_backup is missing it's dir setting
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+local_backup foo_backup {
+    ###dir=/backups
+    subvol=foo
+    timeframes=5minute
+    5minute_keep=1
+}

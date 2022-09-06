@@ -1,0 +1,24 @@
+# This config should fail because we are defining two
+# ssh_backups with the same name.
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+ssh_backup foo_backup {
+    subvol=foo
+    ssh_dest=nick@192.168.1.12
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=36
+}
+
+ssh_backup foo_backup {
+    subvol=foo
+    ssh_dest=nick@192.168.1.12
+    dir=/backups/foo
+    timeframes=5minute
+    5minute_keep=1
+}

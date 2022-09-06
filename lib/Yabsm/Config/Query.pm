@@ -4,8 +4,6 @@
 
 #  Provides functions for querying the Yabsm configuration hash that is produced
 #  by Yabsm::Config::Parser::parse_config_or_die().
-#
-#  See t/Yabsm/Config/Query.t for this libraries tests.
 
 package Yabsm::Config::Query;
 

@@ -407,7 +407,9 @@ sub all_subvols { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys %{ $config_ref->{subvols} };
+    my @subvols = sort keys %{ $config_ref->{subvols} };
+
+    return @subvols;
 }
 
 sub all_snaps { # Is tested
@@ -418,7 +420,9 @@ sub all_snaps { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys %{ $config_ref->{snaps} };
+    my @snaps = sort keys %{ $config_ref->{snaps} };
+
+    return @snaps;
 }
 
 sub all_ssh_backups { # Is tested
@@ -429,7 +433,9 @@ sub all_ssh_backups { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys %{ $config_ref->{ssh_backups} };
+    my @ssh_backups = sort keys %{ $config_ref->{ssh_backups} };
+
+    return @ssh_backups;
 }
 
 sub all_local_backups { # Is tested
@@ -440,7 +446,9 @@ sub all_local_backups { # Is tested
 
     my $config_ref = shift;
 
-    return sort keys %{ $config_ref->{local_backups} };
+    my @all_local_backups = sort keys %{ $config_ref->{local_backups} };
+
+    return @all_local_backups;
 }
 
 sub subvol_mountpoint { # Is tested
@@ -921,10 +929,10 @@ sub snap_daily_times { # Is tested
     snap_exists_or_die($snap, $config_ref);
     snap_wants_timeframe_or_die($snap, 'daily', $config_ref);
 
-    my @times = split ',', $config_ref->{snaps}{$snap}{daily_times};
+    # removes duplicates
+    my @times = sort keys %{{ map { $_ => 1 } split ',', $config_ref->{snaps}{$snap}{daily_times} }};
 
-    # remove duplicates
-    return sort keys %{{ map { $_ => 1 } @times }};
+    return @times
 }
 
 sub snap_weekly_keep { # Is tested
@@ -1094,10 +1102,9 @@ sub ssh_backup_daily_times { # Is tested
     ssh_backup_exists_or_die($ssh_backup, $config_ref);
     ssh_backup_wants_timeframe_or_die($ssh_backup, 'daily', $config_ref);
 
-    my @times = split ',', $config_ref->{ssh_backups}{$ssh_backup}{daily_times};
-
-    # remove duplicates
-    return sort keys %{{ map { $_ => 1 } @times }};
+    # removes duplicates
+    my @times = sort keys %{{ map { $_ => 1 } split ',', $config_ref->{ssh_backups}{$ssh_backup}{daily_times} }};
+    return @times;
 }
 
 sub ssh_backup_weekly_keep { # Is tested
@@ -1267,10 +1274,10 @@ sub local_backup_daily_times { # Is tested
     local_backup_exists_or_die($local_backup, $config_ref);
     local_backup_wants_timeframe_or_die($local_backup, 'daily', $config_ref);
 
-    my @times = split ',', $config_ref->{local_backups}{$local_backup}{daily_times};
+    # removes duplicates
+    my @times = sort keys %{{ map { $_ => 1 } split ',', $config_ref->{local_backups}{$local_backup}{daily_times} }};
 
-    # remove duplicates
-    return sort keys %{{ map { $_ => 1 } @times }};
+    return @times;
 }
 
 sub local_backup_weekly_keep { # Is tested

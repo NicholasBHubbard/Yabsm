@@ -99,8 +99,8 @@ sub new_ssh_conn { # Is tested
     my $home_dir = (getpwuid $<)[7]
       or die q(yabsm: error: user ') . scalar(getpwuid $<) . q(' does not have a home directory);
 
-    my $priv_key = "$home_dir/.ssh/id_ed25519";
     my $pub_key  = "$home_dir/.ssh/id_ed25519.pub";
+    my $priv_key = "$home_dir/.ssh/id_ed25519";
 
     unless (-f $pub_key) {
         my $username = getpwuid $<;

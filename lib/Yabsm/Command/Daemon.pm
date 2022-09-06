@@ -332,91 +332,6 @@ sub create_runtime_dirs {
     return 1;
 }
 
-sub create_yabsm_user_and_group { # Not tested
-
-    # Create a locked-user and group named 'yabsm' if they do not already exist.
-
-    arg_count_or_die(1, 1, @_);
-
-    my $config_ref = shift;
-
-    i_am_root_or_die();
-
-    unless (yabsm_user_exists()) {
-        # useradd will automatically create a group named 'yabsm'.
-        system_or_die('useradd', '-m', '-d', yabsm_user_home($config_ref), '-s', '/bin/false', '-k', '/dev/null', 'yabsm');
-        system_or_die('passwd', '--lock', 'yabsm');
-    }
-
-    unless (yabsm_group_exists()) {
-        system_or_die('groupadd', 'yabsm');
-    }
-
-    my $yabsm_uid = getpwnam('yabsm');
-    my $yabsm_gid = getgrnam('yabsm');
-
-    return wantarray ? ($yabsm_uid, $yabsm_gid) : 1;
-}
-
-sub yabsm_user_exists { # Not tested
-
-    # Return 1 if there exists a locked user on the system named 'yabsm'.
-
-    arg_count_or_die(0, 0, @_);
-
-    i_am_root_or_die();
-
-    unless (0 == system('getent passwd yabsm >/dev/null 2>&1')) {
-        return 0;
-    }
-
-    unless ('L' eq (split ' ', `passwd -S yabsm`)[1]) {
-        die q(yabsm: error: found non-locked user named 'yabsm')."\n";
-    }
-
-    return 1;
-}
-
-sub yabsm_group_exists { # Not tested
-
-    # Return 1 if there exists on the system a user and group named 'yabsm' and
-    # return 0 otherwise.
-
-    arg_count_or_die(0, 0, @_);
-
-    i_am_root_or_die();
-
-    return 0+(0 == system('getent group yabsm >/dev/null 2>&1'));
-}
-
-sub add_yabsm_user_btrfs_sudoer_rule { # Not tested
-
-    # Add sudoer rule to '/etc/sudoers.d/yabsm-btrfs' to grant the 'yabsm' user
-    # sudo access to btrfs-progs.
-
-    arg_count_or_die(0, 0, @_);
-
-    i_am_root_or_die();
-
-    my $file = '/etc/sudoers.d/yabsm-btrfs';
-
-    unless (-f $file) {
-        my $btrfs_bin = `which btrfs 2>/dev/null`
-          or confess('yabsm: internal error: btrfs-progs not in root users path');
-
-        my $sudoer_rule = "yabsm ALL=(root) NOPASSWD $btrfs_bin";
-
-        open my $fh, '>', $file
-          or confess("yabsm: internal error: could not open '$file' for writing");
-
-        print $fh $sudoer_rule;
-
-        close $fh
-    }
-
-    return $file;
-}
-
 sub yabsmd_pid { # Not tested
 
     # If there is a running instance of yabsmd return its pid and otherwise
@@ -439,27 +354,24 @@ sub yabsmd_pid { # Not tested
 
 sub init_log4perl { # Not tested
 
-    # TODO
+    # Init Log::Log4Perl so it logs to /var/log/yabsmd. Please note that the only
+    # place that logging occurs is in &Yabsm::Tools::with_error_catch_log.
 
     arg_count_or_die(0, 0, @_);
 
     i_am_root_or_die();
 
     my $log_file = '/var/log/yabsmd';
-    
-    unless (yabsm_user_exists()) {
-        die q(yabsm: internal error: cannot find user named 'yabsm')."\n";
-    }
-    unless (yabsm_group_exists()) {
-        die q(yabsm: internal error: cannot find group named 'yabsm')."\n";
-    }
 
+    my $yabsm_uid = getpwnam('yabsm')
+      or confess q(yabsm: internal error: cannot find user named 'yabsm')."\n";
+    my $yabsm_gid = getgrnam('yabsm')
+      or confess q(yabsm: internal error: cannot find group named 'yabsm')."\n";
+    
     open my $log_fh, '>>', $log_file
       or die "yabsm: internal error: cannot open '$log_file' for writing\n";
     close $log_fh;
 
-    my $yabsm_uid = getpwnam('yabsm');
-    my $yabsm_gid = getgrnam('yabsm');
     chown $yabsm_uid, $yabsm_gid, $log_file;
     chmod 0644, $log_file;
 
@@ -530,7 +442,7 @@ sub create_yabsm_user_ssh_key { # Not tested
     # create the key even if no ssh_backup's are defined.
 
     arg_count_or_die(2, 2, @_);
-    
+
     my $force      = shift;
     my $config_ref = shift;
 
@@ -561,6 +473,91 @@ sub create_yabsm_user_ssh_key { # Not tested
     }
 
     return 0;
+}
+
+sub add_yabsm_user_btrfs_sudoer_rule { # Not tested
+
+    # Add sudoer rule to '/etc/sudoers.d/yabsm-btrfs' to grant the 'yabsm' user
+    # sudo access to btrfs-progs.
+
+    arg_count_or_die(0, 0, @_);
+
+    i_am_root_or_die();
+
+    my $file = '/etc/sudoers.d/yabsm-btrfs';
+
+    unless (-f $file) {
+        my $btrfs_bin = `which btrfs 2>/dev/null`
+          or confess('yabsm: internal error: btrfs-progs not in root users path');
+
+        my $sudoer_rule = "yabsm ALL=(root) NOPASSWD $btrfs_bin";
+
+        open my $fh, '>', $file
+          or confess("yabsm: internal error: could not open '$file' for writing");
+
+        print $fh $sudoer_rule;
+
+        close $fh
+    }
+
+    return $file;
+}
+
+sub create_yabsm_user_and_group { # Not tested
+
+    # Create a locked-user and group named 'yabsm' if they do not already exist.
+
+    arg_count_or_die(1, 1, @_);
+
+    my $config_ref = shift;
+
+    i_am_root_or_die();
+
+    unless (yabsm_user_exists()) {
+        # useradd will automatically create a group named 'yabsm'.
+        system_or_die('useradd', '-m', '-d', yabsm_user_home($config_ref), '-s', '/bin/false', '-k', '/dev/null', 'yabsm');
+        system_or_die('passwd', '--lock', 'yabsm');
+    }
+
+    unless (yabsm_group_exists()) {
+        system_or_die('groupadd', 'yabsm');
+    }
+
+    my $yabsm_uid = getpwnam('yabsm');
+    my $yabsm_gid = getgrnam('yabsm');
+
+    return wantarray ? ($yabsm_uid, $yabsm_gid) : 1;
+}
+
+sub yabsm_user_exists { # Not tested
+
+    # Return 1 if there exists a locked user on the system named 'yabsm'.
+
+    arg_count_or_die(0, 0, @_);
+
+    i_am_root_or_die();
+
+    unless (0 == system('getent passwd yabsm >/dev/null 2>&1')) {
+        return 0;
+    }
+
+    unless ('L' eq (split ' ', `passwd -S yabsm`)[1]) {
+        die q(yabsm: error: found non-locked user named 'yabsm')."\n";
+    }
+
+    return 1;
+}
+
+sub yabsm_group_exists { # Not tested
+
+    # Return 1 if there exists on the system a user and group named 'yabsm' and
+    # return 0 otherwise.
+
+    arg_count_or_die(0, 0, @_);
+
+    i_am_root_or_die();
+
+    return 0+(0 == system('getent group yabsm >/dev/null 2>&1'));
 }
 
 1;

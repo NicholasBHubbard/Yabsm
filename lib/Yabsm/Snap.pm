@@ -43,6 +43,7 @@ sub do_snap { # Is tested
         closedir $dh;
         \@snapshots;
     });
+
     my $num_snaps = scalar @snapshots;
     my $to_keep   = snap_timeframe_keep($snap, $tframe, $config_ref);
 

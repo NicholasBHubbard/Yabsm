@@ -3,6 +3,9 @@
 #  License: MIT
 
 #  Functions for performing btrfs incremental backups over SSH.
+#
+#  To run these tests you must have a user on the system named 'yabsm' that has
+#  the root users SSH key added to their ~/.ssh/authorized_hosts file.
 
 use strict;
 use warnings;

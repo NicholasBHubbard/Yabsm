@@ -337,7 +337,7 @@ sub create_runtime_dirs {
     return 1;
 }
 
-sub yabsmd_pid { # Not tested
+sub yabsmd_pid {
 
     # If there is a running instance of yabsmd return its pid and otherwise
     # return 0.
@@ -358,7 +358,7 @@ sub yabsmd_pid { # Not tested
     return $is_running ? $pid_file_pid : 0;
 }
 
-sub init_log4perl { # Not tested
+sub init_log4perl {
 
     # Init Log::Log4Perl so it logs to /var/log/yabsmd. Please note that the only
     # place that logging occurs is in &Yabsm::Tools::with_error_catch_log.
@@ -396,7 +396,7 @@ log4perl.appender.Logfile.layout.ConversionPattern = [%d] %m{chomp}%n
     return 1;
 }
 
-sub install_signal_handlers { # Not tested
+sub install_signal_handlers {
 
     # Install a handler for all signals with a default action of terminate or
     # dump to ensure we remove /run/yabsmd.pid before exiting.
@@ -437,7 +437,7 @@ sub install_signal_handlers { # Not tested
     $SIG{XFSZ}   = $cleanup_and_exit;
 }
 
-sub create_yabsm_user_ssh_key { # Not tested
+sub create_yabsm_user_ssh_key {
 
     # Create an SSH key for the yabsm user if one doesn't already exist. This
     # function dies unless the processes ruid and rgid are that of the yabsm user
@@ -482,7 +482,7 @@ sub create_yabsm_user_ssh_key { # Not tested
     return 0;
 }
 
-sub add_yabsm_user_btrfs_sudoer_rule { # Not tested
+sub add_yabsm_user_btrfs_sudoer_rule {
 
     # Add sudoer rule to '/etc/sudoers.d/yabsm-btrfs' to grant the 'yabsm' user
     # sudo access to btrfs-progs.
@@ -510,7 +510,7 @@ sub add_yabsm_user_btrfs_sudoer_rule { # Not tested
     return $file;
 }
 
-sub create_yabsm_user_and_group { # Not tested
+sub create_yabsm_user_and_group {
 
     # Create a locked-user and group named 'yabsm' if they do not already exist.
 
@@ -536,7 +536,7 @@ sub create_yabsm_user_and_group { # Not tested
     return wantarray ? ($yabsm_uid, $yabsm_gid) : 1;
 }
 
-sub yabsm_user_exists { # Not tested
+sub yabsm_user_exists {
 
     # Return 1 if there exists a locked user on the system named 'yabsm'.
 
@@ -555,7 +555,7 @@ sub yabsm_user_exists { # Not tested
     return 1;
 }
 
-sub yabsm_group_exists { # Not tested
+sub yabsm_group_exists {
 
     # Return 1 if there exists on the system a user and group named 'yabsm' and
     # return 0 otherwise.

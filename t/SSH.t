@@ -53,12 +53,14 @@ is_btrfs_subvolume($BTRFS_SUBVOLUME) or plan skip_all => q('$BTRFS_SUBVOLUME' is
 
 i_am_root() or plan skip_all => 'Must be root user';
 
-my $SSH = Net::OpenSSH->new( 'yabsm-test@localhost', remote_shell => 'sh' );
+getpwnam('yabsm') or plan skip_all => q(no such user 'yabsm');
 
-$SSH->error and plan skip_all => q(Could not connect to 'yabsm-test@localhost': ) . $SSH->error;
+my $SSH = Net::OpenSSH->new( 'yabsm@localhost', remote_shell => 'sh', batch_mode => 1 );
+
+$SSH->error and plan skip_all => q(root user could not connect to 'yabsm@localhost': ) . $SSH->error;
 
 $SSH->system('sudo -n btrfs --help 1>/dev/null 2>&1')
-  or plan skip_all => q(User 'yabsm-test' does not have sudo access to btrfs);
+  or plan skip_all => q(User 'yabsm' does not have sudo access to btrfs);
 
 my $BTRFS_DIR = tempdir( 'yabsm-SSH.t-tmpXXXXXX', DIR => $BTRFS_SUBVOLUME, CLEANUP => 1 );
 
@@ -66,10 +68,10 @@ my $BTRFS_DIR = tempdir( 'yabsm-SSH.t-tmpXXXXXX', DIR => $BTRFS_SUBVOLUME, CLEAN
                  #            TEST CONFIG           #
                  ####################################
 
-my %TEST_CONFIG = ( yabsm_dir   => "$BTRFS_DIR"
+my %TEST_CONFIG = ( yabsm_dir   => $BTRFS_DIR
                   , subvols     => { foo            => { mountpoint     => $BTRFS_SUBVOLUME } }
                   , ssh_backups => { foo_ssh_backup => { subvol         => 'foo'
-                                                       , ssh_dest       => 'yabsm-test@localhost'
+                                                       , ssh_dest       => 'yabsm@localhost'
                                                        , dir            => "$BTRFS_DIR/foo_ssh_backup"
                                                        , timeframes     => '5minute'
                                                        , '5minute_keep' => 1
@@ -102,10 +104,10 @@ throws_ok { $f->($SSH, 'false') } qr/remote command 'false' failed/, "$n - dies 
 
 $n = 'check_ssh_backup_config_or_die';
 $f = \&Yabsm::Backup::SSH::check_ssh_backup_config_or_die;
-throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm-test'/, "$n - dies unless backup dir exists";
+throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm'/, "$n - dies unless backup dir exists";
 make_path_or_die($BACKUP_DIR_BASE);
-throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm-test'/, "$n - dies unless backup dir is readable and writable by remote user";
-system_or_die(qq(chown -R yabsm-test '$BTRFS_DIR'));
+throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm'/, "$n - dies unless backup dir is readable and writable by remote user";
+system_or_die(qq(chown -R yabsm '$BTRFS_DIR'));
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), 1 } "$n - lives if properly configured";
 
 $n = 'do_ssh_backup';
@@ -113,7 +115,7 @@ $f = \&Yabsm::Backup::SSH::do_ssh_backup;
 throws_ok { $f->($SSH, 'foo_ssh_backup', 'monthly', \%TEST_CONFIG) } qr/ssh_backup 'foo_ssh_backup' is not taking monthly backups/, "$n - dies if not taking tframe backups";
 throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/'$BOOTSTRAP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies if bootstrap dir doesn't exist";
 make_path_or_die($BOOTSTRAP_DIR);
-throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/'$TMP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies if tmp dir doesn't exist";
+throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/cannot opendir '$TMP_DIR'/, "$n - dies if tmp dir doesn't exist";
 make_path_or_die($TMP_DIR);
 lives_and { is $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG), $BACKUP } "$n - performs succesfull backup";
 

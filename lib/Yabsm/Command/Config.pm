@@ -18,7 +18,7 @@ use Yabsm::Config::Parser 'parse_config_or_die';
                  #               MAIN               #
                  ####################################
 
-my $usage = 'usage: yabsm config <check ?file|subvols|snaps|ssh_backups|local_backups|backups'."\n";
+my $usage = 'usage: yabsm config <check ?file|subvols|snaps|ssh_backups|local_backups|backups>'."\n";
 
 sub main {
 

@@ -47,11 +47,11 @@ print $USAGE and exit 0 if $HELP;
 
 have_prerequisites() or plan skip_all => 'Missing OS prerequisites';
 
+i_am_root() or plan skip_all => 'Must be root user';
+
 defined $BTRFS_SUBVOLUME or plan skip_all => 'Failed to provide btrfs subvolume';
 
 is_btrfs_subvolume($BTRFS_SUBVOLUME) or plan skip_all => q('$BTRFS_SUBVOLUME' is not a btrfs subvolume);
-
-i_am_root() or plan skip_all => 'Must be root user';
 
 getpwnam('yabsm') or plan skip_all => q(no such user 'yabsm');
 

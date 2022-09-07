@@ -162,6 +162,10 @@ SKIP: {
     $f = \&Yabsm::Backup::Generic::take_bootstrap_snapshot;
     throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/'$bootstrap_dir' is not a directory residing on a btrfs filesystem/, "$n - dies if bootstrap directory doesn't exist";
 
+    $n = 'maybe_take_bootstrap_snapshot';
+    $f = \&Yabsm::Backup::Generic::maybe_take_bootstrap_snapshot;
+    throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/'$bootstrap_dir' is not a directory residing on a btrfs filesystem/, "$n - dies if bootstrap directory doesn't exist";
+
     $n = 'take_tmp_snapshot';
     $f = \&Yabsm::Backup::Generic::take_tmp_snapshot;
     throws_ok { $f->('foo_local_backup', 'local', \%test_config) } qr/cannot opendir '$tmp_snapshot_dir'/, "$n - dies if bootstrap directory doesn't exist";
@@ -178,6 +182,10 @@ SKIP: {
 
     $n = 'take_bootstrap_snapshot';
     $f = \&Yabsm::Backup::Generic::take_bootstrap_snapshot;
+    lives_and { is $f->('foo_local_backup', 'local', \%test_config), $bootstrap_snapshot } "$n - takes bootstrap snapshot";
+
+    $n = 'maybe_take_bootstrap_snapshot';
+    $f = \&Yabsm::Backup::Generic::maybe_take_bootstrap_snapshot;
     lives_and { is $f->('foo_local_backup', 'local', \%test_config), $bootstrap_snapshot } "$n - takes bootstrap snapshot";
 
     $n = 'backup_bootstrap_snapshot';

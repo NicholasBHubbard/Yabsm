@@ -73,7 +73,7 @@ sub take_bootstrap_snapshot { # Is tested
     return take_snapshot($mountpoint, $bootstrap_dir, $snapshot_name);
 }
 
-sub maybe_take_bootstrap_snapshot { # Not tested
+sub maybe_take_bootstrap_snapshot { # Is tested
 
     # If $backup does not already have a bootstrap snapshot then take
     # a bootstrap snapshot and return its path. Otherwise return the

@@ -87,7 +87,7 @@ throws_ok { $f->('foo_local_backup', '5minute', \%TEST_CONFIG) } qr/'$BOOTSTRAP_
 cleanup_snapshots();
 make_path_or_die($BOOTSTRAP_DIR);
 
-throws_ok { $f->('foo_local_backup', '5minute', \%TEST_CONFIG) } qr/'$TMP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies if tmp directory doesn't exist";
+throws_ok { $f->('foo_local_backup', '5minute', \%TEST_CONFIG) } qr/cannot opendir '$TMP_DIR'/, "$n - dies if tmp directory doesn't exist";
 cleanup_snapshots();
 make_path_or_die($TMP_DIR);
 

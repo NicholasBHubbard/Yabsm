@@ -11,7 +11,7 @@ use v5.16.3;
 package Yabsm::Backup::Local;
 
 use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot take_tmp_snapshot);
-use Yabsm::Snapshot qw(delete_snapshot sort_snapshots);
+use Yabsm::Snapshot qw(delete_snapshot sort_snapshots is_snapshot_name);
 use Yabsm::Tools qw(arg_count_or_die system_or_die);
 use Yabsm::Config::Query qw( :ALL );
 
@@ -24,7 +24,7 @@ our @EXPORT_OK = qw(do_local_backup);
                  #            SUBROUTINES           #
                  ####################################
 
-sub do_local_backup {
+sub do_local_backup { # Is tested
 
     # Perform a $tframe local_backup for $local_backup.
 

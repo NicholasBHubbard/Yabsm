@@ -43,7 +43,7 @@ use base 'Parser::MGC';
 
 sub main {
 
-    my $usage = 'usage: yabsm find <SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>'."\n";
+    my $usage = 'usage: yabsm find <SNAP|SSH_BACKUP|LOCAL_BACKUP> QUERY'."\n";
 
     my $thing = shift // die $usage;
     my $query = shift // die $usage;

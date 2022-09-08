@@ -269,28 +269,28 @@ The second argument is a snapshot location query. There are 6 types of queries:
 
 =item 1
 
-newest -> Returns the most recent snapshot/backup.
+C<newest> -> Returns the most recent snapshot/backup.
 
 =item 2
 
-oldest -> Returns the oldest snapshot/backup.
+C<oldest> -> Returns the oldest snapshot/backup.
 
 =item 3
 
-after TIME -> Returns all the snapshot/backups that are newer than TIME.
+C<after TIME> -> Returns all the snapshot/backups that are newer than TIME.
 
 =item 4
 
-before TIME -> Returns all the snapshot/backups that are older than TIME.
+C<before TIME> -> Returns all the snapshot/backups that are older than TIME.
 
 =item 5
 
-between TIME1 TIME2 -> Returns all the snapshot/backups that were taken between
+C<between TIME1 TIME2> -> Returns all the snapshot/backups that were taken between
 TIME1 and TIME2.
 
 =item 6 
 
-TIME -> Return the snapshot/backup that was taken closest to TIME.
+C<TIME> -> Return the snapshot/backup that was taken closest to TIME.
 
 =back
 

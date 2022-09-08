@@ -213,7 +213,7 @@ filesystem.
 
 =item *
 
-The SSH user (i.e. larry) has read and write permission on the backup directory.
+The SSH user has read and write permission on the backup directory.
 
 =item *
 
@@ -230,6 +230,69 @@ by running the command.
 
 This command will fail with useful error messages if any of the above conditions 
 are not true.
+
+=head3 Local Backups
+
+A I<local_backup> represents a backup configuration that sends snapshots to a
+partition mounted on the host OS. This is useful for sending snapshots to, for
+example, a external hard drive plugged into your computer.
+
+Here is an example I<local_backup> that backs up C<home_subvol> every hour, an
+d once a week.
+
+    local_backup home_subvol_easystore {
+        subvol=home_subvol
+        dir=/mnt/easystore/backups/yabsm/home_subvol
+        timeframes=hourly,weekly
+        hourly_keep=48
+        weekly_keep=56
+        weekly_day=sunday
+        weekly_time=23:59
+    }
+
+=head1 Finding Snapshots
+
+Now that we know how to configure yabsm to take snapshots, we are going to want
+to locate those snapshots. Yabsm comes with a subcommand C<find> that allows you
+to locate snapshots and backups using a simple query language. Here is the usage
+string for the C<find> subcommand.
+
+    $ yabsm find <SNAP|SSH_BACKUP|LOCAL_BACKUP> QUERY
+
+The first argument is any I<snap>, I<ssh_backup>, or I<local_backup>. Because
+these configuration entities share the same namespace there is no risk of 
+ambiguity.
+
+The second argument is a snapshot location query. There are 7 types of queries:
+
+=over 4
+
+=item 1
+
+newest -> Returns the most recent snapshot/backup.
+
+=item 2
+
+oldest -> Returns the oldest snapshot/backup.
+
+=item 3
+
+after TIME -> Returns all the snapshot/backups that are newer than TIME.
+
+=item 4
+
+before TIME -> Returns all the snapshot/backups that are older than TIME.
+
+=item 5
+
+between TIME1 TIME2 -> Returns all the snapshot/backups that were taken between
+TIME1 and TIME2.
+
+=closest
+
+TIME -> Return the snapshot/backup that was taken closest to TIME.
+
+=back
 
 =head1 CONTRIBUTING
 

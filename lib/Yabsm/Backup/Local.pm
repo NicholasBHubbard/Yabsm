@@ -39,7 +39,7 @@ sub do_local_backup { # Is tested
     my $backup_dir         = local_backup_dir($local_backup, $tframe, $config_ref);
     my $backup_dir_base    = local_backup_dir($local_backup, undef, $config_ref);
 
-    # The destination partition could have been unmounted
+    # The destination partition might have been unmounted
     unless (-d $backup_dir) {
         die "yabsm: error: no such directory '$backup_dir' for local_backup '$local_backup'\n";
     }

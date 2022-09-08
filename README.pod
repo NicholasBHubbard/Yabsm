@@ -263,7 +263,7 @@ The first argument is any I<snap>, I<ssh_backup>, or I<local_backup>. Because
 these configuration entities share the same namespace there is no risk of 
 ambiguity.
 
-The second argument is a snapshot location query. There are 7 types of queries:
+The second argument is a snapshot location query. There are 6 types of queries:
 
 =over 4
 
@@ -288,7 +288,7 @@ before TIME -> Returns all the snapshot/backups that are older than TIME.
 between TIME1 TIME2 -> Returns all the snapshot/backups that were taken between
 TIME1 and TIME2.
 
-=closest
+=item 6 closest
 
 TIME -> Return the snapshot/backup that was taken closest to TIME.
 

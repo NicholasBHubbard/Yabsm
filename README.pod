@@ -288,7 +288,7 @@ before TIME -> Returns all the snapshot/backups that are older than TIME.
 between TIME1 TIME2 -> Returns all the snapshot/backups that were taken between
 TIME1 and TIME2.
 
-=item 6 closest
+=item 6 
 
 TIME -> Return the snapshot/backup that was taken closest to TIME.
 

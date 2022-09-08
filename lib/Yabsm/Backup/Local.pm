@@ -38,6 +38,12 @@ sub do_local_backup { # Is tested
 
     my $backup_dir         = local_backup_dir($local_backup, $tframe, $config_ref);
     my $backup_dir_base    = local_backup_dir($local_backup, undef, $config_ref);
+
+    # The partition could have been unmounted
+    unless (-d $backup_dir) {
+        die "yabsm: error: no such directory '$backup_dir' for local_backup '$local_backup'\n";
+    }
+
     my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($local_backup, 'local', $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($local_backup, 'local', $config_ref);
 

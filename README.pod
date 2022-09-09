@@ -257,7 +257,9 @@ to locate those snapshots. Yabsm comes with a subcommand C<find> that allows you
 to locate snapshots and backups using a simple query language. Here is the usage
 string for the C<find> subcommand.
 
-    $ yabsm find <SNAP|SSH_BACKUP|LOCAL_BACKUP> QUERY
+    $ yabsm <find|f> <SNAP|SSH_BACKUP|LOCAL_BACKUP> QUERY
+
+C<find> can be abbreviated to <f>.
 
 The first argument is any I<snap>, I<ssh_backup>, or I<local_backup>. Because
 these configuration entities share the same namespace there is no risk of 
@@ -291,6 +293,22 @@ TIME1 and TIME2.
 =item 6 
 
 C<TIME> -> Return the snapshot/backup that was taken closest to TIME.
+
+=head2 Time Abbreviations
+
+In the list above the C<TIME> variables stand for a I<time abbreviation>.
+
+There are two different kinds of I<time abbreviations>: I<relative times> and I<immediate times>.
+
+A relative time comes in the form C<back-AMOUNT-UNIT>, where C<back> can be
+abbreviated to C<b>, C<AMOUNT> is a positive integer, and C<UNIT> is either 
+C<minutes>, C<hours>, or C<days>. Each I<UNIT> can be abbreviated: 
+
+=over 4
+
+C<minutes> -> C<mins>, C<m>
+C<hours>   -> C<hrs>, C<h>
+C<days>    -> C<d>
 
 =back
 

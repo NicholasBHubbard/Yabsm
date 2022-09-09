@@ -120,7 +120,7 @@ We need to understand timeframes gefore we can understand I<snaps>,
 I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
 daily, weekly, and monthly. 
 
-I<snaps>, <ssh_backups>, and I<local_backups> are configured to use one or more
+I<snaps>, I<ssh_backups>, and I<local_backups> are configured to use one or more
 timeframes. For example an I<ssh_backup> may be configured to use the I<hourly> 
 and I<weekly> categories, which means that we want to perform the backups every
 hour an once a week.

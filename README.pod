@@ -127,7 +127,7 @@ and once a week.
 
 The following table describes in plain english what each timeframe means.
 
-    5minute -> Every 5minutes
+    5minute -> Every 5 minutes
     hourly  -> At the beginning of every hour
     daily   -> Everyday at one or more times of the day
     weekly  -> Once a week on a specific weekday at a specific time

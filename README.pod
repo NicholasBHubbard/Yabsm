@@ -304,13 +304,9 @@ A relative time comes in the form C<back-AMOUNT-UNIT>, where C<back> can be
 abbreviated to C<b>, C<AMOUNT> is a positive integer, and C<UNIT> is either 
 C<minutes>, C<hours>, or C<days>. Each I<UNIT> can be abbreviated: 
 
-=over 4
-
-C<minutes> -> C<mins>, C<m>
-C<hours>   -> C<hrs>, C<h>
-C<days>    -> C<d>
-
-=back
+    C<minutes> -> C<mins>, C<m>
+    C<hours>   -> C<hrs>, C<h>
+    C<days>    -> C<d>
 
 =head1 CONTRIBUTING
 

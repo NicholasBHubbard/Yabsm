@@ -281,6 +281,8 @@ In the list above the C<TIME> variables stand for a I<time abbreviation>.
 There are two different kinds of I<time abbreviations>: I<relative times> and 
 I<immediate times>.
 
+=head3 Relative Times
+
 A relative time comes in the form C<back-AMOUNT-UNIT>, where C<back> can be
 abbreviated to C<b>, C<AMOUNT> is a positive integer, and C<UNIT> is either 
 C<minutes>, C<hours>, or C<days>. Each C<UNIT> can be abbreviated: 
@@ -294,6 +296,8 @@ Here are some English descriptions of I<relative times>.
     back-5-h  -> 5 hours ago
     b-10-m    -> 10 minutes ago
     b-24-days -> 24 days ago
+
+=head3 Immediate Times
 
 Next lets talk about I<immediate times>. An I<immediate_time> is always an
 abbreviation for C<yyyy_mm_dd_hh:mm> (the same format used for yabsm 

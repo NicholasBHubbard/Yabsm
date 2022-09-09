@@ -299,9 +299,7 @@ Here are some English descriptions of I<relative times>.
 
 =head3 Immediate Times
 
-Next lets talk about I<immediate times>. An I<immediate_time> is always an
-abbreviation for C<yyyy_mm_dd_hh:mm> (the same format used for yabsm 
-snapshot/backup names).
+An I<immediate_time> is an abbreviation for a time/date denoted by C<yyyy_mm_dd_hh:mm>. 
 
 =head1 CONTRIBUTING
 

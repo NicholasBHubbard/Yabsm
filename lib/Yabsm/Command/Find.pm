@@ -491,6 +491,7 @@ sub immediate_time_abbreviation_parser { # Is tested
             $hr  = $hr_;
             $min = $min_;
         },
+
         sub { # yr_mon_day
             my $yr_ = $self->expect($time_regex{yr});
             $self->expect('_');
@@ -506,6 +507,7 @@ sub immediate_time_abbreviation_parser { # Is tested
             $mon = $mon_;
             $day = $day_;
         },
+
         sub { # mon_day_hr:min
             my $mon_ = $self->expect($time_regex{mon});
             $self->expect('_');
@@ -524,6 +526,7 @@ sub immediate_time_abbreviation_parser { # Is tested
             $hr  = $hr_;
             $min = $min_;
         },
+
         sub { # mon_day_hr
             my $mon_ = $self->expect($time_regex{mon});
             $self->expect('_');
@@ -539,6 +542,7 @@ sub immediate_time_abbreviation_parser { # Is tested
             $day = $day_;
             $hr  = $hr_;
         },
+
         sub { # mon_day
             my $mon_ = $self->expect($time_regex{mon});
             $self->expect('_');
@@ -551,6 +555,7 @@ sub immediate_time_abbreviation_parser { # Is tested
             $mon = $mon_;
             $day = $day_;
         },
+
         sub { # day_hr:min
             my $day_ = $self->expect($time_regex{day});
             $self->expect('_');
@@ -566,6 +571,7 @@ sub immediate_time_abbreviation_parser { # Is tested
             $hr  = $hr_;
             $min = $min_;
         },
+
         sub { # hr:min
             my $hr_ = $self->expect($time_regex{hr});
             $self->expect(':');

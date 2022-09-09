@@ -267,32 +267,13 @@ ambiguity.
 
 The second argument is a snapshot location query. There are 6 types of queries:
 
-=over 4
-
-=item 1
-
-C<newest> -> Returns the most recent snapshot/backup.
-
-=item 2
-
-C<oldest> -> Returns the oldest snapshot/backup.
-
-=item 3
-
-C<after TIME> -> Returns all the snapshot/backups that are newer than TIME.
-
-=item 4
-
-C<before TIME> -> Returns all the snapshot/backups that are older than TIME.
-
-=item 5
-
-C<between TIME1 TIME2> -> Returns all the snapshot/backups that were taken between
-TIME1 and TIME2.
-
-=item 6 
-
-C<TIME> -> Return the snapshot/backup that was taken closest to TIME.
+    C<TIME> -> Return the snapshot/backup that was taken closest to TIME.
+    C<newest> -> Returns the most recent snapshot/backup.
+    C<oldest> -> Returns the oldest snapshot/backup.
+    C<after TIME> -> Returns all the snapshot/backups that are newer than TIME.
+    C<before TIME> -> Returns all the snapshot/backups that are older than TIME.
+    C<between TIME1 TIME2> -> Returns all the snapshot/backups that were taken between
+                              TIME1 and TIME2.
 
 =head2 Time Abbreviations
 

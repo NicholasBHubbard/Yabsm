@@ -269,8 +269,8 @@ The second argument is a snapshot location query. There are 6 types of queries:
 
     newest              -> The most recent snapshot/backup.
     oldest              -> The oldest snapshot/backup.
-    after TIME          -> All the snapshot/backups that are newer than TIME.
-    before TIME         -> All the snapshot/backups that are older than TIME.
+    after   TIME        -> All the snapshot/backups that are newer than TIME.
+    before  TIME        -> All the snapshot/backups that are older than TIME.
     between TIME1 TIME2 -> All the snapshot/backups that were taken between TIME1 and TIME2.
     TIME                -> The snapshot/backup that was taken closest to TIME.
 

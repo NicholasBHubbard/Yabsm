@@ -4,7 +4,7 @@
 
 #  Miscellaneous tools to aid in the development of Yabsm.
 #
-#  See t/Yabsm/Tools.t for this modules tests.
+#  See t/Tools.t for this modules tests.
 
 package Yabsm::Tools;
 

@@ -102,9 +102,8 @@ sub arg_count_or_die {
 
 sub with_error_catch_log {
 
-    # Call $sub with @args within a Feature::Compat::Try try/catch block, to
-    # catch exceptions and log them with Log::Log4Perl instead of killing the
-    # program.
+    # Call $sub with @args within a Feature::Compat::Try try/catch block to
+    # catch any exception and log it instead of killing the program.
 
     my $sub  = shift;
     my @args = @_;

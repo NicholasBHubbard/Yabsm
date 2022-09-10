@@ -15,8 +15,8 @@ use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Config::Parser 'parse_config_or_die';
 
 my $USAGE = <<"END_USAGE";
-usage: yabsm config [check <?file>] [yabsm_user_home] [yabsm_dir] [subvols]
-                    [ssh_backups] [local_backups] [backups]
+usage: yabsm config [--help] [check <?file>] [yabsm_user_home] [yabsm_dir]
+                    [subvols] [ssh_backups] [local_backups] [backups]
 END_USAGE
 
                  ####################################

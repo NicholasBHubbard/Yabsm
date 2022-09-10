@@ -112,7 +112,7 @@ sub with_error_catch_log {
     }
     catch ($e) {
         my $logfile = '/var/log/yabsmd';
-        unless (-f $logfile && -w $logfile && open(my $fh, '>>', $logfile)) {
+        unless (-f $logfile && open(my $fh, '>>', $logfile)) {
             my $t = localtime();
             my ($yr, $mon, $day, $hr, $min) = ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
             $e =~ s/\s+$//;

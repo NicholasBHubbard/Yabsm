@@ -34,7 +34,7 @@ our @EXPORT_OK = qw(do_ssh_backup
                  #            SUBROUTINES           #
                  ####################################
 
-sub do_ssh_backup { # Is tested
+sub do_ssh_backup {
 
     # Perform a $tframe ssh_backup for $ssh_backup.
 
@@ -89,7 +89,7 @@ sub do_ssh_backup { # Is tested
     return "$backup_dir/" . basename($tmp_snapshot);
 }
 
-sub new_ssh_conn { # Is tested
+sub new_ssh_conn {
 
     # Return a Net::OpenSSH connection object to $ssh_backup's ssh destination or
     # die if a connection cannot be established.
@@ -133,7 +133,7 @@ sub new_ssh_conn { # Is tested
     return $ssh;
 }
 
-sub ssh_system_or_die { # Is tested
+sub ssh_system_or_die {
 
     # Like Net::OpenSSH::capture but logdie if the command fails.
 
@@ -154,7 +154,7 @@ sub ssh_system_or_die { # Is tested
     return wantarray ? @out : $out;
 }
 
-sub check_ssh_backup_config_or_die { # Is tested
+sub check_ssh_backup_config_or_die {
 
     # Ensure that the $ssh_backup's ssh destination server is configured
     # properly and die with useful errors if not.

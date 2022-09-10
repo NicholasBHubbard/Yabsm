@@ -40,7 +40,7 @@ our @EXPORT_OK = qw(take_bootstrap_snapshot
                  #            SUBROUTINES           #
                  ####################################
 
-sub take_bootstrap_snapshot { # Is tested
+sub take_bootstrap_snapshot {
 
     # Take a btrfs bootstrap snapshot of $backup and return its path.
     # If there is already a bootstrap snapshot for $backup then delete
@@ -73,7 +73,7 @@ sub take_bootstrap_snapshot { # Is tested
     return take_snapshot($mountpoint, $bootstrap_dir, $snapshot_name);
 }
 
-sub maybe_take_bootstrap_snapshot { # Is tested
+sub maybe_take_bootstrap_snapshot {
 
     # If $backup does not already have a bootstrap snapshot then take
     # a bootstrap snapshot and return its path. Otherwise return the
@@ -92,7 +92,7 @@ sub maybe_take_bootstrap_snapshot { # Is tested
     return take_bootstrap_snapshot($backup, $backup_type, $config_ref);
 }
 
-sub backup_bootstrap_snapshot { # Is tested
+sub backup_bootstrap_snapshot {
 
     # If the backup $backup has a bootstrap snapshot return its path
     # and otherwise return undef.
@@ -127,7 +127,7 @@ sub backup_bootstrap_snapshot { # Is tested
     }
 }
 
-sub bootstrap_snapshot_dir { # Is tested
+sub bootstrap_snapshot_dir {
 
     # Return the path to $ssh_backup's bootstrap snapshot directory.
     # Logdie if the bootstrap snapshot directory does not exist.
@@ -150,7 +150,7 @@ sub bootstrap_snapshot_dir { # Is tested
     return yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/bootstrap-snapshot";
 }
 
-sub is_bootstrap_snapshot { # Is tested
+sub is_bootstrap_snapshot {
 
     # Return 1 if $bootstrap_snapshot is a btrfs subvolume that has a
     # basename that is a valid yabsm bootstrap snapshot name.
@@ -165,7 +165,7 @@ sub is_bootstrap_snapshot { # Is tested
     return 1;
 }
 
-sub is_bootstrap_snapshot_or_die { # Is tested
+sub is_bootstrap_snapshot_or_die {
 
     # Wrapper around &is_bootstrap_snapshot that logdies if it returns
     # false.
@@ -180,7 +180,7 @@ sub is_bootstrap_snapshot_or_die { # Is tested
     return 1;
 }
 
-sub is_bootstrap_snapshot_name { # Is tested
+sub is_bootstrap_snapshot_name {
 
     # Return 1 if given a valid yabsm bootstrap snapshot name and
     # return 0 otherwise.
@@ -192,7 +192,7 @@ sub is_bootstrap_snapshot_name { # Is tested
     return 0+(shift =~ /^\.BOOTSTRAP-yabsm-\d{4}_\d{2}_\d{2}_\d{2}:\d{2}$/);
 }
 
-sub is_bootstrap_snapshot_name_or_die { # Is tested
+sub is_bootstrap_snapshot_name_or_die {
 
     # Wrapper around is_bootstrap_snapshot_name that logdies if it
     # returns false.
@@ -208,7 +208,7 @@ sub is_bootstrap_snapshot_name_or_die { # Is tested
     return 1;
 }
 
-sub tmp_snapshot_dir { # Is tested
+sub tmp_snapshot_dir {
 
     # Return path to $backup's tmp snapshot directory.
 
@@ -231,7 +231,7 @@ sub tmp_snapshot_dir { # Is tested
     return yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
 }
 
-sub take_tmp_snapshot { # Is tested
+sub take_tmp_snapshot {
 
     # Take a tmp snapshot for $backup. A tmp snapshot is necessary for taking an
     # incremental backup with 'btrfs send -p'.
@@ -265,7 +265,7 @@ sub take_tmp_snapshot { # Is tested
     return take_snapshot($mountpoint, $tmp_snapshot_dir);
 }
 
-sub is_backup_type_or_die { # Is tested
+sub is_backup_type_or_die {
 
     # Logdie unless $backup_type equals 'ssh' or 'local'.
 

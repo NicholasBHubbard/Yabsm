@@ -103,7 +103,7 @@ our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
                  #            SUBROUTINES           #
                  ####################################
 
-sub is_timeframe { # Is tested
+sub is_timeframe {
 
     # Return 1 if given a valid timeframe and return 0 otherwise.
 
@@ -112,7 +112,7 @@ sub is_timeframe { # Is tested
     return 0+(shift =~ /^(5minute|hourly|daily|weekly|monthly)$/);
 }
 
-sub is_timeframe_or_die { # Is tested
+sub is_timeframe_or_die {
 
     # Wrapper around &is_timeframe that Carp::Confess's if it returns false.
 
@@ -127,7 +127,7 @@ sub is_timeframe_or_die { # Is tested
     return 1;
 }
 
-sub is_weekday { # Is tested
+sub is_weekday {
 
     # Return 1 if given a valid week day and return 0 otherwise.
 
@@ -136,7 +136,7 @@ sub is_weekday { # Is tested
     return 0+(shift =~ /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/);
 }
 
-sub is_weekday_or_die { # Is tested
+sub is_weekday_or_die {
 
     # Wrapper around &is_weekday that Carp::Confess's if it returns false.
 
@@ -151,7 +151,7 @@ sub is_weekday_or_die { # Is tested
     return 1;
 }
 
-sub weekday_number { # Is tested
+sub weekday_number {
 
     # Return the number associated with $weekday which is a string representation
     # of a weekday. Monday is considered the first day of the week.
@@ -171,7 +171,7 @@ sub weekday_number { # Is tested
     $weekday eq 'sunday'    and return 7;
 }
 
-sub is_time { # Is tested
+sub is_time {
 
     # Return 1 if passed a valid 'hh:mm' time and return 0 otherwise.
 
@@ -186,7 +186,7 @@ sub is_time { # Is tested
     return 1;
 }
 
-sub is_time_or_die { # Is tested
+sub is_time_or_die {
 
     # Wrapper around &is_time that Carp::Confess's if it returns false.
 
@@ -201,7 +201,7 @@ sub is_time_or_die { # Is tested
     return 1;
 }
 
-sub time_hour { # Is tested
+sub time_hour {
 
     # Return the hour of a 'hh:mm' time.
 
@@ -216,7 +216,7 @@ sub time_hour { # Is tested
     return 0+$hr;
 }
 
-sub time_minute { # Is tested
+sub time_minute {
 
     # Return the minute of a 'hh:mm' time.
 
@@ -231,7 +231,7 @@ sub time_minute { # Is tested
     return 0+$min;
 }
 
-sub yabsm_dir { # Is tested
+sub yabsm_dir {
 
     # Return the users yabsm_dir without trailing /'s.
 
@@ -242,7 +242,7 @@ sub yabsm_dir { # Is tested
     return $config_ref->{yabsm_dir} =~ s/\/+$//r;
 }
 
-sub yabsm_user_home { # Is tested
+sub yabsm_user_home {
 
     # Return the yabsm users home directory.
 
@@ -251,7 +251,7 @@ sub yabsm_user_home { # Is tested
     return yabsm_dir( shift ) . '/.yabsm-var/yabsm-user-home';
 }
 
-sub subvol_exists { # Is tested
+sub subvol_exists {
 
     # Return 1 if $subvol is a subvol defined in $config_ref and return 0
     # otherwise.
@@ -264,7 +264,7 @@ sub subvol_exists { # Is tested
     return 0+(exists $config_ref->{subvols}{$subvol});
 }
 
-sub subvol_exists_or_die { # Is tested
+sub subvol_exists_or_die {
 
     # Wrapper around &subvol_exists that Carp::Confess's if it returns false.
 
@@ -280,7 +280,7 @@ sub subvol_exists_or_die { # Is tested
     return 1;
 }
 
-sub snap_exists { # Is tested
+sub snap_exists {
 
     # Return 1 if $snap is a snap defined in $config_ref and return 0 otherwise.
 
@@ -292,7 +292,7 @@ sub snap_exists { # Is tested
     return 0+(exists $config_ref->{snaps}{$snap});
 }
 
-sub snap_exists_or_die { # Is tested
+sub snap_exists_or_die {
 
     # Wrapper around &snap_exists that Carp::Confess's if it returns false.
 
@@ -308,7 +308,7 @@ sub snap_exists_or_die { # Is tested
     return 1;
 }
 
-sub ssh_backup_exists { # Is tested
+sub ssh_backup_exists {
 
     # Return 1 if $ssh_backup is a ssh_backup defined in $config_ref and return 0
     # otherwise.
@@ -321,7 +321,7 @@ sub ssh_backup_exists { # Is tested
     return 0+(exists $config_ref->{ssh_backups}{$ssh_backup});
 }
 
-sub ssh_backup_exists_or_die { # Is tested
+sub ssh_backup_exists_or_die {
 
     # Wrapper around &ssh_backup_exists that Carp::Confess's if it returns false.
 
@@ -337,7 +337,7 @@ sub ssh_backup_exists_or_die { # Is tested
     return 1;
 }
 
-sub local_backup_exists { # Is tested
+sub local_backup_exists {
 
     # Return 1 if $local_backup is a lcoal_backup defined in $config_ref and
     # return 0 otherwise.
@@ -350,7 +350,7 @@ sub local_backup_exists { # Is tested
     return 0+(exists $config_ref->{local_backups}{$local_backup});
 }
 
-sub local_backup_exists_or_die { # Is tested
+sub local_backup_exists_or_die {
 
     # Wrapper around &local_backup_exists that Carp::Confess's if it returns
     # false.
@@ -367,7 +367,7 @@ sub local_backup_exists_or_die { # Is tested
     return 1;
 }
 
-sub backup_exists { # Is tested
+sub backup_exists {
 
     # Return 1 if $backup is either an ssh_backup or a local_backup and return 0
     # otherwise.
@@ -381,7 +381,7 @@ sub backup_exists { # Is tested
     return local_backup_exists($backup, $config_ref);
 }
 
-sub backup_exists_or_die { # Is tested
+sub backup_exists_or_die {
 
     # Wrapper around &backup_exists that Carp::Confess's if it returns false.
 
@@ -397,7 +397,7 @@ sub backup_exists_or_die { # Is tested
     return 1;
 }
 
-sub all_subvols { # Is tested
+sub all_subvols {
 
     # Return a list of all the subvol names defined in $config_ref.
 
@@ -410,7 +410,7 @@ sub all_subvols { # Is tested
     return @subvols;
 }
 
-sub all_snaps { # Is tested
+sub all_snaps {
 
     # Return a list of all the snap names defined in $config_ref.
 
@@ -423,7 +423,7 @@ sub all_snaps { # Is tested
     return @snaps;
 }
 
-sub all_ssh_backups { # Is tested
+sub all_ssh_backups {
 
     # Return a list of all the ssh_backup names defined in $config_ref.
 
@@ -436,7 +436,7 @@ sub all_ssh_backups { # Is tested
     return @ssh_backups;
 }
 
-sub all_local_backups { # Is tested
+sub all_local_backups {
 
     # Return a list of all the local_backup names defined in $config_ref.
 
@@ -449,7 +449,7 @@ sub all_local_backups { # Is tested
     return @all_local_backups;
 }
 
-sub subvol_mountpoint { # Is tested
+sub subvol_mountpoint {
 
     # Return the the subvol $subvol's mountpoint value.
 
@@ -463,7 +463,7 @@ sub subvol_mountpoint { # Is tested
     return $config_ref->{subvols}{$subvol}{mountpoint};
 }
 
-sub snap_subvol { # Is tested
+sub snap_subvol {
 
     # Return the name of the subvol that $snap is snapshotting.
 
@@ -477,7 +477,7 @@ sub snap_subvol { # Is tested
     return $config_ref->{snaps}{$snap}{subvol};
 }
 
-sub snap_mountpoint { # Is tested
+sub snap_mountpoint {
 
     # Return the mountpoint of the subvol that $snap is snapshotting.
 
@@ -493,7 +493,7 @@ sub snap_mountpoint { # Is tested
     return subvol_mountpoint($subvol, $config_ref);
 }
 
-sub snap_dest { # Is tested
+sub snap_dest {
 
     # Return $snap's destination. Optionally pass a timeframe via the $tframe
     # value to append "/$tframe" to the returned dir.
@@ -517,7 +517,7 @@ sub snap_dest { # Is tested
     }
 }
 
-sub snap_timeframes { # Is tested
+sub snap_timeframes {
 
     # Return a list of $snap's timeframes.
 
@@ -531,7 +531,7 @@ sub snap_timeframes { # Is tested
     return sort split ',', $config_ref->{snaps}{$snap}{timeframes};
 }
 
-sub ssh_backup_subvol { # Is tested
+sub ssh_backup_subvol {
 
     # Return the name of the subvol that $ssh_backup is backing up.
 
@@ -545,7 +545,7 @@ sub ssh_backup_subvol { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{subvol};
 }
 
-sub ssh_backup_mountpoint { # Is tested
+sub ssh_backup_mountpoint {
 
     # Return the mountpoint of the subvol that $ssh_backup is backing up.
 
@@ -561,7 +561,7 @@ sub ssh_backup_mountpoint { # Is tested
     return subvol_mountpoint($subvol, $config_ref);
 }
 
-sub ssh_backup_dir { # Is tested
+sub ssh_backup_dir {
 
     # Return $ssh_backup's ssh_backup dir value. Optionally pass a timeframe via
     # the $tframe value to append "/$tframe" to the returned dir.
@@ -585,7 +585,7 @@ sub ssh_backup_dir { # Is tested
     }
 }
 
-sub ssh_backup_timeframes { # Is tested
+sub ssh_backup_timeframes {
 
     # Return a list of $ssh_backups's timeframes.
 
@@ -599,7 +599,7 @@ sub ssh_backup_timeframes { # Is tested
     return sort split ',', $config_ref->{ssh_backups}{$ssh_backup}{timeframes};
 }
 
-sub ssh_backup_ssh_dest { # Is tested
+sub ssh_backup_ssh_dest {
 
     # Return $ssh_backup's ssh_dest value.
 
@@ -613,7 +613,7 @@ sub ssh_backup_ssh_dest { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{ssh_dest};
 }
 
-sub local_backup_subvol { # Is tested
+sub local_backup_subvol {
 
     # Return the name of the subvol that $local_backup is backing up.
 
@@ -627,7 +627,7 @@ sub local_backup_subvol { # Is tested
     return $config_ref->{local_backups}{$local_backup}{subvol};
 }
 
-sub local_backup_mountpoint { # Is tested
+sub local_backup_mountpoint {
 
     # Return the mountpoint of the subvol that $local_backup is backing up.
 
@@ -643,7 +643,7 @@ sub local_backup_mountpoint { # Is tested
     return subvol_mountpoint($subvol, $config_ref);
 }
 
-sub local_backup_dir { # Is tested
+sub local_backup_dir {
 
     # Return $local_backup's local_backup dir value. Optionally pass a timeframe
     # via the $tframe value to append "/$tframe" to the returned dir.
@@ -667,7 +667,7 @@ sub local_backup_dir { # Is tested
     }
 }
 
-sub local_backup_timeframes { # Is tested
+sub local_backup_timeframes {
 
     # Return a list of $local_backups's timeframes.
 
@@ -681,7 +681,7 @@ sub local_backup_timeframes { # Is tested
     return sort split ',', $config_ref->{local_backups}{$local_backup}{timeframes};
 }
 
-sub all_snaps_of_subvol { # Is tested
+sub all_snaps_of_subvol {
 
     # Return a list of all the snaps in $config_ref that are snapshotting
     # $subvol.
@@ -701,7 +701,7 @@ sub all_snaps_of_subvol { # Is tested
     return sort @snaps;
 }
 
-sub all_ssh_backups_of_subvol { # Is tested
+sub all_ssh_backups_of_subvol {
 
     # Return a list of all the ssh_backups in $config_ref that are backing up
     # $subvol.
@@ -721,7 +721,7 @@ sub all_ssh_backups_of_subvol { # Is tested
     return sort @ssh_backups;
 }
 
-sub all_local_backups_of_subvol { # Is tested
+sub all_local_backups_of_subvol {
 
     # Return a list of all the local_backups in $config_ref that are backing up
     # $subvol.
@@ -741,7 +741,7 @@ sub all_local_backups_of_subvol { # Is tested
     return sort @local_backups;
 }
 
-sub snap_wants_timeframe { # Is tested
+sub snap_wants_timeframe {
 
     # Return 1 if the snap $snap wants snapshots in timeframe $tframe and return
     # 0 otherwise;
@@ -759,7 +759,7 @@ sub snap_wants_timeframe { # Is tested
     return 0;
 }
 
-sub snap_wants_timeframe_or_die { # Is tested
+sub snap_wants_timeframe_or_die {
 
     # Wrapper around &snap_wants_timeframe that Carp::Confess's if it returns
     # false.
@@ -777,7 +777,7 @@ sub snap_wants_timeframe_or_die { # Is tested
     return 1;
 }
 
-sub ssh_backup_wants_timeframe { # Is tested
+sub ssh_backup_wants_timeframe {
 
     # Return 1 if the ssh_backup $ssh_backup wants backups in timeframe $tframe
     # and return 0 otherwise.
@@ -795,7 +795,7 @@ sub ssh_backup_wants_timeframe { # Is tested
     return 0;
 }
 
-sub ssh_backup_wants_timeframe_or_die { # Is tested
+sub ssh_backup_wants_timeframe_or_die {
 
     # Wrapper around &ssh_backup_wants_timeframe that Carp::Confess's if it
     # returns false.
@@ -813,7 +813,7 @@ sub ssh_backup_wants_timeframe_or_die { # Is tested
     return 1;
 }
 
-sub local_backup_wants_timeframe { # Is tested
+sub local_backup_wants_timeframe {
 
     # Return 1 if the local_backup $local_backup wants backups in timeframe
     # $tframe and return 0 otherwise.
@@ -832,7 +832,7 @@ sub local_backup_wants_timeframe { # Is tested
     return 0;
 }
 
-sub local_backup_wants_timeframe_or_die { # Is tested
+sub local_backup_wants_timeframe_or_die {
 
     # Wrapper around &local_backup_wants_timeframe that Carp::Confess's if it
     # returns false.
@@ -850,7 +850,7 @@ sub local_backup_wants_timeframe_or_die { # Is tested
     return 1;
 }
 
-sub snap_timeframe_keep { # Is tested
+sub snap_timeframe_keep {
 
     # Return snap $snap's ${tframe}_keep value.
 
@@ -870,7 +870,7 @@ sub snap_timeframe_keep { # Is tested
     $tframe eq 'monthly' and return snap_monthly_keep($snap, $config_ref);
 }
 
-sub snap_5minute_keep { # Is tested
+sub snap_5minute_keep {
 
     # Return snap $snap's 5minute_keep value.
 
@@ -885,7 +885,7 @@ sub snap_5minute_keep { # Is tested
     return $config_ref->{snaps}{$snap}{'5minute_keep'};
 }
 
-sub snap_hourly_keep { # Is tested
+sub snap_hourly_keep {
 
     # Return snap $snap's hourly_keep value.
 
@@ -900,7 +900,7 @@ sub snap_hourly_keep { # Is tested
     return $config_ref->{snaps}{$snap}{hourly_keep};
 }
 
-sub snap_daily_keep { # Is tested
+sub snap_daily_keep {
 
     # Return snap $snap's daily_keep value.
 
@@ -915,7 +915,7 @@ sub snap_daily_keep { # Is tested
     return $config_ref->{snaps}{$snap}{daily_keep};
 }
 
-sub snap_daily_times { # Is tested
+sub snap_daily_times {
 
     # Return a list of snap $snap's daily_times values.
 
@@ -935,7 +935,7 @@ sub snap_daily_times { # Is tested
     return @times
 }
 
-sub snap_weekly_keep { # Is tested
+sub snap_weekly_keep {
 
     # Return snap $snap's weekly_keep value.
 
@@ -950,7 +950,7 @@ sub snap_weekly_keep { # Is tested
     return $config_ref->{snaps}{$snap}{weekly_keep};
 }
 
-sub snap_weekly_time { # Is tested
+sub snap_weekly_time {
 
     # Return snap $snap's weekly_time value.
 
@@ -965,7 +965,7 @@ sub snap_weekly_time { # Is tested
     return $config_ref->{snaps}{$snap}{weekly_time};
 }
 
-sub snap_weekly_day { # Is tested
+sub snap_weekly_day {
 
     # Return snap $snap's weekly_day value.
 
@@ -980,7 +980,7 @@ sub snap_weekly_day { # Is tested
     return $config_ref->{snaps}{$snap}{weekly_day};
 }
 
-sub snap_monthly_keep { # Is tested
+sub snap_monthly_keep {
 
     # Return snap $snap's monthly_keep value.
 
@@ -995,7 +995,7 @@ sub snap_monthly_keep { # Is tested
     return $config_ref->{snaps}{$snap}{monthly_keep};
 }
 
-sub snap_monthly_time { # Is tested
+sub snap_monthly_time {
 
     # Return snap $snap's monthly_time value.
 
@@ -1010,7 +1010,7 @@ sub snap_monthly_time { # Is tested
     return $config_ref->{snaps}{$snap}{monthly_time};
 }
 
-sub snap_monthly_day { # Is tested
+sub snap_monthly_day {
 
     # Return snap $snap's monthly_day value.
 
@@ -1025,7 +1025,7 @@ sub snap_monthly_day { # Is tested
     return $config_ref->{snaps}{$snap}{monthly_day};
 }
 
-sub ssh_backup_timeframe_keep { # Is tested
+sub ssh_backup_timeframe_keep {
 
     # Return ssh_backup $ssh_backup's ${tframe}_keep value.
 
@@ -1045,7 +1045,7 @@ sub ssh_backup_timeframe_keep { # Is tested
     $tframe eq 'monthly' and return ssh_backup_monthly_keep($ssh_backup, $config_ref);
 }
 
-sub ssh_backup_5minute_keep { # Is tested
+sub ssh_backup_5minute_keep {
 
     # Return ssh_backup $ssh_backup's 5minute_keep value.
 
@@ -1060,7 +1060,7 @@ sub ssh_backup_5minute_keep { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{'5minute_keep'};
 }
 
-sub ssh_backup_hourly_keep { # Is tested
+sub ssh_backup_hourly_keep {
 
     # Return ssh_backup $ssh_backup's hourly_keep value.
 
@@ -1075,7 +1075,7 @@ sub ssh_backup_hourly_keep { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{hourly_keep};
 }
 
-sub ssh_backup_daily_keep { # Is tested
+sub ssh_backup_daily_keep {
 
     # Return ssh_backup $ssh_backup's daily_keep value.
 
@@ -1090,7 +1090,7 @@ sub ssh_backup_daily_keep { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{daily_keep};
 }
 
-sub ssh_backup_daily_times { # Is tested
+sub ssh_backup_daily_times {
 
     # Return a list of ssh_backup $ssh_backup's daily_times values.
 
@@ -1110,7 +1110,7 @@ sub ssh_backup_daily_times { # Is tested
     return @times;
 }
 
-sub ssh_backup_weekly_keep { # Is tested
+sub ssh_backup_weekly_keep {
 
     # Return ssh_backup $ssh_backup's weekly_keep value.
 
@@ -1125,7 +1125,7 @@ sub ssh_backup_weekly_keep { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{weekly_keep};
 }
 
-sub ssh_backup_weekly_time { # Is tested
+sub ssh_backup_weekly_time {
 
     # Return ssh_backup $ssh_backup's weekly_time value.
 
@@ -1140,7 +1140,7 @@ sub ssh_backup_weekly_time { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{weekly_time};
 }
 
-sub ssh_backup_weekly_day { # Is tested
+sub ssh_backup_weekly_day {
 
     # Return ssh_backup $ssh_backup's weekly_day value.
 
@@ -1155,7 +1155,7 @@ sub ssh_backup_weekly_day { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{weekly_day};
 }
 
-sub ssh_backup_monthly_keep { # Is tested
+sub ssh_backup_monthly_keep {
 
     # Return ssh_backup $ssh_backup's monthly_keep value.
 
@@ -1170,7 +1170,7 @@ sub ssh_backup_monthly_keep { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{monthly_keep};
 }
 
-sub ssh_backup_monthly_time { # Is tested
+sub ssh_backup_monthly_time {
 
     # Return ssh_backup $ssh_backup's monthly_time value.
 
@@ -1185,7 +1185,7 @@ sub ssh_backup_monthly_time { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{monthly_time};
 }
 
-sub ssh_backup_monthly_day { # Is tested
+sub ssh_backup_monthly_day {
 
     # Return ssh_backup $ssh_backup's monthly_day value.
 
@@ -1200,7 +1200,7 @@ sub ssh_backup_monthly_day { # Is tested
     return $config_ref->{ssh_backups}{$ssh_backup}{monthly_day};
 }
 
-sub local_backup_timeframe_keep { # Is tested
+sub local_backup_timeframe_keep {
 
     # Return local_backup $local_backup's ${tframe}_keep value.
 
@@ -1220,7 +1220,7 @@ sub local_backup_timeframe_keep { # Is tested
     $tframe eq 'monthly' and return local_backup_monthly_keep($local_backup, $config_ref);
 }
 
-sub local_backup_5minute_keep { # Is tested
+sub local_backup_5minute_keep {
 
     # Return local_backup $local_backup's 5minute_keep value.
 
@@ -1235,7 +1235,7 @@ sub local_backup_5minute_keep { # Is tested
     return $config_ref->{local_backups}{$local_backup}{'5minute_keep'};
 }
 
-sub local_backup_hourly_keep { # Is tested
+sub local_backup_hourly_keep {
 
     # Return local_backup $local_backup's hourly_keep value.
 
@@ -1250,7 +1250,7 @@ sub local_backup_hourly_keep { # Is tested
     return $config_ref->{local_backups}{$local_backup}{hourly_keep};
 }
 
-sub local_backup_daily_keep { # Is tested
+sub local_backup_daily_keep {
 
     # Return local_backup $local_backup's daily_keep value.
 
@@ -1265,7 +1265,7 @@ sub local_backup_daily_keep { # Is tested
     return $config_ref->{local_backups}{$local_backup}{daily_keep};
 }
 
-sub local_backup_daily_times { # Is tested
+sub local_backup_daily_times {
 
     # Return a list of local_backup $local_backup's daily_times values.
 
@@ -1285,7 +1285,7 @@ sub local_backup_daily_times { # Is tested
     return @times;
 }
 
-sub local_backup_weekly_keep { # Is tested
+sub local_backup_weekly_keep {
 
     # Return local_backup $local_backup's weekly_keep value.
 
@@ -1300,7 +1300,7 @@ sub local_backup_weekly_keep { # Is tested
     return $config_ref->{local_backups}{$local_backup}{weekly_keep};
 }
 
-sub local_backup_weekly_time { # Is tested
+sub local_backup_weekly_time {
 
     # Return local_backup $local_backup's weekly_time value.
 
@@ -1315,7 +1315,7 @@ sub local_backup_weekly_time { # Is tested
     return $config_ref->{local_backups}{$local_backup}{weekly_time};
 }
 
-sub local_backup_weekly_day { # Is tested
+sub local_backup_weekly_day {
 
     # Return local_backup $local_backup's weekly_day value.
 
@@ -1330,7 +1330,7 @@ sub local_backup_weekly_day { # Is tested
     return $config_ref->{local_backups}{$local_backup}{weekly_day};
 }
 
-sub local_backup_monthly_keep { # Is tested
+sub local_backup_monthly_keep {
 
     # Return local_backup $local_backup's monthly_keep value.
 
@@ -1345,7 +1345,7 @@ sub local_backup_monthly_keep { # Is tested
     return $config_ref->{local_backups}{$local_backup}{monthly_keep};
 }
 
-sub local_backup_monthly_time { # Is tested
+sub local_backup_monthly_time {
 
     # Return local_backup $local_backup's monthly_time value.
 
@@ -1360,7 +1360,7 @@ sub local_backup_monthly_time { # Is tested
     return $config_ref->{local_backups}{$local_backup}{monthly_time};
 }
 
-sub local_backup_monthly_day { # Is tested
+sub local_backup_monthly_day {
 
     # Return local_backup $local_backup's monthly_day value.
 

@@ -26,7 +26,7 @@ use Yabsm::Snapshot qw(take_snapshot
                  #            SUBROUTINES           #
                  ####################################
 
-sub do_bootstrap_ssh { # Not tested
+sub do_bootstrap_ssh {
 
     # TODO
 
@@ -47,7 +47,7 @@ sub do_bootstrap_ssh { # Not tested
     return $bootstrap_snapshot;
 }
 
-sub take_bootstrap_snapshot { # Is tested
+sub take_bootstrap_snapshot {
 
     # Create a bootstrap snapshot and return its path.
 
@@ -72,7 +72,7 @@ sub take_bootstrap_snapshot { # Is tested
     return take_snapshot($btrfs_subvolume, $bootstrap_dir, '.BOOTSTRAP-' . current_time_snapshot_name());
 }
 
-sub maybe_take_bootstrap_snapshot { # Not tested
+sub maybe_take_bootstrap_snapshot {
 
     # TODO
 
@@ -90,7 +90,7 @@ sub maybe_take_bootstrap_snapshot { # Not tested
     return 0;
 }
 
-sub bootstrap_snapshot_dir { # Not tested
+sub bootstrap_snapshot_dir {
 
     # Return the path to $ssh_backup's bootstrap snapshot directory.
 
@@ -104,7 +104,7 @@ sub bootstrap_snapshot_dir { # Not tested
     return yabsm_dir($config_ref) . "/.yabsm-var/ssh_backups/$ssh_backup/bootstrap-snap";
 }
 
-sub bootstrap_snapshot { # Not tested
+sub bootstrap_snapshot {
 
     # If $subvol has a bootstrap snap return its path, otherwise
     # return 0.
@@ -130,7 +130,7 @@ sub bootstrap_snapshot { # Not tested
     return 0;
 }
 
-sub maybe_do_bootstrap { # Not tested
+sub maybe_do_bootstrap {
 
     # TODO
 
@@ -147,7 +147,7 @@ sub maybe_do_bootstrap { # Not tested
     return 0;
 }
 
-sub ssh_backup_connection { # Not tested
+sub ssh_backup_connection {
 
     # TODO
 

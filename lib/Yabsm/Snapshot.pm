@@ -43,7 +43,7 @@ our @EXPORT_OK = qw(take_snapshot
                  #            SUBROUTINES           #
                  ####################################
 
-sub take_snapshot { # Is tested
+sub take_snapshot {
 
     # This is the lowest level function for taking a snapshot. Given the path to
     # a btrfs subvolume ($subvolume) and the destination path for the snapshot
@@ -73,7 +73,7 @@ sub take_snapshot { # Is tested
     return $snapshot;
 }
 
-sub delete_snapshot { # Is tested
+sub delete_snapshot {
 
     # This is the lowest level function for deleting a snapshot. Takes the path
     # to a yabsm snapshot ($snapshot), deletes it and returns it back.
@@ -94,7 +94,7 @@ sub delete_snapshot { # Is tested
     return $snapshot;
 }
 
-sub is_snapshot_name { # Is tested
+sub is_snapshot_name {
 
     # Return 1 if passed a valid yabsm snapshot name and return 0
     # otherwise. Does checking to ensure that the denoted date is valid.
@@ -116,7 +116,7 @@ sub is_snapshot_name { # Is tested
     return 1;
 }
 
-sub is_snapshot_name_or_die { # Is tested
+sub is_snapshot_name_or_die {
 
     # Like &is_snapshot_name but logdie if $snapshot_name is not a
     # valid yabsm snapshot name.
@@ -136,7 +136,7 @@ sub is_snapshot_name_or_die { # Is tested
     return 1;
 }
 
-sub is_yabsm_snapshot { # Is tested
+sub is_yabsm_snapshot {
 
     # Return 1 if $snapshot is a yabsm snapshot and return 0 otherwise.
 
@@ -148,7 +148,7 @@ sub is_yabsm_snapshot { # Is tested
     return is_snapshot_name(basename($snapshot), $allow_bootstrap) && is_btrfs_subvolume($snapshot)
 }
 
-sub is_yabsm_snapshot_or_die { # Is tested
+sub is_yabsm_snapshot_or_die {
 
     # Wrapper around is_yabsm_snapshot_name() that logdies if it
     # returns false.
@@ -168,7 +168,7 @@ sub is_yabsm_snapshot_or_die { # Is tested
     return 1;
 }
 
-sub snapshot_name_nums { # Is tested
+sub snapshot_name_nums {
 
     # Take a snapshot name and return a list containing, in order, the
     # corresponding year, month, day, hour, and minute. Kill program if
@@ -185,7 +185,7 @@ sub snapshot_name_nums { # Is tested
     return ($yr, $mon, $day, $hr, $min);
 }
 
-sub nums_to_snapshot_name { # Is tested
+sub nums_to_snapshot_name {
 
     # Take 5 integer arguments representing in order the year, month,
     # day, hour, and minute and return a snapshot name of the
@@ -202,7 +202,7 @@ sub nums_to_snapshot_name { # Is tested
     return $snapshot_name;
 }
 
-sub current_time_snapshot_name { # Is tested
+sub current_time_snapshot_name {
 
     # Return a snapshot name corresponding to the current time.
 
@@ -213,7 +213,7 @@ sub current_time_snapshot_name { # Is tested
     return nums_to_snapshot_name($t->year, $t->mon, $t->mday, $t->hour, $t->min);
 }
 
-sub sort_snapshots { # Is tested
+sub sort_snapshots {
 
     # Takes a reference to an array of snapshots and returns a list of the
     # snapshots sorted from newest to oldest. This function works with both
@@ -229,7 +229,7 @@ sub sort_snapshots { # Is tested
     return wantarray ? @sorted : \@sorted;
 }
 
-sub cmp_snapshots { # Is tested
+sub cmp_snapshots {
 
     # Compare two yabsm snapshots based off their times. Works with both a path
     # to a snapshot and just a snapshot name.
@@ -254,7 +254,7 @@ sub cmp_snapshots { # Is tested
     return 0;
 }
 
-sub snapshots_eq { # Is tested
+sub snapshots_eq {
 
     # Return 1 if $snapshot1 and $snapshot2 denote the same time and return 0
     # otherwise.
@@ -267,7 +267,7 @@ sub snapshots_eq { # Is tested
     return 0+(0 == cmp_snapshots($snapshot1, $snapshot2));
 }
 
-sub snapshot_newer { # Is tested
+sub snapshot_newer {
 
     # Return 1 if $snapshot1 is newer than $snapshot2 and return 0 otherwise.
 
@@ -279,7 +279,7 @@ sub snapshot_newer { # Is tested
     return 0+(-1 == cmp_snapshots($snapshot1, $snapshot2));
 }
 
-sub snapshot_older { # Is tested
+sub snapshot_older {
 
     # Return 1 if $snapshot1 is older than $snapshot2 and return 0 otherwise.
 
@@ -291,7 +291,7 @@ sub snapshot_older { # Is tested
     return 0+(1 == cmp_snapshots($snapshot1, $snapshot2));
 }
 
-sub snapshot_newer_or_eq { # Is tested
+sub snapshot_newer_or_eq {
 
     # Return 1 if $snapshot1 is newer or equal to $snapshot2 and return 0
     # otherwise.
@@ -304,7 +304,7 @@ sub snapshot_newer_or_eq { # Is tested
     return 0+(cmp_snapshots($snapshot1, $snapshot2) <= 0);
 }
 
-sub snapshot_older_or_eq { # Is tested
+sub snapshot_older_or_eq {
 
     # Return 1 if $snapshot1 is newer or equal to $snapshot2 and return 0
     # otherwise.

@@ -43,7 +43,7 @@ our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
                  #            SUBROUTINES           #
                  ####################################
 
-sub have_prerequisites { # Not tested
+sub have_prerequisites {
 
     # Return 1 if we are running on a Linux OS and have sudo, OpenSSH, and
     # btrfs-progs installed.
@@ -56,7 +56,7 @@ sub have_prerequisites { # Not tested
     return 1;
 }
 
-sub have_prerequisites_or_die { # Not tested
+sub have_prerequisites_or_die {
 
     # Like &have_prerequisites except die if the prerequisites are not met.
 
@@ -79,7 +79,7 @@ sub have_prerequisites_or_die { # Not tested
     return 1;
 }
 
-sub arg_count_or_die { # Is tested
+sub arg_count_or_die {
 
     # Carp::Confess unless $num_args is in range $lower-$upper.
 
@@ -100,7 +100,7 @@ sub arg_count_or_die { # Is tested
     return 1;
 }
 
-sub with_error_catch_log { # Is tested
+sub with_error_catch_log {
 
     # Call $sub with @args within a Feature::Compat::Try try/catch block, to
     # catch exceptions and log them with Log::Log4Perl instead of killing the
@@ -118,7 +118,7 @@ sub with_error_catch_log { # Is tested
     }
 }
 
-sub have_sudo_access_to_btrfs { # Not tested
+sub have_sudo_access_to_btrfs {
 
     # Return 1 if we can run 'btrfs' with 'sudo -n' and return 0 otherwise.
 
@@ -127,7 +127,7 @@ sub have_sudo_access_to_btrfs { # Not tested
     return 0+(0 == system('sudo -n btrfs --help >/dev/null 2>&1'));
 }
 
-sub have_sudo_access_to_btrfs_or_die { # Not tested
+sub have_sudo_access_to_btrfs_or_die {
 
     # Wrapper around have_sudo_access_to_btrfs() that Carp::Confess's if it
     # returns false.
@@ -139,7 +139,7 @@ sub have_sudo_access_to_btrfs_or_die { # Not tested
     have_sudo_access_to_btrfs() ? return 1 : confess("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
 }
 
-sub is_btrfs_dir { # Not tested
+sub is_btrfs_dir {
 
     # Return 1 if $dir is a directory residing on a btrfs subvolume
     # and return 0 otherwise.
@@ -153,7 +153,7 @@ sub is_btrfs_dir { # Not tested
     return 0+(0 == system("btrfs property list '$dir' >/dev/null 2>&1"));
 }
 
-sub is_btrfs_dir_or_die { # Not tested
+sub is_btrfs_dir_or_die {
 
     # Wrapper around is_btrfs_dir() that Carp::Confess's if it returns false.
 
@@ -164,7 +164,7 @@ sub is_btrfs_dir_or_die { # Not tested
     is_btrfs_dir($dir) ? return 1 : confess("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
 }
 
-sub is_btrfs_subvolume { # Not tested
+sub is_btrfs_subvolume {
 
     # Return 1 if $dir is a btrfs subvolume on this OS and return 0
     # otherwise.
@@ -182,7 +182,7 @@ sub is_btrfs_subvolume { # Not tested
     return 0+(256 == $inode_num);
 }
 
-sub is_btrfs_subvolume_or_die { # Not tested
+sub is_btrfs_subvolume_or_die {
 
     # Wrapper around is_btrfs_subvolume() that Carp::Confess's if it returns
     # false.
@@ -194,7 +194,7 @@ sub is_btrfs_subvolume_or_die { # Not tested
     is_btrfs_subvolume($dir) ? return 1 : confess("yabsm: internal error: '$dir' is not a btrfs subvolume")
 }
 
-sub nums_denote_valid_date { # Is tested
+sub nums_denote_valid_date {
 
     # Return 1 if passed a year, month, month-day, hour, and minute
     # that denote a valid date and return 0 otherwise.
@@ -232,7 +232,7 @@ sub nums_denote_valid_date { # Is tested
     return 1;
 }
 
-sub nums_denote_valid_date_or_die { # Is tested
+sub nums_denote_valid_date_or_die {
 
     # Wrapper around &nums_denote_valid_date that Carp::Confess's if it
     # returns false.
@@ -247,7 +247,7 @@ sub nums_denote_valid_date_or_die { # Is tested
     return 1;
 }
 
-sub system_or_die { # Is tested
+sub system_or_die {
 
     # Wrapper around system that Carp::Confess's if the system command exits
     # with a non-zero status. Redirects STDOUT and STDERR to /dev/null.
@@ -273,7 +273,7 @@ sub system_or_die { # Is tested
     return 1;
 }
 
-sub make_path_or_die { # Not tested
+sub make_path_or_die {
 
     # Wrapper around File::Path::make_path() that Carp::Confess's if the path
     # cannot be created.
@@ -290,14 +290,14 @@ sub make_path_or_die { # Not tested
     confess("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
 }
 
-sub i_am_root { # Not tested
+sub i_am_root {
 
     # Return 1 if current user is root and return 0 otherwise.
 
     return 0+(0 == $<);
 }
 
-sub i_am_root_or_die { # Not tested
+sub i_am_root_or_die {
 
     # Die unless running as the root user.
 

@@ -158,7 +158,7 @@ sub answer_query {
     return wantarray ? @snapshots : \@snapshots;
 }
 
-sub answer_newest_query { # Is tested
+sub answer_newest_query {
 
     # Return the newest snapshot in @snapshots. Because @snapshots is assumed to
     # be sorted from newest to oldest we know the newest snapshot is the first
@@ -173,7 +173,7 @@ sub answer_newest_query { # Is tested
     return wantarray ? @newest : \@newest;
 }
 
-sub answer_oldest_query { # Is tested
+sub answer_oldest_query {
 
     # Return the oldest snapshot in @snapshots. Because @snapshots is assumed to
     # be sorted from newest to oldest we know the oldest snapshot is the last
@@ -188,7 +188,7 @@ sub answer_oldest_query { # Is tested
     return wantarray ? @oldest : \@oldest;
 }
 
-sub answer_after_query { # Is tested
+sub answer_after_query {
 
     # Return all snapshots in @snapshots that are newer than the target snapshot
     # $target. This subroutine assumes that @snapshots is sorted from newest to
@@ -213,7 +213,7 @@ sub answer_after_query { # Is tested
     return wantarray ? @after : \@after;
 }
 
-sub answer_before_query { # Is tested
+sub answer_before_query {
 
     # Return all snapshots in @snapshots that are older than the target snapshot
     # $target. This subroutine assumes that @snapshots is sorted from newest to
@@ -239,7 +239,7 @@ sub answer_before_query { # Is tested
     return wantarray ? @before : \@before;
 }
 
-sub answer_between_query { # Is tested
+sub answer_between_query {
 
     # Return all snapshots in @snapshots that are between $newer and $older
     # (inclusive). This subroutine assumes that @snapshots is sorted from newest
@@ -273,7 +273,7 @@ sub answer_between_query { # Is tested
     return wantarray ? @between : \@between;
 }
 
-sub answer_closest_query { # Is tested
+sub answer_closest_query {
 
     # Return the snapshot in @snapshots that is closest to the snapshot $target.
     # This subroutine assumes that @snapshots is sorted from newest to oldest.
@@ -322,7 +322,7 @@ sub answer_closest_query { # Is tested
                  #            QUERY PARSER          #
                  ####################################
 
-sub parse_query_or_die { # Is tested
+sub parse_query_or_die {
 
     # Parse $query into a query production or die with a useful error message
     # about about what is wrong with the query.
@@ -344,7 +344,7 @@ sub parse_query_or_die { # Is tested
     return $query_production;
 }
 
-sub query_parser { # Is tested
+sub query_parser {
 
     # Top level parser
 
@@ -407,7 +407,7 @@ sub query_parser { # Is tested
     return \%query;
 }
 
-sub time_abbreviation_parser { # Is tested
+sub time_abbreviation_parser {
 
     # A time abbreviation is either a relative time or an immediate time.
 
@@ -428,7 +428,7 @@ sub time_abbreviation_parser { # Is tested
     return $snapshot_name;
 }
 
-sub relative_time_abbreviation_parser { # Is tested
+sub relative_time_abbreviation_parser {
 
     # A relative time comes in the form <back-AMOUNT-UNIT> where
     # AMOUNT is a positive integer and UNIT is one of 'days', 'hours',
@@ -448,7 +448,7 @@ sub relative_time_abbreviation_parser { # Is tested
     return n_units_ago_snapshot_name($amount, $unit);
 }
 
-sub immediate_time_abbreviation_parser { # Is tested
+sub immediate_time_abbreviation_parser {
 
     # An immediate time
 
@@ -601,7 +601,7 @@ sub immediate_time_abbreviation_parser { # Is tested
                  #           TIME FUNCTIONS         #
                  ####################################
 
-sub n_units_ago_snapshot_name { # Is tested
+sub n_units_ago_snapshot_name {
 
     # Return a snapshot name representing the time $n $unit's ago from now.
 

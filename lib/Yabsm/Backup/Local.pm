@@ -24,7 +24,7 @@ our @EXPORT_OK = qw(do_local_backup);
                  #            SUBROUTINES           #
                  ####################################
 
-sub do_local_backup { # Is tested
+sub do_local_backup {
 
     # Perform a $tframe local_backup for $local_backup.
 

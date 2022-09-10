@@ -24,7 +24,7 @@ our @EXPORT_OK = qw(do_snap);
                  #            SUBROUTINES           #
                  ####################################
 
-sub do_snap { # Is tested
+sub do_snap {
 
     # Perform a single $tframe snap of $snap.
 

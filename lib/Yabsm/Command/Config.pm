@@ -27,15 +27,15 @@ sub main {
 
     my $cmd = shift or die $USAGE;
 
-    if    ($cmd =~ /^(-h|--help)$/   ) { help(@_)                  }
-    elsif ($cmd eq 'check'           ) { check_config(@_)          }
-    elsif ($cmd eq 'subvols'         ) { print_subvols(@_)         }
-    elsif ($cmd eq 'snaps'           ) { print_snaps(@_)           }
-    elsif ($cmd eq 'ssh_backups'     ) { print_ssh_backups(@_)     }
-    elsif ($cmd eq 'local_backups'   ) { print_local_backups(@_)   }
-    elsif ($cmd eq 'backups'         ) { print_backups(@_)         }
-    elsif ($cmd eq 'yabsm_dir'       ) { print_yabsm_dir(@_)       }
-    elsif ($cmd eq 'yabsm_user_home' ) { print_yabsm_user_home(@_) }
+    if    ($cmd =~ /^(-h|--help)$/  ) { help(@_)                  }
+    elsif ($cmd eq 'check'          ) { check_config(@_)          }
+    elsif ($cmd eq 'subvols'        ) { print_subvols(@_)         }
+    elsif ($cmd eq 'snaps'          ) { print_snaps(@_)           }
+    elsif ($cmd eq 'ssh_backups'    ) { print_ssh_backups(@_)     }
+    elsif ($cmd eq 'local_backups'  ) { print_local_backups(@_)   }
+    elsif ($cmd eq 'backups'        ) { print_backups(@_)         }
+    elsif ($cmd eq 'yabsm_dir'      ) { print_yabsm_dir(@_)       }
+    elsif ($cmd eq 'yabsm_user_home') { print_yabsm_user_home(@_) }
     else {
         die $USAGE;
     }

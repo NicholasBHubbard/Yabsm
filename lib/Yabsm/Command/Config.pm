@@ -27,7 +27,7 @@ sub main {
 
     my $cmd = shift or die $USAGE;
 
-    if    ($cmd =~ /^(-h|--help)$/   ) { help()                    }
+    if    ($cmd =~ /^(-h|--help)$/   ) { help(@_)                  }
     elsif ($cmd eq 'check'           ) { check_config(@_)          }
     elsif ($cmd eq 'subvols'         ) { print_subvols(@_)         }
     elsif ($cmd eq 'snaps'           ) { print_snaps(@_)           }
@@ -48,6 +48,7 @@ sub main {
                  ####################################
 
 sub help {
+    0 == @_ or die $USAGE;
     my $USAGE = $USAGE =~ s/\s+$//r;
     print <<"END_HELP";
 $USAGE

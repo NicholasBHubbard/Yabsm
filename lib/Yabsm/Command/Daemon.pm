@@ -22,21 +22,21 @@ use POSIX ();
 
 use Carp qw(confess);
 
-my $USAGE = 'usage: yabsm daemon <start|stop|restart|status>'."\n";
+my $USAGE = 'usage: yabsm daemon [--help] [start] [stop] [restart] [status]'."\n";
 
                  ####################################
                  #               MAIN               #
                  ####################################
-
 sub main {
 
     my $cmd = shift // die $USAGE;
     @_ and die $USAGE;
 
-    if    ($cmd eq 'start'  ) { yabsmd_start()   }
-    elsif ($cmd eq 'stop'   ) { yabsmd_stop()    }
-    elsif ($cmd eq 'restart') { yabsmd_restart() }
-    elsif ($cmd eq 'status' ) { yabsmd_status()  }
+    if    ($cmd =~ /^(-h|--help)$/) { help()           }
+    elsif ($cmd eq 'start'        ) { yabsmd_start()   }
+    elsif ($cmd eq 'stop'         ) { yabsmd_stop()    }
+    elsif ($cmd eq 'restart'      ) { yabsmd_restart() }
+    elsif ($cmd eq 'status'       ) { yabsmd_status()  }
     else {
         die $USAGE;
     }
@@ -114,7 +114,7 @@ sub yabsmd_stop {
             die "yabsm: error: cannot terminate yabsmd process running as pid $pid\n";
         }
     }
-    else { die "no running instance of yabsmd\n" }
+    else { die 'no running instance of yabsmd'."\n" }
 }
 
 sub yabsmd_restart {
@@ -145,6 +145,24 @@ sub yabsmd_status {
     else {
         die "no running instance of yabsmd\n";
     }
+}
+
+sub help {
+    arg_count_or_die(0, 0, @_);
+    my $usage = $USAGE =~ s/\s+$//r;
+    print <<"END_HELP";
+$usage
+
+--help       Print this help message.
+
+start        Start the yabsm daemon and print its PID.
+
+stop         Stop the yabsm daemon.
+
+restart      Restart the yabsm daemon.
+
+status       Print the yabsm daemons PID if it is running.
+END_HELP
 }
 
                  ####################################

@@ -16,7 +16,6 @@ use Carp 'confess';
 use Time::Piece;
 use File::Path qw(make_path);
 
-use Log::Log4perl;
 use Feature::Compat::Try;
 
 use Exporter 'import';

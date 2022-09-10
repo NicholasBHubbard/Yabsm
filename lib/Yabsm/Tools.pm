@@ -115,7 +115,7 @@ sub with_error_catch_log {
         unless (-f $logfile && open(my $fh, '>>', $logfile)) {
             my $t = localtime();
             my ($yr, $mon, $day, $hr, $min) = ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
-            $e =~ s/\s+$//;
+            $e =~ s/^\s+|\s+$//g;
             say $fh "[${yr}_${mon}_${day}_$hr:$min]: $e";
             close $fh;
         }

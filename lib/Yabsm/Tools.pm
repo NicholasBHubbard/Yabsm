@@ -111,8 +111,7 @@ sub with_error_catch_log {
         $sub->(@args);
     }
     catch ($e) {
-        my $logfile = '/var/log/yabsmd';
-        unless (-f $logfile && open(my $fh, '>>', $logfile)) {
+        unless (-f '/var/log/yabsmd' && open(my $fh, '>>', '/var/log/yabsmd')) {
             my $t = localtime();
             my ($yr, $mon, $day, $hr, $min) = ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
             $e =~ s/^\s+|\s+$//g;

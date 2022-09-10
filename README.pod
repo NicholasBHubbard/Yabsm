@@ -249,6 +249,14 @@ d once a week.
         weekly_time=23:59
     }
 
+=head3 Configuration Query
+
+Yabsm comes with a C<config> subcommand that allows you to query your 
+configuration.
+
+    yabsm config [check <file?>] [subvols] [snaps] [ssh_backups] [local_backups]
+                 [backups] [yabsm_dir] [yabsm_user_home]
+
 =head1 Finding Snapshots
 
 Now that we know how to configure yabsm to take snapshots, we are going to want

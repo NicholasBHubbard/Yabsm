@@ -31,8 +31,7 @@ Provides a simple query language for locating snapshots and backups.
 Before we go on lets clear up the difference between a snapshot and a backup
 because it can be a little confusing.
 
-When we talk about a
-L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
+A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
 we mean a read-only subvolume created with the C<btrfs subvolume snapshot -r>
 command.
 

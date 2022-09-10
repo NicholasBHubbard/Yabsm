@@ -49,9 +49,9 @@ sub main {
 
 sub help {
     0 == @_ or die $USAGE;
-    my $USAGE = $USAGE =~ s/\s+$//r;
+    my $usage = $USAGE =~ s/\s+$//r;
     print <<"END_HELP";
-$USAGE
+$usage
 
 --help           Print this help message
 

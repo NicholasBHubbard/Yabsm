@@ -53,7 +53,7 @@ sub help {
     print <<"END_HELP";
 $usage
 
---help           Print this help message
+--help           Print this help message.
 
 check <?file>    Check <?file> for errors and print their messages. If <?file> is
                  omitted it defaults to /etc/yabsm.conf.

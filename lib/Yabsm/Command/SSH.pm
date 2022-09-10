@@ -13,7 +13,7 @@ package Yabsm::Command::SSH;
 
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw ( :ALL );
-use Yabsm::Config::Parser qw( parse_config_or_die );
+use Yabsm::Config::Parser qw(parse_config_or_die);
 use Yabsm::Backup::SSH;
 use Yabsm::Command::Daemon;
 
@@ -22,10 +22,7 @@ use Net::OpenSSH;
 use Carp qw(confess);
 use POSIX ();
 
-sub die_usage {
-    arg_count_or_die(0, 0, @_);
-    die 'usage: yabsm ssh <check SSH_BACKUP|print-ssh-key>'."\n";
-}
+my $USAGE = 'usage: yabsm ssh [--help] [check <ssh_backup>] [print-ssh-key]'."\n";
 
                  ####################################
                  #               MAIN               #
@@ -35,10 +32,11 @@ sub main {
 
     my $cmd = shift;
 
-    if    ($cmd eq 'check')     { check(@_)     }
-    elsif ($cmd eq 'print-key') { print_key(@_) }
+    if    ($cmd =~ /^$(-h|--help)/) { help(@_)      }
+    elsif ($cmd eq 'check'        ) { check(@_)     }
+    elsif ($cmd eq 'print-key'    ) { print_key(@_) }
     else {
-        die_usage();
+        die $USAGE;
     }
 
     exit 0;
@@ -48,12 +46,27 @@ sub main {
                  #              COMMANDS            #
                  ####################################
 
+sub help {
+    0 == @_ or die $USAGE;
+    my $usage = $USAGE =~ s/\s+$//r;
+    print <<"END_HELP";
+$usage
+
+--help              Print this help message.
+
+check <ssh_backup>  Check that <ssh_backup> can be performed and print useful
+                    error messages if not.
+
+print-ssh-key       Print the yabsm users public SSH key.
+END_HELP
+}
+
 sub check {
 
     # This is really just a wrapper around
     # &Yabsm::Backup::SSH::check_ssh_backup_config_or_die.
 
-    1 == @_ or die_usage();
+    1 == @_ or die $USAGE;
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 
@@ -66,7 +79,7 @@ sub check {
     }
 
     unless (Yabsm::Command::Daemon::yabsm_user_exists()) {
-        die q(yabsm: error: cannot find user named 'yabsm');
+        die q(yabsm: error: cannot find user named 'yabsm' on this OS)."\n";
     }
 
     POSIX::setuid(scalar(getpwnam 'yabsm'));
@@ -80,7 +93,7 @@ sub print_key {
 
     # Print the yabsm users public key to STDOUT.
 
-    0 == @_ or die_usage();
+    0 == @_ or die $USAGE;
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 

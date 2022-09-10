@@ -12,16 +12,17 @@ package Yabsm::Command::Daemon;
 
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
-use Yabsm::Config::Parser 'parse_config_or_die';
+use Yabsm::Config::Parser qw(parse_config_or_die);
 use Yabsm::Snap;
 use Yabsm::Backup::SSH;
 use Yabsm::Backup::Local;
 
 use Schedule::Cron;
-use Log::Log4perl;
 use POSIX ();
 
-use Carp 'confess';
+use Carp qw(confess);
+
+my $USAGE = 'usage: yabsm daemon <start|stop|restart|status>'."\n";
 
                  ####################################
                  #               MAIN               #
@@ -29,17 +30,15 @@ use Carp 'confess';
 
 sub main {
 
-    my $usage = 'usage: yabsm daemon <start|stop|restart|status>'."\n";
-
-    my $cmd = shift or die $usage;
-    @_ and die $usage;
+    my $cmd = shift // die $USAGE;
+    @_ and die $USAGE;
 
     if    ($cmd eq 'start'  ) { yabsmd_start()   }
     elsif ($cmd eq 'stop'   ) { yabsmd_stop()    }
     elsif ($cmd eq 'restart') { yabsmd_restart() }
     elsif ($cmd eq 'status' ) { yabsmd_status()  }
     else {
-        die $usage;
+        die $USAGE;
     }
 
     exit 0;
@@ -66,19 +65,25 @@ sub yabsmd_start {
 
     install_signal_handlers();
 
-    init_log4perl();
-
     my $config_ref = parse_config_or_die();
 
     my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
 
-    create_runtime_dirs($config_ref);
+    # initialize log file.
+    open my $log_fh, '>>', '/var/log/yabsmd'
+      or confess q(yabsm: internal error: cannot open file '/var/log/yabsmd' for writing);
+    close $log_fh;
+    chown $yabsm_uid, $yabsm_gid, '/var/log/yabsmd';
+    chmod 0644, '/var/log/yabsmd';
 
+    # initialize pid file.
     open my $pid_fh, '>', '/run/yabsmd.pid'
-      or die q(yabsm: internal error: cannot not open file '/run/yabsmd.pid' for writing)."\n";
+      or confess q(yabsm: internal error: cannot not open file '/run/yabsmd.pid' for writing);
     close $pid_fh;
     chown $yabsm_uid, $yabsm_gid, '/run/yabsmd.pid';
     chmod 0644, '/run/yabsmd.pid';
+
+    create_runtime_dirs($config_ref);
 
     POSIX::setgid($yabsm_gid);
     POSIX::setuid($yabsm_uid);
@@ -356,44 +361,6 @@ sub yabsmd_pid {
     my $is_running = $pid_file_pid && $pgrep_pid && $pid_file_pid eq $pgrep_pid;
 
     return $is_running ? $pid_file_pid : 0;
-}
-
-sub init_log4perl {
-
-    # Init Log::Log4Perl so it logs to /var/log/yabsmd. Please note that the only
-    # place that logging occurs is in &Yabsm::Tools::with_error_catch_log.
-
-    arg_count_or_die(0, 0, @_);
-
-    i_am_root_or_die();
-
-    my $log_file = '/var/log/yabsmd';
-
-    my $yabsm_uid = getpwnam('yabsm')
-      or confess q(yabsm: internal error: cannot find user named 'yabsm')."\n";
-    my $yabsm_gid = getgrnam('yabsm')
-      or confess q(yabsm: internal error: cannot find group named 'yabsm')."\n";
-    
-    open my $log_fh, '>>', $log_file
-      or die "yabsm: internal error: cannot open '$log_file' for writing\n";
-    close $log_fh;
-
-    chown $yabsm_uid, $yabsm_gid, $log_file;
-    chmod 0644, $log_file;
-
-    Log::Log4perl::init(do {
-        my $log_config = qq(
-log4perl.category.Yabsm            = ALL, Logfile
-log4perl.appender.Logfile          = Log::Log4perl::Appender::File
-log4perl.appender.Logfile.filename = $log_file
-log4perl.appender.Logfile.mode     = append
-log4perl.appender.Logfile.layout   = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.Logfile.layout.ConversionPattern = [%d] %m{chomp}%n
-);
-        \$log_config;
-    });
-
-    return 1;
 }
 
 sub install_signal_handlers {

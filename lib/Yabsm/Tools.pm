@@ -113,8 +113,25 @@ sub with_error_catch_log {
         $sub->(@args);
     }
     catch ($e) {
-        my $logger = Log::Log4perl::get_logger('Yabsm');
-        $logger->error($e);
+        my $logfile = '/var/log/yabsmd';
+
+        unless (-f $logfile && -w $logfile) {
+            my $username = getpwuid $<;
+            die "yabsm: error: '$logfile' is not writable by user '$username'\n";
+        }
+
+        open my $fh, '>>', $logfile
+          or confess "yabsm: internal error: cannot open '$logfile' for writing";
+
+        my $t = localtime();
+
+        my ($yr, $mon, $day, $hr, $min) = ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
+
+        $e =~ s/\s+$//;
+
+        say $fh "[${yr}_${mon}_${day}_$hr:$min]: $e";
+
+        close $fh;
     }
 }
 

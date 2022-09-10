@@ -93,8 +93,6 @@ sub yabsmd_start {
     my $pid = create_cron_scheduler($config_ref)->run(detach => 1, pid_file => '/run/yabsmd.pid');
     
     say "started yabsmd as pid $pid";
-    
-    return $pid;
 }
 
 sub yabsmd_stop {
@@ -108,7 +106,6 @@ sub yabsmd_stop {
     if (my $pid = yabsmd_pid()) {
         if (kill 'TERM', $pid) {
             say "terminated yabsmd process running as pid $pid";
-            return $pid;
         }
         else {
             die "yabsm: error: cannot terminate yabsmd process running as pid $pid\n";
@@ -140,7 +137,6 @@ sub yabsmd_status {
 
     if (my $pid = yabsmd_pid()) {
         say $pid;
-        return 1;
     }
     else {
         die "no running instance of yabsmd\n";

@@ -37,11 +37,17 @@ use File::Basename 'basename';
 use Parser::MGC;
 use base 'Parser::MGC';
 
-my $USAGE = 'usage: yabsm find [--help] [<snap|ssh_backup|local_backup> <query>]'."\n";
+sub usage {
+    arg_count_or_die(0, 0, @_);
+    return 'usage: yabsm find [--help] [<snap|ssh_backup|local_backup> <query>]'."\n";
+}
 
 sub help {
-    0 == @_ or die $USAGE;
-    print $USAGE;
+    0 == @_ or die usage();
+    my $usage = usage();
+    print <<"END_HELP";
+$usage
+END_HELP
 }
 
                  ####################################
@@ -50,10 +56,10 @@ sub help {
 
 sub main {
 
-    my $thing = shift // die $USAGE;
-    my $query = shift // die $USAGE;
+    my $thing = shift // die usage();
+    my $query = shift // die usage();
 
-    @_ and die $USAGE;
+    @_ and die usage();
 
     my $config_ref = parse_config_or_die();
 
@@ -64,8 +70,6 @@ sub main {
     my @snapshots = answer_query($thing, parse_query_or_die($query), $config_ref);
 
     say for @snapshots;
-
-    exit 0;
 }
 
                  ####################################

@@ -93,7 +93,7 @@ backups and how to perform them. If the yabsm daemon is already running and you
 make a configuration change, you must run C<yabsm daemon restart> to apply the 
 changes.
 
-=head1 Configuration
+=head2 Configuration
 
 The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
 
@@ -106,7 +106,7 @@ output useful error messages if there are any problems.
 
 Please browse through the L<example configurations|TODO> for inspiration.
 
-=head2 Configuration Grammar 
+=head3 Configuration Grammar 
 
 First things first: You must specify a C<yabsm_dir> that Yabsm will use for
 storing snapshots, and use as a cache for holding data needed for performing
@@ -124,7 +124,7 @@ and I<local_backups>. The general form of each configuration object is:
         ...
     }
 
-=head3 Subvols
+=head4 Subvols
 
 A subvol is the simplest configuration object, and is used to give a name to a
 L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> 
@@ -135,7 +135,7 @@ takes a value that is a path to a subvolume.
         mountpoint=/home
     }
 
-=head3 Timeframes
+=head4 Timeframes
 
 We need to understand timeframes before we can understand I<snaps>,
 I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
@@ -187,7 +187,7 @@ between 1-31 and a C<monthly_time> setting that takes a I<hh:mm> time. The
 monthly snapshot/backup will be performed on the given day of the month at the 
 given time.
 
-=head3 Snaps
+=head4 Snaps
 
 A I<snap> represents a snapshot configuration for some I<subvol>. Here is an
 example of a I<snap> that snapshots I<home_subvol> twice a day.
@@ -199,7 +199,7 @@ example of a I<snap> that snapshots I<home_subvol> twice a day.
         daily_times=13:40,23:59
     }
 
-=head3 SSH Backups 
+=head4 SSH Backups 
 
 A I<ssh_backup> represents a backup configuration that sends snapshots over a
 network via SSH. See this example of a I<ssh_backup> that backs up I<home_subvol>
@@ -245,7 +245,7 @@ a file in C</etc/sudoers.d/>.
 
 =back
 
-=head3 Local Backups
+=head4 Local Backups
 
 A I<local_backup> represents a backup configuration that sends snapshots to a
 partition mounted on the host OS. This is useful for sending snapshots to, for
@@ -267,7 +267,7 @@ once a week.
 If the backup directory (C<dir>) does not exist it will be created when the Yabsm
 daemon starts.
 
-=head3 Configuration Query
+=head4 Configuration Query
 
 Yabsm comes with a C<config> subcommand that allows you to query your 
 configuration.

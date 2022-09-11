@@ -23,22 +23,19 @@ sub usage {
 
     arg_count_or_die(0, 0, @_);
 
-    my $config_usage = Yabsm::Command::Config::usage();
-    my $find_usage   = Yabsm::Command::Find::usage();
-    my $ssh_usage    = Yabsm::Command::SSH::usage();
-    my $daemon_usage = Yabsm::Command::Daemon::usage();
-
-    s/^usage: yabsm: |\s+$//g for $daemon_usage, $config_usage, $find_usage, $ssh_usage;
-
-    print <<"END_USAGE";
-usage: yabsm [--help] [--version] [<COMMAND> ?ARGS]
+    print <<'END_USAGE';
+usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
 
 commands:
 
-$config_usage
-$find_usage
-$ssh_usage
-$daemon_usage
+<config|c> [--help] [check ?file] [yabsm_user_home] [yabsm_dir]
+                    [subvols] [ssh_backups] [local_backups] [backups]
+
+<find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+
+ssh        [--help] [check <SSH_BACKUP>] [print-ssh-key]
+
+<daemon|d> [--help] [start] [stop] [restart] [status]
 END_USAGE
 }
 
@@ -70,7 +67,7 @@ my %run_subcommand = (
 
 my $cmd = shift @ARGV || (usage() and exit 1);
 
-if ($cmd eq '--help' || $cmd eq '-h') { usage() and exit 0 }
+if ($cmd =~ /^(-h|--help)$/) { usage() and exit 0 }
 
 if ($cmd eq '--version') { say $VERSION and exit 0 }
 

@@ -63,7 +63,7 @@ TODO
 
 =head1 Usage
 
-The yabsm commands usage string:
+The yabsm command usage string:
 
     usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
     
@@ -78,26 +78,27 @@ The yabsm commands usage string:
     
     <daemon|d> [--help] [start] [stop] [restart] [status]
 
+As we can see yabsm comes with four subcommands: C<config>, C<find>, C<ssh>, and C<daemon>.
+
 =head1 The Yabsm Daemon
-
-Yabsm runs as a cron-style daemon that periodically performs snapshots and 
-backups.
-
-Yabsm comes with a C<daemon> subcommand that allows you to start, stop, restart,
-and status the Yabsm daemon.
 
     usage: yabsm daemon [--help] [start] [stop] [restart] [status]
 
-The Yabsm daemon must be started as root so it can initialize its runtime 
-environment, but after the initialization it switches itself to run as a locked 
-user named I<yabsm>.
+Snapshots and backups are performed by the Yabsm daemon. The Yabsm daemon should
+be started at boot time. The Yabsm daemon must be started as root so it can
+initialize its runtime environment, which includes creating a locked user named
+I<yabsm> that the daemon will run as.
+
+The daemon reads the C</etc/yabsm.conf> file which specifies its
+L<configuration/"Configuration"> which determines how and when to schedule the
+snapshots and backups.
 
 =head1 Configuration
 
-Yabsm in configured via the C</etc/yabsm.conf> file.
+The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
 
 On installation this file will not exist, but there will be a file
-C</etc/yabsmd.conf.example> that you can use to help you build your
+C</etc/yabsm.conf.example> that you can use to help you build your
 configuration.
 
 You can run the command C<yabsm config check> that will check your config and

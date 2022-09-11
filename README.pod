@@ -76,7 +76,7 @@ TODO
     
     <daemon|d> [--help] [start] [stop] [restart] [status]
 
-As we can see yabsm provides with four commands: C<config>, C<find>, C<ssh>, and C<daemon>.
+As we can see yabsm provides four commands: C<config>, C<find>, C<ssh>, and C<daemon>.
 
 =head1 The Yabsm Daemon
 

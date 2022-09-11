@@ -15,7 +15,7 @@ use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Config::Parser 'parse_config_or_die';
 
 my $USAGE = <<"END_USAGE";
-usage: yabsm config [--help] [check <?file>] [yabsm_user_home] [yabsm_dir]
+usage: yabsm config [--help] [check ?file] [yabsm_user_home] [yabsm_dir]
                     [subvols] [ssh_backups] [local_backups] [backups]
 END_USAGE
 
@@ -27,7 +27,7 @@ $usage
 
 --help           Print this help message.
 
-check <?file>    Check <?file> for errors and print their messages. If <?file> is
+check ?file      Check ?file for errors and print their messages. If ?file is
                  omitted it defaults to /etc/yabsm.conf.
 
 yabsm_user_home  Print the yabsm users home directory.

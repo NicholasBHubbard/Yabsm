@@ -14,11 +14,7 @@ Takes readonly snapshots and performs remote and local incremental backups.
 =item *
 
 Seperates snapshots and backups into 5minute, hourly, daily, weekly, and monthly
-timeframe categories
-
-=item *
-
-Cycles out old snapshots and backups on a per-timeframe basis
+timeframe categories.
 
 =item *
 
@@ -71,13 +67,13 @@ Yabsm runs as a cron-style daemon that periodically performs snapshots and
 backups.
 
 Yabsm comes with a C<daemon> subcommand that allows you to start, stop, restart,
-and status the yabsm daemon.
+and status the Yabsm daemon.
 
-    yabsm daemon <start|stop|restart|status>
+    usage: yabsm daemon [--help] [start] [stop] [restart] [status]
 
-The yabsm daemon must be started as root so it can initialize its runtime 
-environment, but after the initialization it switches itself to a locked user
-named I<yabsm>.
+The Yabsm daemon must be started as root so it can initialize its runtime 
+environment, but after the initialization it switches itself to run as a locked 
+user named I<yabsm>.
 
 =head1 Configuration
 
@@ -94,16 +90,21 @@ Please browse through the L<example configurations|TODO> for inspiration.
 
 =head2 Configuration Grammar 
 
-First things first: You must specify a C<yabsm_dir> that yabsm will use for
-storing snapshots and using as a cache for holding objects needed for performing
-backups. Most commonly this directory is C</.snapshots/yabsm>. Yabsm will take
-this directory literally so you almost certainly want the path to end in
-C</yabsm>. If this directory doesn't exist the yabsm daemon will create it
-automatically when it starts. From here on we will refer to this directory as
-I<$YABSM_DIR>.
+First things first: You must specify a C<yabsm_dir> that Yabsm will use for
+storing snapshots, using as a cache for holding data needed for performing
+backups, and as a location for the I<yabsm> users home directory. Most commonly
+this directory is C</.snapshots/yabsm>. Yabsm will take this directory literally
+so you almost certainly want the path to end in C</yabsm>. If this directory
+doesn't exist the Yabsm daemon will create it automatically when it starts. From
+here on we will refer to this directory as I<$YABSM_DIR>.
 
 There are 4 different configuration objects: I<subvols>, I<snaps>, I<ssh_backups>,
-and I<local_backups>.
+and I<local_backups>. The general form of each configuration object is:
+
+    type name {
+        key=val
+        ...
+    }
 
 =head3 Subvols
 
@@ -223,9 +224,9 @@ a file in C</etc/sudoers.d>.
 =back
 
 Yabsm allows you to check that an I<ssh_backups> server is configured correctly
-by running the command.
+by running the C<ssh check> command.
 
-    # yabsm ssh check SSH_BACKUP
+    # yabsm ssh check <SSH_BACKUP>
 
 This command will fail with useful error messages if any of the above conditions 
 are not true.
@@ -254,17 +255,17 @@ d once a week.
 Yabsm comes with a C<config> subcommand that allows you to query your 
 configuration.
 
-    yabsm config [check <file?>] [subvols] [snaps] [ssh_backups] [local_backups]
-                 [backups] [yabsm_dir] [yabsm_user_home]
+    usage: yabsm config [--help] [check <file?>] [subvols] [snaps] [ssh_backups]
+                        [local_backups] [backups] [yabsm_dir] [yabsm_user_home]
 
 =head1 Finding Snapshots
 
-Now that we know how to configure yabsm to take snapshots, we are going to want
+Now that we know how to configure Yabsm to take snapshots, we are going to want
 to locate those snapshots. Yabsm comes with a subcommand C<find> that allows you
 to locate snapshots and backups using a simple query language. Here is the usage
 string for the C<find> subcommand.
 
-    $ yabsm <find|f> <SNAP|SSH_BACKUP|LOCAL_BACKUP> QUERY
+    $ yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
 C<find> can be abbreviated to <f>.
 

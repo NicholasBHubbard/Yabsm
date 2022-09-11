@@ -24,7 +24,7 @@ use POSIX ();
 
 sub usage {
     arg_count_or_die(0, 0, @_);
-    return 'usage: yabsm ssh [--help] [check <ssh_backup>] [print-ssh-key]'."\n";
+    return 'usage: yabsm ssh [--help] [check <SSH_BACKUP>] [print-ssh-key]'."\n";
 }
 
                  ####################################

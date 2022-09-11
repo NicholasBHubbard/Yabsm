@@ -24,7 +24,7 @@ use Carp qw(confess);
 
 sub usage {
     arg_count_or_die(0, 0, @_);
-    return 'usage: yabsm daemon [--help] [start] [stop] [restart] [status]'."\n";
+    return 'usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status]'."\n";
 }
 
                  ####################################

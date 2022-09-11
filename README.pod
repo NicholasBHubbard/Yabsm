@@ -63,8 +63,6 @@ TODO
 
 =head1 Usage
 
-The yabsm command usage string:
-
     usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
     
     commands:
@@ -78,7 +76,7 @@ The yabsm command usage string:
     
     <daemon|d> [--help] [start] [stop] [restart] [status]
 
-As we can see yabsm comes with four subcommands: C<config>, C<find>, C<ssh>, and C<daemon>.
+As we can see yabsm provides with four commands: C<config>, C<find>, C<ssh>, and C<daemon>.
 
 =head1 The Yabsm Daemon
 

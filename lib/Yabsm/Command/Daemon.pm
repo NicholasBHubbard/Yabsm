@@ -22,15 +22,18 @@ use POSIX ();
 
 use Carp qw(confess);
 
-my $USAGE = 'usage: yabsm daemon [--help] [start] [stop] [restart] [status]'."\n";
+sub usage {
+    arg_count_or_die(0, 0, @_);
+    return 'usage: yabsm daemon [--help] [start] [stop] [restart] [status]'."\n";
+}
 
                  ####################################
                  #               MAIN               #
                  ####################################
 sub main {
 
-    my $cmd = shift // die $USAGE;
-    @_ and die $USAGE;
+    my $cmd = shift // die usage();
+    @_ and die usage();
 
     if    ($cmd =~ /^(-h|--help)$/) { help()           }
     elsif ($cmd eq 'start'        ) { yabsmd_start()   }
@@ -38,7 +41,7 @@ sub main {
     elsif ($cmd eq 'restart'      ) { yabsmd_restart() }
     elsif ($cmd eq 'status'       ) { yabsmd_status()  }
     else {
-        die $USAGE;
+        die usage();
     }
 
     exit 0;
@@ -145,7 +148,7 @@ sub yabsmd_status {
 
 sub help {
     arg_count_or_die(0, 0, @_);
-    my $usage = $USAGE =~ s/\s+$//r;
+    my $usage = usage();
     print <<"END_HELP";
 $usage
 

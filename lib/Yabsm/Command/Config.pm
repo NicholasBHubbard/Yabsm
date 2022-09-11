@@ -14,14 +14,16 @@ use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Config::Parser 'parse_config_or_die';
 
-my $USAGE = <<"END_USAGE";
+sub usage {
+    return <<"END_USAGE";
 usage: yabsm config [--help] [check ?file] [yabsm_user_home] [yabsm_dir]
                     [subvols] [ssh_backups] [local_backups] [backups]
 END_USAGE
+}
 
 sub help {
-    0 == @_ or die $USAGE;
-    my $usage = $USAGE =~ s/\s+$//r;
+    0 == @_ or die usage();
+    my $usage = usage() =~ s/\s+$//r;
     print <<"END_HELP";
 $usage
 
@@ -51,7 +53,7 @@ END_HELP
 
 sub main {
 
-    my $cmd = shift or die $USAGE;
+    my $cmd = shift or die usage();
 
     if    ($cmd =~ /^(-h|--help)$/  ) { help(@_)                  }
     elsif ($cmd eq 'check'          ) { check_config(@_)          }
@@ -63,7 +65,7 @@ sub main {
     elsif ($cmd eq 'yabsm_dir'      ) { print_yabsm_dir(@_)       }
     elsif ($cmd eq 'yabsm_user_home') { print_yabsm_user_home(@_) }
     else {
-        die $USAGE;
+        die usage();
     }
 
     exit 0;
@@ -74,38 +76,38 @@ sub main {
                  ####################################
 
 sub check_config {
-    1 >= @_ or die $USAGE;
+    1 >= @_ or die usage();
     my $file = shift // '/etc/yabsm.conf';
     parse_config_or_die($file);
     say 'all good';
 }
 
 sub print_subvols {
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
     my $config_ref = parse_config_or_die();
     say for all_subvols($config_ref);
 }
 
 sub print_snaps {
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
     my $config_ref = parse_config_or_die();
     say for all_snaps($config_ref);
 }
 
 sub print_ssh_backups {
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
     my $config_ref = parse_config_or_die();
     say for all_ssh_backups($config_ref);
 }
 
 sub print_local_backups {
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
     my $config_ref = parse_config_or_die();
     say for all_local_backups($config_ref);
 }
 
 sub print_backups {
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
     my $config_ref = parse_config_or_die();
     my @ssh_backups = all_ssh_backups($config_ref);
     my @local_backups = all_local_backups($config_ref);
@@ -113,14 +115,14 @@ sub print_backups {
 }
 
 sub print_yabsm_dir {
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
     my $config_ref = parse_config_or_die();
     my $yabsm_dir = yabsm_dir($config_ref);
     say $yabsm_dir;
 }
 
 sub print_yabsm_user_home {
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
     my $config_ref = parse_config_or_die();
     my $yabsm_user_home = yabsm_user_home($config_ref);
     say $yabsm_user_home;

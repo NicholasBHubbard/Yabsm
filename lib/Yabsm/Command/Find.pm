@@ -39,7 +39,7 @@ use base 'Parser::MGC';
 
 sub usage {
     arg_count_or_die(0, 0, @_);
-    return 'usage: yabsm find [--help] [<snap|ssh_backup|local_backup> <query>]'."\n";
+    return 'usage: yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]'."\n";
 }
 
 sub help {
@@ -47,6 +47,16 @@ sub help {
     my $usage = usage();
     print <<"END_HELP";
 $usage
+
+See the section "Finding Snapshots" in `man yabsm` for a detailed explanation.
+
+examples:
+    \$ yabsm find home_snap back-10-hours
+    \$ yabsm f root_ssh_backup newest
+    \$ yabsm f home_local_backup oldest
+    \$ yabsm f home_snap 'between b-10-mins 15:45'
+    \$ yabsm f root_snap 'after back-2-days'
+    \$ yabsm f root_local_backup 'before b-14-d'
 END_HELP
 }
 

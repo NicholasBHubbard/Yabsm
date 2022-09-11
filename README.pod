@@ -89,9 +89,10 @@ be started at boot time. The Yabsm daemon must be started as root so it can
 initialize its runtime environment, which includes creating a locked user named
 I<yabsm> that the daemon will run as.
 
-The daemon reads the C</etc/yabsm.conf> file which specifies its
+When the daemon starts it reads the C</etc/yabsm.conf> file which specifies its
 L<configuration/"Configuration"> which determines how and when to schedule the
-snapshots and backups.
+snapshots and backups. If you make a configuration change you must run C<yabsm
+daemon restart> to apply the changes.
 
 =head1 Configuration
 

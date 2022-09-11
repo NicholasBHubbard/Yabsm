@@ -22,7 +22,10 @@ use Net::OpenSSH;
 use Carp qw(confess);
 use POSIX ();
 
-my $USAGE = 'usage: yabsm ssh [--help] [check <ssh_backup>] [print-ssh-key]'."\n";
+sub usage {
+    arg_count_or_die(0, 0, @_);
+    return 'usage: yabsm ssh [--help] [check <ssh_backup>] [print-ssh-key]'."\n";
+}
 
                  ####################################
                  #               MAIN               #
@@ -36,7 +39,7 @@ sub main {
     elsif ($cmd eq 'check'        ) { check(@_)     }
     elsif ($cmd eq 'print-key'    ) { print_key(@_) }
     else {
-        die $USAGE;
+        die usage();
     }
 
     exit 0;
@@ -47,8 +50,8 @@ sub main {
                  ####################################
 
 sub help {
-    0 == @_ or die $USAGE;
-    my $usage = $USAGE =~ s/\s+$//r;
+    0 == @_ or die usage();
+    my $usage = usage() =~ s/\s+$//r;
     print <<"END_HELP";
 $usage
 
@@ -66,7 +69,7 @@ sub check {
     # This is really just a wrapper around
     # &Yabsm::Backup::SSH::check_ssh_backup_config_or_die.
 
-    1 == @_ or die $USAGE;
+    1 == @_ or die usage();
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 
@@ -93,7 +96,7 @@ sub print_key {
 
     # Print the yabsm users public key to STDOUT.
 
-    0 == @_ or die $USAGE;
+    0 == @_ or die usage();
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 

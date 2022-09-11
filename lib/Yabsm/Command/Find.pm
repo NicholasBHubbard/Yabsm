@@ -16,16 +16,16 @@ use Yabsm::Tools qw(arg_count_or_die);
 use Yabsm::Config::Query qw ( :ALL );
 use Yabsm::Config::Parser 'parse_config_or_die';
 use Yabsm::Backup::SSH;
-use Yabsm::Snapshot qw( nums_to_snapshot_name
-                        snapshot_name_nums
-                        current_time_snapshot_name
-                        sort_snapshots
-                        is_snapshot_name
-                        snapshots_eq
-                        snapshot_newer
-                        snapshot_older
-                        snapshot_newer_or_eq
-                        snapshot_older_or_eq
+use Yabsm::Snapshot qw(nums_to_snapshot_name
+                       snapshot_name_nums
+                       current_time_snapshot_name
+                       sort_snapshots
+                       is_snapshot_name
+                       snapshots_eq
+                       snapshot_newer
+                       snapshot_older
+                       snapshot_newer_or_eq
+                       snapshot_older_or_eq
                       );
 
 use Carp 'confess';
@@ -37,18 +37,23 @@ use File::Basename 'basename';
 use Parser::MGC;
 use base 'Parser::MGC';
 
+my $USAGE = 'usage: yabsm find [--help] [<snap|ssh_backup|local_backup> <query>]'."\n";
+
+sub help {
+    0 == @_ or die $USAGE;
+    print $USAGE;
+}
+
                  ####################################
                  #               MAIN               #
                  ####################################
 
 sub main {
 
-    my $usage = 'usage: yabsm find <SNAP|SSH_BACKUP|LOCAL_BACKUP> QUERY'."\n";
+    my $thing = shift // die $USAGE;
+    my $query = shift // die $USAGE;
 
-    my $thing = shift // die $usage;
-    my $query = shift // die $usage;
-
-    @_ and die $usage;
+    @_ and die $USAGE;
 
     my $config_ref = parse_config_or_die();
 

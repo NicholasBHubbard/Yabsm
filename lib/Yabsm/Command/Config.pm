@@ -19,6 +19,32 @@ usage: yabsm config [--help] [check <?file>] [yabsm_user_home] [yabsm_dir]
                     [subvols] [ssh_backups] [local_backups] [backups]
 END_USAGE
 
+sub help {
+    0 == @_ or die $USAGE;
+    my $usage = $USAGE =~ s/\s+$//r;
+    print <<"END_HELP";
+$usage
+
+--help           Print this help message.
+
+check <?file>    Check <?file> for errors and print their messages. If <?file> is
+                 omitted it defaults to /etc/yabsm.conf.
+
+yabsm_user_home  Print the yabsm users home directory.
+
+yabsm_dir        Print the value of yabsm_dir in /etc/yabsm.conf.
+
+subvols          Print the names of all subvols defined in /etc/yabsm.conf.
+
+ssh_backups      Print the names of all ssh_backups defined in /etc/yabsm.conf.
+
+local_backups    Print the names of all local_backups defined in /etc/yabsm.conf.
+
+backups          Print the names of all ssh_backups and local_backups defined in
+                 /etc/yabsm.conf.
+END_HELP
+}
+
                  ####################################
                  #               MAIN               #
                  ####################################
@@ -46,32 +72,6 @@ sub main {
                  ####################################
                  #            SUBROUTINES           #
                  ####################################
-
-sub help {
-    0 == @_ or die $USAGE;
-    my $usage = $USAGE =~ s/\s+$//r;
-    print <<"END_HELP";
-$usage
-
---help           Print this help message.
-
-check <?file>    Check <?file> for errors and print their messages. If <?file> is
-                 omitted it defaults to /etc/yabsm.conf.
-
-yabsm_user_home  Print the yabsm users home directory.
-
-yabsm_dir        Print the value of yabsm_dir in /etc/yabsm.conf.
-
-subvols          Print the names of all subvols defined in /etc/yabsm.conf.
-
-ssh_backups      Print the names of all ssh_backups defined in /etc/yabsm.conf.
-
-local_backups    Print the names of all local_backups defined in /etc/yabsm.conf.
-
-backups          Print the names of all ssh_backups and local_backups defined in
-                 /etc/yabsm.conf.
-END_HELP
-}
 
 sub check_config {
     1 >= @_ or die $USAGE;

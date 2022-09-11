@@ -9,11 +9,11 @@ management system that provides the following features.
 
 =item *
 
-Takes readonly snapshots and performs remote and local incremental backups.
+Takes read only snapshots and performs remote and local incremental backups.
 
 =item *
 
-Seperates snapshots and backups into 5minute, hourly, daily, weekly, and monthly
+Separates snapshots and backups into 5minute, hourly, daily, weekly, and monthly
 timeframe categories.
 
 =item *
@@ -112,7 +112,7 @@ First things first: You must specify a C<yabsm_dir> that Yabsm will use for
 storing snapshots, and use as a cache for holding data needed for performing
 snapshots and backups. Most commonly this directory is set to
 C</.snapshots/yabsm>. Yabsm will take this directory literally so you almost
-certainly want the path to end in C</yabsm>. If this directory doesn't exist the
+certainly want the path to end in C</yabsm>. If this directory does not exist the
 Yabsm daemon will create it automatically when it starts. From here on we will
 refer to this directory as I<$YABSM_DIR>.
 

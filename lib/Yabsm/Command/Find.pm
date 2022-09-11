@@ -66,20 +66,30 @@ END_HELP
 
 sub main {
 
-    my $thing = shift // die usage();
-    my $query = shift // die usage();
-
-    @_ and die usage();
-
-    my $config_ref = parse_config_or_die();
-
-    unless (snap_exists($thing, $config_ref) || ssh_backup_exists($thing, $config_ref) || local_backup_exists($thing, $config_ref)) {
-        die "yabsm: error: no such snap, ssh_backup, or local_backup named '$thing'\n";
+    if (@_ == 1) {
+        shift =~ /^(-h|--help)$/ or die_usage();
+        help();
     }
 
-    my @snapshots = answer_query($thing, parse_query_or_die($query), $config_ref);
+    elsif (@_ == 2) {
 
-    say for @snapshots;
+        my $thing = shift;
+        my $query = shift;
+
+        my $config_ref = parse_config_or_die();
+
+        unless (snap_exists($thing, $config_ref) || ssh_backup_exists($thing, $config_ref) || local_backup_exists($thing, $config_ref)) {
+            die "yabsm: error: no such snap, ssh_backup, or local_backup named '$thing'\n";
+        }
+
+        my @snapshots = answer_query($thing, parse_query_or_die($query), $config_ref);
+
+        say for @snapshots;
+    }
+
+    else {
+        die usage()
+    }
 }
 
                  ####################################

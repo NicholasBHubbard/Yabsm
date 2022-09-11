@@ -14,26 +14,33 @@ use v5.16.3;
 
 use Yabsm::Tools 'arg_count_or_die';
 
-sub usage {
-    print <<END_USAGE;
-usage: yabsm [--help] [--version] <command> <arg(s)>
-
-  daemon [start|stop|restart|status]      Execute a yabsm daemon command.
-END_USAGE
-}
-
 use Yabsm::Command::Daemon;
 use Yabsm::Command::Config;
 use Yabsm::Command::Find;
 use Yabsm::Command::SSH;
 
-# subcommand dispatch table
-my %run_subcommand = (
-    'daemon' => \&Yabsm::Command::Daemon::main,
-    'config' => \&Yabsm::Command::Config::main,
-    'find'   => \&Yabsm::Command::Find::main,
-    'ssh'    => \&Yabsm::Command::SSH::main
-);
+sub usage {
+
+    arg_count_or_die(0, 0, @_);
+
+    my $config_usage = Yabsm::Command::Config::usage();
+    my $find_usage   = Yabsm::Command::Find::usage();
+    my $ssh_usage    = Yabsm::Command::SSH::usage();
+    my $daemon_usage = Yabsm::Command::Daemon::usage();
+
+    s/^usage: yabsm: |\s+$//g for $daemon_usage, $config_usage, $find_usage, $ssh_usage;
+
+    print <<"END_USAGE";
+usage: yabsm [--help] [--version] [<COMMAND> ?ARGS]
+
+commands:
+
+$config_usage
+$find_usage
+$ssh_usage
+$daemon_usage
+END_USAGE
+}
 
 sub unabbreviate_cmd {
 
@@ -43,11 +50,19 @@ sub unabbreviate_cmd {
 
     my $cmd = shift;
 
-    if    ($cmd eq 'd') { return 'daemon' }
-    elsif ($cmd eq 'c') { return 'config' }
+    if    ($cmd eq 'c') { return 'config' }
     elsif ($cmd eq 'f') { return 'find'   }
+    elsif ($cmd eq 'd') { return 'daemon' }
     else                { return $cmd     }
 }
+
+# subcommand dispatch table
+my %run_subcommand = (
+    'config' => \&Yabsm::Command::Config::main,
+    'find'   => \&Yabsm::Command::Find::main,
+    'ssh'    => \&Yabsm::Command::SSH::main,
+    'daemon' => \&Yabsm::Command::Daemon::main
+);
 
                  ####################################
                  #               MAIN               #
@@ -59,8 +74,10 @@ if ($cmd eq '--help' || $cmd eq '-h') { usage() and exit 0 }
 
 if ($cmd eq '--version') { say $VERSION and exit 0 }
 
-my $full_cmd = unabbreviate_cmd($cmd);
+$cmd = unabbreviate_cmd($cmd);
 
-exists $run_subcommand{ $full_cmd} || (usage() and exit 1);
+exists $run_subcommand{ $cmd} || (usage() and exit 1);
 
-$run_subcommand{ $full_cmd }->(@ARGV);
+$run_subcommand{ $cmd }->(@ARGV);
+
+exit 0;

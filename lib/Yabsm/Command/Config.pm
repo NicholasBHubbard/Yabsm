@@ -24,7 +24,7 @@ END_USAGE
 
 sub help {
     0 == @_ or die usage();
-    my $usage = usage() =~ s/\s+$//r;
+    my $usage = usage();
     print <<"END_HELP";
 $usage
 

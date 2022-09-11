@@ -255,8 +255,22 @@ d once a week.
 Yabsm comes with a C<config> subcommand that allows you to query your 
 configuration.
 
-    usage: yabsm config [--help] [check <file?>] [subvols] [snaps] [ssh_backups]
-                        [local_backups] [backups] [yabsm_dir] [yabsm_user_home]
+    $ yabsm config [--help] [check ?file] [subvols] [snaps] [ssh_backups]
+                   [local_backups] [backups] [yabsm_dir] [yabsm_user_home]
+
+The most important subcommand is C<check ?file> that will report if C<?file> is a
+valid C<yabsm.conf> and if not gives useful error messages. If C<?file> is 
+omitted it defaults to C</etc/yabsm.conf>.
+
+All of the other subcommands query for information about your C</etc/yabsm.conf>:
+
+    subvols         -> The names of all subvols.
+    snaps           -> The names of all snaps.
+    ssh_backups     -> The names of all ssh_backups.
+    local_backups   -> The names of all local_backups.
+    backups         -> The names of all ssh_backups and local_backups.
+    yabsm_dir       -> The directory used as the yabsm_dir.
+    yabsm_user_home -> The 'yabsm' users home directory.
 
 =head1 Finding Snapshots
 

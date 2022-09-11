@@ -61,6 +61,23 @@ L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 TODO
 
+=head1 Usage
+
+The yabsm commands usage string:
+
+    usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
+    
+    commands:
+    
+    <config|c> [--help] [check ?file] [yabsm_user_home] [yabsm_dir]
+                        [subvols] [ssh_backups] [local_backups] [backups]
+    
+    <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+    
+    ssh        [--help] [check <SSH_BACKUP>] [print-ssh-key]
+    
+    <daemon|d> [--help] [start] [stop] [restart] [status]
+
 =head1 The Yabsm Daemon
 
 Yabsm runs as a cron-style daemon that periodically performs snapshots and 

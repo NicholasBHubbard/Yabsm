@@ -147,6 +147,7 @@ sub yabsmd_status {
 sub help {
     arg_count_or_die(0, 0, @_);
     my $usage = usage();
+    $usage =~ s/\s+$//;
     print <<"END_HELP";
 $usage
 

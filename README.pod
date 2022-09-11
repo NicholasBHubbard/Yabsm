@@ -309,7 +309,8 @@ Here are some English descriptions of I<relative times>.
 
 An I<immediate_time> is an abbreviation for a time/date denoted by C<yr_mon_day_hr:min>.
 
-There are 7 I<immediate_time> forms, the following table denotes the form and gives an example.
+There are 7 I<immediate_time> forms, the following table denotes the form an
+gives an example:
 
     yr_mon_day_hr:min -> 2020_5_13_23:59
     yr_mon_day        -> 2020_12_25
@@ -320,9 +321,9 @@ There are 7 I<immediate_time> forms, the following table denotes the form and gi
 
 The I<immediate_time> abbreviation rules are simple. If the C<yr>, C<mon>, or
 <day> is omitted then the current year, month, or day is assumed. If the C<hr> or
-C<min> is omitted then they are assumed to be 0. C<2020_12_25> is always the same
-as C<2020_12_25_00:00> and if the current day is I<2020/12/25> then C<23:59> is
-the same as C<2020_12_25_23:59>.
+C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
+always the same as C<2020_12_25_00:00> and if the current day is I<2020/12/25>
+then C<23:59> is the same as C<2020_12_25_23:59>.
 
 =head1 CONTRIBUTING
 

@@ -49,7 +49,8 @@ sub help {
     print <<"END_HELP";
 $usage
 
-See the section "Finding Snapshots" in `man yabsm` for a detailed explanation.
+See the section "Finding Snapshots" in `man yabsm` for a detailed explanation on
+how to find snapshots and backups.
 
 examples:
     \$ yabsm find home_snap back-10-hours

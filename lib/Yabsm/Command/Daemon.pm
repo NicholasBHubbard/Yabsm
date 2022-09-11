@@ -513,6 +513,10 @@ sub create_yabsm_user_and_group {
         system_or_die('groupadd', 'yabsm');
     }
 
+    # The yabsm users home dir must be reinitialized in case the user changed
+    # their yabsm_dir since the last time we ran the daemon.
+    system_or_die('usermod', 'm', '-d', yabsm_user_home($config_ref), 'yabsm');
+
     my $yabsm_uid = getpwnam('yabsm');
     my $yabsm_gid = getgrnam('yabsm');
 

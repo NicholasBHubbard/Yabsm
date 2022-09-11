@@ -87,12 +87,13 @@ As we can see yabsm comes with four subcommands: C<config>, C<find>, C<ssh>, and
 Snapshots and backups are performed by the Yabsm daemon. The Yabsm daemon should
 be started at boot time. The Yabsm daemon must be started as root so it can
 initialize its runtime environment, which includes creating a locked user named
-I<yabsm> that the daemon will run as.
+I<yabsm> (and a group named I<yabsm>) that the daemon will run as.
 
-When the daemon starts it reads the C</etc/yabsm.conf> file which specifies its
-L<configuration|/"Configuration"> which determines how and when to schedule the
-snapshots and backups. If you make a configuration change you must run C<yabsm
-daemon restart> to apply the changes.
+When the daemon starts it reads the C</etc/yabsm.conf> file that specifies its
+L<configuration|/"Configuration"> to determine when to schedule the snapshots and
+backups and how to perform them. If the yabsm daemon is already running and you 
+make a configuration change, you must run C<yabsm daemon restart> to apply the 
+changes.
 
 =head1 Configuration
 
@@ -110,12 +111,12 @@ Please browse through the L<example configurations|TODO> for inspiration.
 =head2 Configuration Grammar 
 
 First things first: You must specify a C<yabsm_dir> that Yabsm will use for
-storing snapshots, using as a cache for holding data needed for performing
-backups, and as a location for the I<yabsm> users home directory. Most commonly
-this directory is C</.snapshots/yabsm>. Yabsm will take this directory literally
-so you almost certainly want the path to end in C</yabsm>. If this directory
-doesn't exist the Yabsm daemon will create it automatically when it starts. From
-here on we will refer to this directory as I<$YABSM_DIR>.
+storing snapshots, and use as a cache for holding data needed for performing
+snapshots and backups. Most commonly this directory is set to
+C</.snapshots/yabsm>. Yabsm will take this directory literally so you almost
+certainly want the path to end in C</yabsm>. If this directory doesn't exist the
+Yabsm daemon will create it automatically when it starts. From here on we will
+refer to this directory as I<$YABSM_DIR>.
 
 There are 4 different configuration objects: I<subvols>, I<snaps>, I<ssh_backups>,
 and I<local_backups>. The general form of each configuration object is:
@@ -127,7 +128,10 @@ and I<local_backups>. The general form of each configuration object is:
 
 =head3 Subvols
 
-A subvol is the simplest configuration object, and is used to give a name to a L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> on your system. A subvol definition accepts one field called =mountpoint= which takes a value that is a path to a subvolume.
+A subvol is the simplest configuration object, and is used to give a name to a
+L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> 
+on your system. A subvol definition accepts one field named C<mountpoint> which
+takes a value that is a path to a subvolume.
 
     subvol home_subvol {
         mountpoint=/home
@@ -135,7 +139,7 @@ A subvol is the simplest configuration object, and is used to give a name to a L
 
 =head3 Timeframes
 
-We need to understand timeframes gefore we can understand I<snaps>,
+We need to understand timeframes before we can understand I<snaps>,
 I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
 daily, weekly, and monthly. 
 
@@ -144,17 +148,17 @@ timeframes. For example an I<ssh_backup> may be configured to take backups in th
 I<hourly> and I<weekly> categories, which means that we want to backup every hour
 and once a week.
 
-The following table describes in plain english what each timeframe means.
+The following table describes in English what each timeframe means.
 
-    5minute -> Every 5 minutes
-    hourly  -> At the beginning of every hour
-    daily   -> Everyday at one or more times of the day
-    weekly  -> Once a week on a specific weekday at a specific time
-    monthly -> Once a month on a specific day at a specific time
+    5minute -> Every 5 minutes.
+    hourly  -> At the beginning of every hour.
+    daily   -> Everyday at one or more times of the day.
+    weekly  -> Once a week on a specific weekday at a specific time.
+    monthly -> Once a month on a specific day at a specific time.
 
-To specify the timeframes you want you set the value of the C<timeframes>
-setting to a comma seperated list of timeframe values. For example this is how
-you specify that you want every timeframe:
+To specify the timeframes you want, you set the value of the C<timeframes> to a
+comma seperated list of timeframe values. For example this is how you specify
+that you want every timeframe:
 
     timeframes=5minute,hourly,daily,weekly,monthly
 
@@ -168,8 +172,8 @@ object. Here is a table that shows the timeframe settings:
     monthly -> monthly_keep, monthly_time, monthly_day
  
 Any C<*_keep> setting defines how many snapshots/backups you want to keep at one
-time for the configuration object. For example A common configuration is to keep
-48 hourly snapshots so you can go back 2 days in one-hour increments.
+time for the configuration object. A common configuration is to keep 48 hourly 
+snapshots so you can go back 2 days in one-hour increments.
 
 The C<daily_times> setting for daily snapshots takes a comma seperated list of
 I<hh:mm> times. Yabsm will perform the snapshot/backup everyday at all the given
@@ -212,9 +216,9 @@ to C<larry@192.168.1.73:/backups/yabsm/laptop_home>:
         daily_times=23:59 
     }
 
-The difficult part of configuring a I<ssh_backup> is not writing the 
-configuration, but rather making sure the SSH server is properly configured. For
-a server to be properly configured it must satisfy the following conditions:
+The difficult part of configuring a I<ssh_backup> is making sure the SSH server
+is properly configured. For a server to be properly configured it must satisfy
+the following conditions:
 
 =over 4
 

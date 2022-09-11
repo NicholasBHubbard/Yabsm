@@ -49,7 +49,7 @@ sub help {
     print <<"END_HELP";
 $usage
 
-See the section "Finding Snapshots" in `man yabsm` for a detailed explanation on
+see the section "Finding Snapshots" in `man yabsm` for a detailed explanation on
 how to find snapshots and backups.
 
 examples:

@@ -28,8 +28,8 @@ see `man yabsm` for a detailed overview of yabsm.
 commands:
 
 <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
-                    [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
-                    [local_backups] [backups]
+           [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
+           [local_backups] [backups]
 
 <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 

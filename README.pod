@@ -308,7 +308,7 @@ to locate those snapshots. Yabsm comes with a command C<find> that allows you to
 locate snapshots and backups using a simple query language. Here is the usage
 string for the C<find> command.
 
-    $ yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+    yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
 The first argument is the name of any I<snap>, I<ssh_backup>, or I<local_backup>.
 Because these configuration entities share the same namespace there is no risk of

@@ -287,7 +287,10 @@ performed and if not prints useful error messages. See the section
 L<SSH Backups|/"SSH Backups"> for an explanation on the configuration required
 for performing an I<ssh_backup>.
 
-All of the other subcommands query for information about your C</etc/yabsm.conf>:
+The C<ssh-key> subcommand prints the I<yabsm> users public SSH key.
+
+All of the other subcommands query for information derived from your
+ C</etc/yabsm.conf>:
 
     subvols         -> The names of all subvols.
     snaps           -> The names of all snaps.

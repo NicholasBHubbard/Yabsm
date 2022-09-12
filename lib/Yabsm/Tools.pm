@@ -12,8 +12,8 @@ use v5.16.3;
 
 package Yabsm::Tools;
 
-use Carp qw(confess);
 use Time::Piece;
+use Carp qw(confess);
 use File::Path qw(make_path);
 
 use Feature::Compat::Try;

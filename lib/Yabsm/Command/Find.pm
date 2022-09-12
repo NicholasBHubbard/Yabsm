@@ -53,12 +53,12 @@ see the section "Finding Snapshots" in `man yabsm` for a detailed explanation on
 how to find snapshots and backups.
 
 examples:
-    \$ yabsm find home_snap back-10-hours
-    \$ yabsm f root_ssh_backup newest
-    \$ yabsm f home_local_backup oldest
-    \$ yabsm f home_snap 'between b-10-mins 15:45'
-    \$ yabsm f root_snap 'after back-2-days'
-    \$ yabsm f root_local_backup 'before b-14-d'
+    yabsm find home_snap back-10-hours
+    yabsm f root_ssh_backup newest
+    yabsm f home_local_backup oldest
+    yabsm f home_snap 'between b-10-mins 15:45'
+    yabsm f root_snap 'after back-2-days'
+    yabsm f root_local_backup 'before b-14-d'
 END_HELP
 }
 

@@ -6,11 +6,11 @@
 #
 #  See t/Tools.t for this modules tests.
 
-package Yabsm::Tools;
-
 use strict;
 use warnings;
 use v5.16.3;
+
+package Yabsm::Tools;
 
 use Carp 'confess';
 use Time::Piece;

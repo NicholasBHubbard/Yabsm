@@ -290,7 +290,7 @@ sub make_path_or_die {
 
     my $username = getpwuid $<;
 
-    confess("yabsm: internal error: could not create path '$path' while running as user '$username'\n");
+    die "yabsm: error: could not create path '$path' while running as user '$username'\n";
 }
 
 sub i_am_root {

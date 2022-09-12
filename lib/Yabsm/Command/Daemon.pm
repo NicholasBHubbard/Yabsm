@@ -59,13 +59,16 @@ $usage
 
 --help       Print this help message.
 
-start        Start the yabsm daemon and print its PID.
+start        Start the Yabsm daemon.
 
-stop         Stop the yabsm daemon.
+stop         Stop the Yabsm daemon.
 
-restart      Restart the yabsm daemon.
+restart      Restart the Yabsm daemon.
 
-status       Print the yabsm daemons PID if it is running.
+status       Print the Yabsm daemons PID if it is running.
+
+init         Initialize the Yabsm daemons runtime environment without starting
+             the daemon.
 END_HELP
 }
 

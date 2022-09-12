@@ -5,11 +5,11 @@
 #  Provides functions for querying the Yabsm configuration hash that is produced
 #  by Yabsm::Config::Parser::parse_config_or_die().
 
-package Yabsm::Config::Query;
-
 use strict;
 use warnings;
 use v5.16.3;
+
+package Yabsm::Config::Query;
 
 use Yabsm::Tools qw(arg_count_or_die);
 

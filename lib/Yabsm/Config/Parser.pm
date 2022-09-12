@@ -29,11 +29,11 @@
 #                               }
 #            );
 
-package Yabsm::Config::Parser;
-
 use strict;
 use warnings;
 use v5.16.3;
+
+package Yabsm::Config::Parser;
 
 use Yabsm::Tools qw(arg_count_or_die);
 

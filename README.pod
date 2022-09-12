@@ -269,7 +269,7 @@ once a week.
 If the backup directory (C<dir>) does not exist it will be created when the Yabsm
 daemon starts.
 
-=head4 Configuration Query
+=head1 Configuration Query
 
 Yabsm comes with a C<config> command that allows you to check and query your 
 configuration.

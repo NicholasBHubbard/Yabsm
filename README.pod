@@ -371,7 +371,7 @@ C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00> and if the current day is I<2020/12/25>
 then C<23:59> is the same as C<2020_12_25_23:59>.
 
-=head1 Issues
+=head1 Getting Support
 
 Do not hesitate to open an issue! To help get support you may want to include the
 output of the following commands in your issue:

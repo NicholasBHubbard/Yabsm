@@ -219,8 +219,8 @@ to C<larry@192.168.1.73:/backups/yabsm/laptop_home> every night at midnight:
 
 The difficult part of configuring a I<ssh_backup> is making sure the SSH server
 is properly configured. You can test that a I<ssh_backup> is able to be performed
-running C<yabsm config ssh-check <SSH_BACKUP>>. For a I<ssh_backup> to be able to
-be performed the following conditions must be satisfied:
+running C<yabsm config ssh-check E<lt>SSH_BACKUPE<gt>>. For a I<ssh_backup> to be
+able to be performed the following conditions must be satisfied:
 
 =over 4
 

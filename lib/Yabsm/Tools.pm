@@ -12,7 +12,7 @@ use v5.16.3;
 
 package Yabsm::Tools;
 
-use Carp 'confess';
+use Carp qw(confess);
 use Time::Piece;
 use File::Path qw(make_path);
 

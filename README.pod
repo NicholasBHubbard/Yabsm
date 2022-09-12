@@ -272,7 +272,7 @@ daemon starts.
 
 =head4 Daemon Logging
 
-The Yabsm daemon logs all of it's errors to C</var/log/yabsm> so if, for example,
+The Yabsm daemon logs all of it's errors to C</var/log/yabsm>. If, for example,
 you have an I<ssh_backup> that is not being performed, the first thing you should
 do is check the logs.
 

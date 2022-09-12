@@ -270,6 +270,11 @@ once a week.
 If the backup directory (C<dir>) does not exist it will be created when the Yabsm
 daemon starts.
 
+=head4 Daemon Logging
+
+The Yabsm daemon logs all of it's errors to C</var/log/yabsm>. If for example
+your I<ssh_backups> are not being performed you should check this file.
+
 =head1 Configuration Querying
 
 Yabsm comes with a C<config> command that allows you to check and query your 
@@ -365,6 +370,15 @@ The I<immediate_time> abbreviation rules are simple. If the C<yr>, C<mon>, or
 C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00> and if the current day is I<2020/12/25>
 then C<23:59> is the same as C<2020_12_25_23:59>.
+
+=head1 Issues
+
+Do not hesitate to open an issue! To help get support you may want to include the
+output of the following commands in your issue:
+
+    yabsm config check
+    yabsm config ssh-check <SSH_BACKUP>
+    cat /var/log/yabsm
 
 =head1 Contributing
 

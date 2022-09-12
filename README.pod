@@ -77,7 +77,8 @@ TODO
     
     <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
-As we can see yabsm provides 3 commands: C<config>, C<find> and C<daemon>.
+As we can see yabsm provides 3 commands: L<config|/"Configuration Querying">,
+L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 
 =head1 The Yabsm Daemon
 
@@ -269,7 +270,7 @@ once a week.
 If the backup directory (C<dir>) does not exist it will be created when the Yabsm
 daemon starts.
 
-=head1 Configuration Query
+=head1 Configuration Querying
 
 Yabsm comes with a C<config> command that allows you to check and query your 
 configuration.

@@ -26,6 +26,8 @@ sub usage {
     print <<'END_USAGE';
 usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
 
+see `man yabsm` for a detailed overview of yabsm.
+
 commands:
 
 <config|c> [--help] [check ?file] [yabsm_user_home] [yabsm_dir]

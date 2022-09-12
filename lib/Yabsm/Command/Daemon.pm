@@ -24,7 +24,7 @@ use Carp qw(confess);
 
 sub usage {
     arg_count_or_die(0, 0, @_);
-    return 'usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status]'."\n";
+    return 'usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status] [init]'."\n";
 }
 
                  ####################################
@@ -40,14 +40,34 @@ sub main {
     elsif ($cmd eq 'stop'         ) { yabsmd_stop()    }
     elsif ($cmd eq 'restart'      ) { yabsmd_restart() }
     elsif ($cmd eq 'status'       ) { yabsmd_status()  }
+    elsif ($cmd eq 'init'         ) { yabsmd_init()    }
     else {
         die usage();
     }
 }
 
                  ####################################
-                 #              DAEMON              #
+                 #            SUBCOMMANDS           #
                  ####################################
+
+sub help {
+    arg_count_or_die(0, 0, @_);
+    my $usage = usage();
+    $usage =~ s/\s+$//;
+    print <<"END_HELP";
+$usage
+
+--help       Print this help message.
+
+start        Start the yabsm daemon and print its PID.
+
+stop         Stop the yabsm daemon.
+
+restart      Restart the yabsm daemon.
+
+status       Print the yabsm daemons PID if it is running.
+END_HELP
+}
 
 sub yabsmd_start {
 
@@ -62,35 +82,10 @@ sub yabsmd_start {
         die "yabsm: error: yabsmd is already running as pid $yabsmd_pid\n";
     }
 
-    have_prerequisites_or_die();
-
-    install_signal_handlers();
-
     my $config_ref = parse_config_or_die();
 
-    my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
-
-    # initialize log file.
-    open my $log_fh, '>>', '/var/log/yabsm'
-      or confess q(yabsm: internal error: cannot open file '/var/log/yabsm' for writing);
-    close $log_fh;
-    chown $yabsm_uid, $yabsm_gid, '/var/log/yabsm';
-    chmod 0644, '/var/log/yabsm';
-
-    # initialize pid file.
-    open my $pid_fh, '>', '/run/yabsmd.pid'
-      or confess q(yabsm: internal error: cannot not open file '/run/yabsmd.pid' for writing);
-    close $pid_fh;
-    chown $yabsm_uid, $yabsm_gid, '/run/yabsmd.pid';
-    chmod 0644, '/run/yabsmd.pid';
-
-    create_runtime_dirs($config_ref);
-
-    POSIX::setgid($yabsm_gid);
-    POSIX::setuid($yabsm_uid);
-
-    create_yabsm_user_ssh_key(0, $config_ref);
-
+    initialize_yabsmd_runtime_environment(1, $config_ref);
+    
     my $pid = create_cron_scheduler($config_ref)->run(detach => 1, pid_file => '/run/yabsmd.pid');
     
     say "started yabsmd as pid $pid";
@@ -102,7 +97,7 @@ sub yabsmd_stop {
 
     arg_count_or_die(0, 0, @_);
 
-    die q(yabsm: error: permission denied)."\n" unless i_am_root();
+    die 'yabsm: error: permission denied'."\n" unless i_am_root();
     
     if (my $pid = yabsmd_pid()) {
         if (kill 'TERM', $pid) {
@@ -121,7 +116,7 @@ sub yabsmd_restart {
 
     arg_count_or_die(0, 0, @_);
 
-    die q(yabsm: error: permission denied)."\n" unless i_am_root();
+    die 'yabsm: error: permission denied'."\n" unless i_am_root();
 
     yabsmd_stop();
     
@@ -144,28 +139,67 @@ sub yabsmd_status {
     }
 }
 
-sub help {
+sub yabsmd_init {
+
+    # Subcommand to allow user to yabsmd's runtime environment without having to
+    # start yabsmd.
+
     arg_count_or_die(0, 0, @_);
-    my $usage = usage();
-    $usage =~ s/\s+$//;
-    print <<"END_HELP";
-$usage
+    
+    die 'yabsm: error: permission denied'."\n" unless i_am_root();
 
---help       Print this help message.
+    my $config_ref = parse_config_or_die();
 
-start        Start the yabsm daemon and print its PID.
+    initialize_yabsmd_runtime_environment(0, $config_ref);
 
-stop         Stop the yabsm daemon.
-
-restart      Restart the yabsm daemon.
-
-status       Print the yabsm daemons PID if it is running.
-END_HELP
+    say 'all good';
 }
 
                  ####################################
                  #              HELPERS             #
                  ####################################
+
+sub initialize_yabsmd_runtime_environment {
+
+    # Initialize yabsmd's runtime environment, which includes installing the
+    # signal handlers, creating runtime dirs for performing snaps, ssh_backups,
+    # and local_backups, creating the yabsm user and group, and setting the
+    # process's UID and GID to them.
+
+    arg_count_or_die(1, 2, @_);
+
+    my $create_pid_file = shift;
+    my $config_ref      = shift;
+
+    have_prerequisites_or_die();
+
+    install_signal_handlers();
+
+    create_yabsmd_runtime_dirs($config_ref);
+
+    my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
+
+    open my $log_fh, '>>', '/var/log/yabsm'
+      or confess q(yabsm: internal error: cannot open file '/var/log/yabsm' for writing);
+    close $log_fh;
+    chown $yabsm_uid, $yabsm_gid, '/var/log/yabsm';
+    chmod 0644, '/var/log/yabsm';
+
+    if ($create_pid_file) {
+        open my $pid_fh, '>', '/run/yabsmd.pid'
+          or confess q(yabsm: internal error: cannot not open file '/run/yabsmd.pid' for writing);
+        close $pid_fh;
+        chown $yabsm_uid, $yabsm_gid, '/run/yabsmd.pid';
+        chmod 0644, '/run/yabsmd.pid';
+    }
+
+    POSIX::setgid($yabsm_gid);
+    POSIX::setuid($yabsm_uid);
+
+    create_yabsm_user_ssh_key(0, $config_ref);
+
+    return 1;
+}
 
 sub create_cron_scheduler {
 
@@ -319,22 +353,16 @@ sub create_cron_scheduler {
     return $cron_scheduler;
 }
 
-sub create_runtime_dirs {
+sub create_yabsmd_runtime_dirs {
 
-    # Create the directories needed for every snap, ssh_backup, and local_backup.
-    # Create a locked user named 'yabsm', and a group named yabsm if they do not
-    # already exist. Add a sudoer rule to grant the yabsm user root access to
-    # btrfs.
-    #
-    # G
+    # Create the directories needed for the daemon to perform every snap,
+    # ssh_backup, and local_backup.
 
     arg_count_or_die(1, 1, @_);
 
     my $config_ref = shift;
 
     i_am_root_or_die();
-
-    my $yabsm_dir = yabsm_dir($config_ref);
 
     for my $snap (all_snaps($config_ref)) {
         for my $tframe (snap_timeframes($snap, $config_ref)) {

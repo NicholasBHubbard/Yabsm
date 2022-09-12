@@ -289,7 +289,7 @@ The C<check ?file> subcommand checks the C<?file> is a valid yabsm configuration
 file and if not prints useful error messages. If the C<?file> argument is omitted
 it defaults to C</etc/yabsm.conf>.
 
-The C<ssh-check <SSH_BACKUP>> subcommand checks that C<<SSH_BACKUP\>> can be
+The C<ssh-check <SSH_BACKUP=E>> subcommand checks that C<<SSH_BACKUP>> can be
 performed and if not prints useful error messages. See the section 
 L<SSH Backups|/"SSH Backups"> for an explanation on the configuration required
 for performing an I<ssh_backup>.

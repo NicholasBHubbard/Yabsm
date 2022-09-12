@@ -13,10 +13,9 @@ use v5.16.3;
 package Yabsm::Tools;
 
 use Time::Piece;
+use Feature::Compat::Try;
 use Carp qw(confess);
 use File::Path qw(make_path);
-
-use Feature::Compat::Try;
 
 use Exporter 'import';
 our @EXPORT_OK = qw(have_prerequisites

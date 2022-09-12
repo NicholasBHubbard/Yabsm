@@ -12,8 +12,6 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Tools 'arg_count_or_die';
-
 use Yabsm::Command::Daemon;
 use Yabsm::Command::Config;
 use Yabsm::Command::Find;
@@ -42,8 +40,6 @@ END_USAGE
 sub unabbreviate_cmd {
 
     # Provide the user with command abbreviations
-
-    arg_count_or_die(1, 1, @_);
 
     my $cmd = shift;
 

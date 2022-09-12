@@ -13,12 +13,14 @@ package Yabsm::Command::Config;
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Config::Parser 'parse_config_or_die';
+use Yabsm::Backup::SSH;
 
 sub usage {
     arg_count_or_die(0, 0, @_);
-    return <<"END_USAGE";
-usage: yabsm <config|c> [--help] [check ?file] [yabsm_user_home] [yabsm_dir]
-                        [subvols] [ssh_backups] [local_backups] [backups]
+    return <<'END_USAGE';
+usage: yabsm <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
+                        [yabsm-user-home] [yabsm_dir] [subvols] [snaps]
+                        [ssh_backups] [local_backups] [backups]
 END_USAGE
 }
 
@@ -29,23 +31,30 @@ sub help {
     print <<"END_HELP";
 $usage
 
---help           Print this help message.
+--help                 Print this help message.
 
-check ?file      Check ?file for errors and print their messages. If ?file is
-                 omitted it defaults to /etc/yabsm.conf.
+check ?file            Check ?file for errors and print their messages. If ?file
+                       is omitted it defaults to /etc/yabsm.conf.
 
-yabsm_user_home  Print the yabsm users home directory.
+ssh-check <SSH_BACKUP> Check that backups for <SSH_BACKUP> are able to be
+                       performed and if not print useful error messages.
 
-yabsm_dir        Print the value of yabsm_dir in /etc/yabsm.conf.
+ssh-key                Print the 'yabsm' users public SSH key.
 
-subvols          Print the names of all subvols defined in /etc/yabsm.conf.
+yabsm-user-home        Print the 'yabsm' users home directory.
 
-ssh_backups      Print the names of all ssh_backups defined in /etc/yabsm.conf.
+yabsm_dir              Print the value of yabsm_dir in /etc/yabsm.conf.
 
-local_backups    Print the names of all local_backups defined in /etc/yabsm.conf.
+subvols                Print names of all subvols defined in /etc/yabsm.conf.
 
-backups          Print the names of all ssh_backups and local_backups defined in
-                 /etc/yabsm.conf.
+snaps                  Print names of all snaps defined in /etc/yabsm.conf.
+
+ssh_backups            Print names of all ssh_backups defined in /etc/yabsm.conf.
+
+local_backups          Print the of all local_backups defined in /etc/yabsm.conf.
+
+backups                Print names of all ssh_backups and local_backups defined
+                       in /etc/yabsm.conf.
 END_HELP
 }
 
@@ -57,22 +66,24 @@ sub main {
 
     my $cmd = shift or die usage();
 
-    if    ($cmd =~ /^(-h|--help)$/  ) { help(@_)                  }
-    elsif ($cmd eq 'check'          ) { check_config(@_)          }
-    elsif ($cmd eq 'subvols'        ) { print_subvols(@_)         }
-    elsif ($cmd eq 'snaps'          ) { print_snaps(@_)           }
-    elsif ($cmd eq 'ssh_backups'    ) { print_ssh_backups(@_)     }
-    elsif ($cmd eq 'local_backups'  ) { print_local_backups(@_)   }
-    elsif ($cmd eq 'backups'        ) { print_backups(@_)         }
-    elsif ($cmd eq 'yabsm_dir'      ) { print_yabsm_dir(@_)       }
-    elsif ($cmd eq 'yabsm_user_home') { print_yabsm_user_home(@_) }
+    if    ($cmd =~ /^(-h|--help)$/  ) { help(@_)                     }
+    elsif ($cmd eq 'check'          ) { check_config(@_)             }
+    elsif ($cmd eq 'ssh-check'      ) { check_ssh_backup(@_)         }
+    elsif ($cmd eq 'ssh-key'        ) { print_yabsm_user_ssh_key(@_) }
+    elsif ($cmd eq 'yabsm_user_home') { print_yabsm_user_home(@_)    }
+    elsif ($cmd eq 'yabsm_dir'      ) { print_yabsm_dir(@_)          }
+    elsif ($cmd eq 'subvols'        ) { print_subvols(@_)            }
+    elsif ($cmd eq 'snaps'          ) { print_snaps(@_)              }
+    elsif ($cmd eq 'ssh_backups'    ) { print_ssh_backups(@_)        }
+    elsif ($cmd eq 'local_backups'  ) { print_local_backups(@_)      }
+    elsif ($cmd eq 'backups'        ) { print_backups(@_)            }
     else {
         die usage();
     }
 }
 
                  ####################################
-                 #            SUBROUTINES           #
+                 #            SUBCOMMANDS           #
                  ####################################
 
 sub check_config {
@@ -126,6 +137,70 @@ sub print_yabsm_user_home {
     my $config_ref = parse_config_or_die();
     my $yabsm_user_home = yabsm_user_home($config_ref);
     say $yabsm_user_home;
+}
+
+sub check_ssh_backup {
+
+    # This is mostly just a wrapper around
+    # &Yabsm::Backup::SSH::check_ssh_backup_config_or_die.
+
+    1 == @_ or die usage();
+
+    die 'yabsm: error: permission denied'."\n" unless i_am_root();
+
+    my $ssh_backup = shift;
+
+    my $config_ref = parse_config_or_die();
+
+    unless (ssh_backup_exists($ssh_backup, $config_ref)) {
+        die "yabsm: error: no such ssh_backup named '$ssh_backup'\n";
+    }
+
+    unless (Yabsm::Command::Daemon::yabsm_user_exists()) {
+        die q(yabsm: error: cannot find user named 'yabsm')."\n";
+    }
+
+    unless (Yabsm::Command::Daemon::yabsm_group_exists()) {
+        die q(yabsm: error: cannot find group named 'yabsm')."\n";
+    }
+
+    POSIX::setgid(scalar(getgrnam 'yabsm'));
+    POSIX::setuid(scalar(getpwnam 'yabsm'));
+
+    Yabsm::Backup::SSH::check_ssh_backup_config_or_die(undef, $ssh_backup, $config_ref);
+
+    say 'all good';
+}
+
+sub print_yabsm_user_ssh_key {
+
+    # Print the yabsm users public key to STDOUT.
+
+    0 == @_ or die usage();
+
+    die 'yabsm: error: permission denied'."\n" unless i_am_root();
+
+    my $config_ref = parse_config_or_die();
+
+    my $yabsm_user_ssh_dir = yabsm_user_home($config_ref) . '/.ssh';
+
+    my $priv_key = "$yabsm_user_ssh_dir/id_ed25519";
+    my $pub_key  = "$yabsm_user_ssh_dir/id_ed25519.pub";
+
+    unless (-f $priv_key) {
+        die "yabsm: error: could not find user 'yabsm' users SSH private key '$priv_key'\n";
+    }
+
+    unless (-f $pub_key) {
+        die "yabsm: error: could not find user 'yabsm' users SSH public key '$pub_key'\n";
+    }
+
+    open my $fh, '<', $pub_key
+      or die "yabsm: internal error: could not open '$pub_key' for reading\n";
+
+    print <$fh>;
+
+    close $fh
 }
 
 1;

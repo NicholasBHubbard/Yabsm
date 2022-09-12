@@ -17,7 +17,6 @@ use Yabsm::Tools 'arg_count_or_die';
 use Yabsm::Command::Daemon;
 use Yabsm::Command::Config;
 use Yabsm::Command::Find;
-use Yabsm::Command::SSH;
 
 sub usage {
 
@@ -30,14 +29,13 @@ see `man yabsm` for a detailed overview of yabsm.
 
 commands:
 
-<config|c> [--help] [check ?file] [yabsm_user_home] [yabsm_dir]
-                    [subvols] [ssh_backups] [local_backups] [backups]
+<config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
+                    [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
+                    [local_backups] [backups]
 
 <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
-ssh        [--help] [check <SSH_BACKUP>] [print-ssh-key]
-
-<daemon|d> [--help] [start] [stop] [restart] [status]
+<daemon|d> [--help] [start] [stop] [restart] [status] [init]
 END_USAGE
 }
 
@@ -59,7 +57,6 @@ sub unabbreviate_cmd {
 my %run_subcommand = (
     'config' => \&Yabsm::Command::Config::main,
     'find'   => \&Yabsm::Command::Find::main,
-    'ssh'    => \&Yabsm::Command::SSH::main,
     'daemon' => \&Yabsm::Command::Daemon::main
 );
 

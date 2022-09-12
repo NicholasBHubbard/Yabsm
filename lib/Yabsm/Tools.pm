@@ -101,8 +101,8 @@ sub arg_count_or_die {
 
 sub with_error_catch_log {
 
-    # Call $sub with @args within a Feature::Compat::Try try/catch block to
-    # catch any exception and log it instead of killing the program.
+    # Call $sub with @args within a Feature::Compat::Try try/catch block to catch
+    # any exception and log it to /var/log/yabsm instead of killing the program.
 
     my $sub  = shift;
     my @args = @_;
@@ -111,7 +111,7 @@ sub with_error_catch_log {
         $sub->(@args);
     }
     catch ($e) {
-        unless (-f '/var/log/yabsmd' && open(my $fh, '>>', '/var/log/yabsmd')) {
+        unless (-f '/var/log/yabsm' && open(my $fh, '>>', '/var/log/yabsm')) {
             my $t = localtime();
             my ($yr, $mon, $day, $hr, $min) = ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
             $e =~ s/^\s+|\s+$//g;

@@ -71,11 +71,11 @@ sub yabsmd_start {
     my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
 
     # initialize log file.
-    open my $log_fh, '>>', '/var/log/yabsmd'
-      or confess q(yabsm: internal error: cannot open file '/var/log/yabsmd' for writing);
+    open my $log_fh, '>>', '/var/log/yabsm'
+      or confess q(yabsm: internal error: cannot open file '/var/log/yabsm' for writing);
     close $log_fh;
-    chown $yabsm_uid, $yabsm_gid, '/var/log/yabsmd';
-    chmod 0644, '/var/log/yabsmd';
+    chown $yabsm_uid, $yabsm_gid, '/var/log/yabsm';
+    chmod 0644, '/var/log/yabsm';
 
     # initialize pid file.
     open my $pid_fh, '>', '/run/yabsmd.pid'

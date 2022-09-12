@@ -65,31 +65,33 @@ TODO
 
     usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
     
+    see `man yabsm` for a detailed overview of yabsm.
+    
     commands:
     
-    <config|c> [--help] [check ?file] [yabsm_user_home] [yabsm_dir]
-                        [subvols] [ssh_backups] [local_backups] [backups]
+    <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
+               [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
+               [local_backups] [backups]
     
     <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
     
-    ssh        [--help] [check <SSH_BACKUP>] [print-ssh-key]
-    
-    <daemon|d> [--help] [start] [stop] [restart] [status]
+    <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
-As we can see yabsm provides four commands: C<config>, C<find>, C<ssh>, and C<daemon>.
+As we can see yabsm provides 3 commands: C<config>, C<find> and C<daemon>.
 
 =head1 The Yabsm Daemon
 
-    usage: yabsm daemon [--help] [start] [stop] [restart] [status]
+    usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
-Snapshots and backups are performed by the Yabsm daemon. The Yabsm daemon should
-be started at boot time. The Yabsm daemon must be started as root so it can
-initialize its runtime environment, which includes creating a locked user named
-I<yabsm> (and a group named I<yabsm>) that the daemon will run as.
+Snapshots and backups are performed by the Yabsm daemon. The Yabsm daemon must be
+started as root so it can initialize its runtime environment, which includes
+creating a locked user named I<yabsm> (and a group named I<yabsm>) that the
+daemon will run as. You can initialize the daemons runtime environment without
+actually starting the daemon by running C<yabsm daemon init>.
 
 When the daemon starts it reads the C</etc/yabsm.conf> file that specifies its
 L<configuration|/"Configuration"> to determine when to schedule the snapshots and
-backups and how to perform them. If the yabsm daemon is already running and you 
+backups and how to perform them. If the Yabsm daemon is already running and you 
 make a configuration change, you must run C<yabsm daemon restart> to apply the 
 changes.
 
@@ -203,7 +205,7 @@ example of a I<snap> that snapshots I<home_subvol> twice a day.
 
 A I<ssh_backup> represents a backup configuration that sends snapshots over a
 network via SSH. See this example of a I<ssh_backup> that backs up I<home_subvol>
-to C<larry@192.168.1.73:/backups/yabsm/laptop_home>:
+to C<larry@192.168.1.73:/backups/yabsm/laptop_home> every night at midnight:
 
     ssh_backup home_subvol_larry_server {
         subvol=home_subvol
@@ -216,8 +218,8 @@ to C<larry@192.168.1.73:/backups/yabsm/laptop_home>:
 
 The difficult part of configuring a I<ssh_backup> is making sure the SSH server
 is properly configured. You can test that a I<ssh_backup> is able to be performed
-running C<yabsm ssh check <SSH_BACKUP>> For a I<ssh_backup> to be able to be
-performed the following conditions must be satisfied:
+running C<yabsm config ssh-check <SSH_BACKUP>>. For a I<ssh_backup> to be able to
+be performed the following conditions must be satisfied:
 
 =over 4
 

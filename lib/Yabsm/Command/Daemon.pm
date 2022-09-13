@@ -177,7 +177,7 @@ sub initialize_yabsmd_runtime_environment {
     # * Create the yabsm users SSH keys if they don't already exist
     # * Set this processes UID and GID to yabsm:yabsm
     
-    arg_count_or_die(1, 2, @_);
+    arg_count_or_die(3, 3, @_);
 
     my $create_log_file = shift;
     my $create_pid_file = shift;

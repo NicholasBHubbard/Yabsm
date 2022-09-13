@@ -35,6 +35,12 @@ A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
 snapshot that has been transferred to another btrfs filesystem via a combination
 of C<btrfs send> and C<btrfs receive>.
 
+Security Sudo
+
+Yabsm uses its root permissions at startup to install itself a sudo rule to 
+/etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
+sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
+
 =head1 Dependencies
 
 =over 4

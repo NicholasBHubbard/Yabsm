@@ -35,11 +35,6 @@ A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
 snapshot that has been transferred to another btrfs filesystem via a combination
 of C<btrfs send> and C<btrfs receive>.
 
-Security Sudo
-
-Yabsm uses its root permissions at startup to install itself a sudo rule to 
-/etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
-sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
 
 =head1 Dependencies
 
@@ -366,6 +361,7 @@ Here are some English descriptions of I<relative times>.
     b-10-m    -> 10 minutes ago
     b-24-days -> 24 days ago
 
+
 =head3 Immediate Times
 
 An I<immediate_time> is an abbreviation for a time/date denoted by C<yr_mon_day_hr:min>.
@@ -385,6 +381,12 @@ The I<immediate_time> abbreviation rules are simple. If the C<yr>, C<mon>, or
 C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00> and if the current day is I<2020/12/25>
 then C<23:59> is the same as C<2020_12_25_23:59>.
+
+Security Sudo
+
+Yabsm uses its root permissions at startup to install itself a sudo rule to 
+/etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
+sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
 
 =head1 Getting Support
 

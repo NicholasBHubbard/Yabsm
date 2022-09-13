@@ -16,6 +16,7 @@ use Time::Piece;
 use Feature::Compat::Try;
 use Carp qw(confess);
 use File::Path qw(make_path);
+use File::Basename qw(dirname);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(have_prerequisites
@@ -278,14 +279,25 @@ sub system_or_die {
 sub make_path_or_die {
 
     # Wrapper around File::Path::make_path() that Carp::Confess's if the path
-    # cannot be created.
-
-    arg_count_or_die(1, 1, @_);
+    # cannot be created. The UID and GID of the $path will be set to that of the
+    # deepest existing sub-directory in $path.
 
     my $path = shift;
 
-    -d $path        and return 1;
-    make_path $path and return 1;
+    $path =~ /^\//
+      or die "yabsm: internal error: '$path' is not an absolute path starting with '/'";
+
+    my $dir = $path;
+
+    until (-d $dir) {
+        $dir = dirname($dir);
+    }
+
+    my ($uid, $gid) = (stat $dir)[4,5];
+
+    -d $path and return 1;
+
+    make_path($path, {uid => $uid, group => $gid}) and return 1;
 
     my $username = getpwuid $<;
 

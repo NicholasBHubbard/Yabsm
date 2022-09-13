@@ -437,8 +437,9 @@ sub install_signal_handlers {
     # dump.
     my $cleanup_and_exit = sub {
         # clear the PID file
-        open my $fh, '>', '/run/yabsmd.pid';
-        close $fh;
+        if (open my $fh, '>', '/run/yabsmd.pid') {
+            close $fh;
+        }
         exit 0;
     };
 

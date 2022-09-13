@@ -87,7 +87,7 @@ sub yabsmd_start {
 
     my $config_ref = parse_config_or_die();
 
-    initialize_yabsmd_runtime_environment(1, $config_ref);
+    initialize_yabsmd_runtime_environment(1, 1, $config_ref);
     
     my $pid = create_cron_scheduler($config_ref)->run(detach => 1, pid_file => '/run/yabsmd.pid');
     
@@ -153,7 +153,7 @@ sub yabsmd_init {
 
     my $config_ref = parse_config_or_die();
 
-    initialize_yabsmd_runtime_environment(0, $config_ref);
+    initialize_yabsmd_runtime_environment(0, 0, $config_ref);
 
     say 'all good';
 }
@@ -169,15 +169,18 @@ sub initialize_yabsmd_runtime_environment {
     # * Install the signal handlers that remove the PID file before exiting
     # * Create dirs needed for performing snaps, ssh_backups, and local_backups
     # * Create the yabsm user and group if they don't already exists
-    # * Create /var/log/yabsm if it does not exist and chown it to yabsm:yabsm
-    # * if $create_pid_file, create the (empty) file /run/yabsmd.pid and chown it to yabsm:yabsm
+    # * If $create_log_file, create /var/log/yabsm if it does not exist and chown it to yabsm:yabsm
+    # * If $create_pid_file, create the (empty) file /run/yabsmd.pid and chown it to yabsm:yabsm
     # * Create the yabsm users SSH keys if they don't already exist
     # * Set this processes UID and GID to yabsm:yabsm
     
     arg_count_or_die(1, 2, @_);
 
+    my $create_log_file = shift;
     my $create_pid_file = shift;
     my $config_ref      = shift;
+
+    i_am_root_or_die();
 
     have_prerequisites_or_die();
 
@@ -187,11 +190,13 @@ sub initialize_yabsmd_runtime_environment {
 
     my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
 
-    open my $log_fh, '>>', '/var/log/yabsm'
-      or confess q(yabsm: internal error: cannot open file '/var/log/yabsm' for writing);
-    close $log_fh;
-    chown $yabsm_uid, $yabsm_gid, '/var/log/yabsm';
-    chmod 0644, '/var/log/yabsm';
+    if ($create_log_file) {
+        open my $log_fh, '>>', '/var/log/yabsm'
+          or confess q(yabsm: internal error: cannot open file '/var/log/yabsm' for writing);
+        close $log_fh;
+        chown $yabsm_uid, $yabsm_gid, '/var/log/yabsm';
+        chmod 0644, '/var/log/yabsm';
+    }
 
     if ($create_pid_file) {
         open my $pid_fh, '>', '/run/yabsmd.pid'

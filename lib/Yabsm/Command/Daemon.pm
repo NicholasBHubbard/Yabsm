@@ -89,7 +89,10 @@ sub yabsmd_start {
 
     initialize_yabsmd_runtime_environment(1, 1, $config_ref);
     
-    my $pid = create_cron_scheduler($config_ref)->run(detach => 1, pid_file => '/run/yabsmd.pid');
+    my $pid = create_cron_scheduler($config_ref)->run(
+        detach => 1,
+        pid_file => '/run/yabsmd.pid'
+    );
     
     say "started yabsmd as pid $pid";
 }
@@ -428,12 +431,14 @@ sub install_signal_handlers {
     # Handle SIGHUP by restarting yabsmd.
 
     # Restart the daemon on a SIGHUP.
-    $SIG{HUP}    = \&yabsmd_restart;
+    $SIG{HUP} = \&yabsmd_restart;
 
     # Gracefully exit on any signal that has a default action of terminate or
     # dump.
     my $cleanup_and_exit = sub {
-        unlink '/run/yabsmd.pid';
+        # clear the PID file
+        open my $fh, '>', '/run/yabsmd.pid';
+        close $fh;
         exit 0;
     };
 

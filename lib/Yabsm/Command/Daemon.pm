@@ -164,11 +164,16 @@ sub yabsmd_init {
 
 sub initialize_yabsmd_runtime_environment {
 
-    # Initialize yabsmd's runtime environment, which includes installing the
-    # signal handlers, creating runtime dirs for performing snaps, ssh_backups,
-    # and local_backups, creating the yabsm user and group, and setting the
-    # process's UID and GID to them.
-
+    # Initialize yabsmd's runtime environment:
+    #
+    # * Install the signal handlers that remove the PID file before exiting
+    # * Create dirs needed for performing snaps, ssh_backups, and local_backups
+    # * Create the yabsm user and group if they don't already exists
+    # * Create /var/log/yabsm if it does not exist and chown it to yabsm:yabsm
+    # * if $create_pid_file, create the (empty) file /run/yabsmd.pid and chown it to yabsm:yabsm
+    # * Create the yabsm users SSH keys if they don't already exist
+    # * Set this processes UID and GID to yabsm:yabsm
+    
     arg_count_or_die(1, 2, @_);
 
     my $create_pid_file = shift;

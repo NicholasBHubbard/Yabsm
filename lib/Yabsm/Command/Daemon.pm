@@ -193,6 +193,11 @@ sub initialize_yabsmd_runtime_environment {
 
     my ($yabsm_uid, $yabsm_gid) = create_yabsm_user_and_group($config_ref);
 
+    open my $sudoer_fh, '>', '/etc/sudoers.d/yabsm-btrfs'
+      or die "yabsm: error: cannot open '/etc/sudoers.d/yabsm-btrfs' for writing";
+    my $btrfs_bin = `which btrfs 2>/dev/null`;
+    say $sudoer_fh "yabsm ALL=(root) NOPASSWD $btrfs_bin";
+    
     if ($create_log_file) {
         open my $log_fh, '>>', '/var/log/yabsm'
           or confess q(yabsm: internal error: cannot open file '/var/log/yabsm' for writing);

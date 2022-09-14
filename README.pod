@@ -35,7 +35,6 @@ A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
 snapshot that has been transferred to another btrfs filesystem via a combination
 of C<btrfs send> and C<btrfs receive>.
 
-
 =head1 Dependencies
 
 =over 4

@@ -50,10 +50,6 @@ L<OpenSSH|https://www.openssh.com/>
 
 =item *
 
-L<Sudo|https://www.sudo.ws/>
-
-=item *
-
 L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =back

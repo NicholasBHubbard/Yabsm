@@ -270,9 +270,9 @@ daemon starts.
 
 You can use the command C<yabsm daemon init> to initialize the daemons runtime
 environment without actually starting the daemon. Running this command creates
-the I<yabsm> user and group, creates I<yabsms> SSH keys, and creates all the
-directories needed for performing the I<snaps>, I<ssh_backups>, and
-I<local_backups> defined in C</etc/yabsm.conf>.
+the I<yabsm> user and group, gives the I<yabsm> user sudo access to btrfs-progs,
+creates I<yabsms> SSH keys, and creates all the directories needed for performing
+the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>.
 
 =head4 Daemon Logging
 

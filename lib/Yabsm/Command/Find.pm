@@ -132,7 +132,7 @@ sub answer_query {
             unless ($ssh->system("[ -r '$dir' ]")) {
                 die "yabsm: error: remote user '$user' does not have read permission on '$user\@$host:$dir'";
             }
-            push @snapshots, map { $_ = "$user\@$host:$dir/$_" } grep { is_snapshot_name($_, 0) } Yabsm::Backup::ssh_system_or_die($ssh, "ls '$dir'");
+            push @snapshots, map { $_ = "$user\@$host:$dir/$_" } grep { chomp $_; is_snapshot_name($_, 0) } Yabsm::Backup::ssh_system_or_die($ssh, "ls -1 '$dir'");
         }
     }
 

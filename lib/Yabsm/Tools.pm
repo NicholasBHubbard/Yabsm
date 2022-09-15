@@ -112,9 +112,10 @@ sub with_error_catch_log {
     }
     catch ($e) {
         if (-f '/var/log/yabsm' && open(my $fh, '>>', '/var/log/yabsm')) {
-            my $t = localtime();
-            my ($yr, $mon, $day, $hr, $min) = ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
             $e =~ s/^\s+|\s+$//g;
+            my $t = localtime();
+            my ($yr, $mon, $day, $hr, $min) =
+              map { sprintf '%02d' } $t->year, $t->mon, $t->mday, $t->hour, $t->min;
             say $fh "[${yr}_${mon}_${day}_$hr:$min]: $e";
             close $fh;
         }

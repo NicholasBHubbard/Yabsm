@@ -16,7 +16,7 @@ package Yabsm::Backup::SSH;
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Snapshot qw(delete_snapshot sort_snapshots is_snapshot_name);
-use Yabsm::Backup::Generic qw(take_bootstrap_snapshot maybe_take_bootstrap_snapshot take_tmp_snapshot);
+use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot take_tmp_snapshot);
 
 use Net::OpenSSH;
 use File::Basename qw(basename);
@@ -120,7 +120,8 @@ sub maybe_do_ssh_backup_bootstrap {
       map { $_ = "$backup_dir_base/$_" } grep { chomp $_ ; /^\.BOOTSTRAP/ and is_snapshot_name($_, 1) } ssh_system_or_die($ssh, "ls -1 -a '$backup_dir_base'");
 
     if (1 == @remote_boot_snapshots) {
-        ;
+        my $remote_boot_snapshot = $remote_boot_snapshots[0];
+        if (basename($local_boot_snapshot) eq basename($remote_boot_snapshot))
     }
     else {
         do_ssh_backup_bootstrap($ssh, $ssh_backup, 0, $config_ref);
@@ -146,7 +147,7 @@ sub do_ssh_backup_bootstrap {
         check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
     }
 
-    my $local_boot_snapshot = take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
+    my $local_boot_snapshot = maybe_take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
 
     my $backup_dir_base = ssh_backup_dir($ssh_backup, undef, $config_ref);
 
@@ -239,7 +240,7 @@ sub ssh_system_or_die {
 
     if ($ssh->error) {
         my $host = $ssh->get_host;
-        confess "yabsm: ssh error: $host: remote command '$cmd' failed: $stderr";
+        die "yabsm: ssh error: $host: remote command '$cmd' failed: $stderr\n";
     }
 
     return $stdout

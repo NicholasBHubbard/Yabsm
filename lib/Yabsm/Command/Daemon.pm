@@ -196,7 +196,7 @@ sub initialize_yabsmd_runtime_environment {
     open my $sudoer_fh, '>', '/etc/sudoers.d/yabsm-btrfs'
       or die "yabsm: error: cannot open '/etc/sudoers.d/yabsm-btrfs' for writing";
     my $btrfs_bin = `which btrfs 2>/dev/null`;
-    say $sudoer_fh "yabsm ALL=(root) NOPASSWD $btrfs_bin";
+    print $sudoer_fh "yabsm ALL=(root) NOPASSWD: $btrfs_bin";
     close $sudoer_fh;
     
     if ($create_log_file) {

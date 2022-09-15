@@ -239,7 +239,7 @@ sub ssh_system_or_die {
 
     if ($ssh->error) {
         my $host = $ssh->get_host;
-        confess "yabsm: ssh error: $host: remote command '$cmd' failed: ".$ssh->error.':'.wantarray ? @out : $out;
+        confess "yabsm: ssh error: $host: remote command '$cmd' failed: ".$ssh->error.': '.wantarray ? @out : $out;
     }
 
     return wantarray ? @out : $out;

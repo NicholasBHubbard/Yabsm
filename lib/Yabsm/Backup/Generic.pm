@@ -117,13 +117,13 @@ sub backup_bootstrap_snapshot {
     if (0 == @boot_snapshots) {
         return undef;
     }
-    elsif (1 < @boot_snapshots) {
-        confess("yabsm: internal error: found multiple files in '$bootstrap_dir': " . map { $_ = q('$_') } @boot_snapshots);
-    }
-    else {
+    elsif (1 == @boot_snapshots) {
         my $bootstrap_snapshot = shift @boot_snapshots;
         is_bootstrap_snapshot_or_die($bootstrap_snapshot);
         return $bootstrap_snapshot;
+    }
+    else {
+        die("yabsm: error: found multiple files in '$bootstrap_dir': " . map { $_ = q('$_') } @boot_snapshots . "\n");
     }
 }
 

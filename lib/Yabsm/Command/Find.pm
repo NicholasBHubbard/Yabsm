@@ -124,12 +124,12 @@ sub answer_query {
     }
 
     elsif (ssh_backup_exists($thing, $config_ref)) {
-        my $ssh  = Yabsm::Backup::SSH::new_ssh_conn($thing, 1, $config_ref);
+        my $ssh  = Yabsm::Backup::SSH::new_ssh_conn($thing, $config_ref);
         my $user = $ssh->get_user;
         my $host = $ssh->get_host;
         for my $tframe (ssh_backup_timeframes($thing, $config_ref)) {
             my $dir  = ssh_backup_dir($thing, $tframe, $config_ref);
-            unless ($ssh->system(q([ -r '$dir' ]))) {
+            unless ($ssh->system("[ -r '$dir' ]")) {
                 die "yabsm: error: remote user '$user' does not have read permission on '$user\@$host:$dir'";
             }
             push @snapshots, map { $_ = "$user\@$host:$dir/$_" } grep { is_snapshot_name($_, 0) } Yabsm::Backup::ssh_system_or_die($ssh, "ls '$dir'");

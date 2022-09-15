@@ -170,7 +170,6 @@ sub check_ssh_backup_config_or_die {
 
     my $backup_dir  = ssh_backup_dir($ssh_backup, undef, $config_ref);
     my $ssh_dest    = ssh_backup_ssh_dest($ssh_backup, $config_ref);
-    my $remote_user = $ssh->get_user;
 
     my (undef, $stderr) = $ssh->capture2(qq(
 ERRORS=''
@@ -187,15 +186,15 @@ HAVE_BTRFS=true
 
 if ! which btrfs >/dev/null 2>&1; then
    HAVE_BTRFS=false
-   add_error "btrfs-progs not in '${remote_user}'s path"
+   add_error "btrfs-progs not in '\$(whoami)'s path"
 fi
 
 if [ "\$HAVE_BTRFS" = true ] && ! sudo -n btrfs --help >/dev/null 2>&1; then
-    add_error "user '$remote_user' does not have root sudo access to btrfs-progs"
+    add_error "user '\$(whoami)' does not have root sudo access to btrfs-progs"
 fi
 
 if ! [ -d '$backup_dir' ] || ! [ -r '$backup_dir' ] || ! [ -w '$backup_dir' ]; then
-    add_error "no directory named '$backup_dir' that is readable+writable to user '$remote_user'"
+    add_error "no directory named '$backup_dir' that is readable+writable to user '\$(whoami)'"
 else
     if [ "\$HAVE_BTRFS" = true ] && ! btrfs property list '$backup_dir' >/dev/null 2>&1; then
         add_error "'$backup_dir' is not a directory residing on a btrfs filesystem"

@@ -110,6 +110,10 @@ throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named 
 system_or_die(qq(chown -R yabsm '$BTRFS_DIR'));
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), 1 } "$n - lives if properly configured";
 
+# $n = 'maybe_do_ssh_backup_bootstrap';
+# $f = \&Yabsm::Backup::SSH::maybe_do_ssh_backup_bootstrap;
+# lives_and { is $f->($SSH, 'foo_ssh_backup', 0, ) };
+
 $n = 'do_ssh_backup';
 $f = \&Yabsm::Backup::SSH::do_ssh_backup;
 throws_ok { $f->($SSH, 'foo_ssh_backup', 'monthly', \%TEST_CONFIG) } qr/ssh_backup 'foo_ssh_backup' is not taking monthly backups/, "$n - dies if not taking tframe backups";
@@ -117,7 +121,7 @@ throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/'$BOOTST
 make_path_or_die($BOOTSTRAP_DIR);
 throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/cannot opendir '$TMP_DIR'/, "$n - dies if tmp dir doesn't exist";
 make_path_or_die($TMP_DIR);
-lives_and { is $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG), $BACKUP } "$n - performs succesfull backup";
+lives_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } "$n - performs successful backup";
 
 done_testing();
 
@@ -127,24 +131,39 @@ done_testing();
 
 sub cleanup_snapshots {
 
-    opendir(my $dh, $BOOTSTRAP_DIR) if -d $BOOTSTRAP_DIR;
+    opendir(my $dh, $BACKUP_DIR_BASE) if -d $BACKUP_DIR_BASE;
+    if ($dh) {
+        for (map { $_ = "$BACKUP_DIR_BASE/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
+            if (is_btrfs_subvolume($_)) {
+                Yabsm::Snapshot::delete_snapshot($_)
+            }
+        }
+    }
+
+    opendir($dh, $BOOTSTRAP_DIR) if -d $BOOTSTRAP_DIR;
     if ($dh) {
         for (map { $_ = "$BOOTSTRAP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
-            Yabsm::Snapshot::delete_snapshot($_);
+            if (is_btrfs_subvolume($_)) {
+                Yabsm::Snapshot::delete_snapshot($_)
+            }
         }
     }
 
     opendir($dh, $TMP_DIR) if -d $TMP_DIR;
     if ($dh) {
         for (map { $_ = "$TMP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
-            Yabsm::Snapshot::delete_snapshot($_);
+            if (is_btrfs_subvolume($_)) {
+                Yabsm::Snapshot::delete_snapshot($_)
+            }
         }
     }
 
     opendir($dh, $BACKUP_DIR) if -d $BACKUP_DIR;
     if ($dh) {
         for (map { $_ = "$BACKUP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
-            Yabsm::Snapshot::delete_snapshot($_);
+            if (is_btrfs_subvolume($_)) {
+                Yabsm::Snapshot::delete_snapshot($_)
+            }
         }
     }
 

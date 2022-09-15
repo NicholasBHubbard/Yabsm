@@ -51,19 +51,24 @@ sub do_ssh_backup {
 
     my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
     my $backup_dir_base    = ssh_backup_dir($ssh_backup, undef, $config_ref);
-    my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
+    my $bootstrap_snapshot = maybe_do_ssh_backup_bootstrap($ssh, $ssh_backup, 0, $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $config_ref);
 
-    ssh_system_or_die( $ssh, "mkdir '$backup_dir' >/dev/null 2>&1");
-    ssh_system_or_die( $ssh
-                     , {stdin_file => ['-|', "sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot'"]}
-                     , "sudo -n btrfs receive '$backup_dir' >/dev/null 2>&1"
-                     );
+    ssh_system_or_die(
+        $ssh,
+        "if ! [ -d '$backup_dir' ]; then mkdir -p '$backup_dir'; fi"
+    );
+
+    ssh_system_or_die(
+        $ssh,
+        {stdin_file => ['-|', "sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot'"]},
+        "sudo -n btrfs receive '$backup_dir'"
+    );
     delete_snapshot($tmp_snapshot);
 
     # Delete old backups
 
-    my @remote_backups = sort_snapshots([ map { $_ = "$backup_dir/$_" } grep { is_snapshot_name($_, 0) } ssh_system_or_die($ssh, "ls '$backup_dir'")]);
+    my @remote_backups = sort_snapshots([ map { "$backup_dir/$_" } grep { chomp $_ ; is_snapshot_name($_, 0) } ssh_system_or_die($ssh, "ls -1 '$backup_dir'")]);
     my $num_backups    = scalar @remote_backups;
     my $to_keep        = ssh_backup_timeframe_keep($ssh_backup, $tframe, $config_ref);
 
@@ -87,6 +92,54 @@ sub do_ssh_backup {
     }
 
     return "$backup_dir/" . basename($tmp_snapshot);
+}
+
+sub maybe_do_ssh_backup_bootstrap {
+
+    # If the $ssh_backup has not been bootstrapped then perform the bootstrap and
+    # return the path to the local bootstrap snapshot.
+
+    arg_count_or_die(4, 4, @_);
+
+    my $ssh        = shift;
+    my $ssh_backup = shift;
+    my $check_ssh  = shift;
+    my $config_ref = shift;
+
+    $ssh //= new_ssh_conn($ssh_backup, $config_ref);
+
+    if ($check_ssh) {
+        check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
+    }
+
+    my $local_boot_snapshot = maybe_take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
+
+    my $backup_dir_base = ssh_backup_dir($ssh_backup, undef, $config_ref);
+
+    my @remote_boot_snapshots =
+      map { $_ = "$backup_dir_base/$_" } grep { chomp $_ ; /^\.BOOTSTRAP/ and is_snapshot_name($_, 1) } ssh_system_or_die($ssh, "ls -1 -a '$backup_dir_base'");
+
+    if (0 == @remote_boot_snapshots) {
+        ssh_system_or_die(
+            $ssh,
+            {stdin_file => ['-|', "sudo -n btrfs send '$local_boot_snapshot'"]},
+            "sudo -n btrfs receive '$backup_dir_base'"
+        );
+    }
+    elsif (1 == @remote_boot_snapshots) {
+        my $remote_boot_snapshot = $remote_boot_snapshots[0];
+        unless (basename($local_boot_snapshot eq basename($remote_boot_snapshot))) {
+            my $host = $ssh->get_host;
+            die "yabsm: ssh error: $host: remote bootstrap snapshot '$remote_boot_snapshot' has different basename than local bootstrap snapshot '$local_boot_snapshot'\n";
+        }
+    }
+    else {
+        my $host = $ssh->get_host;
+        die "yabsm: ssh error: $host: found multiple bootstrap snapshots in '$backup_dir_base'";
+    }
+
+
+    return $local_boot_snapshot;
 }
 
 sub new_ssh_conn {
@@ -183,19 +236,19 @@ add_error() {
 
 HAVE_BTRFS=true
 
-if ! which btrfs >/dev/null 2>&1; then
+if ! which btrfs; then
    HAVE_BTRFS=false
    add_error "btrfs-progs not in '\$(whoami)'s path"
 fi
 
-if [ "\$HAVE_BTRFS" = true ] && ! sudo -n btrfs --help >/dev/null 2>&1; then
+if [ "\$HAVE_BTRFS" = true ] && ! sudo -n btrfs --help; then
     add_error "user '\$(whoami)' does not have root sudo access to btrfs-progs"
 fi
 
 if ! [ -d '$backup_dir' ] || ! [ -r '$backup_dir' ] || ! [ -w '$backup_dir' ]; then
     add_error "no directory named '$backup_dir' that is readable+writable to user '\$(whoami)'"
 else
-    if [ "\$HAVE_BTRFS" = true ] && ! btrfs property list '$backup_dir' >/dev/null 2>&1; then
+    if [ "\$HAVE_BTRFS" = true ] && ! btrfs property list '$backup_dir'; then
         add_error "'$backup_dir' is not a directory residing on a btrfs filesystem"
     fi
 fi

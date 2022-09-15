@@ -506,7 +506,7 @@ sub create_yabsm_user_ssh_key {
         my $pub_key  = "$ssh_dir/id_ed25519.pub";
 
         unless (-f $priv_key && -f $pub_key) {
-            system_or_die('ssh-keygen', '-t', 'ed25519', '-f', $priv_key, '-N', '', '-C', '');
+            system_or_die('ssh-keygen', '-t', 'ed25519', '-f', $priv_key, '-N', '');
             chown $yabsm_uid, $yabsm_gid, $priv_key, $pub_key;
             chmod 0600, $priv_key;
             chmod 0644, $pub_key;

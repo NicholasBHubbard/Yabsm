@@ -25,6 +25,7 @@ use Carp qw(confess);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(do_ssh_backup
+                    maybe_do_ssh_backup_bootstrap
                     new_ssh_conn
                     check_ssh_backup_config_or_die
                     ssh_system_or_die
@@ -119,64 +120,24 @@ sub maybe_do_ssh_backup_bootstrap {
     my @remote_boot_snapshots =
       map { $_ = "$backup_dir_base/$_" } grep { chomp $_ ; /^\.BOOTSTRAP/ and is_snapshot_name($_, 1) } ssh_system_or_die($ssh, "ls -1 -a '$backup_dir_base'");
 
-    if (1 == @remote_boot_snapshots) {
-        my $remote_boot_snapshot = $remote_boot_snapshots[0];
-        if (basename($local_boot_snapshot) eq basename($remote_boot_snapshot))
-    }
-    else {
-        do_ssh_backup_bootstrap($ssh, $ssh_backup, 0, $config_ref);
-    }
-
-    return $local_boot_snapshot;
-}
-
-sub do_ssh_backup_bootstrap {
-
-    # Perform the bootstrap phase of btrfs send/receive for $ssh_backup.
-
-    arg_count_or_die(4, 4, @_);
-
-    my $ssh        = shift;
-    my $ssh_backup = shift;
-    my $check_ssh  = shift;
-    my $config_ref = shift;
-
-    $ssh //= new_ssh_conn($ssh_backup, $config_ref);
-
-    if ($check_ssh) {
-        check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
-    }
-
-    my $local_boot_snapshot = maybe_take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
-
-    my $backup_dir_base = ssh_backup_dir($ssh_backup, undef, $config_ref);
-
-    my @remote_boot_snapshots =
-      map { $_ = "$backup_dir_base/$_" } grep { chomp $_ ; /^\.BOOTSTRAP/ and is_snapshot_name($_, 1) } ssh_system_or_die($ssh, "ls -1 -a '$backup_dir_base'");
-
-    my $do_bootstrap = sub {
+    if (0 == @remote_boot_snapshots) {
         ssh_system_or_die(
             $ssh,
             {stdin_file => ['-|', "sudo -n btrfs send '$local_boot_snapshot'"]},
             "sudo -n btrfs receive '$backup_dir_base'"
         );
-    };
-
-    if (0 == @remote_boot_snapshots) {
-        $do_bootstrap->();
     }
     elsif (1 == @remote_boot_snapshots) {
-        ssh_system_or_die(
-            $ssh,
-            "sudo -n btrfs subvolume delete '$remote_boot_snapshots[0]'"
-        );
-        $do_bootstrap->();
+        my $remote_boot_snapshot = $remote_boot_snapshots[0];
+        unless (basename($local_boot_snapshot) eq basename($remote_boot_snapshot)) {
+            my $host = $ssh->get_host;
+            die "yabsm: ssh error: $host: remote bootstrap snapshot '$remote_boot_snapshot' has different basename than local bootstrap snapshot '$local_boot_snapshot'\n";
+        }
     }
     else {
         my $host = $ssh->get_host;
-        die "yabsm: ssh error: $host: found multiple bootstrap snapshots in '$backup_dir_base'\n";
+        die "yabsm: ssh error: $host: multiple bootstrap snapshots found at '$backup_dir_base'\n";
     }
-
 
     return $local_boot_snapshot;
 }

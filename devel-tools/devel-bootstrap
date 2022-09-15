@@ -122,7 +122,7 @@ sub install_deps {
 
     my $plx = shift or die;
 
-    my $cpanfile = "$yabsm_root/CPANFILE";
+    my $cpanfile = "$yabsm_root/cpanfile";
 
     my $install_cmd = "PERL_CPANM_HOME=$yabsm_root $plx --cpanm -L local -v -f --cpanfile $cpanfile --installdeps .";
 

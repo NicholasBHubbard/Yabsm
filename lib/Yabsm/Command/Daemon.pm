@@ -301,7 +301,7 @@ sub create_cron_scheduler {
                 my $min  = time_minute($time);
                 $cron_scheduler->add_entry(
                     "$min $hr * * *",
-                    sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, $ssh_backup, 'daily', $config_ref) }
+                    sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'daily', $config_ref) }
                 );
             }
         }

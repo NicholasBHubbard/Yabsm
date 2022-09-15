@@ -82,4 +82,11 @@ sub do_local_backup {
     return "$backup_dir/" . basename($tmp_snapshot);
 }
 
+sub maybe_do_local_backup_bootstrap {
+
+    # TODO
+
+
+}
+
 1;

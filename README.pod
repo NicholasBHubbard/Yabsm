@@ -239,7 +239,7 @@ The SSH user has read and write permission on the backup directory.
 =item *
 
 The SSH user has root access to btrfs-progs via sudo. To do this you can add a
-file containing a string like C<larry ALL=(root) NOPASSWD /sbin/btrfs> to
+file containing a string like C<larry ALL=(root) NOPASSWD: /sbin/btrfs> to
 a file in C</etc/sudoers.d/>.
 
 =back

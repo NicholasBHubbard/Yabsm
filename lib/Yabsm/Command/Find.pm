@@ -124,15 +124,24 @@ sub answer_query {
     }
 
     elsif (ssh_backup_exists($thing, $config_ref)) {
-        my $ssh  = Yabsm::Backup::SSH::new_ssh_conn($thing, $config_ref);
-        my $user = $ssh->get_user;
+        my $ssh_dest = ssh_backup_ssh_dest($thing, $config_ref);
+        my $ssh = Net::OpenSSH->new(
+            $ssh_dest,
+            master_opts  => [ '-q' ], # quiet
+            ctl_dir => '/tmp',
+            remote_shell => 'sh',
+            kill_ssh_on_timeout => 1
+        );
         my $host = $ssh->get_host;
+        if ($ssh->error) {
+            die "yabsm: ssh error: $host: ".$ssh->error."\n";
+        }
         for my $tframe (ssh_backup_timeframes($thing, $config_ref)) {
             my $dir  = ssh_backup_dir($thing, $tframe, $config_ref);
             unless ($ssh->system("[ -r '$dir' ]")) {
-                die "yabsm: error: remote user '$user' does not have read permission on '$user\@$host:$dir'";
+                die "yabsm: ssh error: $host: remote user does not have read permission on '$dir'";
             }
-            push @snapshots, map { $_ = "$user\@$host:$dir/$_" } grep { chomp $_; is_snapshot_name($_, 0) } Yabsm::Backup::ssh_system_or_die($ssh, "ls -1 '$dir'");
+            push @snapshots, map { $_ = "$host:$dir/$_" } grep { chomp $_; is_snapshot_name($_, 0) } Yabsm::Backup::ssh_system_or_die($ssh, "ls -1 '$dir'");
         }
     }
 

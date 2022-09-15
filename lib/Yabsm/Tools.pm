@@ -139,7 +139,7 @@ sub have_sudo_access_to_btrfs_or_die {
 
     my $username = getpwuid $<;
 
-    have_sudo_access_to_btrfs() ? return 1 : confess("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
+    have_sudo_access_to_btrfs() ? return 1 : die("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
 }
 
 sub is_btrfs_dir {
@@ -164,7 +164,7 @@ sub is_btrfs_dir_or_die {
 
     my $dir = shift;
 
-    is_btrfs_dir($dir) ? return 1 : confess("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem")
+    is_btrfs_dir($dir) ? return 1 : die("yabsm: internal error: '$dir' is not a directory residing on a btrfs filesystem\n")
 }
 
 sub is_btrfs_subvolume {
@@ -194,7 +194,7 @@ sub is_btrfs_subvolume_or_die {
 
     my $dir = shift;
 
-    is_btrfs_subvolume($dir) ? return 1 : confess("yabsm: internal error: '$dir' is not a btrfs subvolume")
+    is_btrfs_subvolume($dir) ? return 1 : die("yabsm: internal error: '$dir' is not a btrfs subvolume")
 }
 
 sub nums_denote_valid_date {

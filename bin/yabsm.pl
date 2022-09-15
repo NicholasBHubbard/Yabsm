@@ -17,9 +17,6 @@ use Yabsm::Command::Config;
 use Yabsm::Command::Find;
 
 sub usage {
-
-    arg_count_or_die(0, 0, @_);
-
     print <<'END_USAGE';
 usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
 

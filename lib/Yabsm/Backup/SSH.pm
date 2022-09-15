@@ -197,14 +197,14 @@ sub ssh_system_or_die {
     my %opts = ref $_[0] eq 'HASH' ? %{ shift() } : ();
     my $cmd  = shift;
 
-    my ($stdout, $stderr) = $ssh->capture2(\%opts, $cmd);
+    wantarray ? my @out = $ssh->capture(\%opts, $cmd) : my $out = $ssh->capture(\%opts, $cmd);
 
     if ($ssh->error) {
         my $host = $ssh->get_host;
-        die "yabsm: ssh error: $host: remote command '$cmd' failed: $stderr\n";
+        die "yabsm: ssh error: $host: remote command '$cmd' failed:".$ssh->error."\n";
     }
 
-    return $stdout
+    return wantarray ? @out : $out;
 }
 
 sub check_ssh_backup_config_or_die {

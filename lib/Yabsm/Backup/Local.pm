@@ -36,8 +36,8 @@ sub do_local_backup {
 
     local_backup_wants_timeframe_or_die($local_backup, $tframe, $config_ref);
 
-    my $backup_dir         = local_backup_dir($local_backup, $tframe, $config_ref);
-    my $backup_dir_base    = local_backup_dir($local_backup, undef, $config_ref);
+    my $backup_dir      = local_backup_dir($local_backup, $tframe, $config_ref);
+    my $backup_dir_base = local_backup_dir($local_backup, undef, $config_ref);
 
     # The destination partition might have been unmounted
     unless (-d $backup_dir) {

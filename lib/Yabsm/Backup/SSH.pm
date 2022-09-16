@@ -16,9 +16,9 @@ use Yabsm::Snapshot qw(delete_snapshot sort_snapshots is_snapshot_name);
 use Yabsm::Backup::Generic qw(take_bootstrap_snapshot backup_bootstrap_snapshot take_tmp_snapshot);
 
 use Net::OpenSSH;
-use File::Basename qw(basename);
 
 use Carp qw(confess);
+use File::Basename qw(basename);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(do_ssh_backup
@@ -106,8 +106,8 @@ sub maybe_do_ssh_backup_bootstrap {
     $ssh //= new_ssh_conn($ssh_backup, $config_ref);
 
     if (my $local_boot_snap = backup_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref)) {
-        return $local_boot_snap;
-    }
+            return $local_boot_snap;
+        }
 
     my $local_boot_snap = take_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref);
     my $backup_dir      = ssh_backup_dir($ssh_backup, undef, $config_ref);
@@ -117,6 +117,8 @@ sub maybe_do_ssh_backup_bootstrap {
         {stdin_file => ['-|', "sudo -n btrfs send '$local_boot_snap'"]},
         "sudo -n btrfs receive '$backup_dir'"
     );
+
+    unlink $file;
 
     return $local_boot_snap;
 }

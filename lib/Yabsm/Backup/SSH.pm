@@ -135,7 +135,7 @@ sub new_ssh_conn {
     my $config_ref = shift;
 
     my $home_dir = (getpwuid $<)[7]
-      or die q(yabsm: error: user ') . scalar(getpwuid $<) . q(' does not have a home directory to hold SSH keys);
+      or die q(yabsm: error: user ').scalar(getpwuid $<).q(' does not have a home directory to hold SSH keys);
 
     my $pub_key  = "$home_dir/.ssh/id_ed25519.pub";
     my $priv_key = "$home_dir/.ssh/id_ed25519";

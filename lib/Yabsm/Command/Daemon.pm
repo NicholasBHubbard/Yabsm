@@ -415,7 +415,7 @@ sub yabsmd_pid {
 
     arg_count_or_die(0, 0, @_);
 
-    chomp (my $pgrep_pid = `pgrep ^yabsmd`);
+    chomp for my @pids = `pgrep ^yabsmd`;
 
     my $pid_file_pid;
     if (open my $fh, '<', '/run/yabsmd.pid') {
@@ -424,7 +424,7 @@ sub yabsmd_pid {
         close $fh;
     }
 
-    my $is_running = $pid_file_pid && $pgrep_pid && $pid_file_pid eq $pgrep_pid;
+    my $is_running = $pid_file_pid && @pids && grep({$_ eq $pid_file_pid} @pids);
 
     return $is_running ? $pid_file_pid : 0;
 }

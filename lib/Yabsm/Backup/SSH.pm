@@ -16,7 +16,7 @@ package Yabsm::Backup::SSH;
 use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 use Yabsm::Snapshot qw(delete_snapshot sort_snapshots is_snapshot_name);
-use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot backup_bootstrap_snapshot take_tmp_snapshot);
+use Yabsm::Backup::Generic qw(take_bootstrap_snapshot backup_bootstrap_snapshot take_tmp_snapshot);
 
 use Net::OpenSSH;
 use File::Basename qw(basename);

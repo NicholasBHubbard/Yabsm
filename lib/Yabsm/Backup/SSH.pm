@@ -118,8 +118,6 @@ sub maybe_do_ssh_backup_bootstrap {
         "sudo -n btrfs receive '$backup_dir'"
     );
 
-    unlink $file;
-
     return $local_boot_snap;
 }
 

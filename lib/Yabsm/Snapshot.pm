@@ -25,6 +25,7 @@ our @EXPORT_OK = qw(take_snapshot
                     delete_snapshot
                     is_snapshot_name
                     is_snapshot_name_or_die
+                    is_bootstrap_snapshot_name
                     is_yabsm_snapshot
                     is_yabsm_snapshot_or_die
                     snapshot_name_nums
@@ -134,6 +135,14 @@ sub is_snapshot_name_or_die {
     nums_denote_valid_date_or_die(@date_nums);
 
     return 1;
+}
+
+sub is_bootstrap_snapshot_name {
+
+    # Return 1 if $snapshot_name is that of a bootstrap snapshot name (which is
+    # prefixed with '.BOOTSTRAP') and return 0 otherwise.
+
+    return 0+(shift =~ /^\.BOOTSTRAP-yabsm-\d{4}_\d{2}_\d{2}_\d{2}:\d{2}$/);
 }
 
 sub is_yabsm_snapshot {

@@ -84,6 +84,16 @@ if ($BTRFS_SUBVOLUME) {
 }
 
 {
+    my $n = 'is_bootstrap_snapshot_name';
+    my $f = \&Yabsm::Snapshot::is_bootstrap_snapshot_name;
+
+    
+    is($f->('.BOOTSTRAP-yabsm-2020_05_13_23:59'), 1, "$n - accepts .BOOTSTRAP prefix");
+    is($f->('yabsm-2020_05_13_23:59'), 0, "$n - fails with 0");
+    is($f->('.BOOTSTRAP-yabsm-2020_05_13_3:59'), 0, "$n - rejects invalid snapshot name");
+}
+
+{
     my $n = 'snapshot_name_nums';
     my $f = \&Yabsm::Snapshot::snapshot_name_nums;
 

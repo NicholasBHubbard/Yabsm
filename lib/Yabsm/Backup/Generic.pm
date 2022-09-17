@@ -20,6 +20,7 @@ use Yabsm::Snapshot qw(take_snapshot
                       );
 
 use Carp q(confess);
+use File::Temp;
 use File::Basename 'basename';
 
 use Exporter 'import';
@@ -123,7 +124,7 @@ sub backup_bootstrap_snapshot {
         return $bootstrap_snapshot;
     }
     else {
-        die("yabsm: error: found multiple files in '$bootstrap_dir': " . map { $_ = q('$_') } @boot_snapshots . "\n");
+        die "yabsm: error: found multiple files in '$bootstrap_dir': " . map { $_ = q('$_') } @boot_snapshots . "\n";
     }
 }
 
@@ -263,6 +264,74 @@ sub take_tmp_snapshot {
     }
     
     return take_snapshot($mountpoint, $tmp_snapshot_dir);
+}
+
+sub the_bootstrap_snapshot {
+
+    # Return the bootstrap snapshot for $backup if it exists and return 0
+    # otherwise. Die if there are multiple bootstrap snapshots.
+
+    arg_count_or_die(3, 3, @_);
+
+    my $backup      = shift;
+    my $backup_type = shift;
+    my $config_ref  = shift;
+
+    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
+
+    opendir my $dh, $bootstrap_dir or confess "yabsm: internal error: cannot opendir '$bootstrap_dir'";
+    my @boot_snaps = grep { is_snapshot_name} map { $_ = "$bootstrap_dir/$_" } readdir($dh);
+    close $dh;
+}
+
+sub bootstrap_lock_file {
+
+    # Return the path to the BOOTSTRAP-LOCK for $backup if it exists and return
+    # undef otherwise.
+
+    arg_count_or_die(3, 3, @_);
+
+    my $backup      = shift;
+    my $backup_type = shift;
+    my $config_ref  = shift;
+
+    my $yabsm_dir = yabsm_dir($config_ref);
+
+    # $lock_dir should have been created during daemon initialization
+    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
+
+    my $lock_file = [ grep /BOOTSTRAP-LOCK/, glob("$bootstrap_dir/*") ]->[0];
+
+    return $lock_file;
+}
+
+sub create_bootstrap_lock_file {
+
+    # Create the bootstrap lock file for $backup. This function should be called
+    # when performing the bootstrap phase of an incremental backup after checking
+    # to make sure a lock file doesn't already exist. If a lock file already
+    # exists we die, so check beforehand!
+
+    arg_count_or_die(3, 3, @_);
+
+    my $backup      = shift;
+    my $backup_type = shift;
+    my $config_ref  = shift;
+
+    backup_exists_or_die($backup);
+    is_backup_type_or_die($backup_type);
+
+    if (my $existing_lock_file = bootstrap_lock_file($backup, $backup_type, $config_ref)) {
+        die "yabsm: error: ${backup_type}_backup '$backup' already is locked out of performing a bootstrap. This was determined by the existence of '$existing_lock_file'\n";
+    }
+
+    # $lock_dir should have been created during daemon initialization
+    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
+
+    # The file will be deleted when $tmp_fh is destroyed.
+    my $tmp_fh = File::Temp->new('BOOTSTRAP-LOCKXXXX', DIR => $bootstrap_dir, UNLINK => 1);
+
+    return $tmp_fh;
 }
 
 sub is_backup_type_or_die {

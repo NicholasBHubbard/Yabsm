@@ -25,6 +25,7 @@ use Test::Exception;
 
     lives_ok { $f->(1,2,73,37) } "$n - lives if correct number of args";
     throws_ok { $f->(1,1,73,37) } qr/called 'main::__ANON__' with 2 args but it expects 1 arg/, "$n - dies with single number range";
+    lives_ok { $f->(1,1,73) } "$n - lives if specific arg num";
     throws_ok { $f->(1,2,73,37,42) } qr/called 'main::__ANON__' with 3 args but it expects 1-2 args/, "$n - dies with bounded range";
     lives_ok { $f->('_', '2', 73,37)} "$n - accepts less or equal to N args when first arg is '_'";
     throws_ok { $f->('_', '2', 73,37,3) } qr/called 'main::__ANON__' with 3 args but it expects 0-2 args/, "$n - dies if more than N args";

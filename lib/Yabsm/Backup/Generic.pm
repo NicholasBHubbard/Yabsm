@@ -41,8 +41,8 @@ our @EXPORT_OK = qw(take_tmp_snapshot
 
 sub take_tmp_snapshot {
 
-    # Take a tmp snapshot for $backup. A tmp snapshot is necessary for taking an
-    # incremental backup with 'btrfs send -p'.
+    # Take a tmp snapshot for $backup. The tmp snapshot is the snapshot that is
+    # actually replicated in an incremental backup with 'btrfs send -p'.
 
     arg_count_or_die(3, 3, @_);
 

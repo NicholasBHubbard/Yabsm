@@ -51,7 +51,7 @@ i_am_root() or plan skip_all => 'Must be root user';
 
 defined $BTRFS_SUBVOLUME or plan skip_all => 'Failed to provide btrfs subvolume';
 
-is_btrfs_subvolume($BTRFS_SUBVOLUME) or plan skip_all => q('$BTRFS_SUBVOLUME' is not a btrfs subvolume);
+is_btrfs_subvolume($BTRFS_SUBVOLUME) or plan skip_all => "'$BTRFS_SUBVOLUME' is not a btrfs subvolume";
 
 getpwnam('yabsm') or plan skip_all => q(no such user 'yabsm');
 

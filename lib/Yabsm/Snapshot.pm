@@ -97,20 +97,33 @@ sub delete_snapshot {
 
 sub is_snapshot_name {
 
-    # Return 1 if passed a valid yabsm snapshot name and return 0
-    # otherwise. Does checking to ensure that the denoted date is valid.
+    # Return 1 if passed a valid yabsm snapshot name and return 0 otherwise. Does
+    # checking to ensure that the denoted date is a valid date.
+    #
+    # Optionally pass 'ALLOW_BOOTSTRAP => 1' to accept bootstrap snapshot names
+    # and 'ONLY_BOOTSTRAP => 1' to only accept bootstrap snapshot names.
     #
     # It is important to note that this function rejects directory paths even if
-    # their basename is a valid yabsm snapshot name.
+    # their basename is a valid snapshot name.
 
-    arg_count_or_die(1, 2, @_);
+    arg_count_or_die(1, 5, @_);
 
-    my $snapshot_name   = shift;
-    my $allow_bootstrap = shift // 1;
+    my $snapshot_name = shift;
+    my %opts = (ALLOW_BOOTSTRAP => 0, ONLY_BOOTSTRAP  => 0, @_);
 
-    my $bootstrap_prefix_rx = $allow_bootstrap ? '(?:\.BOOTSTRAP-)?' : '';
+    my $rx = do {
+        my $base = 'yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})';
+        my $prefix = '';
+        if ($opts{ALLOW_BOOTSTRAP}) {
+            $prefix = '(?:\.BOOTSTRAP-)?';
+        }
+        if ($opts{ONLY_BOOTSTRAP}) {
+            $prefix = '(?:\.BOOTSTRAP-)';
+        }
+        qr/^$prefix$base$/;
+    };
 
-    return 0 unless my (@date_nums) = $snapshot_name =~ /^${bootstrap_prefix_rx}yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/;
+    return 0 unless my @date_nums = $snapshot_name =~ $rx;
 
     return 0 unless nums_denote_valid_date(@date_nums);
 
@@ -119,50 +132,33 @@ sub is_snapshot_name {
 
 sub is_snapshot_name_or_die {
 
-    # Like &is_snapshot_name but logdie if $snapshot_name is not a
-    # valid yabsm snapshot name.
+    # Wrapper around &is_snapshot_name that will Carp::confess if it returns
+    # false.
 
-    arg_count_or_die(1, 2, @_);
+    arg_count_or_die(1, 5, @_);
 
-    my $snapshot_name   = shift;
-    my $allow_bootstrap = shift // 1;
-
-    my $bootstrap_prefix_rx = $allow_bootstrap ? '(?:\.BOOTSTRAP-)?' : '';
-
-    my (@date_nums) = $snapshot_name =~ /^${bootstrap_prefix_rx}yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/
-      or confess("yabsm: internal error: '$snapshot_name' is not a valid yabsm snapshot name");
-
-    nums_denote_valid_date_or_die(@date_nums);
+    unless (is_snapshot_name(@_)) {
+        confess q(yabsm: internal error: ').shift(@_).q(' is not a valid yabsm snapshot name);
+    }
 
     return 1;
 }
 
-sub is_bootstrap_snapshot_name {
-
-    # Return 1 if $snapshot_name is that of a bootstrap snapshot name (which is
-    # prefixed with '.BOOTSTRAP') and return 0 otherwise.
-
-    return 0+(shift =~ /^\.BOOTSTRAP-yabsm-\d{4}_\d{2}_\d{2}_\d{2}:\d{2}$/);
-}
-
 sub is_yabsm_snapshot {
 
-    # Return 1 if $snapshot is a yabsm snapshot and return 0 otherwise.
+    # Return 1 if $snapshot is a yabsm snapshot and return 0 otherwise. Provides
+    # the same ALLOW_BOOTSTRAP, and ONLY_BOOTSTRAP options that are provided by
+    # &is_snapshot_name.
 
-    arg_count_or_die(1, 2, @_);
+    my $snapshot = shift;
 
-    my $snapshot        = shift;
-    my $allow_bootstrap = shift // 1;
-
-    return is_snapshot_name(basename($snapshot), $allow_bootstrap) && is_btrfs_subvolume($snapshot)
+    return is_snapshot_name(basename($snapshot), @_) && is_btrfs_subvolume($snapshot)
 }
 
 sub is_yabsm_snapshot_or_die {
 
-    # Wrapper around is_yabsm_snapshot_name() that logdies if it
-    # returns false.
-
-    arg_count_or_die(1, 1, @_);
+    # Wrapper around is_yabsm_snapshot_name() that Carp::Confess's if it returns
+    # false.
 
     my $snapshot = shift;
 
@@ -170,7 +166,7 @@ sub is_yabsm_snapshot_or_die {
         confess("yabsm: internal error: '$snapshot' is not a btrfs subvolume");
     }
 
-    unless ( is_snapshot_name(basename($snapshot)) ) {
+    unless ( is_snapshot_name(basename($snapshot), @_) ) {
         confess("yabsm: internal error: '$snapshot' does not have a valid yabsm snapshot name");
     }
 
@@ -187,7 +183,7 @@ sub snapshot_name_nums {
 
     my $snapshot_name = shift;
 
-    is_snapshot_name_or_die($snapshot_name);
+    is_snapshot_name_or_die($snapshot_name, ALLOW_BOOTSTRAP => 1);
 
     my ($yr, $mon, $day, $hr, $min) = map { 0 + $_ } $snapshot_name =~ /^yabsm-(\d{4})_(\d{2})_(\d{2})_(\d{2}):(\d{2})$/;
 
@@ -204,9 +200,9 @@ sub nums_to_snapshot_name {
 
     my ($yr, $mon, $day, $hr, $min) = map { sprintf '%02d', $_ } @_;
 
-    my $snapshot_name = "yabsm-${yr}_${mon}_${day}_$hr:$min";
+    nums_denote_valid_date_or_die($yr, $mon, $day, $hr, $min);
 
-    is_snapshot_name_or_die($snapshot_name);
+    my $snapshot_name = "yabsm-${yr}_${mon}_${day}_$hr:$min";
 
     return $snapshot_name;
 }

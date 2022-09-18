@@ -80,20 +80,27 @@ sub have_prerequisites_or_die {
 
 sub arg_count_or_die {
 
-    # Carp::Confess unless $num_args is in range $lower-$upper.
+    # Carp::Confess unless $num_args is in range $lower-$upper. If $lower equals
+    # '_' then it is assumed to be 0 and if $upper equals '_' it is assumed to
+    # be infinity.
 
     my $lower    = shift;
     my $upper    = shift;
-    my $num_args = @_;
+    my $num_args = scalar @_;
 
-    ($lower, $upper) = ($upper, $lower) if $lower > $upper;
+    $lower = 0 if $lower eq '_';
 
-    unless ($lower <= $num_args && $num_args <= $upper) {
-        my $caller = ( caller(1) )[3];
-        my $expected_plural = $lower == 1 ? '': 's';
-        my $got_plural = $num_args == 1 ? '' : 's';
-        my $arg_range_msg = $lower == $upper ? "$lower arg$expected_plural" : "$lower-$upper args";
-        confess("yabsm: internal error: called '$caller' with $num_args arg$got_plural but it expects $arg_range_msg");
+    my $lower_ok = $lower <= $num_args;
+    my $upper_ok = $upper eq '_' ? 1 : $upper >= $num_args;
+
+    unless ($lower_ok && $upper_ok) {
+        my $caller    = ( caller(1) )[3];
+        my $error_msg = "yabsm: internal error: called '$caller' with $num_args args but it expects";
+        my $range_msg;
+        if    ($upper eq '_')    { $range_msg = "at least $lower args" }
+        elsif ($lower == $upper) { $range_msg = "$lower args"          }
+        else                     { $range_msg = "$lower-$upper args"   }
+        confess("$error_msg $range_msg");
     }
 
     return 1;

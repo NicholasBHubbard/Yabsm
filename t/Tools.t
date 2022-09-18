@@ -26,7 +26,12 @@ use Test::Exception;
     lives_ok { $f->(1,2,73,37) } "$n - lives if correct number of args";
     throws_ok { $f->(1,1,73,37) } qr/called 'main::__ANON__' with 2 args but it expects 1 arg/, "$n - dies with single number range";
     throws_ok { $f->(1,2,73,37,42) } qr/called 'main::__ANON__' with 3 args but it expects 1-2 args/, "$n - dies with bounded range";
-    throws_ok { $f->(2,1,73,37,42) } qr/called 'main::__ANON__' with 3 args but it expects 1-2 args/, "$n - swaps upper lower ranges";
+    lives_ok { $f->('_', '2', 73,37)} "$n - accepts less or equal to N args when first arg is '_'";
+    throws_ok { $f->('_', '2', 73,37,3) } qr/called 'main::__ANON__' with 3 args but it expects 0-2 args/, "$n - dies if more than N args";
+    lives_ok { $f->(2,'_',73,37) } "$n - accepts at least N args when second arg is '_'";
+    lives_ok { $f->(2,'_',73,37,42) } "$n - accepts at greater than N args when second arg is '_'";
+    throws_ok { $f->(2,'_',73) } qr/called 'main::__ANON__' with 1 args but it expects at least 2 args/, "$n - dies if not at least N args";
+    lives_ok { $f->('_','_') } "$n - allows any number of args when both args eq '_'";
 }
 
 {

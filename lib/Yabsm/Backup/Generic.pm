@@ -50,7 +50,12 @@ sub take_tmp_snapshot {
     my $backup_type = shift;
     my $config_ref  = shift;
 
-    my $tmp_snapshot_dir = tmp_snapshot_dir($backup, $backup_type, $config_ref);
+    my $tmp_snapshot_dir = tmp_snapshot_dir(
+        $backup,
+        $backup_type,
+        $config_ref,
+        OR_DIE => 1
+    );
 
     # Remove any old tmp snapshots
     opendir my $dh, $tmp_snapshot_dir or confess("yabsm: internal error: cannot opendir '$tmp_snapshot_dir'");
@@ -67,22 +72,23 @@ sub take_tmp_snapshot {
     elsif ($backup_type eq 'local') {
         $mountpoint = local_backup_mountpoint($backup, $config_ref);
     }
-    else {
-        is_backup_type_or_die($backup_type);
-    }
+    else { is_backup_type_or_die($backup_type) }
     
     return take_snapshot($mountpoint, $tmp_snapshot_dir);
 }
 
 sub tmp_snapshot_dir {
 
-    # Return path to $backup's tmp snapshot directory.
+    # Return path to $backup's tmp snapshot directory. If passed 'OR_DIE => 1'
+    # then die unless the directory exists and is readable+writable for the
+    # current user.
 
-    arg_count_or_die(3, 3, @_);
+    arg_count_or_die(3, 5, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
     my $config_ref  = shift;
+    my %or_die      = (OR_DIE => 0, @_);
 
     if ($backup_type eq 'ssh') {
         ssh_backup_exists_or_die($backup, $config_ref);
@@ -90,11 +96,18 @@ sub tmp_snapshot_dir {
     elsif ($backup_type eq 'ssh') {
         local_backup_exists_or_die($backup, $config_ref);
     }
-    else {
-        is_backup_type_or_die($backup_type);
+    else { is_backup_type_or_die($backup_type) }
+
+    my $tmp_snapshot_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
+    
+    if ($or_die{OR_DIE}) {
+        unless (-d $tmp_snapshot_dir && -r $tmp_snapshot_dir && -w $tmp_snapshot_dir) {
+            my $username = getpwuid $<;
+            die "yabsm: error: no directory '$tmp_snapshot_dir' that is readable and writable by user '$username'. This directory should have been initialized when the daemon started.\n";
+        }
     }
 
-    return yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
+    return $tmp_snapshot_dir;
 }
 
 sub take_bootstrap_snapshot {
@@ -123,7 +136,7 @@ sub take_bootstrap_snapshot {
         delete_snapshot($bootstrap_snapshot);
     }
     
-    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
+    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref, OR_DIE => 1);
     my $snapshot_name = '.BOOTSTRAP-' . current_time_snapshot_name();
     
     return take_snapshot($mountpoint, $bootstrap_dir, $snapshot_name);
@@ -153,11 +166,12 @@ sub bootstrap_snapshot_dir {
     # Return the path to $ssh_backup's bootstrap snapshot directory.
     # Logdie if the bootstrap snapshot directory does not exist.
 
-    arg_count_or_die(3, 3, @_);
+    arg_count_or_die(3, 5, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
     my $config_ref  = shift;
+    my %or_die      = (OR_DIE => 0, @_);
 
     is_backup_type_or_die($backup_type);
 
@@ -168,7 +182,16 @@ sub bootstrap_snapshot_dir {
         local_backup_exists_or_die($backup, $config_ref);
     }
 
-    return yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/bootstrap-snapshot";
+    my $bootstrap_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/bootstrap-snapshot";
+
+    if ($or_die{OR_DIE}) {
+        unless (-d $bootstrap_dir && -r $bootstrap_dir && -w $bootstrap_dir) {
+            my  $username = getpwuid $<;
+            die "yabsm: error: no directory '$bootstrap_dir' that is readable and writable by user '$username'. This directory should have been initialized when the daemon started.\n";
+        }
+    }
+
+    return $bootstrap_dir;
 }
 
 sub the_local_bootstrap_snapshot {
@@ -182,7 +205,12 @@ sub the_local_bootstrap_snapshot {
     my $backup_type = shift;
     my $config_ref  = shift;
 
-    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
+    my $bootstrap_dir = bootstrap_snapshot_dir(
+        $backup,
+        $backup_type,
+        $config_ref,
+        OR_DIE => 1
+    );
 
     opendir my $dh, $bootstrap_dir or confess "yabsm: internal error: cannot opendir '$bootstrap_dir'";
     my @boot_snaps = grep { is_snapshot_name($_, ONLY_BOOTSTRAP => 1) } readdir($dh);
@@ -214,7 +242,12 @@ sub bootstrap_lock_file {
     my $yabsm_dir = yabsm_dir($config_ref);
 
     # $lock_dir should have been created during daemon initialization
-    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
+    my $bootstrap_dir = bootstrap_snapshot_dir(
+        $backup,
+        $backup_type,
+        $config_ref,
+        OR_DIE => 1
+    );
 
     my $lock_file = [ grep /BOOTSTRAP-LOCK/, glob("$bootstrap_dir/*") ]->[0];
 
@@ -234,18 +267,27 @@ sub create_bootstrap_lock_file {
     my $backup_type = shift;
     my $config_ref  = shift;
 
-    backup_exists_or_die($backup);
+    backup_exists_or_die($backup, $config_ref);
     is_backup_type_or_die($backup_type);
 
     if (my $existing_lock_file = bootstrap_lock_file($backup, $backup_type, $config_ref)) {
-        die "yabsm: error: ${backup_type}_backup '$backup' already is locked out of performing a bootstrap. This was determined by the existence of '$existing_lock_file'\n";
+        die "yabsm: error: ${backup_type}_backup '$backup' is already locked out of performing a bootstrap. This was determined by the existence of '$existing_lock_file'\n";
     }
 
     # $lock_dir should have been created during daemon initialization
-    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref);
+    my $bootstrap_dir = bootstrap_snapshot_dir(
+        $backup,
+        $backup_type,
+        $config_ref,
+        OR_DIE => 1
+    );
 
     # The file will be deleted when $tmp_fh is destroyed.
-    my $tmp_fh = File::Temp->new('BOOTSTRAP-LOCKXXXX', DIR => $bootstrap_dir, UNLINK => 1);
+    my $tmp_fh = File::Temp->new(
+        TEMPLATE => 'BOOTSTRAP-LOCKXXXX',
+        DIR      => $bootstrap_dir,
+        UNLINK   => 1
+    );
 
     return $tmp_fh;
 }

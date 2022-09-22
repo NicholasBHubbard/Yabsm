@@ -54,7 +54,7 @@ sub take_tmp_snapshot {
         $backup,
         $backup_type,
         $config_ref,
-        OR_DIE => 1
+        DIE_UNLESS_EXISTS => 1
     );
 
     # Remove any old tmp snapshots
@@ -79,16 +79,16 @@ sub take_tmp_snapshot {
 
 sub tmp_snapshot_dir {
 
-    # Return path to $backup's tmp snapshot directory. If passed 'OR_DIE => 1'
-    # then die unless the directory exists and is readable+writable for the
-    # current user.
+    # Return path to $backup's tmp snapshot directory. If passed
+    # 'DIE_UNLESS_EXISTS => 1' # then die unless the directory exists and is
+    # readable+writable for the current user.
 
     arg_count_or_die(3, 5, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
     my $config_ref  = shift;
-    my %or_die      = (OR_DIE => 0, @_);
+    my %die_unless_exists = (DIE_UNLESS_EXISTS => 0, @_);
 
     if ($backup_type eq 'ssh') {
         ssh_backup_exists_or_die($backup, $config_ref);
@@ -100,7 +100,7 @@ sub tmp_snapshot_dir {
 
     my $tmp_snapshot_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
     
-    if ($or_die{OR_DIE}) {
+    if ($die_unless_exists{DIE_UNLESS_EXISTS}) {
         unless (-d $tmp_snapshot_dir && -r $tmp_snapshot_dir && -w $tmp_snapshot_dir) {
             my $username = getpwuid $<;
             die "yabsm: error: no directory '$tmp_snapshot_dir' that is readable and writable by user '$username'. This directory should have been initialized when the daemon started.\n";
@@ -136,7 +136,7 @@ sub take_bootstrap_snapshot {
         delete_snapshot($bootstrap_snapshot);
     }
     
-    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref, OR_DIE => 1);
+    my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref, DIE_UNLESS_EXISTS => 1);
     my $snapshot_name = '.BOOTSTRAP-' . current_time_snapshot_name();
     
     return take_snapshot($mountpoint, $bootstrap_dir, $snapshot_name);
@@ -171,7 +171,7 @@ sub bootstrap_snapshot_dir {
     my $backup      = shift;
     my $backup_type = shift;
     my $config_ref  = shift;
-    my %or_die      = (OR_DIE => 0, @_);
+    my %or_die      = (DIE_UNLESS_EXISTS => 0, @_);
 
     is_backup_type_or_die($backup_type);
 
@@ -184,7 +184,7 @@ sub bootstrap_snapshot_dir {
 
     my $bootstrap_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/bootstrap-snapshot";
 
-    if ($or_die{OR_DIE}) {
+    if ($or_die{DIE_UNLESS_EXISTS}) {
         unless (-d $bootstrap_dir && -r $bootstrap_dir && -w $bootstrap_dir) {
             my  $username = getpwuid $<;
             die "yabsm: error: no directory '$bootstrap_dir' that is readable and writable by user '$username'. This directory should have been initialized when the daemon started.\n";
@@ -209,7 +209,7 @@ sub the_local_bootstrap_snapshot {
         $backup,
         $backup_type,
         $config_ref,
-        OR_DIE => 1
+        DIE_UNLESS_EXISTS => 1
     );
 
     opendir my $dh, $bootstrap_dir or confess "yabsm: internal error: cannot opendir '$bootstrap_dir'";
@@ -246,7 +246,7 @@ sub bootstrap_lock_file {
         $backup,
         $backup_type,
         $config_ref,
-        OR_DIE => 1
+        DIE_UNLESS_EXISTS => 1
     );
 
     my $lock_file = [ grep /BOOTSTRAP-LOCK/, glob("$bootstrap_dir/*") ]->[0];
@@ -279,7 +279,7 @@ sub create_bootstrap_lock_file {
         $backup,
         $backup_type,
         $config_ref,
-        OR_DIE => 1
+        DIE_UNLESS_EXISTS => 1
     );
 
     # The file will be deleted when $tmp_fh is destroyed.

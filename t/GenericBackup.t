@@ -91,13 +91,13 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
     my $expected_bootstrap_dir = "$BTRFS_DIR/.yabsm-var/ssh_backups/foo_ssh_backup/bootstrap-snapshot";
 
     lives_and { is $f->('foo_ssh_backup', 'ssh', \%TEST_CONFIG), $expected_bootstrap_dir } "$n - returns correct bootstrap dir";
-    throws_ok { $f->('foo_ssh_backup', 'ssh', \%TEST_CONFIG, OR_DIE => 1) } qr/no directory '$expected_bootstrap_dir' that is readable and writable by user 'root'/, "$n - if OR_DIE dies if bootstrap dir doesn't exist";
+    throws_ok { $f->('foo_ssh_backup', 'ssh', \%TEST_CONFIG, DIE_UNLESS_EXISTS => 1) } qr/no directory '$expected_bootstrap_dir' that is readable and writable by user 'root'/, "$n - if DIE_UNLESS_EXISTS dies if bootstrap dir doesn't exist";
     make_path_or_die($expected_bootstrap_dir);
-    lives_and { is $f->('foo_ssh_backup', 'ssh', \%TEST_CONFIG, OR_DIE => 1), $expected_bootstrap_dir} "$n - returns correct directory if dir exists and OR_DIE";
+    lives_and { is $f->('foo_ssh_backup', 'ssh', \%TEST_CONFIG, DIE_UNLESS_EXISTS => 1), $expected_bootstrap_dir} "$n - returns correct directory if dir exists and DIE_UNLESS_EXISTS";
 
     $expected_bootstrap_dir = "$BTRFS_DIR/.yabsm-var/local_backups/foo_local_backup/bootstrap-snapshot";
     make_path_or_die($expected_bootstrap_dir);
-    lives_and { is $f->('foo_local_backup', 'local', \%TEST_CONFIG, OR_DIE => 1), $expected_bootstrap_dir } "$n - returns correct directory for local_backup";
+    lives_and { is $f->('foo_local_backup', 'local', \%TEST_CONFIG, DIE_UNLESS_EXISTS => 1), $expected_bootstrap_dir } "$n - returns correct directory for local_backup";
     throws_ok { $f->('foo_ssh_backup', 'quux', \%TEST_CONFIG) } qr/'quux' is not 'ssh' or 'local'/, "$n - dies if invalid backup type";
 }
 
@@ -170,7 +170,7 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
 
     my $tmp_snapshot_dir = "$BTRFS_DIR/.yabsm-var/local_backups/foo_local_backup/tmp-snapshot";
     lives_and { $f->('foo_local_backup', 'local', \%TEST_CONFIG), "$tmp_snapshot_dir" } "$n - returns path even if tmp dir doesn't exist";
-    throws_ok { $f->('foo_local_backup', 'local', \%TEST_CONFIG, OR_DIE=>1) } qr/no directory '$tmp_snapshot_dir'/, "$n - dies if tmp dir doesn't exist and OR_DIE";
+    throws_ok { $f->('foo_local_backup', 'local', \%TEST_CONFIG, DIE_UNLESS_EXISTS=>1) } qr/no directory '$tmp_snapshot_dir'/, "$n - dies if tmp dir doesn't exist and DIE_UNLESS_EXISTS";
 
     $n = 'take_tmp_snapshot';
     $f = \&Yabsm::Backup::Generic::take_tmp_snapshot;
@@ -182,7 +182,7 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
     $n = 'tmp_snapshot_dir';
     $f = \&Yabsm::Backup::Generic::tmp_snapshot_dir;
 
-    lives_and { is $f->('foo_local_backup', 'local', \%TEST_CONFIG, OR_DIE=>1), $tmp_snapshot_dir } "$n - lives and returns correct dir if it exists and OR_DIE";
+    lives_and { is $f->('foo_local_backup', 'local', \%TEST_CONFIG, DIE_UNLESS_EXISTS=>1), $tmp_snapshot_dir } "$n - lives and returns correct dir if it exists and DIE_UNLESS_EXISTS";
 
     $n = 'take_tmp_snapshot';
     $f = \&Yabsm::Backup::Generic::take_tmp_snapshot;

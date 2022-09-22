@@ -25,7 +25,7 @@ use File::Path;
 use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
 
 my $USAGE = <<'END_USAGE';
-Usage: Generic.t -s <dir>
+Usage: GenericBackup.t -s <dir>
 
 Arguments:
   -h or --help   Print help (this message) and exit.

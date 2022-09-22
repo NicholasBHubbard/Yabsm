@@ -27,7 +27,7 @@ use File::Basename qw(basename dirname);
 use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
 
 my $USAGE = <<'END_USAGE';
-Usage: SSH.t -s <dir>
+Usage: SSHBackup.t -s <dir>
 
 Arguments:
   -h or --help   Print help (this message) and exit.

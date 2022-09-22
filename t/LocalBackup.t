@@ -27,7 +27,7 @@ use File::Basename 'dirname';
 use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
 
 my $USAGE = <<'END_USAGE';
-Usage: Local.t -s <dir>
+Usage: LocalBackup.t -s <dir>
 
 Arguments:
   -h or --help   Print help (this message) and exit.
@@ -80,8 +80,16 @@ my $BACKUP          = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_na
                  #              TESTS               #
                  ####################################
 
-my $n = 'do_local_backup';
-my $f = \&Yabsm::Backup::Local::do_local_backup;
+my $n;
+my $f;
+
+$n = 'the_remote_bootstrap_snapshot';
+$f = \&Yabsm::Backup::Local::the_remote_bootstrap_snapshot;
+
+lives_and { is $f->('foo_local_backup', \%TEST_CONFIG), undef } "$n - returns undef if no remote bootstrap snapshot";
+
+$n = 'do_local_backup';
+$f = \&Yabsm::Backup::Local::do_local_backup;
 
 throws_ok { $f->('foo_local_backup', '5minute', \%TEST_CONFIG) } qr/'$BOOTSTRAP_DIR' is not a directory residing on a btrfs filesystem/, "$n - dies if backup directory doesn't exist";
 cleanup_snapshots();

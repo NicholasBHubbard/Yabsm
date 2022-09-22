@@ -99,7 +99,7 @@ sub tmp_snapshot_dir {
     else { is_backup_type_or_die($backup_type) }
 
     my $tmp_snapshot_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
-    
+
     if ($die_unless_exists{DIE_UNLESS_EXISTS}) {
         unless (-d $tmp_snapshot_dir && -r $tmp_snapshot_dir && -w $tmp_snapshot_dir) {
             my $username = getpwuid $<;

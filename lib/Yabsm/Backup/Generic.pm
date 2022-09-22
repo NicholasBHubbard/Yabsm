@@ -21,7 +21,7 @@ use Yabsm::Snapshot qw(take_snapshot
 
 use Carp q(confess);
 use File::Temp;
-use File::Basename 'basename';
+use File::Basename qw(basename);
 
 use Exporter 'import';
 our @EXPORT_OK = qw(take_tmp_snapshot

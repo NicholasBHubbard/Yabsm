@@ -101,9 +101,9 @@ sub tmp_snapshot_dir {
     my $tmp_snapshot_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
 
     if ($die_unless_exists{DIE_UNLESS_EXISTS}) {
-        unless (-d $tmp_snapshot_dir && -r $tmp_snapshot_dir && -w $tmp_snapshot_dir) {
+        unless (-d $tmp_snapshot_dir && -r $tmp_snapshot_dir) {
             my $username = getpwuid $<;
-            die "yabsm: error: no directory '$tmp_snapshot_dir' that is readable and writable by user '$username'. This directory should have been initialized when the daemon started.\n";
+            die "yabsm: error: no directory '$tmp_snapshot_dir' that is readable by user '$username'. This directory should have been initialized when the daemon started.\n";
         }
     }
 
@@ -185,9 +185,9 @@ sub bootstrap_snapshot_dir {
     my $bootstrap_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/bootstrap-snapshot";
 
     if ($or_die{DIE_UNLESS_EXISTS}) {
-        unless (-d $bootstrap_dir && -r $bootstrap_dir && -w $bootstrap_dir) {
+        unless (-d $bootstrap_dir && -r $bootstrap_dir) {
             my  $username = getpwuid $<;
-            die "yabsm: error: no directory '$bootstrap_dir' that is readable and writable by user '$username'. This directory should have been initialized when the daemon started.\n";
+            die "yabsm: error: no directory '$bootstrap_dir' that is readable by user '$username'. This directory should have been initialized when the daemon started.\n";
         }
     }
 
@@ -217,11 +217,11 @@ sub the_local_bootstrap_snapshot {
     map { $_ = "$bootstrap_dir/$_" } @boot_snaps;
     close $dh;
 
-    if (1 == @boot_snaps) {
-        return $boot_snaps[0];
-    }
-    elsif (0 == @boot_snaps) {
+    if (0 == @boot_snaps) {
         return undef;
+    }
+    elsif (1 == @boot_snaps) {
+        return $boot_snaps[0];
     }
     else {
         die "yabsm: error: found multiple local bootstrap snapshots for ${backup_type}_backup '$backup' in '$bootstrap_dir'\n";

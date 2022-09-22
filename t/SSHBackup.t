@@ -104,9 +104,9 @@ throws_ok { $f->($SSH, 'false') } qr/remote command 'false' failed/, "$n - dies 
 
 $n = 'check_ssh_backup_config_or_die';
 $f = \&Yabsm::Backup::SSH::check_ssh_backup_config_or_die;
-throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm'/, "$n - dies unless backup dir exists";
+throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory '$BACKUP_DIR_BASE' that is readable\+writable by user 'yabsm'/, "$n - dies unless backup dir exists";
 make_path_or_die($BACKUP_DIR_BASE);
-throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory named '$BACKUP_DIR_BASE' that is readable\+writable to user 'yabsm'/, "$n - dies unless backup dir is readable and writable by remote user";
+throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory '$BACKUP_DIR_BASE' that is readable\+writable by user 'yabsm'/, "$n - dies unless backup dir is readable and writable by remote user";
 system_or_die(qq(chown -R yabsm '$BTRFS_DIR'));
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), 1 } "$n - lives if properly configured";
 
@@ -116,10 +116,9 @@ lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), undef } "$n - return
 
 $n = 'do_ssh_backup';
 $f = \&Yabsm::Backup::SSH::do_ssh_backup;
-throws_ok { $f->($SSH, 'foo_ssh_backup', 'monthly', \%TEST_CONFIG) } qr/ssh_backup 'foo_ssh_backup' is not taking monthly backups/, "$n - dies if not taking tframe backups";
-throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$BOOTSTRAP_DIR' that is readable and writable/, "$n - dies if bootstrap dir doesn't exist";
+throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$BOOTSTRAP_DIR' that is readable by user/, "$n - dies if bootstrap dir doesn't exist";
 make_path_or_die($BOOTSTRAP_DIR);
-throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$TMP_DIR' that is readable and writable/, "$n - dies if tmp dir doesn't exist";
+throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$TMP_DIR' that is readable by user/, "$n - dies if tmp dir doesn't exist";
 make_path_or_die($TMP_DIR);
 lives_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } "$n - performs successful bootstrap";
 

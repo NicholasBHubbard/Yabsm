@@ -56,10 +56,10 @@ sub do_ssh_backup {
 
     check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
 
-    my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
-    my $backup_dir_base    = ssh_backup_dir($ssh_backup, undef, $config_ref);
     my $bootstrap_snapshot = maybe_do_ssh_backup_bootstrap($ssh, $ssh_backup, $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $config_ref);
+    my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
+    my $backup_dir_base    = ssh_backup_dir($ssh_backup, undef, $config_ref);
 
     ssh_system_or_die(
         $ssh,
@@ -69,7 +69,7 @@ sub do_ssh_backup {
     ssh_system_or_die(
         $ssh,
         {stdin_file => ['-|', "sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot'"]},
-        "sudo -n btrfs receive '$backup_dir'"
+        "sudo -n btrfs receive '$backup_dir_base'"
     );
 
     delete_snapshot($tmp_snapshot);
@@ -107,7 +107,7 @@ sub do_ssh_backup {
 
 sub do_ssh_backup_bootstrap {
 
-    # Perform the bootstrap phase of incremental backups for $ssh_backup.
+    # Perform the bootstrap phase of an incremental backup for $ssh_backup.
 
     arg_count_or_die(3, 3, @_);
 
@@ -115,14 +115,14 @@ sub do_ssh_backup_bootstrap {
     my $ssh_backup = shift;
     my $config_ref = shift;
 
-    $ssh //= new_ssh_conn($ssh_backup, $config_ref);
-
     if (bootstrap_lock_file($ssh_backup, 'ssh', $config_ref)) {
         return undef;
     }
 
     # The lock file will be deleted when $lock_fh goes out of scope (uses File::Temp).
     my $lock_fh = create_bootstrap_lock_file($ssh_backup, 'ssh', $config_ref);
+
+    $ssh //= new_ssh_conn($ssh_backup, $config_ref);
 
     if (my $local_boot_snap = the_local_bootstrap_snapshot($ssh_backup, 'ssh', $config_ref)) {
         delete_snapshot($local_boot_snap);
@@ -184,11 +184,11 @@ sub the_remote_bootstrap_snapshot {
     my @boot_snaps = grep { is_snapshot_name($_, ONLY_BOOTSTRAP => 1) } ssh_system_or_die($ssh, "ls -1 -a '$remote_backup_dir'");
     map { chomp $_ ; $_ = "$remote_backup_dir/$_" } @boot_snaps;
 
-    if (1 == @boot_snaps) {
-        return $boot_snaps[0];
-    }
-    elsif (0 == @boot_snaps) {
+    if (0 == @boot_snaps) {
         return undef;
+    }
+    elsif (1 == @boot_snaps) {
+        return $boot_snaps[0];
     }
     else {
         my $ssh_dest = ssh_backup_ssh_dest($ssh_backup, $config_ref);
@@ -300,7 +300,7 @@ if [ "\$HAVE_BTRFS" = true ] && ! sudo -n btrfs --help >/dev/null 2>&1; then
 fi
 
 if ! [ -d '$remote_backup_dir' ] || ! [ -r '$remote_backup_dir' ] || ! [ -w '$remote_backup_dir' ]; then
-    add_error "no directory named '$remote_backup_dir' that is readable+writable to user '\$(whoami)'"
+    add_error "no directory '$remote_backup_dir' that is readable+writable by user '\$(whoami)'"
 else
     if [ "\$HAVE_BTRFS" = true ] && ! btrfs property list '$remote_backup_dir' >/dev/null 2>&1; then
         add_error "'$remote_backup_dir' is not a directory residing on a btrfs filesystem"

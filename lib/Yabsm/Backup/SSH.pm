@@ -74,7 +74,7 @@ sub do_ssh_backup {
     ssh_system_or_die(
         $ssh,
         {stdin_file => ['-|', "sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot'"]},
-        "sudo -n btrfs receive '$backup_dir_base'"
+        "sudo -n btrfs receive '$backup_dir'"
     );
 
     delete_snapshot($tmp_snapshot);

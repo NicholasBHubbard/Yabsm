@@ -44,15 +44,17 @@ sub take_tmp_snapshot {
     # Take a tmp snapshot for $backup. The tmp snapshot is the snapshot that is
     # actually replicated in an incremental backup with 'btrfs send -p'.
 
-    arg_count_or_die(3, 3, @_);
+    arg_count_or_die(4, 4, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
+    my $tframe      = shift;
     my $config_ref  = shift;
 
     my $tmp_snapshot_dir = tmp_snapshot_dir(
         $backup,
         $backup_type,
+        $tframe,
         $config_ref,
         DIE_UNLESS_EXISTS => 1
     );
@@ -83,12 +85,15 @@ sub tmp_snapshot_dir {
     # 'DIE_UNLESS_EXISTS => 1' # then die unless the directory exists and is
     # readable+writable for the current user.
 
-    arg_count_or_die(3, 5, @_);
+    arg_count_or_die(4, 6, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
+    my $tframe      = shift;
     my $config_ref  = shift;
     my %die_unless_exists = (DIE_UNLESS_EXISTS => 0, @_);
+
+    is_timeframe_or_die($tframe);
 
     if ($backup_type eq 'ssh') {
         ssh_backup_exists_or_die($backup, $config_ref);
@@ -98,7 +103,7 @@ sub tmp_snapshot_dir {
     }
     else { is_backup_type_or_die($backup_type) }
 
-    my $tmp_snapshot_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot";
+    my $tmp_snapshot_dir = yabsm_dir($config_ref) . "/.yabsm-var/${backup_type}_backups/$backup/tmp-snapshot/$tframe";
 
     if ($die_unless_exists{DIE_UNLESS_EXISTS}) {
         unless (-d $tmp_snapshot_dir && -r $tmp_snapshot_dir) {

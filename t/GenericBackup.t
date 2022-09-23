@@ -168,33 +168,33 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
     $n = 'tmp_snapshot_dir';
     $f = \&Yabsm::Backup::Generic::tmp_snapshot_dir;
 
-    my $tmp_snapshot_dir = "$BTRFS_DIR/.yabsm-var/local_backups/foo_local_backup/tmp-snapshot";
-    lives_and { $f->('foo_local_backup', 'local', \%TEST_CONFIG), "$tmp_snapshot_dir" } "$n - returns path even if tmp dir doesn't exist";
-    throws_ok { $f->('foo_local_backup', 'local', \%TEST_CONFIG, DIE_UNLESS_EXISTS=>1) } qr/no directory '$tmp_snapshot_dir'/, "$n - dies if tmp dir doesn't exist and DIE_UNLESS_EXISTS";
+    my $tmp_snapshot_dir = "$BTRFS_DIR/.yabsm-var/local_backups/foo_local_backup/tmp-snapshot/5minute";
+    lives_and { $f->('foo_local_backup', 'local', '5minute', \%TEST_CONFIG), $tmp_snapshot_dir } "$n - returns path even if tmp dir doesn't exist";
+    throws_ok { $f->('foo_local_backup', 'local', '5minute', \%TEST_CONFIG, DIE_UNLESS_EXISTS=>1) } qr/no directory '$tmp_snapshot_dir'/, "$n - dies if tmp dir doesn't exist and DIE_UNLESS_EXISTS";
 
     $n = 'take_tmp_snapshot';
     $f = \&Yabsm::Backup::Generic::take_tmp_snapshot;
 
-    throws_ok { $f->('foo_local_backup', 'local', \%TEST_CONFIG) } qr/no directory '$tmp_snapshot_dir'/, "$n - dies if tmp dir doesn't exist";
+    throws_ok { $f->('foo_local_backup', 'local', '5minute', \%TEST_CONFIG) } qr/no directory '$tmp_snapshot_dir'/, "$n - dies if tmp dir doesn't exist";
 
     make_path_or_die($tmp_snapshot_dir);
 
     $n = 'tmp_snapshot_dir';
     $f = \&Yabsm::Backup::Generic::tmp_snapshot_dir;
 
-    lives_and { is $f->('foo_local_backup', 'local', \%TEST_CONFIG, DIE_UNLESS_EXISTS=>1), $tmp_snapshot_dir } "$n - lives and returns correct dir if it exists and DIE_UNLESS_EXISTS";
+    lives_and { is $f->('foo_local_backup', 'local', '5minute', \%TEST_CONFIG, DIE_UNLESS_EXISTS=>1), $tmp_snapshot_dir } "$n - lives and returns correct dir if it exists and DIE_UNLESS_EXISTS";
 
     $n = 'take_tmp_snapshot';
     $f = \&Yabsm::Backup::Generic::take_tmp_snapshot;
 
     my $tmp_snapshot = "$tmp_snapshot_dir/".Yabsm::Snapshot::current_time_snapshot_name();
-    lives_and { is $f->('foo_local_backup', 'local', \%TEST_CONFIG), $tmp_snapshot } "$n - takes tmp snapshot";
+    lives_and { is $f->('foo_local_backup', 'local', '5minute', \%TEST_CONFIG), $tmp_snapshot } "$n - takes tmp snapshot";
 
     sleep 60;
 
     $tmp_snapshot = "$tmp_snapshot_dir/".Yabsm::Snapshot::current_time_snapshot_name();
 
-    lives_and { is $f->('foo_local_backup', 'local', \%TEST_CONFIG), $tmp_snapshot } "$n - takes tmp snapshot even if one exists";
+    lives_and { is $f->('foo_local_backup', 'local', '5minute', \%TEST_CONFIG), $tmp_snapshot } "$n - takes tmp snapshot even if one exists";
 
     opendir my $dh, $tmp_snapshot_dir or die "error: cannot opendir '$tmp_snapshot_dir'\n";
     my @tmp_snaps = grep { Yabsm::Snapshot::is_snapshot_name($_) } readdir($dh);

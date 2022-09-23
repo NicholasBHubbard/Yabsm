@@ -83,7 +83,7 @@ my $BACKUP_DIR      = Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', '5m
 my $BACKUP_DIR_BASE = Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', undef, \%TEST_CONFIG);
 my $BACKUP          = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_name();
 my $BOOTSTRAP_DIR   = Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
-my $TMP_DIR         = Yabsm::Backup::Generic::tmp_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
+my $TMP_DIR         = Yabsm::Backup::Generic::tmp_snapshot_dir('foo_ssh_backup','ssh','5minute',\%TEST_CONFIG);
 
                  ####################################
                  #               TESTS              #
@@ -121,11 +121,11 @@ make_path_or_die($BOOTSTRAP_DIR);
 throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$TMP_DIR' that is readable by user/, "$n - dies if tmp dir doesn't exist";
 make_path_or_die($TMP_DIR);
 lives_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } "$n - performs successful bootstrap";
-
+my $lock_file = Yabsm::Backup::Generic::create_bootstrap_lock_file('foo_ssh_backup', 'ssh', \%TEST_CONFIG);
+lives_and { is $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG), undef } "$n - returns undef if bootstrap lock file exists";
 
 $n = 'do_ssh_backup_bootstrap';
 $f = \&Yabsm::Backup::SSH::do_ssh_backup_bootstrap;
-my $lock_file = Yabsm::Backup::Generic::create_bootstrap_lock_file('foo_ssh_backup', 'ssh', \%TEST_CONFIG);
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), undef } "$n - returns undef if lock file exists";
 unlink $lock_file;
 sleep 60;

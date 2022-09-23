@@ -52,12 +52,17 @@ sub do_ssh_backup {
     my $tframe     = shift;
     my $config_ref = shift;
 
+    # We can't do a backup if the bootstrap process is currently being performed.
+    if (bootstrap_lock_file($ssh_backup, 'ssh', $config_ref)) {
+        return undef;
+    }
+
     $ssh //= new_ssh_conn($ssh_backup, $config_ref);
 
     check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
 
     my $bootstrap_snapshot = maybe_do_ssh_backup_bootstrap($ssh, $ssh_backup, $config_ref);
-    my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $config_ref);
+    my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $tframe, $config_ref);
     my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
     my $backup_dir_base    = ssh_backup_dir($ssh_backup, undef, $config_ref);
 

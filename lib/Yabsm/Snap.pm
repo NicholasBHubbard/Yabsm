@@ -39,7 +39,8 @@ sub do_snap {
 
     my @snapshots = sort_snapshots(do {
         opendir my $dh, $snap_dest or confess("yabsm: internal error: cannot opendir '$snap_dest'");
-        my @snapshots = map { $_ = "$snap_dest/$_" } grep { is_snapshot_name($_, 0) } readdir($dh);
+        my @snapshots = grep { is_snapshot_name($_, ALLOW_BOOTSTRAP => 0) } readdir($dh);
+        map { $_ = "$snap_dest/$_" } @snapshots;
         closedir $dh;
         \@snapshots;
     });

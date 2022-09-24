@@ -65,6 +65,7 @@ sub take_snapshot {
 
     is_btrfs_subvolume_or_die($subvolume);
     is_btrfs_dir_or_die($dest);
+    is_snapshot_name_or_die($snapshot_name, ALLOW_BOOTSTRAP => 1);
     have_sudo_access_to_btrfs_or_die();
 
     my $snapshot = "$dest/" . $snapshot_name;
@@ -146,13 +147,12 @@ sub is_snapshot_name_or_die {
 
 sub is_yabsm_snapshot {
 
-    # Return 1 if $snapshot is a yabsm snapshot and return 0 otherwise. Provides
-    # the same ALLOW_BOOTSTRAP, and ONLY_BOOTSTRAP options that are provided by
-    # &is_snapshot_name.
+    # Return 1 if $snapshot is a yabsm snapshot (including bootstrap) and return
+    # 0 otherwise.
 
     my $snapshot = shift;
 
-    return is_snapshot_name(basename($snapshot), @_) && is_btrfs_subvolume($snapshot)
+    return is_btrfs_subvolume($snapshot) && is_snapshot_name(basename($snapshot), ALLOW_BOOTSTRAP => 1);
 }
 
 sub is_yabsm_snapshot_or_die {
@@ -166,7 +166,7 @@ sub is_yabsm_snapshot_or_die {
         confess("yabsm: internal error: '$snapshot' is not a btrfs subvolume");
     }
 
-    unless ( is_snapshot_name(basename($snapshot), @_) ) {
+    unless ( is_snapshot_name(basename($snapshot), ALLOW_BOOTSTRAP => 1) ) {
         confess("yabsm: internal error: '$snapshot' does not have a valid yabsm snapshot name");
     }
 

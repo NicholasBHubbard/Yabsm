@@ -394,17 +394,21 @@ sub create_yabsmd_runtime_dirs {
 
     for my $ssh_backup (all_ssh_backups($config_ref)) {
         make_path_or_die(Yabsm::Backup::Generic::bootstrap_snapshot_dir($ssh_backup, 'ssh', $config_ref));
-        make_path_or_die(Yabsm::Backup::Generic::tmp_snapshot_dir($ssh_backup, 'ssh', $config_ref));
+        for my $tframe (ssh_backup_timeframes($ssh_backup, $config_ref)) {
+            make_path_or_die(Yabsm::Backup::Generic::tmp_snapshot_dir($ssh_backup, 'ssh', $tframe, $config_ref));
+        }
     }
 
     for my $local_backup (all_local_backups($config_ref)) {
         make_path_or_die(Yabsm::Backup::Generic::bootstrap_snapshot_dir($local_backup, 'local', $config_ref));
-        make_path_or_die(Yabsm::Backup::Generic::tmp_snapshot_dir($local_backup, 'local', $config_ref));
+        my $backup_dir_exists = -d local_backup_dir($local_backup, undef, $config_ref);
         for my $tframe (local_backup_timeframes($local_backup, $config_ref)) {
-            make_path_or_die(local_backup_dir($local_backup, $tframe, $config_ref));
+            make_path_or_die(Yabsm::Backup::Generic::tmp_snapshot_dir($local_backup, 'local', $tframe, $config_ref));
+            if ($backup_dir_exists) {
+                make_path_or_die(local_backup_dir($local_backup, $tframe, $config_ref));
+            }
         }
-    }
-
+    } 
     return 1;
 }
 

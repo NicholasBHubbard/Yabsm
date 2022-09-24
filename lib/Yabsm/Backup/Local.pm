@@ -43,18 +43,21 @@ sub do_local_backup {
     my $tframe       = shift;
     my $config_ref   = shift;
 
-    # We can't do a backup if the bootstrap process is currently being performed.
+    # We can't perform a backup if the bootstrap process is currently being
+    # performed.
     if (bootstrap_lock_file($local_backup, 'local', $config_ref)) {
         return undef;
     }
 
+    my $backup_dir = local_backup_dir($local_backup, $tframe, $config_ref);
+
+    unless (is_btrfs_dir($backup_dir) && -r $backup_dir) {
+        my $username = getpwuid $<;
+        die "yabsm: error: '$backup_dir' is not a directory residing on a btrfs filesystem that is readable by user '$username'\n";
+    }
+
     my $tmp_snapshot       = take_tmp_snapshot($local_backup, 'local', $tframe, $config_ref);
     my $bootstrap_snapshot = maybe_do_local_backup_bootstrap($local_backup, $config_ref);
-    my $backup_dir         = local_backup_dir($local_backup, $tframe, $config_ref);
-
-    unless (-d $backup_dir) {
-        die "yabsm: error: no directory '$backup_dir'. This directory should have been initialized when the daemon started.\n";
-    }
 
     system_or_die("sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot' | sudo -n btrfs receive '$backup_dir' >/dev/null 2>&1");
 

@@ -244,17 +244,9 @@ sub bootstrap_lock_file {
     my $backup_type = shift;
     my $config_ref  = shift;
 
-    my $yabsm_dir = yabsm_dir($config_ref);
+    my $rx = qr/yabsm-${backup_type}_backup_${backup}_BOOTSTRAP-LOCK/;
 
-    # $lock_dir should have been created during daemon initialization
-    my $bootstrap_dir = bootstrap_snapshot_dir(
-        $backup,
-        $backup_type,
-        $config_ref,
-        DIE_UNLESS_EXISTS => 1
-    );
-
-    my $lock_file = [ grep /BOOTSTRAP-LOCK/, glob("$bootstrap_dir/*") ]->[0];
+    my $lock_file = [ grep /$rx/, glob('/tmp/*') ]->[0];
 
     return $lock_file;
 }
@@ -279,18 +271,10 @@ sub create_bootstrap_lock_file {
         die "yabsm: error: ${backup_type}_backup '$backup' is already locked out of performing a bootstrap. This was determined by the existence of '$existing_lock_file'\n";
     }
 
-    # $lock_dir should have been created during daemon initialization
-    my $bootstrap_dir = bootstrap_snapshot_dir(
-        $backup,
-        $backup_type,
-        $config_ref,
-        DIE_UNLESS_EXISTS => 1
-    );
-
     # The file will be deleted when $tmp_fh is destroyed.
     my $tmp_fh = File::Temp->new(
-        TEMPLATE => 'BOOTSTRAP-LOCKXXXX',
-        DIR      => $bootstrap_dir,
+        TEMPLATE => "yabsm-${backup_type}_backup_${backup}_BOOTSTRAP-LOCKXXXX",
+        DIR      => '/tmp',
         UNLINK   => 1
     );
 

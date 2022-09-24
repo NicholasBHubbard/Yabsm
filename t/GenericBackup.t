@@ -152,11 +152,11 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
 
     lives_and {
         my $lock_fh = $f->('foo_local_backup', 'local', \%TEST_CONFIG);
-        ok $lock_fh->filename =~ /^$bootstrap_dir\/BOOTSTRAP-LOCK/;
+        ok $lock_fh->filename =~ /BOOTSTRAP-LOCK/;
         throws_ok { $f->('foo_local_backup', 'local', \%TEST_CONFIG) } qr/local_backup 'foo_local_backup' is already locked out of performing a bootstrap/, "$n - dies if bootstrap lock already exists";
         $n = 'bootstrap_lock_file';
         $f = \&Yabsm::Backup::Generic::bootstrap_lock_file;
-        lives_and { ok $f->('foo_local_backup', 'local', \%TEST_CONFIG) =~ /^$bootstrap_dir\/BOOTSTRAP-LOCK/ } "$n - returns correct lock file";
+        lives_and { ok $f->('foo_local_backup', 'local', \%TEST_CONFIG) =~ /BOOTSTRAP-LOCK/ } "$n - returns correct lock file";
     } "$n - bootstrap lock file functions";
 }
 

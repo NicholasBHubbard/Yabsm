@@ -10,15 +10,24 @@ use v5.16.3;
 
 package Yabsm::Backup::Local;
 
-use Yabsm::Backup::Generic qw(maybe_take_bootstrap_snapshot take_tmp_snapshot);
+use Yabsm::Backup::Generic qw(take_tmp_snapshot
+                              take_bootstrap_snapshot
+                              the_local_bootstrap_snapshot
+                              bootstrap_lock_file
+                              create_bootstrap_lock_file
+                             );
 use Yabsm::Snapshot qw(delete_snapshot sort_snapshots is_snapshot_name);
-use Yabsm::Tools qw(arg_count_or_die system_or_die);
+use Yabsm::Tools qw( :ALL );
 use Yabsm::Config::Query qw( :ALL );
 
 use File::Basename qw(basename);
 
 use Exporter 'import';
-our @EXPORT_OK = qw(do_local_backup);
+our @EXPORT_OK = qw(do_local_backup
+                    do_local_backup_bootstrap
+                    maybe_do_local_backup_bootstrap
+                    the_remote_bootstrap_snapshot
+                   );
 
                  ####################################
                  #            SUBROUTINES           #
@@ -34,27 +43,26 @@ sub do_local_backup {
     my $tframe       = shift;
     my $config_ref   = shift;
 
-    local_backup_wants_timeframe_or_die($local_backup, $tframe, $config_ref);
-
-    my $backup_dir      = local_backup_dir($local_backup, $tframe, $config_ref);
-    my $backup_dir_base = local_backup_dir($local_backup, undef, $config_ref);
-
-    # The destination partition might have been unmounted
-    unless (-d $backup_dir) {
-        die "yabsm: error: no such directory '$backup_dir' for local_backup '$local_backup'\n";
+    # We can't do a backup if the bootstrap process is currently being performed.
+    if (bootstrap_lock_file($local_backup, 'local', $config_ref)) {
+        return undef;
     }
 
-    my $bootstrap_snapshot = maybe_take_bootstrap_snapshot($local_backup, 'local', $config_ref);
-    my $tmp_snapshot       = take_tmp_snapshot($local_backup, 'local', $config_ref);
+    my $tmp_snapshot       = take_tmp_snapshot($local_backup, 'local', $tframe, $config_ref);
+    my $bootstrap_snapshot = maybe_do_local_backup_bootstrap($local_backup, $config_ref);
+    my $backup_dir         = local_backup_dir($local_backup, $tframe, $config_ref);
+
+    unless (-d $backup_dir) {
+        die "yabsm: error: no directory '$backup_dir'. This directory should have been initialized when the daemon started.\n";
+    }
 
     system_or_die("sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot' | sudo -n btrfs receive '$backup_dir' >/dev/null 2>&1");
 
-    delete_snapshot($tmp_snapshot);
-
     my @backups = sort_snapshots(do {
         opendir my $dh, $backup_dir or confess("yabsm: internal error: cannot opendir '$backup_dir'");
-        my @backups = map { $_ = "$backup_dir/$_" } grep { is_snapshot_name($_, 0) } readdir($dh);
+        my @backups = grep { is_snapshot_name($_) } readdir($dh);
         closedir $dh;
+        map { $_ = "$backup_dir/$_" } @backups;
         \@backups;
     });
     my $num_backups = scalar @backups;
@@ -66,7 +74,7 @@ sub do_local_backup {
         my $oldest = pop @backups;
         delete_snapshot($oldest);
     }
-    # We havent reached the backup quota yet so we don't delete anything
+    # We have not reached the backup quota yet so we don't delete anything.
     elsif ($num_backups <= $to_keep) {
         ;
     }
@@ -82,11 +90,89 @@ sub do_local_backup {
     return "$backup_dir/" . basename($tmp_snapshot);
 }
 
+sub do_local_backup_bootstrap {
+
+    # Perform the bootstrap phase of an incremental backup for $local_backup.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $local_backup = shift;
+    my $config_ref   = shift;
+
+    if (bootstrap_lock_file($local_backup, 'local', $config_ref)) {
+        return undef;
+    }
+
+    # The lock file will be deleted when $lock_fh goes out of scope (uses File::Temp).
+    my $lock_fh = create_bootstrap_lock_file($local_backup, 'local', $config_ref);
+
+    if (my $local_boot_snap = the_local_bootstrap_snapshot($local_backup, 'local', $config_ref)) {
+        delete_snapshot($local_boot_snap);
+    }
+    if (my $remote_boot_snap = the_remote_bootstrap_snapshot($local_backup, $config_ref)) {
+        delete_snapshot($remote_boot_snap);
+    }
+
+    my $local_boot_snap = take_bootstrap_snapshot($local_backup, 'local', $config_ref);
+
+    my $backup_dir_base = local_backup_dir($local_backup, undef, $config_ref);
+
+    system_or_die("sudo -n btrfs send '$local_boot_snap' | sudo -n btrfs receive '$backup_dir_base' >/dev/null 2>&1");
+
+    return $local_boot_snap;
+}
+
 sub maybe_do_local_backup_bootstrap {
 
-    # TODO
+    # Like &do_local_backup_bootstrap but only perform the bootstrap if it hasn't
+    # been performed yet.
 
+    arg_count_or_die(2, 2, @_);
 
+    my $local_backup = shift;
+    my $config_ref   = shift;
+
+    my $local_boot_snap  = the_local_bootstrap_snapshot($local_backup, 'local', $config_ref);
+    my $remote_boot_snap = the_remote_bootstrap_snapshot($local_backup, $config_ref);
+
+    unless ($local_boot_snap && $remote_boot_snap) {
+        $local_boot_snap = do_local_backup_bootstrap($local_backup, $config_ref);
+    }
+
+    return $local_boot_snap;
+}
+
+sub the_remote_bootstrap_snapshot {
+
+    # Return the remote bootstrap snapshot for $local_backup if it exists and
+    # return undef otherwise. Die if we find multiple bootstrap snapshots.
+
+    arg_count_or_die(2, 2, @_);
+
+    my $local_backup = shift;
+    my $config_ref   = shift;
+
+    my $backup_dir_base = local_backup_dir($local_backup, undef, $config_ref);
+
+    unless (-d $backup_dir_base && -r $backup_dir_base && -w $backup_dir_base) {
+        my $username = getpwuid $<;
+        die "yabsm: error: no directory '$backup_dir_base' that is readable by user '$username'. This directory should have been initialized when the daemon started.\n";
+    }
+
+    opendir my $dh, $backup_dir_base or confess("yabsm: internal error: cannot opendir '$backup_dir_base'");
+    my @boot_snaps = grep { is_snapshot_name($_, ONLY_BOOTSTRAP => 1) } readdir($dh);
+    map { $_ = "$backup_dir_base/$_" } @boot_snaps;
+    closedir $dh;
+
+    if (0 == @boot_snaps) {
+        return undef;
+    }
+    elsif (1 == @boot_snaps) {
+        return $boot_snaps[0];
+    }
+    else {
+        die "yabsm: error: found multiple remote bootstrap snapshots for local_backup '$local_backup' in '$backup_dir_base'\n";
+    }
 }
 
 1;

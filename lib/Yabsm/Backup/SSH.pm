@@ -61,8 +61,8 @@ sub do_ssh_backup {
 
     check_ssh_backup_config_or_die($ssh, $ssh_backup, $config_ref);
 
-    my $bootstrap_snapshot = maybe_do_ssh_backup_bootstrap($ssh, $ssh_backup, $config_ref);
     my $tmp_snapshot       = take_tmp_snapshot($ssh_backup, 'ssh', $tframe, $config_ref);
+    my $bootstrap_snapshot = maybe_do_ssh_backup_bootstrap($ssh, $ssh_backup, $config_ref);
     my $backup_dir         = ssh_backup_dir($ssh_backup, $tframe, $config_ref);
     my $backup_dir_base    = ssh_backup_dir($ssh_backup, undef, $config_ref);
 

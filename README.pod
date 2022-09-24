@@ -263,8 +263,8 @@ once a week.
         weekly_time=23:59
     }
 
-If the backup directory (C<dir>) does not exist it will be created when the Yabsm
-daemon starts.
+The backup directory (C<dir>) must be an existing directory residing on a btrfs
+filesystem.
 
 =head4 Initialize Daemon Runtime Environment
 

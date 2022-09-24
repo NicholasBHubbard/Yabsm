@@ -157,9 +157,9 @@ sub the_remote_bootstrap_snapshot {
 
     my $backup_dir_base = local_backup_dir($local_backup, undef, $config_ref);
 
-    unless (-d $backup_dir_base && -r $backup_dir_base && -w $backup_dir_base) {
+    unless (-d $backup_dir_base && -r $backup_dir_base) {
         my $username = getpwuid $<;
-        die "yabsm: error: no directory '$backup_dir_base' that is readable by user '$username'. This directory should have been initialized when the daemon started.\n";
+        die "yabsm: error: no directory '$backup_dir_base' that is readable by user '$username'\n";
     }
 
     opendir my $dh, $backup_dir_base or confess("yabsm: internal error: cannot opendir '$backup_dir_base'");

@@ -393,10 +393,6 @@ output of the following commands in your issue:
     yabsm config ssh-check <SSH_BACKUP>
     cat /var/log/yabsm
 
-=head1 Contributing
-
-TODO
-
 =head1 License
 
 MIT

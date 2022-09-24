@@ -24,8 +24,7 @@ Provides a simple query language for locating snapshots and backups.
 
 =head1 Snapshots vs Backups
 
-Before we go on lets clear up the difference between a snapshot and a backup,
-because it can be a little confusing.
+Before we go on lets clear up the difference between a snapshot and a backup.
 
 A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
 is a read-only subvolume created with the C<btrfs subvolume snapshot -r>

@@ -10,12 +10,12 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Backup::Local;
+use App::Yabsm::Backup::Local;
 
-use Yabsm::Tools qw( :ALL );
-use Yabsm::Snapshot;
-use Yabsm::Backup::Generic;
-use Yabsm::Config::Query;
+use App::Yabsm::Tools qw( :ALL );
+use App::Yabsm::Snapshot;
+use App::Yabsm::Backup::Generic;
+use App::Yabsm::Config::Query;
 
 use Test::More;
 use Test::Exception;

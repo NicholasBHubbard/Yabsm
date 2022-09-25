@@ -11,10 +11,10 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Snapshot;
+package App::Yabsm::Snapshot;
 
-use Yabsm::Tools qw( :ALL );
-use Yabsm::Config::Query qw( :ALL );
+use App::Yabsm::Tools qw( :ALL );
+use App::Yabsm::Config::Query qw( :ALL );
 
 use Carp 'confess';
 use File::Basename qw(basename);

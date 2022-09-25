@@ -8,12 +8,12 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Command::Config;
+package App::Yabsm::Command::Config;
 
-use Yabsm::Tools qw( :ALL );
-use Yabsm::Config::Query qw( :ALL );
-use Yabsm::Config::Parser 'parse_config_or_die';
-use Yabsm::Backup::SSH;
+use App::Yabsm::Tools qw( :ALL );
+use App::Yabsm::Config::Query qw( :ALL );
+use App::Yabsm::Config::Parser 'parse_config_or_die';
+use App::Yabsm::Backup::SSH;
 
 sub usage {
     arg_count_or_die(0, 0, @_);

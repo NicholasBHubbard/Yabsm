@@ -8,15 +8,15 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Backup::SSH;
+package App::Yabsm::Backup::SSH;
 
-use Yabsm::Tools qw( :ALL );
-use Yabsm::Config::Query qw( :ALL );
-use Yabsm::Snapshot qw(delete_snapshot
+use App::Yabsm::Tools qw( :ALL );
+use App::Yabsm::Config::Query qw( :ALL );
+use App::Yabsm::Snapshot qw(delete_snapshot
                        sort_snapshots
                        is_snapshot_name
                       );
-use Yabsm::Backup::Generic qw(take_bootstrap_snapshot
+use App::Yabsm::Backup::Generic qw(take_bootstrap_snapshot
                               the_local_bootstrap_snapshot
                               take_tmp_snapshot
                               bootstrap_lock_file

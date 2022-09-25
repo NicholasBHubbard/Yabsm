@@ -10,10 +10,10 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Backup::Generic;
-use Yabsm::Snapshot;
+use App::Yabsm::Backup::Generic;
+use App::Yabsm::Snapshot;
 
-use Yabsm::Tools qw( :ALL );
+use App::Yabsm::Tools qw( :ALL );
 
 use Test::More;
 use Test::Exception;

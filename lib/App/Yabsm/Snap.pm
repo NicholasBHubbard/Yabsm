@@ -8,10 +8,10 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Snap;
+package App::Yabsm::Snap;
 
-use Yabsm::Config::Query qw ( :ALL );
-use Yabsm::Snapshot qw(take_snapshot
+use App::Yabsm::Config::Query qw ( :ALL );
+use App::Yabsm::Snapshot qw(take_snapshot
                        delete_snapshot
                        sort_snapshots
                        is_snapshot_name

@@ -10,7 +10,7 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Config::Query;
+use App::Yabsm::Config::Query;
 
 use Test::More 'no_plan';
 use Test::Exception;

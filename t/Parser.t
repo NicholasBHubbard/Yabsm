@@ -10,7 +10,7 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Config::Parser qw(parse_config_or_die);
+use App::Yabsm::Config::Parser qw(parse_config_or_die);
 
 use Test::More 'no_plan';
 use Test::Exception;

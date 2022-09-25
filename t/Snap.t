@@ -10,13 +10,13 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Snap;
+use App::Yabsm::Snap;
 
 use Test::More;
 use Test::Exception;
 
-use Yabsm::Tools qw( :ALL );
-use Yabsm::Snapshot qw(current_time_snapshot_name);
+use App::Yabsm::Tools qw( :ALL );
+use App::Yabsm::Snapshot qw(current_time_snapshot_name);
 
 use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
 use File::Temp 'tempdir';

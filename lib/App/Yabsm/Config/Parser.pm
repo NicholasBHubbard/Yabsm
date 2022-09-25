@@ -33,9 +33,9 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Config::Parser;
+package App::Yabsm::Config::Parser;
 
-use Yabsm::Tools qw(arg_count_or_die);
+use App::Yabsm::Tools qw(arg_count_or_die);
 
 use Carp 'confess';
 use Array::Utils 'array_minus';

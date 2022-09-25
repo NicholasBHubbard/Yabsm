@@ -9,9 +9,9 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Config::Query;
+package App::Yabsm::Config::Query;
 
-use Yabsm::Tools qw(arg_count_or_die);
+use App::Yabsm::Tools qw(arg_count_or_die);
 
 use Carp 'confess';
 

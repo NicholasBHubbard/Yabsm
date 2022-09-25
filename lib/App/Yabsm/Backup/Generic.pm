@@ -8,12 +8,12 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Backup::Generic;
+package App::Yabsm::Backup::Generic;
 
-use Yabsm::Tools qw( :ALL );
-use Yabsm::Config::Query qw( :ALL );
+use App::Yabsm::Tools qw( :ALL );
+use App::Yabsm::Config::Query qw( :ALL );
 
-use Yabsm::Snapshot qw(take_snapshot 
+use App::Yabsm::Snapshot qw(take_snapshot 
                        delete_snapshot
                        current_time_snapshot_name
                        is_snapshot_name

@@ -12,9 +12,9 @@ use strict;
 use warnings;
 use v5.16.3;
 
-use Yabsm::Command::Daemon;
-use Yabsm::Command::Config;
-use Yabsm::Command::Find;
+use App::Yabsm::Command::Daemon;
+use App::Yabsm::Command::Config;
+use App::Yabsm::Command::Find;
 
 sub usage {
     print <<'END_USAGE';

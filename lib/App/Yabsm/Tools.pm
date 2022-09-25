@@ -10,7 +10,7 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Tools;
+package App::Yabsm::Tools;
 
 use Time::Piece;
 use Feature::Compat::Try;

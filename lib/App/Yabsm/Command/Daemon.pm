@@ -8,14 +8,14 @@ use strict;
 use warnings;
 use v5.16.3;
 
-package Yabsm::Command::Daemon;
+package App::Yabsm::Command::Daemon;
 
-use Yabsm::Tools qw( :ALL );
-use Yabsm::Config::Query qw( :ALL );
-use Yabsm::Config::Parser qw(parse_config_or_die);
-use Yabsm::Snap;
-use Yabsm::Backup::SSH;
-use Yabsm::Backup::Local;
+use App::Yabsm::Tools qw( :ALL );
+use App::Yabsm::Config::Query qw( :ALL );
+use App::Yabsm::Config::Parser qw(parse_config_or_die);
+use App::Yabsm::Snap;
+use App::Yabsm::Backup::SSH;
+use App::Yabsm::Backup::Local;
 
 use Schedule::Cron;
 use POSIX ();

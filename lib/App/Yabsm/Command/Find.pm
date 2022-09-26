@@ -139,7 +139,7 @@ sub answer_query {
         for my $tframe (ssh_backup_timeframes($thing, $config_ref)) {
             my $dir  = ssh_backup_dir($thing, $tframe, $config_ref);
             unless ($ssh->system("[ -r '$dir' ]")) {
-                die "yabsm: ssh error: $host: remote user does not have read permission on '$dir'";
+                die "yabsm: ssh error: $host: remote user does not have read permission on '$dir'\n";
             }
             push @snapshots, map { $_ = "$host:$dir/$_" } grep { chomp $_; is_snapshot_name($_, 0) } App::Yabsm::Backup::SSH::ssh_system_or_die($ssh, "ls -1 '$dir'");
         }

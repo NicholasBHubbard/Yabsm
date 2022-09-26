@@ -83,6 +83,7 @@ sub do_ssh_backup {
 
     # Delete old backups
 
+    # @remote_backups is sorted from newest to oldest
     my @remote_backups = grep { is_snapshot_name($_) } ssh_system_or_die($ssh, "ls -1 '$backup_dir'");
     map { chomp $_ ; $_ = "$backup_dir/$_" } @remote_backups;
     @remote_backups = sort_snapshots(\@remote_backups);

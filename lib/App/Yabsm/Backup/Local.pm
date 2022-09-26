@@ -63,6 +63,7 @@ sub do_local_backup {
 
     system_or_die("sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot' | sudo -n btrfs receive '$backup_dir' >/dev/null 2>&1");
 
+    # @backups is sorted from newest to oldest
     my @backups = sort_snapshots(do {
         opendir my $dh, $backup_dir or confess("yabsm: internal error: cannot opendir '$backup_dir'");
         my @backups = grep { is_snapshot_name($_) } readdir($dh);

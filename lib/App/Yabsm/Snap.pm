@@ -38,6 +38,7 @@ sub do_snap {
 
     my $snapshot = take_snapshot($mountpoint, $snap_dest);
 
+    # @snapshots is sorted from newest to oldest
     my @snapshots = sort_snapshots(do {
         opendir my $dh, $snap_dest or confess("yabsm: internal error: cannot opendir '$snap_dest'");
         my @snapshots = grep { is_snapshot_name($_, ALLOW_BOOTSTRAP => 0) } readdir($dh);

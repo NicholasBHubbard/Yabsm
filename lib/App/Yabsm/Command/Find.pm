@@ -17,25 +17,25 @@ use App::Yabsm::Config::Query qw ( :ALL );
 use App::Yabsm::Config::Parser 'parse_config_or_die';
 use App::Yabsm::Backup::SSH;
 use App::Yabsm::Snapshot qw(nums_to_snapshot_name
-                       snapshot_name_nums
-                       current_time_snapshot_name
-                       sort_snapshots
-                       is_snapshot_name
-                       snapshots_eq
-                       snapshot_newer
-                       snapshot_older
-                       snapshot_newer_or_eq
-                       snapshot_older_or_eq
-                      );
+                            snapshot_name_nums
+                            current_time_snapshot_name
+                            sort_snapshots
+                            is_snapshot_name
+                            snapshots_eq
+                            snapshot_newer
+                            snapshot_older
+                            snapshot_newer_or_eq
+                            snapshot_older_or_eq
+                           );
 
-use Carp 'confess';
 use Feature::Compat::Try;
 use Net::OpenSSH;
 use Time::Piece;
-use File::Basename 'basename';
+use File::Basename qw(basename);
+use Carp qw(confess);
 
 use Parser::MGC;
-use base 'Parser::MGC';
+use base qw(Parser::MGC);
 
 sub usage {
     arg_count_or_die(0, 0, @_);
@@ -141,7 +141,7 @@ sub answer_query {
             unless ($ssh->system("[ -r '$dir' ]")) {
                 die "yabsm: ssh error: $host: remote user does not have read permission on '$dir'";
             }
-            push @snapshots, map { $_ = "$host:$dir/$_" } grep { chomp $_; is_snapshot_name($_, 0) } Yabsm::Backup::ssh_system_or_die($ssh, "ls -1 '$dir'");
+            push @snapshots, map { $_ = "$host:$dir/$_" } grep { chomp $_; is_snapshot_name($_, 0) } App::Yabsm::Backup::SSH::ssh_system_or_die($ssh, "ls -1 '$dir'");
         }
     }
 

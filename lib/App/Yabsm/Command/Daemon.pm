@@ -241,13 +241,13 @@ sub create_cron_scheduler {
         if (snap_wants_timeframe($snap, '5minute', $config_ref)) {
             $cron_scheduler->add_entry(
                 '*/5 * * * *',
-                sub { with_error_catch_log(\&Yabsm::Snap::do_snap, $snap, '5minute', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Snap::do_snap, $snap, '5minute', $config_ref) }
             );
         }
         if (snap_wants_timeframe($snap, 'hourly', $config_ref)) {
             $cron_scheduler->add_entry(
                 '0 */1 * * *',
-                sub { with_error_catch_log(\&Yabsm::Snap::do_snap, $snap, 'hourly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Snap::do_snap, $snap, 'hourly', $config_ref) }
             );
         }
         if (snap_wants_timeframe($snap, 'daily', $config_ref)) {
@@ -256,7 +256,7 @@ sub create_cron_scheduler {
                 my $min  = time_minute($time);
                 $cron_scheduler->add_entry(
                     "$min $hr * * *",
-                    sub { with_error_catch_log(\&Yabsm::Snap::do_snap, $snap, 'daily', $config_ref) }
+                    sub { with_error_catch_log(\&App::Yabsm::Snap::do_snap, $snap, 'daily', $config_ref) }
                 );
             }
         }
@@ -267,7 +267,7 @@ sub create_cron_scheduler {
             my $day  = weekday_number(snap_weekly_day($snap, $config_ref));
             $cron_scheduler->add_entry(
                 "$min $hr * * $day",
-                sub { with_error_catch_log(\&Yabsm::Snap::do_snap, $snap, 'weekly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Snap::do_snap, $snap, 'weekly', $config_ref) }
             );
         }
         if (snap_wants_timeframe($snap, 'monthly', $config_ref)) {
@@ -277,7 +277,7 @@ sub create_cron_scheduler {
             my $day  = snap_monthly_day($snap, $config_ref);
             $cron_scheduler->add_entry(
                 "$min $hr $day * *",
-                sub { with_error_catch_log(\&Yabsm::Snap::do_snap, $snap, 'monthly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Snap::do_snap, $snap, 'monthly', $config_ref) }
             );
         }
     }
@@ -286,13 +286,13 @@ sub create_cron_scheduler {
         if (ssh_backup_wants_timeframe($ssh_backup, '5minute', $config_ref)) {
             $cron_scheduler->add_entry(
                 '*/5 * * * *',
-                sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, '5minute', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, '5minute', $config_ref) }
             );
         }
         if (ssh_backup_wants_timeframe($ssh_backup, 'hourly', $config_ref)) {
             $cron_scheduler->add_entry(
                 '0 */1 * * *',
-                sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'hourly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'hourly', $config_ref) }
             );
         }
         if (ssh_backup_wants_timeframe($ssh_backup, 'daily', $config_ref)) {
@@ -301,7 +301,7 @@ sub create_cron_scheduler {
                 my $min  = time_minute($time);
                 $cron_scheduler->add_entry(
                     "$min $hr * * *",
-                    sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'daily', $config_ref) }
+                    sub { with_error_catch_log(\&App::Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'daily', $config_ref) }
                 );
             }
         }
@@ -312,7 +312,7 @@ sub create_cron_scheduler {
             my $day  = weekday_number(ssh_backup_weekly_day($ssh_backup, $config_ref));
             $cron_scheduler->add_entry(
                 "$min $hr * * $day",
-                sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'weekly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'weekly', $config_ref) }
             );
         }
         if (ssh_backup_wants_timeframe($ssh_backup, 'monthly', $config_ref)) {
@@ -322,7 +322,7 @@ sub create_cron_scheduler {
             my $day  = ssh_backup_monthly_day($ssh_backup, $config_ref);
             $cron_scheduler->add_entry(
                 "$min $hr $day * *",
-                sub { with_error_catch_log(\&Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'monthly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::SSH::do_ssh_backup, undef, $ssh_backup, 'monthly', $config_ref) }
             );
         }
     }
@@ -331,13 +331,13 @@ sub create_cron_scheduler {
         if (local_backup_wants_timeframe($local_backup, '5minute', $config_ref)) {
             $cron_scheduler->add_entry(
                 '*/5 * * * *',
-                sub { with_error_catch_log(\&Yabsm::Backup::Local::do_local_backup, $local_backup, '5minute', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::Local::do_local_backup, $local_backup, '5minute', $config_ref) }
             );
         }
         if (local_backup_wants_timeframe($local_backup, 'hourly', $config_ref)) {
             $cron_scheduler->add_entry(
                 '0 */1 * * *',
-                sub { with_error_catch_log(\&Yabsm::Backup::Local::do_local_backup, $local_backup, 'hourly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::Local::do_local_backup, $local_backup, 'hourly', $config_ref) }
             );
         }
         if (local_backup_wants_timeframe($local_backup, 'daily', $config_ref)) {
@@ -346,7 +346,7 @@ sub create_cron_scheduler {
                 my $min  = time_minute($time);
                 $cron_scheduler->add_entry(
                     "$min $hr * * *",
-                    sub { with_error_catch_log(\&Yabsm::Backup::Local::do_local_backup, $local_backup, 'daily', $config_ref) }
+                    sub { with_error_catch_log(\&App::Yabsm::Backup::Local::do_local_backup, $local_backup, 'daily', $config_ref) }
                 );
             }
         }
@@ -357,7 +357,7 @@ sub create_cron_scheduler {
             my $day  = weekday_number(local_backup_weekly_day($local_backup, $config_ref));
             $cron_scheduler->add_entry(
                 "$min $hr * * $day",
-                sub { with_error_catch_log(\&Yabsm::Backup::Local::do_local_backup, $local_backup, 'weekly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::Local::do_local_backup, $local_backup, 'weekly', $config_ref) }
             );
         }
         if (local_backup_wants_timeframe($local_backup, 'monthly', $config_ref)) {
@@ -367,7 +367,7 @@ sub create_cron_scheduler {
             my $day  = local_backup_monthly_day($local_backup, $config_ref);
             $cron_scheduler->add_entry(
                 "$min $hr $day * *",
-                sub { with_error_catch_log(\&Yabsm::Backup::Local::do_local_backup, $local_backup, 'monthly', $config_ref) }
+                sub { with_error_catch_log(\&App::Yabsm::Backup::Local::do_local_backup, $local_backup, 'monthly', $config_ref) }
             );
         }
     }
@@ -393,17 +393,17 @@ sub create_yabsmd_runtime_dirs {
     }
 
     for my $ssh_backup (all_ssh_backups($config_ref)) {
-        make_path_or_die(Yabsm::Backup::Generic::bootstrap_snapshot_dir($ssh_backup, 'ssh', $config_ref));
+        make_path_or_die(App::Yabsm::Backup::Generic::bootstrap_snapshot_dir($ssh_backup, 'ssh', $config_ref));
         for my $tframe (ssh_backup_timeframes($ssh_backup, $config_ref)) {
-            make_path_or_die(Yabsm::Backup::Generic::tmp_snapshot_dir($ssh_backup, 'ssh', $tframe, $config_ref));
+            make_path_or_die(App::Yabsm::Backup::Generic::tmp_snapshot_dir($ssh_backup, 'ssh', $tframe, $config_ref));
         }
     }
 
     for my $local_backup (all_local_backups($config_ref)) {
-        make_path_or_die(Yabsm::Backup::Generic::bootstrap_snapshot_dir($local_backup, 'local', $config_ref));
+        make_path_or_die(App::Yabsm::Backup::Generic::bootstrap_snapshot_dir($local_backup, 'local', $config_ref));
         my $backup_dir_exists = -d local_backup_dir($local_backup, undef, $config_ref);
         for my $tframe (local_backup_timeframes($local_backup, $config_ref)) {
-            make_path_or_die(Yabsm::Backup::Generic::tmp_snapshot_dir($local_backup, 'local', $tframe, $config_ref));
+            make_path_or_die(App::Yabsm::Backup::Generic::tmp_snapshot_dir($local_backup, 'local', $tframe, $config_ref));
             if ($backup_dir_exists) {
                 make_path_or_die(local_backup_dir($local_backup, $tframe, $config_ref));
             }

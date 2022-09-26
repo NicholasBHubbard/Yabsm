@@ -13,12 +13,12 @@ package App::Yabsm::Snap;
 
 use App::Yabsm::Config::Query qw ( :ALL );
 use App::Yabsm::Snapshot qw(take_snapshot
-                       delete_snapshot
-                       sort_snapshots
-                       is_snapshot_name
-                      );
+                            delete_snapshot
+                            sort_snapshots
+                            is_snapshot_name
+                           );
 
-use Exporter 'import';
+use Exporter qw(import);
 our @EXPORT_OK = qw(do_snap);
 
                  ####################################

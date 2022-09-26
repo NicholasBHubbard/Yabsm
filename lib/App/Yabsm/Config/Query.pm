@@ -13,9 +13,9 @@ package App::Yabsm::Config::Query;
 
 use App::Yabsm::Tools qw(arg_count_or_die);
 
-use Carp 'confess';
+use Carp qw(confess);
 
-use Exporter 'import';
+use Exporter qw(import);
 our @EXPORT_OK = qw(is_timeframe
                     is_timeframe_or_die
                     is_weekday
@@ -96,7 +96,6 @@ our @EXPORT_OK = qw(is_timeframe
                     local_backup_monthly_time
                     local_backup_monthly_day
                    );
-
 our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
 
                  ####################################

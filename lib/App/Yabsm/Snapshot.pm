@@ -16,11 +16,11 @@ package App::Yabsm::Snapshot;
 use App::Yabsm::Tools qw( :ALL );
 use App::Yabsm::Config::Query qw( :ALL );
 
-use Carp 'confess';
+use Carp qw(confess);
 use File::Basename qw(basename);
 use Time::Piece;
 
-use Exporter 'import';
+use Exporter qw(import);
 our @EXPORT_OK = qw(take_snapshot
                     delete_snapshot
                     is_snapshot_name

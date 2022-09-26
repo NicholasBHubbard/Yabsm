@@ -12,8 +12,9 @@ package App::Yabsm::Command::Config;
 
 use App::Yabsm::Tools qw( :ALL );
 use App::Yabsm::Config::Query qw( :ALL );
-use App::Yabsm::Config::Parser 'parse_config_or_die';
+use App::Yabsm::Config::Parser qw(parse_config_or_die);
 use App::Yabsm::Backup::SSH;
+use App::Yabsm::Command::Daemon;
 
 sub usage {
     arg_count_or_die(0, 0, @_);
@@ -142,7 +143,7 @@ sub print_yabsm_user_home {
 sub check_ssh_backup {
 
     # This is mostly just a wrapper around
-    # &Yabsm::Backup::SSH::check_ssh_backup_config_or_die.
+    # &App::Yabsm::Backup::SSH::check_ssh_backup_config_or_die.
 
     1 == @_ or die usage();
 
@@ -156,18 +157,18 @@ sub check_ssh_backup {
         die "yabsm: error: no such ssh_backup named '$ssh_backup'\n";
     }
 
-    unless (Yabsm::Command::Daemon::yabsm_user_exists()) {
+    unless (App::Yabsm::Command::Daemon::yabsm_user_exists()) {
         die q(yabsm: error: cannot find user named 'yabsm')."\n";
     }
 
-    unless (Yabsm::Command::Daemon::yabsm_group_exists()) {
+    unless (App::Yabsm::Command::Daemon::yabsm_group_exists()) {
         die q(yabsm: error: cannot find group named 'yabsm')."\n";
     }
 
     POSIX::setgid(scalar(getgrnam 'yabsm'));
     POSIX::setuid(scalar(getpwnam 'yabsm'));
 
-    Yabsm::Backup::SSH::check_ssh_backup_config_or_die(undef, $ssh_backup, $config_ref);
+    App::Yabsm::Backup::SSH::check_ssh_backup_config_or_die(undef, $ssh_backup, $config_ref);
 
     say 'all good';
 }

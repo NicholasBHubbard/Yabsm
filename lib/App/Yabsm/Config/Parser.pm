@@ -37,9 +37,9 @@ package App::Yabsm::Config::Parser;
 
 use App::Yabsm::Tools qw(arg_count_or_die);
 
-use Carp 'confess';
-use Array::Utils 'array_minus';
-use Regexp::Common 'net';
+use Carp qw(confess);
+use Array::Utils qw(array_minus);
+use Regexp::Common qw(net);
 use Feature::Compat::Try;
 
 use Parser::MGC;
@@ -49,8 +49,8 @@ use base 'Parser::MGC';
                  #              EXPORTED            #
                  ####################################
 
-use Exporter 'import';
-our @EXPORT_OK = qw( parse_config_or_die );
+use Exporter qw(import);
+our @EXPORT_OK = qw(parse_config_or_die);
 
 sub parse_config_or_die {
 

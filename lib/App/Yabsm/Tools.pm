@@ -18,7 +18,7 @@ use Carp qw(confess);
 use File::Path qw(make_path);
 use File::Basename qw(dirname);
 
-use Exporter 'import';
+use Exporter qw(import);
 our @EXPORT_OK = qw(have_prerequisites
                     have_prerequisites_or_die
                     arg_count_or_die

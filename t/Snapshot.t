@@ -59,7 +59,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'is_snapshot_name';
-    my $f = \&Yabsm::Snapshot::is_snapshot_name;
+    my $f = \&App::Yabsm::Snapshot::is_snapshot_name;
 
     is($f->('yabsm-2020_05_13_23:59'), 1, "$n - succeeds with 1");
     is($f->('foo'), 0, "$n - fails with 0");
@@ -79,7 +79,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'is_snapshot_name_or_die';
-    my $f = \&Yabsm::Snapshot::is_snapshot_name_or_die;
+    my $f = \&App::Yabsm::Snapshot::is_snapshot_name_or_die;
 
     lives_and { is $f->('yabsm-2020_05_13_23:59'), 1 } "$n - succeeds with 1";
     lives_and { is $f->('.BOOTSTRAP-yabsm-2020_05_13_23:59', ALLOW_BOOTSTRAP => 1), 1 } "$n - accepts .BOOTSTRAP prefix";
@@ -90,7 +90,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'snapshot_name_nums';
-    my $f = \&Yabsm::Snapshot::snapshot_name_nums;
+    my $f = \&App::Yabsm::Snapshot::snapshot_name_nums;
 
     is_deeply([ $f->('yabsm-2020_05_13_23:59') ], [2020,5,13,23,59], "$n - produces correct number list");
     throws_ok { $f->('yabsm-2020_5_13_23:59') } qr/'yabsm-2020_5_13_23:59' is not a valid yabsm snapshot name/, "$n - dies if passed invalid snapshot name";
@@ -98,7 +98,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'nums_to_snapshot_name';
-    my $f = \&Yabsm::Snapshot::nums_to_snapshot_name;
+    my $f = \&App::Yabsm::Snapshot::nums_to_snapshot_name;
 
     is($f->(2020, 5, 13, 1, 5), 'yabsm-2020_05_13_01:05', "$n - produces snapshot name");
     throws_ok { $f->(2020, 13, 13, 1, 5) } qr/'2020_13_13_01:05' does not denote a valid yr_mon_day_hr:min date/, "$n - dies if invalid snapshot name";
@@ -106,7 +106,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'current_time_snapshot_name';
-    my $f = \&Yabsm::Snapshot::current_time_snapshot_name;
+    my $f = \&App::Yabsm::Snapshot::current_time_snapshot_name;
 
     my $t = localtime();
 
@@ -118,7 +118,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'cmp_snapshots';
-    my $f = \&Yabsm::Snapshot::cmp_snapshots;
+    my $f = \&App::Yabsm::Snapshot::cmp_snapshots;
 
     my $snap1 = 'yabsm-2022_05_14_10:30';
     my $snap2 = 'yabsm-2022_05_13_10:30';
@@ -133,7 +133,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'sort_snapshots';
-    my $f = \&Yabsm::Snapshot::sort_snapshots;
+    my $f = \&App::Yabsm::Snapshot::sort_snapshots;
 
     my @snaps        = ('yabsm-2022_05_13_10:30', 'yabsm-2022_05_13_11:30', 'yabsm-2022_05_13_09:30');
     my @snaps_sorted = ('yabsm-2022_05_13_11:30', 'yabsm-2022_05_13_10:30', 'yabsm-2022_05_13_09:30');
@@ -151,7 +151,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'snapshots_eq';
-    my $f = \&Yabsm::Snapshot::snapshots_eq;
+    my $f = \&App::Yabsm::Snapshot::snapshots_eq;
 
     my $snap1 = 'yabsm-2022_05_13_23:59';
     my $snap2 = 'yabsm-2021_05_13_23:59';
@@ -162,7 +162,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'snapshot_newer';
-    my $f = \&Yabsm::Snapshot::snapshot_newer;
+    my $f = \&App::Yabsm::Snapshot::snapshot_newer;
 
     my $snap1 = 'yabsm-2022_05_13_23:59';
     my $snap2 = 'yabsm-2021_05_13_23:59';
@@ -174,7 +174,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'snapshot_older';
-    my $f = \&Yabsm::Snapshot::snapshot_older;
+    my $f = \&App::Yabsm::Snapshot::snapshot_older;
 
     my $snap1 = 'yabsm-2022_05_13_23:59';
     my $snap2 = 'yabsm-2021_05_13_23:59';
@@ -186,7 +186,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'snapshot_newer_or_eq';
-    my $f = \&Yabsm::Snapshot::snapshot_newer_or_eq;
+    my $f = \&App::Yabsm::Snapshot::snapshot_newer_or_eq;
 
     my $snap1 = 'yabsm-2022_05_13_23:59';
     my $snap2 = 'yabsm-2021_05_13_23:59';
@@ -198,7 +198,7 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n = 'snapshot_older_or_eq';
-    my $f = \&Yabsm::Snapshot::snapshot_older_or_eq;
+    my $f = \&App::Yabsm::Snapshot::snapshot_older_or_eq;
 
     my $snap1 = 'yabsm-2022_05_13_23:59';
     my $snap2 = 'yabsm-2021_05_13_23:59';
@@ -210,16 +210,16 @@ if ($BTRFS_SUBVOLUME) {
 
 {
     my $n_take = 'take_snapshot';
-    my $f_take = \&Yabsm::Snapshot::take_snapshot;
+    my $f_take = \&App::Yabsm::Snapshot::take_snapshot;
 
     my $n_del  = 'delete_snapshot';
-    my $f_del  = \&Yabsm::Snapshot::delete_snapshot;
+    my $f_del  = \&App::Yabsm::Snapshot::delete_snapshot;
     
     my $n_is_yabsm_snap = 'is_yabsm_snapshot';
-    my $f_is_yabsm_snap = \&Yabsm::Snapshot::is_yabsm_snapshot;
+    my $f_is_yabsm_snap = \&App::Yabsm::Snapshot::is_yabsm_snapshot;
 
     my $n_is_yabsm_snap_od = 'is_yabsm_snapshot_or_die';
-    my $f_is_yabsm_snap_od = \&Yabsm::Snapshot::is_yabsm_snapshot_or_die;
+    my $f_is_yabsm_snap_od = \&App::Yabsm::Snapshot::is_yabsm_snapshot_or_die;
 
     my $snapshot;
 

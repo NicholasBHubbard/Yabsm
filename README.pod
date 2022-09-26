@@ -9,7 +9,7 @@ management system that provides the following features.
 
 =item *
 
-Takes read only snapshots and performs remote and local incremental backups.
+Takes read only snapshots and performs both remote and local incremental backups.
 
 =item *
 

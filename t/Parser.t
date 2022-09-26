@@ -18,8 +18,7 @@ use File::Temp 'tempfile';
 
 # Change to directory of this test script. Needed to find the test configs.
 use File::Basename qw(basename dirname);
-use File::chdir;
-local $CWD = dirname(__FILE__);
+chdir(dirname(__FILE__));
 
 # Test that all valid configs are accepted.
 foreach my $config (glob "test-configs/valid/*") {

@@ -71,7 +71,7 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
                  ####################################
 
 my $n = 'do_snap';
-my $f = \&Yabsm::Snap::do_snap;
+my $f = \&App::Yabsm::Snap::do_snap;
 
 my $SNAP_DIR = "$BTRFS_DIR/foo_snap/5minute";
 my $SNAP = "$SNAP_DIR/" . current_time_snapshot_name();
@@ -84,11 +84,11 @@ lives_and { is $f->('foo_snap', '5minute', \%TEST_CONFIG), $SNAP } "$n - takes s
 
 cleanup_snapshots();
 
-Yabsm::Snapshot::take_snapshot($BTRFS_SUBVOLUME, $SNAP_DIR, 'yabsm-2020_05_13_23:59');
-Yabsm::Snapshot::take_snapshot($BTRFS_SUBVOLUME, $SNAP_DIR, 'yabsm-1999_05_13_23:59');
-Yabsm::Snapshot::take_snapshot($BTRFS_SUBVOLUME, $SNAP_DIR, 'yabsm-1998_05_13_23:59');
+App::Yabsm::Snapshot::take_snapshot($BTRFS_SUBVOLUME, $SNAP_DIR, 'yabsm-2020_05_13_23:59');
+App::Yabsm::Snapshot::take_snapshot($BTRFS_SUBVOLUME, $SNAP_DIR, 'yabsm-1999_05_13_23:59');
+App::Yabsm::Snapshot::take_snapshot($BTRFS_SUBVOLUME, $SNAP_DIR, 'yabsm-1998_05_13_23:59');
 
-lives_and { $f->('foo_snap', '5minute', \%TEST_CONFIG); is_deeply [Yabsm::Snapshot::sort_snapshots([glob "$SNAP_DIR/*"])], [$SNAP, "$SNAP_DIR/yabsm-2020_05_13_23:59"] } "$n - deletes old snapshots";
+lives_and { $f->('foo_snap', '5minute', \%TEST_CONFIG); is_deeply [App::Yabsm::Snapshot::sort_snapshots([glob "$SNAP_DIR/*"])], [$SNAP, "$SNAP_DIR/yabsm-2020_05_13_23:59"] } "$n - deletes old snapshots";
 
 done_testing();
 
@@ -101,7 +101,7 @@ sub cleanup_snapshots {
     opendir(my $dh, $SNAP_DIR) if -d $SNAP_DIR;
     if ($dh) {
         for (map { $_ = "$SNAP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
-            Yabsm::Snapshot::delete_snapshot($_);
+            App::Yabsm::Snapshot::delete_snapshot($_);
         }
     }
 

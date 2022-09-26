@@ -21,7 +21,7 @@ use Test::More;
 use Test::Exception;
 
 use Net::OpenSSH;
-use File::Temp 'tempdir';
+use File::Temp qw(tempdir);
 use File::Basename qw(basename dirname);
 
 use Getopt::Long qw(:config no_ignore_case no_auto_abbrev);
@@ -79,11 +79,11 @@ my %TEST_CONFIG = ( yabsm_dir   => $BTRFS_DIR
                                    }
                   );
 
-my $BACKUP_DIR      = Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', '5minute', \%TEST_CONFIG);
-my $BACKUP_DIR_BASE = Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', undef, \%TEST_CONFIG);
-my $BACKUP          = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_name();
-my $BOOTSTRAP_DIR   = Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
-my $TMP_DIR         = Yabsm::Backup::Generic::tmp_snapshot_dir('foo_ssh_backup','ssh','5minute',\%TEST_CONFIG);
+my $BACKUP_DIR      = App::Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', '5minute', \%TEST_CONFIG);
+my $BACKUP_DIR_BASE = App::Yabsm::Config::Query::ssh_backup_dir('foo_ssh_backup', undef, \%TEST_CONFIG);
+my $BACKUP          = "$BACKUP_DIR/" . App::Yabsm::Snapshot::current_time_snapshot_name();
+my $BOOTSTRAP_DIR   = App::Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_ssh_backup','ssh',\%TEST_CONFIG);
+my $TMP_DIR         = App::Yabsm::Backup::Generic::tmp_snapshot_dir('foo_ssh_backup','ssh','5minute',\%TEST_CONFIG);
 
                  ####################################
                  #               TESTS              #
@@ -93,17 +93,17 @@ my $n;
 my $f;
 
 $n = 'new_ssh_conn';
-$f = \&Yabsm::Backup::SSH::new_ssh_conn;
+$f = \&App::Yabsm::Backup::SSH::new_ssh_conn;
 throws_ok { $f->('quux', \%TEST_CONFIG) } qr/no ssh_backup named 'quux'/, "$n - dies if non-existent ssh_backup";
 
 $n = 'ssh_system_or_die';
-$f = \&Yabsm::Backup::SSH::ssh_system_or_die;
+$f = \&App::Yabsm::Backup::SSH::ssh_system_or_die;
 lives_and { is $f->($SSH, 'echo foo'), "foo\n" } "$n - returns correct output in scalar context";
 lives_and { is_deeply [$f->($SSH, 'echo foo; echo bar')], ["foo\n","bar\n"] } "$n - returns correct output in list context";
 throws_ok { $f->($SSH, 'false') } qr/remote command 'false' failed/, "$n - dies if command fails";
 
 $n = 'check_ssh_backup_config_or_die';
-$f = \&Yabsm::Backup::SSH::check_ssh_backup_config_or_die;
+$f = \&App::Yabsm::Backup::SSH::check_ssh_backup_config_or_die;
 throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory '$BACKUP_DIR_BASE' that is readable\+writable by user 'yabsm'/, "$n - dies unless backup dir exists";
 make_path_or_die($BACKUP_DIR_BASE);
 throws_ok { $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } qr/no directory '$BACKUP_DIR_BASE' that is readable\+writable by user 'yabsm'/, "$n - dies unless backup dir is readable and writable by remote user";
@@ -111,35 +111,35 @@ system_or_die(qq(chown -R yabsm '$BTRFS_DIR'));
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), 1 } "$n - lives if properly configured";
 
 $n = 'the_remote_bootstrap_snapshot';
-$f = \&Yabsm::Backup::SSH::the_remote_bootstrap_snapshot;
+$f = \&App::Yabsm::Backup::SSH::the_remote_bootstrap_snapshot;
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), undef } "$n - returns undef if no remote boot snap";
 
 $n = 'do_ssh_backup';
-$f = \&Yabsm::Backup::SSH::do_ssh_backup;
-throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$BOOTSTRAP_DIR' that is readable by user/, "$n - dies if bootstrap dir doesn't exist";
-make_path_or_die($BOOTSTRAP_DIR);
+$f = \&App::Yabsm::Backup::SSH::do_ssh_backup;
 throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$TMP_DIR' that is readable by user/, "$n - dies if tmp dir doesn't exist";
 make_path_or_die($TMP_DIR);
+throws_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } qr/no directory '$BOOTSTRAP_DIR' that is readable by user/, "$n - dies if bootstrap dir doesn't exist";
+make_path_or_die($BOOTSTRAP_DIR);
 lives_ok { $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG) } "$n - performs successful bootstrap";
-my $lock_file = Yabsm::Backup::Generic::create_bootstrap_lock_file('foo_ssh_backup', 'ssh', \%TEST_CONFIG);
+my $lock_file = App::Yabsm::Backup::Generic::create_bootstrap_lock_file('foo_ssh_backup', 'ssh', \%TEST_CONFIG);
 lives_and { is $f->($SSH, 'foo_ssh_backup', '5minute', \%TEST_CONFIG), undef } "$n - returns undef if bootstrap lock file exists";
 
 $n = 'do_ssh_backup_bootstrap';
-$f = \&Yabsm::Backup::SSH::do_ssh_backup_bootstrap;
+$f = \&App::Yabsm::Backup::SSH::do_ssh_backup_bootstrap;
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), undef } "$n - returns undef if lock file exists";
 unlink $lock_file;
 sleep 60;
 my $got_boot_snap;
-my $expected_boot_snap = "$BOOTSTRAP_DIR/.BOOTSTRAP-".Yabsm::Snapshot::current_time_snapshot_name();
+my $expected_boot_snap = "$BOOTSTRAP_DIR/.BOOTSTRAP-".App::Yabsm::Snapshot::current_time_snapshot_name();
 lives_ok { $got_boot_snap = $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG) } "$n - performs another successful bootstrap";
 is $got_boot_snap, $expected_boot_snap, "$n - replaces old bootstrap snapshot";
 
 $n = 'the_remote_bootstrap_snapshot';
-$f = \&Yabsm::Backup::SSH::the_remote_bootstrap_snapshot;
+$f = \&App::Yabsm::Backup::SSH::the_remote_bootstrap_snapshot;
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), "$BACKUP_DIR_BASE/".basename($expected_boot_snap) } "$n - returns correct remote boot snap";
 
 $n = 'maybe_do_ssh_backup_bootstrap';
-$f = \&Yabsm::Backup::SSH::maybe_do_ssh_backup_bootstrap;
+$f = \&App::Yabsm::Backup::SSH::maybe_do_ssh_backup_bootstrap;
 sleep 60;
 lives_and { is $f->($SSH, 'foo_ssh_backup', \%TEST_CONFIG), $expected_boot_snap } "$n - doesn't do bootstrap if already done";
 
@@ -155,7 +155,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$BACKUP_DIR_BASE/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }
@@ -164,7 +164,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$BOOTSTRAP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }
@@ -173,7 +173,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$TMP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }
@@ -182,7 +182,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$BACKUP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }

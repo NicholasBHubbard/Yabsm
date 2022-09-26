@@ -23,7 +23,7 @@ use Time::Piece;
 
 {
     my $n = 'n_units_ago_snapshot_name';
-    my $f = \&Yabsm::Command::Find::n_units_ago_snapshot_name;
+    my $f = \&App::Yabsm::Command::Find::n_units_ago_snapshot_name;
 
     my $t = localtime;
     my ($yr, $mon, $day, $hr, $min) = ($t->year, $t->mon, $t->mday, $t->hour, $t->min);
@@ -59,7 +59,7 @@ use Time::Piece;
 
 {
     my $n = 'parse_query_or_die';
-    my $f = \&Yabsm::Command::Find::parse_query_or_die;
+    my $f = \&App::Yabsm::Command::Find::parse_query_or_die;
 
     my $t = localtime;
     my ($yr, $mon, $day) = map { sprintf '%02d', $_ } $t->year, $t->mon, $t->mday;
@@ -76,16 +76,16 @@ use Time::Piece;
     lives_and { is_deeply $f->('13_1:40'), { type => 'closest', target => "yabsm-${yr}_${mon}_13_01:40" } } "$n - parses 'day_hr:min'";
     lives_and { is_deeply $f->('23:59'), { type => 'closest', target => "yabsm-${yr}_${mon}_${day}_23:59" } } "$n - parses 'hr:min'";
 
-    lives_and { is_deeply $f->('back-10-m'), { type => 'closest', target => Yabsm::Command::Find::n_units_ago_snapshot_name(10, 'm') } } "$n - basic relative target";
-    lives_and { is_deeply $f->('b-10-m'), { type => 'closest', target => Yabsm::Command::Find::n_units_ago_snapshot_name(10, 'm') } } "$n - relative with 'b' abbreviation";
+    lives_and { is_deeply $f->('back-10-m'), { type => 'closest', target => App::Yabsm::Command::Find::n_units_ago_snapshot_name(10, 'm') } } "$n - basic relative target";
+    lives_and { is_deeply $f->('b-10-m'), { type => 'closest', target => App::Yabsm::Command::Find::n_units_ago_snapshot_name(10, 'm') } } "$n - relative with 'b' abbreviation";
 
     lives_and { is_deeply $f->('before 2020_5_13_23:59'), { type => 'before', target => 'yabsm-2020_05_13_23:59'} } "$n - parses before query";
-    lives_and { is_deeply $f->('before b-10-h'), { type => 'before', target => Yabsm::Command::Find::n_units_ago_snapshot_name(10,'hours') } } "$n - parses before query";
+    lives_and { is_deeply $f->('before b-10-h'), { type => 'before', target => App::Yabsm::Command::Find::n_units_ago_snapshot_name(10,'hours') } } "$n - parses before query";
 
     lives_and { is_deeply $f->('after 2020_5_13_23:59'), { type => 'after', target => 'yabsm-2020_05_13_23:59'} } "$n - parses after query";
-    lives_and { is_deeply $f->('after b-10-h'), { type => 'after', target => Yabsm::Command::Find::n_units_ago_snapshot_name(10,'hours') } } "$n - parses after query";
+    lives_and { is_deeply $f->('after b-10-h'), { type => 'after', target => App::Yabsm::Command::Find::n_units_ago_snapshot_name(10,'hours') } } "$n - parses after query";
 
-    lives_and { is_deeply $f->('between b-10-h 2020_5_13_23:59'), { type => 'between', target1 => Yabsm::Command::Find::n_units_ago_snapshot_name(10,'hours'), target2 => 'yabsm-2020_05_13_23:59' } } "$n - parses between query";
+    lives_and { is_deeply $f->('between b-10-h 2020_5_13_23:59'), { type => 'between', target1 => App::Yabsm::Command::Find::n_units_ago_snapshot_name(10,'hours'), target2 => 'yabsm-2020_05_13_23:59' } } "$n - parses between query";
 
     throws_ok { $f->('quux') } qr/expected <time-abbreviation> or one of 'all', 'newest', 'oldest', 'before', 'after', 'between'/, "$n - rejects invalid query";
 
@@ -111,7 +111,7 @@ use Time::Piece;
 
 {
     my $n = 'answer_newest_query';
-    my $f = \&Yabsm::Command::Find::answer_newest_query;
+    my $f = \&App::Yabsm::Command::Find::answer_newest_query;
 
     my @snapshots = ('/foo/yabsm-2023_05_13_23:59', '/foo/yabsm-2022_05_13_23:59', '/foo/yabsm-2021_05_13_23:59', '/foo/yabsm-2020_05_13_23:59', '/foo/yabsm-2019_05_13_23:59',  '/foo/yabsm-2018_05_13_23:59');
 
@@ -121,7 +121,7 @@ use Time::Piece;
 
 {
     my $n = 'answer_oldest_query';
-    my $f = \&Yabsm::Command::Find::answer_oldest_query;
+    my $f = \&App::Yabsm::Command::Find::answer_oldest_query;
 
     my @snapshots = ('/foo/yabsm-2023_05_13_23:59', '/foo/yabsm-2022_05_13_23:59', '/foo/yabsm-2021_05_13_23:59', '/foo/yabsm-2020_05_13_23:59', '/foo/yabsm-2019_05_13_23:59',  '/foo/yabsm-2018_05_13_23:59');
 
@@ -131,7 +131,7 @@ use Time::Piece;
 
 {
     my $n = 'answer_after_query';
-    my $f = \&Yabsm::Command::Find::answer_after_query;
+    my $f = \&App::Yabsm::Command::Find::answer_after_query;
 
     my @snapshots = ('/foo/yabsm-2023_05_13_23:59', '/foo/yabsm-2022_05_13_23:59', '/foo/yabsm-2021_05_13_23:59', '/foo/yabsm-2020_05_13_23:59', '/foo/yabsm-2019_05_13_23:59',  '/foo/yabsm-2018_05_13_23:59');
 
@@ -141,7 +141,7 @@ use Time::Piece;
 
 {
     my $n = 'answer_before_query';
-    my $f = \&Yabsm::Command::Find::answer_before_query;
+    my $f = \&App::Yabsm::Command::Find::answer_before_query;
 
     my @snapshots = ('/foo/yabsm-2023_05_13_23:59', '/foo/yabsm-2022_05_13_23:59', '/foo/yabsm-2021_05_13_23:59', '/foo/yabsm-2020_05_13_23:59', '/foo/yabsm-2019_05_13_23:59',  '/foo/yabsm-2018_05_13_23:59');
 
@@ -151,7 +151,7 @@ use Time::Piece;
 
 {
     my $n = 'answer_between_query';
-    my $f = \&Yabsm::Command::Find::answer_between_query;
+    my $f = \&App::Yabsm::Command::Find::answer_between_query;
 
     my @snapshots = ('/foo/yabsm-2023_05_13_23:59', '/foo/yabsm-2022_05_13_23:59', '/foo/yabsm-2021_05_13_23:59', '/foo/yabsm-2020_05_13_23:59', '/foo/yabsm-2019_05_13_23:59',  '/foo/yabsm-2018_05_13_23:59');
 
@@ -163,7 +163,7 @@ use Time::Piece;
 
 {
     my $n = 'answer_closest_query';
-    my $f = \&Yabsm::Command::Find::answer_closest_query;
+    my $f = \&App::Yabsm::Command::Find::answer_closest_query;
 
     my @snapshots = ('/foo/yabsm-2023_05_13_23:59', '/foo/yabsm-2020_05_13_23:59', '/foo/yabsm-2019_05_13_23:59', '/foo/yabsm-2017_05_13_23:59');
 

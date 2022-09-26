@@ -69,7 +69,7 @@ END_HELP
 sub main {
 
     if (@_ == 1) {
-        shift =~ /^(-h|--help)$/ or die_usage();
+        shift =~ /^(-h|--help)$/ or die usage();
         help();
     }
 

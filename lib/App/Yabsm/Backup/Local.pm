@@ -2,7 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Function for performing local btrfs incremental backups.
+#  Provides the &do_local_backup subroutine, which performs a single
+#  local_backup. This is a top-level subroutine that is directly scheduled to be
+#  run by the daemon.
 
 use strict;
 use warnings;

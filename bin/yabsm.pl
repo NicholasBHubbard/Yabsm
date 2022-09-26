@@ -6,6 +6,8 @@
 
 #  The toplevel script of Yabsm.
 
+#  ABSTRACT: a btrfs snapshot and backup management system
+
 our $VERSION = '3.11';
 
 use strict;

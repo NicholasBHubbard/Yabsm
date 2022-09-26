@@ -70,11 +70,11 @@ my %TEST_CONFIG = ( yabsm_dir   => "$BTRFS_DIR"
                                    }
                   );
 
-my $BACKUP_DIR      = Yabsm::Config::Query::local_backup_dir('foo_local_backup', '5minute', \%TEST_CONFIG);
+my $BACKUP_DIR      = App::Yabsm::Config::Query::local_backup_dir('foo_local_backup', '5minute', \%TEST_CONFIG);
 my $BACKUP_DIR_BASE = dirname($BACKUP_DIR);
-my $BOOTSTRAP_DIR   = Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_local_backup','local',\%TEST_CONFIG);
-my $TMP_DIR         = Yabsm::Backup::Generic::tmp_snapshot_dir('foo_local_backup','local','5minute',\%TEST_CONFIG);
-my $BACKUP          = "$BACKUP_DIR/" . Yabsm::Snapshot::current_time_snapshot_name();
+my $BOOTSTRAP_DIR   = App::Yabsm::Backup::Generic::bootstrap_snapshot_dir('foo_local_backup','local',\%TEST_CONFIG);
+my $TMP_DIR         = App::Yabsm::Backup::Generic::tmp_snapshot_dir('foo_local_backup','local','5minute',\%TEST_CONFIG);
+my $BACKUP          = "$BACKUP_DIR/" . App::Yabsm::Snapshot::current_time_snapshot_name();
 
 make_path_or_die($BACKUP_DIR);
 make_path_or_die($BOOTSTRAP_DIR);
@@ -87,34 +87,34 @@ make_path_or_die($TMP_DIR);
 my $n;
 my $f;
 
-my $lock_file = Yabsm::Backup::Generic::create_bootstrap_lock_file('foo_local_backup', 'local', \%TEST_CONFIG);
+my $lock_file = App::Yabsm::Backup::Generic::create_bootstrap_lock_file('foo_local_backup', 'local', \%TEST_CONFIG);
 
 $n = 'do_local_backup_bootstrap';
-$f = \&Yabsm::Backup::Local::do_local_backup_bootstrap;
+$f = \&App::Yabsm::Backup::Local::do_local_backup_bootstrap;
 
 lives_and { is $f->('foo_local_backup', \%TEST_CONFIG), undef } "$n - returns undef if bootstrap lock file exists";
 
 unlink $lock_file;
 
-my $expected_boot_snap = "$BOOTSTRAP_DIR/.BOOTSTRAP-".Yabsm::Snapshot::current_time_snapshot_name();
+my $expected_boot_snap = "$BOOTSTRAP_DIR/.BOOTSTRAP-".App::Yabsm::Snapshot::current_time_snapshot_name();
 
 lives_and { is $f->('foo_local_backup', \%TEST_CONFIG), $expected_boot_snap } "$n - performs successful bootstrap";
 
 $n = 'the_remote_bootstrap_snapshot';
-$f = \&Yabsm::Backup::Local::the_remote_bootstrap_snapshot;
+$f = \&App::Yabsm::Backup::Local::the_remote_bootstrap_snapshot;
 
 lives_and { is $f->('foo_local_backup', \%TEST_CONFIG), "$BACKUP_DIR_BASE/".basename($expected_boot_snap) } "$n - returns correct remote boot snap";
 
 $n = 'maybe_do_local_backup_bootstrap';
-$f = \&Yabsm::Backup::Local::maybe_do_local_backup_bootstrap;
+$f = \&App::Yabsm::Backup::Local::maybe_do_local_backup_bootstrap;
 
 sleep 60;
 lives_and { is $f->('foo_local_backup', \%TEST_CONFIG), $expected_boot_snap } "$n - doesn't redo bootstrap";
 
 $n = 'do_local_backup';
-$f = \&Yabsm::Backup::Local::do_local_backup;
+$f = \&App::Yabsm::Backup::Local::do_local_backup;
 
-my $expected_backup = "$BACKUP_DIR/".Yabsm::Snapshot::current_time_snapshot_name();
+my $expected_backup = "$BACKUP_DIR/".App::Yabsm::Snapshot::current_time_snapshot_name();
 lives_and { is $f->('foo_local_backup', '5minute', \%TEST_CONFIG), $expected_backup } "$n - performs backup";
 
 done_testing();
@@ -129,7 +129,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$BACKUP_DIR_BASE/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }
@@ -138,7 +138,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$BOOTSTRAP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }
@@ -147,7 +147,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$TMP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }
@@ -156,7 +156,7 @@ sub cleanup_snapshots {
     if ($dh) {
         for (map { $_ = "$BACKUP_DIR/$_" } grep { $_ !~ /^(\.\.|\.)$/ } readdir($dh) ) {
             if (is_btrfs_subvolume($_)) {
-                Yabsm::Snapshot::delete_snapshot($_)
+                App::Yabsm::Snapshot::delete_snapshot($_)
             }
         }
     }

@@ -48,9 +48,9 @@ sub unabbreviate_cmd {
 
 # subcommand dispatch table
 my %run_subcommand = (
-    'config' => \&Yabsm::Command::Config::main,
-    'find'   => \&Yabsm::Command::Find::main,
-    'daemon' => \&Yabsm::Command::Daemon::main
+    'config' => \&App::Yabsm::Command::Config::main,
+    'find'   => \&App::Yabsm::Command::Find::main,
+    'daemon' => \&App::Yabsm::Command::Daemon::main
 );
 
                  ####################################

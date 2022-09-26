@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Implementation of the Yabsm daemon.
+#  The Yabsm daemon.
 
 use strict;
 use warnings;

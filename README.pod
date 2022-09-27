@@ -72,7 +72,7 @@ TODO
     
     <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
-As we can see yabsm provides 3 commands: L<config|/"Configuration Querying">,
+Yabsm provides 3 commands: L<config|/"Configuration Querying">,
 L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 
 =head1 The Yabsm Daemon

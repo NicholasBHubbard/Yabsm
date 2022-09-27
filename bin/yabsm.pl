@@ -67,7 +67,7 @@ if ($cmd eq '--version') { say $VERSION and exit 0 }
 
 $cmd = unabbreviate_cmd($cmd);
 
-exists $run_subcommand{ $cmd} || (usage() and exit 1);
+exists $run_subcommand{ $cmd } || (usage() and exit 1);
 
 $run_subcommand{ $cmd }->(@ARGV);
 

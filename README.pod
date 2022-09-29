@@ -59,17 +59,17 @@ TODO
 =head1 Usage
 
     usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
-    
+
     see `man yabsm` for a detailed overview of yabsm.
-    
+
     commands:
-    
+
     <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
                [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
                [local_backups] [backups]
-    
+
     <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
-    
+
     <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
 Yabsm provides 3 commands: L<config|/"Configuration Querying">,
@@ -80,15 +80,15 @@ L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
     usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
 Snapshots and backups are performed by the Yabsm daemon. The Yabsm daemon must be
-started as root so it can initialize its runtime environment, which includes
+started as root so it can initialize it's runtime environment, which includes
 creating a locked user named I<yabsm> (and a group named I<yabsm>) that the
 daemon will run as. You can initialize the daemons runtime environment without
 actually starting the daemon by running C<yabsm daemon init>.
 
 When the daemon starts it reads the C</etc/yabsm.conf> file that specifies its
 L<configuration|/"Configuration"> to determine when to schedule the snapshots and
-backups and how to perform them. If the Yabsm daemon is already running and you 
-make a configuration change, you must run C<yabsm daemon restart> to apply the 
+backups and how to perform them. If the Yabsm daemon is already running and you
+make a configuration change, you must run C<yabsm daemon restart> to apply the
 changes.
 
 =head2 Configuration
@@ -104,18 +104,19 @@ output useful error messages if there are any problems.
 
 Please browse through the L<example configurations|TODO> for inspiration.
 
-=head3 Configuration Grammar 
+=head3 Configuration Grammar
 
 First things first: You must specify a C<yabsm_dir> that Yabsm will use for
-storing snapshots, and use as a cache for holding data needed for performing
+storing snapshots, and as a cache for holding data needed for performing
 snapshots and backups. Most commonly this directory is set to
 C</.snapshots/yabsm>. Yabsm will take this directory literally so you almost
 certainly want the path to end in C</yabsm>. If this directory does not exist the
 Yabsm daemon will create it automatically when it starts. From here on we will
 refer to this directory as I<$YABSM_DIR>.
 
-There are 4 different configuration objects: I<subvols>, I<snaps>, I<ssh_backups>,
-and I<local_backups>. The general form of each configuration object is:
+There are 4 different configuration objects: I<subvols>, I<snaps>,
+I<ssh_backups>, and I<local_backups>. The general form of each configuration
+object is:
 
     type name {
         key=val
@@ -125,7 +126,7 @@ and I<local_backups>. The general form of each configuration object is:
 =head4 Subvols
 
 A subvol is the simplest configuration object, and is used to give a name to a
-L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes> 
+L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes>
 on your system. A subvol definition accepts one field named C<mountpoint> which
 takes a value that is a path to a subvolume.
 
@@ -137,14 +138,14 @@ takes a value that is a path to a subvolume.
 
 We need to understand timeframes before we can understand I<snaps>,
 I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
-daily, weekly, and monthly. 
+daily, weekly, and monthly.
 
 I<snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
 timeframes. For example a I<ssh_backup> may be configured to take backups in the
 I<hourly> and I<weekly> categories, which means that we want to backup every hour
 and once a week.
 
-The following table describes in English what each timeframe means.
+The following table describes in plain English what each timeframe means:
 
     5minute -> Every 5 minutes.
     hourly  -> At the beginning of every hour.
@@ -158,7 +159,7 @@ that you want every timeframe:
 
     timeframes=5minute,hourly,daily,weekly,monthly
 
-Each timeframe you specify adds new required settings for the configuration 
+Each timeframe you specify adds new required settings for the configuration
 object. Here is a table that shows the timeframe settings:
 
     5minute -> 5minute_keep
@@ -166,9 +167,9 @@ object. Here is a table that shows the timeframe settings:
     daily   -> daily_keep,   daily_times
     weekly  -> weekly_keep,  weekly_time,  weekly_day
     monthly -> monthly_keep, monthly_time, monthly_day
- 
+
 Any C<*_keep> setting defines how many snapshots/backups you want to keep at one
-time for the configuration object. A common configuration is to keep 48 hourly 
+time for the configuration object. A common configuration is to keep 48 hourly
 snapshots so you can go back 2 days in one-hour increments.
 
 The C<daily_times> setting for daily snapshots takes a comma seperated list of
@@ -182,7 +183,7 @@ on the given day of the week at the given time.
 
 The monthly timeframe requires a C<monthly_day> setting that takes an integer
 between 1-31 and a C<monthly_time> setting that takes a I<hh:mm> time. The
-monthly snapshot/backup will be performed on the given day of the month at the 
+monthly snapshot/backup will be performed on the given day of the month at the
 given time.
 
 =head4 Snaps
@@ -197,7 +198,7 @@ example of a I<snap> that snapshots I<home_subvol> twice a day.
         daily_times=13:40,23:59
     }
 
-=head4 SSH Backups 
+=head4 SSH Backups
 
 A I<ssh_backup> represents a backup configuration that sends snapshots over a
 network via SSH. See this example of a I<ssh_backup> that backs up I<home_subvol>
@@ -209,7 +210,7 @@ to C<larry@192.168.1.73:/backups/yabsm/laptop_home> every night at midnight:
         dir=/backups/yabsm/laptop_home
         timeframes=daily
         daily_keep=31
-        daily_times=23:59 
+        daily_times=23:59
     }
 
 The difficult part of configuring a I<ssh_backup> is making sure the SSH server
@@ -221,19 +222,15 @@ able to be performed the following conditions must be satisfied:
 
 =item *
 
-The hosts I<yabsm> user can sign into the SSH destination (I<ssh_dest>) using key
-based authentication. To achieve this you must add the I<yabsm> users SSH key
-(available via C<# yabsm ssh print-key>) to the SSH user's
+The host's I<yabsm> user can sign into the SSH destination (I<ssh_dest>) using
+key based authentication. To achieve this you must add the I<yabsm> users SSH key
+(available via C<# yabsm ssh print-key>) to the server user's
 C<$HOME/.ssh/authorized_keys> file.
 
 =item *
 
 The remote backup directory (I<dir>) is an existing directory residing on a btrfs
-filesystem.
-
-=item *
-
-The SSH user has read and write permission on the backup directory.
+filesystem that the remote user has read and write permissions to.
 
 =item *
 
@@ -246,10 +243,10 @@ a file in C</etc/sudoers.d/>.
 =head4 Local Backups
 
 A I<local_backup> represents a backup configuration that sends snapshots to a
-partition mounted on the host OS. This is useful for sending snapshots to, for
-example, a external hard drive plugged into your computer.
+partition mounted on the host OS. This is useful for sending snapshots to an
+external hard drive plugged into your computer.
 
-Here is an example I<local_backup> that backs up C<home_subvol> every hour, and 
+Here is an example I<local_backup> that backs up C<home_subvol> every hour, and
 once a week.
 
     local_backup home_subvol_easystore {
@@ -263,7 +260,7 @@ once a week.
     }
 
 The backup directory (C<dir>) must be an existing directory residing on a btrfs
-filesystem.
+filesystem that the I<yabsm> user has read permission on.
 
 =head4 Initialize Daemon Runtime Environment
 
@@ -281,7 +278,7 @@ do is check the logs.
 
 =head1 Configuration Querying
 
-Yabsm comes with a C<config> command that allows you to check and query your 
+Yabsm comes with a C<config> command that allows you to check and query your
 configuration.
 
     yabsm <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
@@ -293,7 +290,7 @@ file and if not prints useful error messages. If the C<?file> argument is omitte
 it defaults to C</etc/yabsm.conf>.
 
 The C<ssh-check E<lt>SSH_BACKUPE<gt>> subcommand checks that C<E<lt>SSH_BACKUPE<gt>> can be
-performed and if not prints useful error messages. See the section 
+performed and if not prints useful error messages. See the section
 L<SSH Backups|/"SSH Backups"> for an explanation on the configuration required
 for performing an I<ssh_backup>.
 
@@ -319,6 +316,12 @@ string for the C<find> command.
 
     yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
+Here are few examples:
+
+    $ yabsm find home_snap back-2-mins
+    $ yabsm f root_ssh_backup 'after b-2-m'
+    $ yabsm f home_local_backup 10:45
+
 The first argument is the name of any I<snap>, I<ssh_backup>, or I<local_backup>.
 Because these configuration entities share the same namespace there is no risk of
 ambiguity.
@@ -337,14 +340,14 @@ The second argument is a snapshot location query. There are 7 types of queries:
 
 In the list above the C<TIME> variables stand for a I<time abbreviation>.
 
-There are two different kinds of I<time abbreviations>: I<relative times> and 
+There are two different kinds of I<time abbreviations>: I<relative times> and
 I<immediate times>.
 
 =head3 Relative Times
 
 A relative time comes in the form C<back-AMOUNT-UNIT>, where C<back> can be
-abbreviated to C<b>, C<AMOUNT> is a positive integer, and C<UNIT> is either 
-C<minutes>, C<hours>, or C<days>. Each C<UNIT> can be abbreviated: 
+abbreviated to C<b>, C<AMOUNT> is a positive integer, and C<UNIT> is either
+C<minutes>, C<hours>, or C<days>. Each C<UNIT> can be abbreviated:
 
     minutes -> mins, m
     hours   -> hrs, h
@@ -361,7 +364,7 @@ Here are some English descriptions of I<relative times>.
 
 An I<immediate_time> is an abbreviation for a time/date denoted by C<yr_mon_day_hr:min>.
 
-There are 7 I<immediate_time> forms, the following table gives an example of each 
+There are 7 I<immediate_time> forms, the following table gives an example of each
 form:
 
     yr_mon_day_hr:min -> 2020_5_13_23:59
@@ -379,7 +382,7 @@ then C<23:59> is the same as C<2020_12_25_23:59>.
 
 Security Sudo
 
-Yabsm uses its root permissions at startup to install itself a sudo rule to 
+Yabsm uses its root permissions at startup to install itself a sudo rule to
 /etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
 sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
 

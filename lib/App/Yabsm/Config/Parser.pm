@@ -464,14 +464,14 @@ sub snap_errors {
 
     # Base required settings. Passing 0 to snap_settings_grammar excludes
     # timeframe settings from the returned hash.
-    my @base_required_settings = keys snap_settings_grammar(0);
+    my @base_required_settings = keys %{ snap_settings_grammar(0) };
 
     foreach my $snap (keys %{ $config_ref->{snaps} }) {
 
         # Make sure that the subvol being snapped exists
         my $subvol = $config_ref->{snaps}{$snap}{subvol};
         if (defined $subvol) {
-            unless (grep { $subvol eq $_ } keys $config_ref->{subvols}) {
+            unless (grep { $subvol eq $_ } keys %{ $config_ref->{subvols} }) {
                 push @error_msgs, "yabsm: config error: snap 'snap' is snapshotting up a non-existent subvol '$subvol'";
             }
         }
@@ -507,14 +507,14 @@ sub ssh_backup_errors {
 
     # Base required settings. Passing 0 to ssh_backup_settings_grammar excludes
     # timeframe settings from the returned hash.
-    my @base_required_settings = keys ssh_backup_settings_grammar(0);
+    my @base_required_settings = keys %{ ssh_backup_settings_grammar(0) };
 
     foreach my $ssh_backup (keys %{ $config_ref->{ssh_backups} }) {
 
         # Make sure that the subvol being backed up exists
         my $subvol = $config_ref->{ssh_backups}{$ssh_backup}{subvol};
         if (defined $subvol) {
-            unless (grep { $subvol eq $_ } keys $config_ref->{subvols}) {
+            unless (grep { $subvol eq $_ } keys %{ $config_ref->{subvols} }) {
                 push @error_msgs, "yabsm: config error: ssh_backup '$ssh_backup' is backing up a non-existent subvol '$subvol'";
             }
         }
@@ -550,14 +550,14 @@ sub local_backup_errors {
 
     # Base required settings. Passing 0 to local_backup_settings_grammar
     # excludes timeframe settings from the returned hash.
-    my @base_required_settings = keys local_backup_settings_grammar(0);
+    my @base_required_settings = keys %{ local_backup_settings_grammar(0) };
 
     foreach my $local_backup (keys %{ $config_ref->{local_backups} }) {
 
         # Make sure that the subvol being backed up exists
         my $subvol = $config_ref->{local_backups}{$local_backup}{subvol};
         if (defined $subvol) {
-            unless (grep { $subvol eq $_ } keys $config_ref->{subvols}) {
+            unless (grep { $subvol eq $_ } keys %{ $config_ref->{subvols} }) {
                 push @error_msgs, "yabsm: config error: local_backup '$local_backup' is backing up a non-existent subvol '$subvol'";
             }
         }

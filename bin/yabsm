@@ -46,8 +46,10 @@ sub unabbreviate_cmd {
     else                { return $cmd     }
 }
 
-# subcommand dispatch table
 my %run_subcommand = (
+
+    # subcommand dispatch table
+
     'config' => \&App::Yabsm::Command::Config::main,
     'find'   => \&App::Yabsm::Command::Find::main,
     'daemon' => \&App::Yabsm::Command::Daemon::main

@@ -40,7 +40,7 @@ sub main {
 
     # This is the toplevel subroutine of Yabsm.
 
-    my $cmd = shift @_ || (print usage() and exit 1);
+    my $cmd = shift @_ or die usage();
 
     my @args = @_;
 

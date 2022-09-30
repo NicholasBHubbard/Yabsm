@@ -60,8 +60,6 @@ TODO
 
     usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
 
-    see `man yabsm` for a detailed overview of yabsm.
-
     commands:
 
     <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]

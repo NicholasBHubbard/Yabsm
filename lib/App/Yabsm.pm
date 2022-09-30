@@ -4,7 +4,7 @@
 
 #  ABSTRACT: a btrfs snapshot and backup management system
 #
-#  The toplevel script of Yabsm.
+#  The toplevel module of Yabsm.
 
 use strict;
 use warnings;
@@ -17,8 +17,6 @@ our $VERSION = '3.11';
 use App::Yabsm::Command::Daemon;
 use App::Yabsm::Command::Config;
 use App::Yabsm::Command::Find;
-
-use App::Yabsm::Tools qw(arg_count_or_die);
 
 sub usage {
     return <<'END_USAGE';
@@ -66,15 +64,11 @@ sub main {
     exit 0;
 }
 
-                 ####################################
-                 #              MANUAL              #
-                 ####################################
+1;
+
+__END__
 
 =pod
-
-=head1 Name
-
-Yabsm - yet another btrfs snapshot manager
 
 =head1 What is Yabsm?
 
@@ -109,6 +103,28 @@ command.
 A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
 snapshot that has been transferred to another btrfs filesystem via a combination
 of C<btrfs send> and C<btrfs receive>.
+
+=head1 Dependencies
+
+=over 4
+
+=item *
+
+L<Perl|https://perldoc.perl.org/>
+
+=item *
+
+L<OpenSSH|https://www.openssh.com/>
+
+=item *
+
+L<btrfs-progs|https://github.com/kdave/btrfs-progs>
+
+=back
+
+=head1 Installation
+
+TODO
 
 =head1 Usage
 
@@ -452,5 +468,3 @@ output of the following commands in your issue:
 MIT
 
 =cut
-
-1;

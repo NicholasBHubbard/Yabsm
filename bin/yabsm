@@ -22,10 +22,27 @@ __END__
 
 Yabsm - yet another btrfs snapshot manager
 
+=head1 Usage
+
+    usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
+
+    commands:
+
+    <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
+               [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
+               [local_backups] [backups]
+
+    <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+
+    <daemon|d> [--help] [start] [stop] [restart] [status] [init]
+
+Yabsm provides 3 commands: L<config|/"Configuration Querying">,
+L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
+
 =head1 What is Yabsm?
 
-Yabsm (yet another btrfs snapshot manager) is a btrfs snapshot and backup
-management system that provides the following features.
+Yabsm is a btrfs snapshot and backup management system that provides the
+following features.
 
 =over 4
 
@@ -55,23 +72,6 @@ command.
 A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
 snapshot that has been transferred to another btrfs filesystem via a combination
 of C<btrfs send> and C<btrfs receive>.
-
-=head1 Usage
-
-    usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
-
-    commands:
-
-    <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
-               [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
-               [local_backups] [backups]
-
-    <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
-
-    <daemon|d> [--help] [start] [stop] [restart] [status] [init]
-
-Yabsm provides 3 commands: L<config|/"Configuration Querying">,
-L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 
 =head1 The Yabsm Daemon
 

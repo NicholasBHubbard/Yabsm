@@ -64,6 +64,10 @@ sub main {
     exit 0;
 }
 
+1;
+
+__END__
+
 =pod
 
 =head1 What is Yabsm?
@@ -463,5 +467,3 @@ output of the following commands in your issue:
 MIT
 
 =cut
-
-1;

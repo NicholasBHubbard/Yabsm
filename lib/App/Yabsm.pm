@@ -4,7 +4,7 @@
 
 #  ABSTRACT: a btrfs snapshot and backup management system
 
-#  The toplevel module of Yabsm.
+#  The main module of Yabsm.
 
 use strict;
 use warnings;

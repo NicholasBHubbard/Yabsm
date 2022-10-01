@@ -297,7 +297,7 @@ performed and if not prints useful error messages. See the section
 L<SSH Backups|/"SSH Backups"> for an explanation on the configuration required
 for performing an I<ssh_backup>.
 
-The C<ssh-key> subcommand prints the I<yabsm> users public SSH key.
+The C<ssh-key> subcommand prints the I<yabsm> user's public SSH key.
 
 All of the other subcommands query for information derived from your
  C</etc/yabsm.conf>:

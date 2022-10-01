@@ -147,7 +147,7 @@ The following table describes in plain English what each timeframe means:
     monthly -> Once a month on a specific day at a specific time.
 
 To specify the timeframes you want, you set the value of C<timeframes> to a comma
-seperated list of timeframe values. For example, this is how you specify that you
+separated list of timeframe values. For example, this is how you specify that you
 want every timeframe:
 
     timeframes=5minute,hourly,daily,weekly,monthly
@@ -165,7 +165,7 @@ Any C<*_keep> setting defines how many snapshots/backups you want to keep at one
 time for the configuration object. A common configuration is to keep 48 hourly
 snapshots so you can go back 2 days in one-hour increments.
 
-The C<daily_times> setting for daily snapshots takes a comma seperated list of
+The C<daily_times> setting for daily snapshots takes a comma separated list of
 I<hh:mm> times. Yabsm will perform the snapshot/backup everyday at all the given
 times.
 

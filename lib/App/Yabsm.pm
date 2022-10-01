@@ -2,9 +2,9 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  ABSTRACT: a btrfs snapshot and backup management system
-
 #  The main module of Yabsm.
+
+#  ABSTRACT: a btrfs snapshot and backup management system
 
 use strict;
 use warnings;

@@ -39,10 +39,12 @@ Yabsm - yet another btrfs snapshot manager
 Yabsm provides 3 commands: L<config|/"Configuration Querying">,
 L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 
+=pod
+
 =head1 What is Yabsm?
 
-Yabsm is a btrfs snapshot and backup management system that provides the
-following features.
+Yabsm (yet another btrfs snapshot manager) is a btrfs snapshot and backup
+management system that provides the following features.
 
 =over 4
 
@@ -66,8 +68,7 @@ Provides a simple query language for locating snapshots and backups.
 Before we go on lets clear up the difference between a snapshot and a backup.
 
 A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
-is a read-only subvolume created with the C<btrfs subvolume snapshot -r>
-command.
+is a read-only subvolume created with the C<btrfs subvolume snapshot -r> command.
 
 A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
 snapshot that has been transferred to another btrfs filesystem via a combination
@@ -91,11 +92,16 @@ changes.
 
 =head2 Configuration
 
-The Yabsm daemon in configured via the C</etc/yabsm.conf> file. On installation
-this file will not exist.
+The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
+
+On installation this file will not exist, but there will be a file
+C</etc/yabsm.conf.example> that you can use to help you build your
+configuration.
 
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages if there are any problems.
+
+Please browse through the L<example configurations|TODO> for inspiration.
 
 =head3 Configuration Grammar
 
@@ -103,9 +109,8 @@ First things first: You must specify a C<yabsm_dir> that Yabsm will use for
 storing snapshots, and as a cache for holding data needed for performing
 snapshots and backups. Most commonly this directory is set to
 C</.snapshots/yabsm>. Yabsm will take this directory literally so you almost
-certainly want the path to end in C</yabsm>. If this directory does not exist the
-Yabsm daemon will create it automatically when it starts. From here on we will
-refer to this directory as I<$YABSM_DIR>.
+certainly want the path to end in C</yabsm>. If this directory does not exist,
+the Yabsm daemon will create it automatically when it starts.
 
 There are 4 different configuration objects: I<subvols>, I<snaps>,
 I<ssh_backups>, and I<local_backups>. The general form of each configuration
@@ -133,7 +138,7 @@ We need to understand timeframes before we can understand I<snaps>,
 I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
 daily, weekly, and monthly.
 
-I<snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
+I<Snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
 timeframes. For example a I<ssh_backup> may be configured to take backups in the
 I<hourly> and I<weekly> categories, which means that we want to backup every hour
 and once a week.
@@ -260,7 +265,7 @@ filesystem that the I<yabsm> user has read permission on.
 You can use the command C<yabsm daemon init> to initialize the daemons runtime
 environment without actually starting the daemon. Running this command creates
 the I<yabsm> user and group, gives the I<yabsm> user sudo access to btrfs-progs,
-creates I<yabsms> SSH keys, and creates all the directories needed for performing
+creates I<yabsms> SSH keys, and creates the directories needed for performing all
 the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>.
 
 =head4 Daemon Logging
@@ -376,8 +381,7 @@ Security Sudo
 
 Yabsm uses its root permissions at startup to install itself a sudo rule to
 /etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
-sudo permission to the C<btrfs> executable provided by
-L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
+sudo permission to the C<btrfs> executable.
 
 =head1 Getting Support
 

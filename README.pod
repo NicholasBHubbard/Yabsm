@@ -53,7 +53,7 @@ L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =head1 Installation
 
-In the near future Yabsm will be available in all major Linux distribution
+In the near future Yabsm should be available in all major Linux distribution
 repositories.
 
 Until then Yabsm can be installed with
@@ -386,7 +386,15 @@ Security Sudo
 
 Yabsm uses its root permissions at startup to install itself a sudo rule to
 /etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
-sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
+sudo permission to the C<btrfs> executable.
+
+=head1 Packaging
+
+An example systemd service and sysvinit script are provided in the C<init/>
+directory.
+
+An example config file is located at C<example-config/yabsm.conf.example>. It
+would probably be useful to install this file to C</etc/yabsm.conf.example>.
 
 =head1 Getting Support
 

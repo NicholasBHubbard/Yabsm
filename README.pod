@@ -112,7 +112,7 @@ The Yabsm daemon logs all of its errors to C</var/log/yabsm>. If, for example,
 you have an I<ssh_backup> that is not being performed, the first thing you should
 do is check the logs.
 
-=head2 Configuration
+=head1 Configuration
 
 The Yabsm daemon is configured via the C</etc/yabsm.conf> file.
 

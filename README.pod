@@ -284,9 +284,9 @@ filesystem that the I<yabsm> user has read permission on.
 Yabsm comes with a C<config> command that allows you to check and query your
 configuration.
 
-    yabsm <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
-                     [yabsm-user-home] [yabsm_dir] [subvols] [snaps]
-                     [ssh_backups] [local_backups] [backups]
+    usage: yabsm <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>]
+                            [ssh-key] [yabsm-user-home] [yabsm_dir] [subvols]
+                            [snaps] [ssh_backups] [local_backups] [backups]
 
 The C<check ?file> subcommand checks the C<?file> is a valid yabsm configuration
 file and if not prints useful error messages. If the C<?file> argument is omitted
@@ -317,7 +317,7 @@ to locate those snapshots. Yabsm comes with a command C<find> that allows you to
 locate snapshots and backups using a simple query language. Here is the usage
 string for the C<find> command.
 
-    yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+    usage: yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
 Here are few examples:
 

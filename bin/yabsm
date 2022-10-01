@@ -90,7 +90,7 @@ changes.
 
 =head2 Configuration
 
-The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
+The Yabsm daemon is configured via the C</etc/yabsm.conf> file.
 
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages if there are any problems.

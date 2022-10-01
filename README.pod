@@ -53,7 +53,15 @@ L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =head1 Installation
 
-TODO
+In the near future Yabsm will be available in all major Linux distribution
+repositories.
+
+Until then Yabsm can be installed with
+L<cpanminus|https://metacpan.org/pod/App::cpanminus>. Here are the installation
+steps for installing Yabsm on Debian:
+
+    # apt install cpanminus
+    #
 
 =head1 Usage
 
@@ -107,9 +115,8 @@ First things first: You must specify a C<yabsm_dir> that Yabsm will use for
 storing snapshots, and as a cache for holding data needed for performing
 snapshots and backups. Most commonly this directory is set to
 C</.snapshots/yabsm>. Yabsm will take this directory literally so you almost
-certainly want the path to end in C</yabsm>. If this directory does not exist the
-Yabsm daemon will create it automatically when it starts. From here on we will
-refer to this directory as I<$YABSM_DIR>.
+certainly want the path to end in C</yabsm>. If this directory does not exist,
+the Yabsm daemon will create it automatically when it starts.
 
 There are 4 different configuration objects: I<subvols>, I<snaps>,
 I<ssh_backups>, and I<local_backups>. The general form of each configuration
@@ -137,7 +144,7 @@ We need to understand timeframes before we can understand I<snaps>,
 I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
 daily, weekly, and monthly.
 
-I<snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
+I<Snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
 timeframes. For example a I<ssh_backup> may be configured to take backups in the
 I<hourly> and I<weekly> categories, which means that we want to backup every hour
 and once a week.
@@ -385,12 +392,17 @@ sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://git
 
 =head1 Getting Support
 
-Do not hesitate to open an issue! To help get support you may want to include the
-output of the following commands in your issue:
+Do not hesitate to open an issue at
+L<https://github.com/NicholasBHubbard/yabsm/issues>! To help get support you may
+want to include the output of the following commands in your issue:
 
     yabsm config check
     yabsm config ssh-check <SSH_BACKUP>
     cat /var/log/yabsm
+
+=head1 Author
+
+Nicholas Hubbard <nicholashubbard@posteo.net>
 
 =head1 License
 

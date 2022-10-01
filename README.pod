@@ -56,8 +56,7 @@ L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 In the near future Yabsm should be available in all major Linux distribution
 repositories.
 
-Until then Yabsm can be installed with
-L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
+Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
 
     # apt install cpanminus
     # cpanm App::Yabsm

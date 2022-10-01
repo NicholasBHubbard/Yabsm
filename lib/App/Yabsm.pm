@@ -123,7 +123,13 @@ L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =head1 Installation
 
-TODO
+In the near future Yabsm should be available in all major Linux distribution
+repositories.
+
+Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
+
+    # apt install cpanminus
+    # cpanm App::Yabsm
 
 =head1 Usage
 
@@ -162,10 +168,6 @@ changes.
 
 The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
 
-On installation this file will not exist, but there will be a file
-C</etc/yabsm.conf.example> that you can use to help you build your
-configuration.
-
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages if there are any problems.
 
@@ -177,9 +179,8 @@ First things first: You must specify a C<yabsm_dir> that Yabsm will use for
 storing snapshots, and as a cache for holding data needed for performing
 snapshots and backups. Most commonly this directory is set to
 C</.snapshots/yabsm>. Yabsm will take this directory literally so you almost
-certainly want the path to end in C</yabsm>. If this directory does not exist the
-Yabsm daemon will create it automatically when it starts. From here on we will
-refer to this directory as I<$YABSM_DIR>.
+certainly want the path to end in C</yabsm>. If this directory does not exist,
+the Yabsm daemon will create it automatically when it starts.
 
 There are 4 different configuration objects: I<subvols>, I<snaps>,
 I<ssh_backups>, and I<local_backups>. The general form of each configuration
@@ -189,6 +190,9 @@ object is:
         key=val
         ...
     }
+
+All configuration objects share a namespace, so you must make sure they all have
+unique names. You can define as many configuration objects as you want.
 
 =head4 Subvols
 
@@ -207,7 +211,7 @@ We need to understand timeframes before we can understand I<snaps>,
 I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
 daily, weekly, and monthly.
 
-I<snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
+I<Snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
 timeframes. For example a I<ssh_backup> may be configured to take backups in the
 I<hourly> and I<weekly> categories, which means that we want to backup every hour
 and once a week.
@@ -334,7 +338,7 @@ filesystem that the I<yabsm> user has read permission on.
 You can use the command C<yabsm daemon init> to initialize the daemons runtime
 environment without actually starting the daemon. Running this command creates
 the I<yabsm> user and group, gives the I<yabsm> user sudo access to btrfs-progs,
-creates I<yabsms> SSH keys, and creates all the directories needed for performing
+creates I<yabsms> SSH keys, and creates the directories needed for performing all
 the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>.
 
 =head4 Daemon Logging
@@ -426,7 +430,6 @@ Here are some English descriptions of I<relative times>.
     b-10-m    -> 10 minutes ago
     b-24-days -> 24 days ago
 
-
 =head3 Immediate Times
 
 An I<immediate_time> is an abbreviation for a time/date denoted by C<yr_mon_day_hr:min>.
@@ -451,16 +454,29 @@ Security Sudo
 
 Yabsm uses its root permissions at startup to install itself a sudo rule to
 /etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
-sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
+sudo permission to the C<btrfs> executable.
+
+=head1 Packaging
+
+An example systemd service and sysvinit script are provided in the C<init/>
+directory.
+
+An example config file is located at C<example-config/yabsm.conf.example>. It
+would probably be useful to install this file to C</etc/yabsm.conf.example>.
 
 =head1 Getting Support
 
-Do not hesitate to open an issue! To help get support you may want to include the
-output of the following commands in your issue:
+Do not hesitate to open an issue at
+L<https://github.com/NicholasBHubbard/yabsm/issues>! To help get support you may
+want to include the output of the following commands in your issue:
 
     yabsm config check
     yabsm config ssh-check <SSH_BACKUP>
     cat /var/log/yabsm
+
+=head1 Author
+
+Nicholas Hubbard <nicholashubbard@posteo.net>
 
 =head1 License
 

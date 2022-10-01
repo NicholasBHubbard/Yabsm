@@ -352,7 +352,6 @@ Here are some English descriptions of I<relative times>.
     b-10-m    -> 10 minutes ago
     b-24-days -> 24 days ago
 
-
 =head3 Immediate Times
 
 An I<immediate_time> is an abbreviation for a time/date denoted by C<yr_mon_day_hr:min>.
@@ -377,16 +376,22 @@ Security Sudo
 
 Yabsm uses its root permissions at startup to install itself a sudo rule to
 /etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
-sudo permission to the C<btrfs> executable provided by L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
+sudo permission to the C<btrfs> executable provided by
+L<btrfs-progs|https://github.com/kdave/btrfs-progs>.
 
 =head1 Getting Support
 
-Do not hesitate to open an issue! To help get support you may want to include the
-output of the following commands in your issue:
+Do not hesitate to open an issue at
+L<https://github.com/NicholasBHubbard/yabsm/issues>! To help get support you may
+want to include the output of the following commands in your issue:
 
     yabsm config check
     yabsm config ssh-check <SSH_BACKUP>
     cat /var/log/yabsm
+
+=head1 Author
+
+Nicholas Hubbard <nicholashubbard@posteo.net>
 
 =head1 License
 

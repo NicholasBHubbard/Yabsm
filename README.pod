@@ -57,11 +57,10 @@ In the near future Yabsm will be available in all major Linux distribution
 repositories.
 
 Until then Yabsm can be installed with
-L<cpanminus|https://metacpan.org/pod/App::cpanminus>. Here are the installation
-steps for installing Yabsm on Debian:
+L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
 
     # apt install cpanminus
-    #
+    # cpanm App::Yabsm
 
 =head1 Usage
 
@@ -271,7 +270,7 @@ filesystem that the I<yabsm> user has read permission on.
 You can use the command C<yabsm daemon init> to initialize the daemons runtime
 environment without actually starting the daemon. Running this command creates
 the I<yabsm> user and group, gives the I<yabsm> user sudo access to btrfs-progs,
-creates I<yabsms> SSH keys, and creates all the directories needed for performing
+creates I<yabsms> SSH keys, and creates the directories needed for performing all
 the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>.
 
 =head4 Daemon Logging
@@ -362,7 +361,6 @@ Here are some English descriptions of I<relative times>.
     back-5-h  -> 5 hours ago
     b-10-m    -> 10 minutes ago
     b-24-days -> 24 days ago
-
 
 =head3 Immediate Times
 

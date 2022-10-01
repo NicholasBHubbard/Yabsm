@@ -43,7 +43,7 @@ sub usage {
 }
 
 sub help {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $usage = usage();
     $usage =~ s/\s+$//;
     print <<"END_HELP";

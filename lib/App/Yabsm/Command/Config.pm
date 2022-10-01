@@ -26,7 +26,7 @@ END_USAGE
 }
 
 sub help {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $usage = usage();
     $usage =~ s/\s+$//;
     print <<"END_HELP";
@@ -88,38 +88,38 @@ sub main {
                  ####################################
 
 sub check_config {
-    1 >= @_ or die usage();
+    @_ <= 1 or die usage();
     my $file = shift // '/etc/yabsm.conf';
     parse_config_or_die($file);
     say 'all good';
 }
 
 sub print_subvols {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $config_ref = parse_config_or_die();
     say for all_subvols($config_ref);
 }
 
 sub print_snaps {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $config_ref = parse_config_or_die();
     say for all_snaps($config_ref);
 }
 
 sub print_ssh_backups {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $config_ref = parse_config_or_die();
     say for all_ssh_backups($config_ref);
 }
 
 sub print_local_backups {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $config_ref = parse_config_or_die();
     say for all_local_backups($config_ref);
 }
 
 sub print_backups {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $config_ref = parse_config_or_die();
     my @ssh_backups = all_ssh_backups($config_ref);
     my @local_backups = all_local_backups($config_ref);
@@ -127,14 +127,14 @@ sub print_backups {
 }
 
 sub print_yabsm_dir {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $config_ref = parse_config_or_die();
     my $yabsm_dir = yabsm_dir($config_ref);
     say $yabsm_dir;
 }
 
 sub print_yabsm_user_home {
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
     my $config_ref = parse_config_or_die();
     my $yabsm_user_home = yabsm_user_home($config_ref);
     say $yabsm_user_home;
@@ -145,7 +145,7 @@ sub check_ssh_backup {
     # This is mostly just a wrapper around
     # &App::Yabsm::Backup::SSH::check_ssh_backup_config_or_die.
 
-    1 == @_ or die usage();
+    @_ == 1 or die usage();
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 
@@ -177,7 +177,7 @@ sub print_yabsm_user_ssh_key {
 
     # Print the yabsm users public key to STDOUT.
 
-    0 == @_ or die usage();
+    @_ == 0 or die usage();
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 

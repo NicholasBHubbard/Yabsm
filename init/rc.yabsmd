@@ -29,6 +29,6 @@ case "$1" in
   "$yabsm" daemon status
   ;;
 *)
-   1>&2 printf "%s\n" "$usage"
+  1>&2 printf "%s\n" "$usage"
   exit 1
 esac

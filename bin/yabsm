@@ -88,6 +88,20 @@ backups and how to perform them. If the Yabsm daemon is already running and you
 make a configuration change, you must run C<yabsm daemon restart> to apply the
 changes.
 
+=head2 Initialize Daemon Runtime Environment
+
+You can use the command C<yabsm daemon init> to initialize the daemons runtime
+environment without actually starting the daemon. Running this command creates
+the I<yabsm> user and group, gives the I<yabsm> user sudo access to btrfs-progs,
+creates I<yabsms> SSH keys, and creates the directories needed for performing all
+the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>.
+
+=head2 Daemon Logging
+
+The Yabsm daemon logs all of its errors to C</var/log/yabsm>. If, for example,
+you have an I<ssh_backup> that is not being performed, the first thing you should
+do is check the logs.
+
 =head2 Configuration
 
 The Yabsm daemon is configured via the C</etc/yabsm.conf> file.
@@ -254,20 +268,6 @@ once a week.
 
 The backup directory (C<dir>) must be an existing directory residing on a btrfs
 filesystem that the I<yabsm> user has read permission on.
-
-=head4 Initialize Daemon Runtime Environment
-
-You can use the command C<yabsm daemon init> to initialize the daemons runtime
-environment without actually starting the daemon. Running this command creates
-the I<yabsm> user and group, gives the I<yabsm> user sudo access to btrfs-progs,
-creates I<yabsms> SSH keys, and creates the directories needed for performing all
-the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>.
-
-=head4 Daemon Logging
-
-The Yabsm daemon logs all of its errors to C</var/log/yabsm>. If, for example,
-you have an I<ssh_backup> that is not being performed, the first thing you should
-do is check the logs.
 
 =head1 Configuration Querying
 

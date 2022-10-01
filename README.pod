@@ -89,10 +89,10 @@ L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 Snapshots and backups are performed by the Yabsm daemon. The Yabsm daemon must be
 started as root so it can initialize its runtime environment, which includes
 creating a locked user named I<yabsm> (and a group named I<yabsm>) that the
-daemon will run as. You can initialize the daemons runtime environment without
+daemon will run as. You can initialize the daemon's runtime environment without
 actually starting the daemon by running C<yabsm daemon init>.
 
-When the daemon starts it reads the C</etc/yabsm.conf> file that specifies its
+When the daemon starts, it reads the C</etc/yabsm.conf> file that specifies its
 L<configuration|/"Configuration"> to determine when to schedule the snapshots and
 backups and how to perform them. If the Yabsm daemon is already running and you
 make a configuration change, you must run C<yabsm daemon restart> to apply the
@@ -100,7 +100,7 @@ changes.
 
 =head2 Initialize Daemon Runtime Environment
 
-You can use the command C<yabsm daemon init> to initialize the daemons runtime
+You can use the command C<yabsm daemon init> to initialize the daemon's runtime
 environment without actually starting the daemon. Running this command creates
 the I<yabsm> user and group, gives the I<yabsm> user sudo access to btrfs-progs,
 creates I<yabsms> SSH keys, and creates the directories needed for performing all

@@ -99,10 +99,6 @@ changes.
 
 The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
 
-On installation this file will not exist, but there will be a file
-C</etc/yabsm.conf.example> that you can use to help you build your
-configuration.
-
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages if there are any problems.
 
@@ -125,6 +121,9 @@ object is:
         key=val
         ...
     }
+
+All configuration objects share a namespace, so you must make sure they all have
+unique names. You can define as many configuration objects as you want.
 
 =head4 Subvols
 

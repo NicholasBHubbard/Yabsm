@@ -1,0 +1,12 @@
+[Unit]
+Description=Btrfs Snapshot Manager
+Documentation=man:yabsm(1)
+
+[Service]
+Type=forking
+PIDFile=/run/yabsmd.pid
+ExecStart=/usr/bin/yabsm daemon start
+ExecStop=/usr/bin/yabsm daemon stop
+
+[Install]
+WantedBy=multi-user.target

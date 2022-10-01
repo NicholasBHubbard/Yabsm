@@ -288,7 +288,7 @@ configuration.
                             [ssh-key] [yabsm-user-home] [yabsm_dir] [subvols]
                             [snaps] [ssh_backups] [local_backups] [backups]
 
-The C<check ?file> subcommand checks the C<?file> is a valid yabsm configuration
+The C<check ?file> subcommand checks that C<?file> is a valid yabsm configuration
 file and if not prints useful error messages. If the C<?file> argument is omitted
 it defaults to C</etc/yabsm.conf>.
 

@@ -319,7 +319,7 @@ string for the C<find> command.
 
     usage: yabsm <find|f> [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
-Here are few examples:
+Here are a few examples:
 
     $ yabsm find home_snap back-2-mins
     $ yabsm f root_ssh_backup 'after b-2-m'

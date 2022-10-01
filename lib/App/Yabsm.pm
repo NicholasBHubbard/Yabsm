@@ -157,7 +157,7 @@ L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
     usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
 Snapshots and backups are performed by the Yabsm daemon. The Yabsm daemon must be
-started as root so it can initialize it's runtime environment, which includes
+started as root so it can initialize its runtime environment, which includes
 creating a locked user named I<yabsm> (and a group named I<yabsm>) that the
 daemon will run as. You can initialize the daemons runtime environment without
 actually starting the daemon by running C<yabsm daemon init>.
@@ -345,7 +345,7 @@ the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>
 
 =head4 Daemon Logging
 
-The Yabsm daemon logs all of it's errors to C</var/log/yabsm>. If, for example,
+The Yabsm daemon logs all of its errors to C</var/log/yabsm>. If, for example,
 you have an I<ssh_backup> that is not being performed, the first thing you should
 do is check the logs.
 

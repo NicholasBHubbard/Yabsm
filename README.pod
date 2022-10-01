@@ -156,9 +156,9 @@ The following table describes in plain English what each timeframe means:
     weekly  -> Once a week on a specific weekday at a specific time.
     monthly -> Once a month on a specific day at a specific time.
 
-To specify the timeframes you want, you set the value of the C<timeframes> to a
-comma seperated list of timeframe values. For example, this is how you specify
-that you want every timeframe:
+To specify the timeframes you want, you set the value of C<timeframes> to a comma
+seperated list of timeframe values. For example, this is how you specify that you
+want every timeframe:
 
     timeframes=5minute,hourly,daily,weekly,monthly
 

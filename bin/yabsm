@@ -39,8 +39,6 @@ Yabsm - yet another btrfs snapshot manager
 Yabsm provides 3 commands: L<config|/"Configuration Querying">,
 L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 
-=pod
-
 =head1 What is Yabsm?
 
 Yabsm (yet another btrfs snapshot manager) is a btrfs snapshot and backup
@@ -94,10 +92,6 @@ changes.
 
 The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
 
-On installation this file will not exist, but there will be a file
-C</etc/yabsm.conf.example> that you can use to help you build your
-configuration.
-
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages if there are any problems.
 
@@ -118,6 +112,9 @@ object is:
         key=val
         ...
     }
+
+All configuration objects share a namespace, so you must make sure they all have
+unique names. You can define as many configuration objects as you want.
 
 =head4 Subvols
 
@@ -375,7 +372,7 @@ C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00> and if the current day is I<2020/12/25>
 then C<23:59> is the same as C<2020_12_25_23:59>.
 
-Security Sudo
+=head1 Security (Sudo)
 
 Yabsm uses its root permissions at startup to install itself a sudo rule to
 /etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless

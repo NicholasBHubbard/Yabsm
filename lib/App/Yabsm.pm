@@ -92,17 +92,6 @@ Provides a simple query language for locating snapshots and backups.
 
 =back
 
-=head1 Snapshots vs Backups
-
-Before we go on lets clear up the difference between a snapshot and a backup.
-
-A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
-is a read-only subvolume created with the C<btrfs subvolume snapshot -r> command.
-
-A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
-snapshot that has been transferred to another btrfs filesystem via a combination
-of C<btrfs send> and C<btrfs receive>.
-
 =head1 Dependencies
 
 =over 4
@@ -117,9 +106,24 @@ L<OpenSSH|https://www.openssh.com/>
 
 =item *
 
+L<Sudo|https://www.sudo.ws/>
+
+=item *
+
 L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =back
+
+=head1 Snapshots vs Backups
+
+Before we go on lets clear up the difference between a snapshot and a backup.
+
+A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
+is a read-only subvolume created with the C<btrfs subvolume snapshot -r> command.
+
+A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
+snapshot that has been transferred to another btrfs filesystem via a combination
+of C<btrfs send> and C<btrfs receive>.
 
 =head1 Installation
 
@@ -170,8 +174,6 @@ The Yabsm daemon in configured via the C</etc/yabsm.conf> file.
 
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages if there are any problems.
-
-Please browse through the L<example configurations|TODO> for inspiration.
 
 =head3 Configuration Grammar
 
@@ -450,7 +452,7 @@ C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00> and if the current day is I<2020/12/25>
 then C<23:59> is the same as C<2020_12_25_23:59>.
 
-Security Sudo
+=head1 Security (Sudo)
 
 Yabsm uses its root permissions at startup to install itself a sudo rule to
 /etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless

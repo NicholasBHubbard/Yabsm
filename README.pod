@@ -377,8 +377,8 @@ form:
     hr:min            -> 23:59
 
 The I<immediate_time> abbreviation rules are simple. If the C<yr>, C<mon>, or
-<day> is omitted then the current year, month, or day is assumed. If the C<hr> or
-C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
+C<day> is omitted then the current year, month, or day is assumed. If the C<hr>
+or C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00> and if the current day is I<2020/12/25>
 then C<23:59> is the same as C<2020_12_25_23:59>.
 

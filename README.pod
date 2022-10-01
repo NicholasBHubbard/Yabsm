@@ -46,7 +46,7 @@ L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =head1 Snapshots vs Backups
 
-Before we go on lets clear up the difference between a snapshot and a backup.
+Before we go on let's clear up the difference between a snapshot and a backup.
 
 A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
 is a read-only subvolume created with the C<btrfs subvolume snapshot -r> command.

@@ -399,7 +399,7 @@ would probably be useful to install this file to C</etc/yabsm.conf.example>.
 =head1 Getting Support
 
 Do not hesitate to open an issue at
-L<https://github.com/NicholasBHubbard/yabsm/issues>! To help get support you may
+L<https://github.com/NicholasBHubbard/yabsm/issues>! To help get support, you may
 want to include the output of the following commands in your issue:
 
     yabsm config check

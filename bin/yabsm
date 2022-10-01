@@ -118,7 +118,7 @@ unique names. You can define as many configuration objects as you want.
 
 =head4 Subvols
 
-A subvol is the simplest configuration object, and is used to give a name to a
+A subvol is the simplest configuration object and is used to give a name to a
 L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes>
 on your system. A subvol definition accepts one field named C<mountpoint> which
 takes a value that is a path to a subvolume.

@@ -385,8 +385,8 @@ then C<23:59> is the same as C<2020_12_25_23:59>.
 =head1 Security (Sudo)
 
 Yabsm uses its root permissions at startup to install itself a sudo rule to
-/etc/sudoers.d/yabsm-btrfs-access that grants the I<yabsm> user passwordless
-sudo permission to the C<btrfs> executable.
+C</etc/sudoers.d/yabsm-btrfs> that grants the I<yabsm> user passwordless sudo
+permission to the C<btrfs> executable.
 
 =head1 Packaging
 

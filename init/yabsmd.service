@@ -1,6 +1,5 @@
 [Unit]
 Description=Btrfs Snapshot Manager
-Documentation=man:yabsm(1)
 
 [Service]
 Type=forking

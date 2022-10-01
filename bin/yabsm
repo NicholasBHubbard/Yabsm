@@ -142,7 +142,7 @@ The following table describes in plain English what each timeframe means:
 
     5minute -> Every 5 minutes.
     hourly  -> At the beginning of every hour.
-    daily   -> Everyday at one or more times of the day.
+    daily   -> Every day at one or more times of the day.
     weekly  -> Once a week on a specific weekday at a specific time.
     monthly -> Once a month on a specific day at a specific time.
 
@@ -166,7 +166,7 @@ time for the configuration object. A common configuration is to keep 48 hourly
 snapshots so you can go back 2 days in one-hour increments.
 
 The C<daily_times> setting for daily snapshots takes a comma separated list of
-I<hh:mm> times. Yabsm will perform the snapshot/backup everyday at all the given
+I<hh:mm> times. Yabsm will perform the snapshot/backup every day at all the given
 times.
 
 The weekly timeframe requires a C<weekly_day> setting that takes a day of week

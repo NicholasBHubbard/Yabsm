@@ -101,8 +101,6 @@ configuration.
 You can run the command C<yabsm config check> that will check your config and
 output useful error messages if there are any problems.
 
-Please browse through the L<example configurations|TODO> for inspiration.
-
 =head3 Configuration Grammar
 
 First things first: You must specify a C<yabsm_dir> that Yabsm will use for

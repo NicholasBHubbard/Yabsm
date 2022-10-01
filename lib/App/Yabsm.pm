@@ -73,7 +73,7 @@ __END__
 =head1 What is Yabsm?
 
 Yabsm (yet another btrfs snapshot manager) is a btrfs snapshot and backup
-management system that provides the following features.
+management system that provides the following features:
 
 =over 4
 

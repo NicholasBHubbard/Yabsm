@@ -3,7 +3,7 @@
 #  License: MIT
 
 #  ABSTRACT: a btrfs snapshot and backup management system
-#
+
 #  The toplevel module of Yabsm.
 
 use strict;
@@ -64,10 +64,6 @@ sub main {
     exit 0;
 }
 
-1;
-
-__END__
-
 =pod
 
 =head1 What is Yabsm?
@@ -97,8 +93,7 @@ Provides a simple query language for locating snapshots and backups.
 Before we go on lets clear up the difference between a snapshot and a backup.
 
 A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
-is a read-only subvolume created with the C<btrfs subvolume snapshot -r>
-command.
+is a read-only subvolume created with the C<btrfs subvolume snapshot -r> command.
 
 A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
 snapshot that has been transferred to another btrfs filesystem via a combination
@@ -468,3 +463,5 @@ output of the following commands in your issue:
 MIT
 
 =cut
+
+1;

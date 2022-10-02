@@ -283,8 +283,8 @@ sub check_ssh_backup_config_or_die {
 
     $ssh //= new_ssh_conn($ssh_backup, $config_ref);
 
-    my $remote_backup_dir  = ssh_backup_dir($ssh_backup, undef, $config_ref);
-    my $ssh_dest    = ssh_backup_ssh_dest($ssh_backup, $config_ref);
+    my $remote_backup_dir = ssh_backup_dir($ssh_backup, undef, $config_ref);
+    my $ssh_dest          = ssh_backup_ssh_dest($ssh_backup, $config_ref);
 
     my (undef, $stderr) = $ssh->capture2(qq(
 ERRORS=''

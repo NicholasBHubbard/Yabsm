@@ -167,8 +167,9 @@ sub the_remote_bootstrap_snapshot {
 
     opendir my $dh, $backup_dir_base or confess("yabsm: internal error: cannot opendir '$backup_dir_base'");
     my @boot_snaps = grep { is_snapshot_name($_, ONLY_BOOTSTRAP => 1) } readdir($dh);
-    map { $_ = "$backup_dir_base/$_" } @boot_snaps;
     closedir $dh;
+
+    map { $_ = "$backup_dir_base/$_" } @boot_snaps;
 
     if (0 == @boot_snaps) {
         return undef;

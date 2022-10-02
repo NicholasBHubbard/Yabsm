@@ -60,7 +60,8 @@ sub take_tmp_snapshot {
         DIE_UNLESS_EXISTS => 1
     );
 
-    # Remove any old tmp snapshots
+    # Remove any old tmp snapshots that were never deleted because of a failed
+    # incremental backup attempt.
     opendir my $dh, $tmp_snapshot_dir or confess("yabsm: internal error: cannot opendir '$tmp_snapshot_dir'");
     my @tmp_snapshots = grep { is_snapshot_name($_, ALLOW_BOOTSTRAP => 0) } readdir($dh);
     closedir $dh;

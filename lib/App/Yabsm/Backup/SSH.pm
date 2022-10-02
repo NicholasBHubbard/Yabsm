@@ -238,8 +238,6 @@ sub new_ssh_conn {
         batch_mode   => 1, # Don't even try asking for a password
         ctl_dir      => '/tmp',
         remote_shell => 'sh',
-        timeout      => 5,
-        kill_ssh_on_timeout => 1
     );
 
     if ($ssh->error) {

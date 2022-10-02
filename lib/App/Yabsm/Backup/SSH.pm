@@ -70,6 +70,8 @@ sub do_ssh_backup {
 
     ssh_system_or_die(
         $ssh,
+        # This is why we need the remote user to have write permission on the
+        # backup dir
         "if ! [ -d '$backup_dir' ]; then mkdir '$backup_dir'; fi"
     );
 
@@ -79,13 +81,14 @@ sub do_ssh_backup {
         "sudo -n btrfs receive '$backup_dir'"
     );
 
+    # The tmp snapshot is irrelevant now
     delete_snapshot($tmp_snapshot);
 
     # Delete old backups
 
-    # @remote_backups is sorted from newest to oldest
     my @remote_backups = grep { is_snapshot_name($_) } ssh_system_or_die($ssh, "ls -1 '$backup_dir'");
     map { chomp $_ ; $_ = "$backup_dir/$_" } @remote_backups;
+    # sorted from newest to oldest
     @remote_backups = sort_snapshots(\@remote_backups);
 
     my $num_backups    = scalar @remote_backups;
@@ -235,7 +238,7 @@ sub new_ssh_conn {
     my $ssh = Net::OpenSSH->new(
         $ssh_dest,
         master_opts  => [ '-q' ], # quiet
-        batch_mode   => 1, # Don't even try asking for a password
+        batch_mode   => 1, # Key based auth only
         ctl_dir      => '/tmp',
         remote_shell => 'sh',
     );
@@ -249,7 +252,7 @@ sub new_ssh_conn {
 
 sub ssh_system_or_die {
 
-    # Like Net::OpenSSH::capture but logdie if the command fails.
+    # Like Net::OpenSSH::capture but die if the command fails.
 
     arg_count_or_die(2, 3, @_);
 

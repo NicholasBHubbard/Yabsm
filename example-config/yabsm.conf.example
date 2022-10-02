@@ -29,7 +29,7 @@ subvol home_subvol {
 # overview.
 
 snap root_snap {
-    subvol=root
+    subvol=root_subvol
 
     # every possible timeframe
     timeframes=5minute,hourly,daily,weekly,monthly
@@ -51,7 +51,7 @@ snap root_snap {
 }
 
 snap home_snap {
-    subvol=home
+    subvol=home_subvol
     timeframes=hourly,daily
     hourly_keep=24
     daily_keep=31
@@ -67,7 +67,7 @@ snap home_snap {
 # overview.
 
 ssh_backup home_ssh_backup {
-    subvol=home
+    subvol=home_subvol
     ssh_dest=larry@192.168.1.73
     # this is a directory on the remote machine
     dir=/.snapshots/yabsm-home-backup
@@ -86,7 +86,7 @@ ssh_backup home_ssh_backup {
 # overview.
 
 local_backup home_local_backup {
-    subvol=home
+    subvol=home_subvol
     dir=/mnt/easystore/yabsm-home-backup
     timeframes=weekly
     weekly_keep=56

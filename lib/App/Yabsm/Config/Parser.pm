@@ -472,7 +472,7 @@ sub snap_errors {
         my $subvol = $config_ref->{snaps}{$snap}{subvol};
         if (defined $subvol) {
             unless (grep { $subvol eq $_ } keys %{ $config_ref->{subvols} }) {
-                push @error_msgs, "yabsm: config error: snap 'snap' is snapshotting up a non-existent subvol '$subvol'";
+                push @error_msgs, "yabsm: config error: snap '$snap' is snapshotting up a non-existent subvol '$subvol'";
             }
         }
 

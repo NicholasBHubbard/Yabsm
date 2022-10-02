@@ -24,7 +24,7 @@ use App::Yabsm::Config::Query qw( :ALL );
 
 use File::Basename qw(basename);
 
-use Exporter 'import';
+use Exporter qw(import);
 our @EXPORT_OK = qw(do_local_backup
                     do_local_backup_bootstrap
                     maybe_do_local_backup_bootstrap

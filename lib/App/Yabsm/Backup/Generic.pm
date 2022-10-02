@@ -13,7 +13,7 @@ package App::Yabsm::Backup::Generic;
 use App::Yabsm::Tools qw( :ALL );
 use App::Yabsm::Config::Query qw( :ALL );
 
-use App::Yabsm::Snapshot qw(take_snapshot 
+use App::Yabsm::Snapshot qw(take_snapshot
                             delete_snapshot
                             current_time_snapshot_name
                             is_snapshot_name
@@ -22,6 +22,7 @@ use App::Yabsm::Snapshot qw(take_snapshot
 use Carp q(confess);
 use File::Temp;
 use File::Basename qw(basename);
+use Feature::Compat::Try;
 
 use Exporter 'import';
 our @EXPORT_OK = qw(take_tmp_snapshot
@@ -62,10 +63,20 @@ sub take_tmp_snapshot {
     # Remove any old tmp snapshots
     opendir my $dh, $tmp_snapshot_dir or confess("yabsm: internal error: cannot opendir '$tmp_snapshot_dir'");
     my @tmp_snapshots = grep { is_snapshot_name($_, ALLOW_BOOTSTRAP => 0) } readdir($dh);
-    map { $_ = "$tmp_snapshot_dir/$_" } @tmp_snapshots;
     closedir $dh;
-    delete_snapshot($_) for @tmp_snapshots;
-    
+    map { $_ = "$tmp_snapshot_dir/$_" } @tmp_snapshots;
+
+    # The old tmp snapshot may be in the process of being sent which will cause
+    # the deletion to fail. In this case we can just ignore the failure.
+    for (@tmp_snapshots) {
+        try {
+            delete_snapshot($_);
+        }
+        catch ($e) {
+            ; # do nothing
+        }
+    }
+
     my $mountpoint;
 
     if ($backup_type eq 'ssh')   {
@@ -75,7 +86,7 @@ sub take_tmp_snapshot {
         $mountpoint = local_backup_mountpoint($backup, $config_ref);
     }
     else { is_backup_type_or_die($backup_type) }
-    
+
     return take_snapshot($mountpoint, $tmp_snapshot_dir);
 }
 
@@ -136,14 +147,14 @@ sub take_bootstrap_snapshot {
         $mountpoint = local_backup_mountpoint($backup, $config_ref);
     }
     else { is_backup_type_or_die($backup_type) }
-    
+
     if (my $bootstrap_snapshot = the_local_bootstrap_snapshot($backup, $backup_type, $config_ref)) {
         delete_snapshot($bootstrap_snapshot);
     }
-    
+
     my $bootstrap_dir = bootstrap_snapshot_dir($backup, $backup_type, $config_ref, DIE_UNLESS_EXISTS => 1);
     my $snapshot_name = '.BOOTSTRAP-' . current_time_snapshot_name();
-    
+
     return take_snapshot($mountpoint, $bootstrap_dir, $snapshot_name);
 }
 
@@ -152,13 +163,13 @@ sub maybe_take_bootstrap_snapshot {
     # If $backup does not already have a bootstrap snapshot then take
     # a bootstrap snapshot and return its path. Otherwise return the
     # path of the existing bootstrap snapshot.
-    
+
     arg_count_or_die(3, 3, @_);
 
     my $backup      = shift;
     my $backup_type = shift;
     my $config_ref  = shift;
-    
+
     if (my $boot_snap = the_local_bootstrap_snapshot($backup, $backup_type, $config_ref)) {
         return $boot_snap;
     }

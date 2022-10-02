@@ -1,0 +1,15 @@
+# This config should fail because 32 is not an integer in range 1-31
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo_snap {
+    monthly_day=32
+    timeframes=monthly
+    subvol=foo
+    monthly_keep=1
+    monthly_time=23:59
+}

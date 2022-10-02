@@ -1,0 +1,14 @@
+# This config should fail because the 'yabsm_dir' setting is not defined
+
+###yabsm_dir=/.snapshots/yabsm
+
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo_snap {
+    subvol=foo
+    timeframes=5minute
+    5minute_keep=1
+}

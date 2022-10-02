@@ -1,0 +1,95 @@
+# See the 'Configuration' section in 'man yabsm' for a
+# detailed overview on how to create a yabsm configuration.
+
+# This is the directory for yabsm to place snapshots, and use
+# as a working dir for performing backups.
+yabsm_dir=/.snapshots/yabsm
+
+### Subvols ###
+
+# A 'subvol' is yabsm's interface to a btrfs subvolume
+#
+# This configuration makes sense for a system that has
+# two btrfs subvolumes mounted at '/' and '/home'.
+
+subvol root_subvol {
+    mountpoint=/
+}
+
+subvol home_subvol {
+    mountpoint=/home
+}
+
+### Snaps ###
+
+# A 'snap' represents a configuration for taking readonly
+# snapshots of some 'subvol'.
+#
+# See the 'Snaps' section of 'man yabsm' for a detailed
+# overview.
+
+snap root_snap {
+    subvol=root_subvol
+
+    # every possible timeframe
+    timeframes=5minute,hourly,daily,weekly,monthly
+
+    5minute_keep=12 # back 1 hour in 5 minute increments
+
+    hourly_keep=48  # back 2 days in hour increments
+
+    daily_keep=63 # back a month
+    daily_times=09:00,23:59 # twice a day
+
+    weekly_keep=56 # back a year
+    weekly_day=wednesday
+    weekly_time=23:59
+
+    monthly_keep=12 # back a year
+    monthly_day=18
+    monthly_time=00:00
+}
+
+snap home_snap {
+    subvol=home_subvol
+    timeframes=hourly,daily
+    hourly_keep=24
+    daily_keep=31
+    daily_times=23:59
+}
+
+### SSH Backups ###
+
+# A 'ssh_backup' represents a configuration for performing
+# incremental backups over SSH.
+#
+# See the 'SSH Backups' section of 'man yabsm' for a detailed
+# overview.
+
+ssh_backup home_ssh_backup {
+    subvol=home_subvol
+    ssh_dest=larry@192.168.1.73
+    # this is a directory on the remote machine
+    dir=/.snapshots/yabsm-home-backup
+    timeframes=daily
+    daily_keep=365
+    daily_times=23:59
+}
+
+### Local Backups ###
+
+# A 'local_backup' represents a configuration for performing
+# incremental backups to a seperate partition of the same system.
+# This is useful for backing up to an external hard drive.
+#
+# See the 'Local Backups' section of 'man yabsm' for a detailed
+# overview.
+
+local_backup home_local_backup {
+    subvol=home_subvol
+    dir=/mnt/easystore/yabsm-home-backup
+    timeframes=weekly
+    weekly_keep=56
+    weekly_day=sunday
+    weekly_time=23:59
+}

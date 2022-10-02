@@ -1,0 +1,14 @@
+# This config should fail because foo_snap is snapping
+# an undefined subvol
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo_snap {
+    subvol=bar
+    timeframes=5minute
+    5minute_keep=1
+}

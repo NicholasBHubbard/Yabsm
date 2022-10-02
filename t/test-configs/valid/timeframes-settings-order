@@ -1,0 +1,14 @@
+# This config shows that you can define timeframe settings before they are
+# introduced by the timeframes value
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo_snap {
+    5minute_keep=1
+    timeframes=5minute
+    subvol=foo
+}

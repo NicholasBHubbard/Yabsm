@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# start/stop/restart/status the yabsmd btrfs snapshot daemon.
+
+usage="usage: $0 start|stop|restart|status"
+yabsm=$(command -v yabsm)
+
+if [ -z "$yabsm" ]; then
+  1>&2 printf "%s: error: could not find yabsm executable\n" "$0"
+  exit 1
+fi
+
+if [ $# != 1 ]; then
+   1>&2 printf "%s\n" "$usage"
+  exit 1
+fi
+
+case "$1" in
+'start')
+  "$yabsm" daemon start
+  ;;
+'stop')
+  "$yabsm" daemon stop
+  ;;
+'restart')
+  "$yabsm" daemon restart
+  ;;
+'status')
+  "$yabsm" daemon status
+  ;;
+*)
+  1>&2 printf "%s\n" "$usage"
+  exit 1
+esac

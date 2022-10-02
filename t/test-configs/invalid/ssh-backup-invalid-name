@@ -1,0 +1,16 @@
+# This config should fail because -foo_backup is not
+# a valid ssh_backup name.
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+ssh_backup -foo_backup {
+    subvol=foo
+    ssh_dest=nick@192.168.1.12
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=1
+}

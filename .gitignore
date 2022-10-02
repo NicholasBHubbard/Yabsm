@@ -1,5 +1,8 @@
 /perl-5.16.3
 /.plx
+/TAGS
 /local
 /.cpanm
 /src/fatlib
+/.dumbjump
+/yabsm-scratch.pl

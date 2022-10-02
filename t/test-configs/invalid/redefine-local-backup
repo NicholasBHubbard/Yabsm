@@ -1,0 +1,24 @@
+# This config should fail because we are defining two
+# local_backups with the same name.
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+local_backup foo_backup {
+    subvol=foo
+    local_dest=nick@192.168.1.12
+    dir=/backups
+    timeframes=5minute
+    5minute_keep=36
+}
+
+local_backup foo_backup {
+    subvol=foo
+    local_dest=nick@192.168.1.12
+    dir=/backups/foo
+    timeframes=5minute
+    5minute_keep=1
+}

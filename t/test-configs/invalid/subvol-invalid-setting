@@ -1,0 +1,14 @@
+# This config should fail because quux is not a valid subvol setting
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+    quux=bar
+}
+
+snap foo_snap {
+    subvol=foo
+    timeframes=5minute
+    5minute_keep=1
+}

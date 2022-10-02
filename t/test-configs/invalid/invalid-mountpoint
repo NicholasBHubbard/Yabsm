@@ -1,0 +1,13 @@
+# This config should fail because foobar/baz is not a full path
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=foobar/baz
+}
+
+snap foo_snap {
+     subvol=foo
+     timeframes=5minute
+     5minute_keep=1
+}

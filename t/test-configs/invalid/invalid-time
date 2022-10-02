@@ -1,0 +1,14 @@
+# This config should fail because 1:59 is not a valid hh:mm time
+
+yabsm_dir=/.snapshots/yabsm
+
+subvol foo {
+    mountpoint=/
+}
+
+snap foo_snap {
+     daily_times=1:59
+     subvol=foo
+     timeframes=daily
+     daily_keep=1
+}

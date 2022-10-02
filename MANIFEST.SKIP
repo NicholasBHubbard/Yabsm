@@ -1,0 +1,6 @@
+^MANIFEST\.SKIP$
+^App-Yabsm
+^perl-5.16.3
+^local
+^.plx
+^.git

@@ -12,9 +12,9 @@ use v5.16.3;
 
 package App::Yabsm::Command::Find;
 
-use App::Yabsm::Tools qw(arg_count_or_die);
+use App::Yabsm::Tools qw( :ALL );
 use App::Yabsm::Config::Query qw ( :ALL );
-use App::Yabsm::Config::Parser 'parse_config_or_die';
+use App::Yabsm::Config::Parser qw(parse_config_or_die);
 use App::Yabsm::Backup::SSH;
 use App::Yabsm::Snapshot qw(nums_to_snapshot_name
                             snapshot_name_nums
@@ -33,6 +33,7 @@ use Net::OpenSSH;
 use Time::Piece;
 use File::Basename qw(basename);
 use Carp qw(confess);
+use POSIX ();
 
 use Parser::MGC;
 use base qw(Parser::MGC);
@@ -118,30 +119,32 @@ sub answer_query {
                 die "yabsm: error: do not have read permission on '$dir'\n";
             }
             opendir my $dh, $dir or confess "yabsm: internal error: could not opendir '$dir'";
-            push @snapshots, map { $_ = "$dir/$_"} grep { is_snapshot_name($_, 0) } readdir($dh);
+            push @snapshots, map { $_ = "$dir/$_"} grep { is_snapshot_name($_) } readdir($dh);
             closedir $dh;
         }
     }
 
     elsif (ssh_backup_exists($thing, $config_ref)) {
+
+        die 'yabsm: error: permission denied'."\n" unless i_am_root();
+
+        my $yabsm_uid = getpwnam('yabsm') or die q(yabsm: error: no user named 'yabsm')."\n";
+
+        POSIX::setuid($yabsm_uid);
+
+        my $ssh = App::Yabsm::Backup::SSH::new_ssh_conn($thing, $config_ref);
+
         my $ssh_dest = ssh_backup_ssh_dest($thing, $config_ref);
-        my $ssh = Net::OpenSSH->new(
-            $ssh_dest,
-            master_opts  => [ '-q' ], # quiet
-            ctl_dir => '/tmp',
-            remote_shell => 'sh',
-            kill_ssh_on_timeout => 1
-        );
-        my $host = $ssh->get_host;
+
         if ($ssh->error) {
-            die "yabsm: ssh error: $host: ".$ssh->error."\n";
+            die "yabsm: ssh error: $ssh_dest: ".$ssh->error."\n";
         }
         for my $tframe (ssh_backup_timeframes($thing, $config_ref)) {
             my $dir  = ssh_backup_dir($thing, $tframe, $config_ref);
             unless ($ssh->system("[ -r '$dir' ]")) {
-                die "yabsm: ssh error: $host: remote user does not have read permission on '$dir'\n";
+                die "yabsm: ssh error: $ssh_dest: remote user does not have read permission on '$dir'\n";
             }
-            push @snapshots, map { $_ = "$host:$dir/$_" } grep { chomp $_; is_snapshot_name($_, 0) } App::Yabsm::Backup::SSH::ssh_system_or_die($ssh, "ls -1 '$dir'");
+            push @snapshots, grep { chomp $_; is_snapshot_name($_) } App::Yabsm::Backup::SSH::ssh_system_or_die($ssh, "ls -1 '$dir'");
         }
     }
 
@@ -152,7 +155,7 @@ sub answer_query {
                 die "yabsm: error: do not have read permission on '$dir'\n";
             }
             opendir my $dh, $dir or confess "yabsm: internal error: could not opendir '$dir'";
-            push @snapshots, map { $_ = "$dir/$_"} grep { is_snapshot_name($_, 0) } readdir($dh);
+            push @snapshots, map { $_ = "$dir/$_"} grep { is_snapshot_name($_) } readdir($dh);
             closedir $dh;
         }
     }

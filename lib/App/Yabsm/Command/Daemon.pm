@@ -79,7 +79,7 @@ sub yabsmd_start {
     arg_count_or_die(0, 0, @_);
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
- 
+
     # There can only ever be one running instance of yabsmd.
     if (my $yabsmd_pid = yabsmd_pid()) {
         die "yabsm: error: yabsmd is already running as pid $yabsmd_pid\n";
@@ -88,12 +88,12 @@ sub yabsmd_start {
     my $config_ref = parse_config_or_die();
 
     initialize_yabsmd_runtime_environment(1, 1, $config_ref);
-    
+
     my $pid = create_cron_scheduler($config_ref)->run(
         detach => 1,
         pid_file => '/run/yabsmd.pid'
     );
-    
+
     say "started yabsmd as pid $pid";
 }
 
@@ -104,7 +104,7 @@ sub yabsmd_stop {
     arg_count_or_die(0, 0, @_);
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
-    
+
     if (my $pid = yabsmd_pid()) {
         if (kill 'TERM', $pid) {
             say "terminated yabsmd process running as pid $pid";
@@ -125,7 +125,7 @@ sub yabsmd_restart {
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 
     yabsmd_stop();
-    
+
     sleep 1;
 
     yabsmd_start();
@@ -151,7 +151,7 @@ sub yabsmd_init {
     # start yabsmd.
 
     arg_count_or_die(0, 0, @_);
-    
+
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
 
     my $config_ref = parse_config_or_die();
@@ -176,7 +176,7 @@ sub initialize_yabsmd_runtime_environment {
     # * If $create_pid_file, create the (empty) file /run/yabsmd.pid and chown it to yabsm:yabsm
     # * Create the yabsm users SSH keys if they don't already exist
     # * Set this processes UID and GID to yabsm:yabsm
-    
+
     arg_count_or_die(3, 3, @_);
 
     my $create_log_file = shift;
@@ -198,7 +198,7 @@ sub initialize_yabsmd_runtime_environment {
     my $btrfs_bin = `which btrfs 2>/dev/null`;
     print $sudoer_fh "yabsm ALL=(root) NOPASSWD: $btrfs_bin";
     close $sudoer_fh;
-    
+
     if ($create_log_file) {
         open my $log_fh, '>>', '/var/log/yabsm'
           or confess q(yabsm: internal error: cannot open file '/var/log/yabsm' for writing);
@@ -408,7 +408,7 @@ sub create_yabsmd_runtime_dirs {
                 make_path_or_die(local_backup_dir($local_backup, $tframe, $config_ref));
             }
         }
-    } 
+    }
     return 1;
 }
 
@@ -604,8 +604,6 @@ sub yabsm_group_exists {
     # return 0 otherwise.
 
     arg_count_or_die(0, 0, @_);
-
-    i_am_root_or_die();
 
     return 0+(0 == system('getent group yabsm >/dev/null 2>&1'));
 }

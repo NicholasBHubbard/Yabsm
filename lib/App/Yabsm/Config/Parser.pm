@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Provides functionality for YABSM configuration parsing using the
+#  Provides functionality for Yabsm configuration parsing using the
 #  Parser::MGC library. Tests for the parser are located at
 #  src/t/Config.t.
 #

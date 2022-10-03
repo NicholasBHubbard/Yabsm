@@ -12,7 +12,7 @@ use v5.16.3;
 
 package App::Yabsm;
 
-our $VERSION = '3.12';
+our $VERSION = '3.13';
 
 use App::Yabsm::Command::Daemon;
 use App::Yabsm::Command::Config;

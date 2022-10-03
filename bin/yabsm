@@ -24,6 +24,9 @@ Yabsm - yet another btrfs snapshot manager
 
 =head1 Usage
 
+Yabsm provides 3 commands: L<config|/"Configuration Querying">,
+L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
+
     usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
 
     commands:
@@ -35,9 +38,6 @@ Yabsm - yet another btrfs snapshot manager
     <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
     <daemon|d> [--help] [start] [stop] [restart] [status] [init]
-
-Yabsm provides 3 commands: L<config|/"Configuration Querying">,
-L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 
 =head1 What is Yabsm?
 
@@ -60,6 +60,16 @@ timeframe categories.
 Provides a simple query language for locating snapshots and backups.
 
 =back
+
+=head1 Installation
+
+In the near future Yabsm should be available in all major Linux distribution
+repositories.
+
+Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
+
+    # apt install cpanminus
+    # cpanm App::Yabsm
 
 =head1 The Yabsm Daemon
 
@@ -267,7 +277,7 @@ configuration.
                             [ssh-key] [yabsm-user-home] [yabsm_dir] [subvols]
                             [snaps] [ssh_backups] [local_backups] [backups]
 
-The C<check ?file> subcommand checks that C<?file> is a valid yabsm configuration
+The C<check ?file> subcommand checks that C<?file> is a valid Yabsm configuration
 file and if not prints useful error messages. If the C<?file> argument is omitted
 it defaults to C</etc/yabsm.conf>.
 
@@ -361,11 +371,13 @@ or C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00>. If the current day is I<2020/12/25>, then
 C<23:59> is the same as C<2020_12_25_23:59>.
 
-=head1 Security (Sudo)
+=head1 Packaging
 
-Yabsm uses its root permissions at startup to install itself a sudo rule to
-C</etc/sudoers.d/yabsm-btrfs> that grants the I<yabsm> user passwordless sudo
-permission to the C<btrfs> executable.
+An example systemd service and sysvinit script are provided in the C<init/>
+directory.
+
+An example config file is located at C<examples/yabsm.conf.example>. It
+would probably be useful to install this file to C</etc/yabsm.conf.example>.
 
 =head1 Getting Support
 

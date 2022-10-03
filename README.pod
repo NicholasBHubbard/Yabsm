@@ -22,6 +22,23 @@ Provides a simple query language for locating snapshots and backups.
 
 =back
 
+=head1 Usage
+
+Yabsm provides 3 commands: L<config|/"Configuration Querying">,
+L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
+
+    usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
+
+    commands:
+
+    <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
+               [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
+               [local_backups] [backups]
+
+    <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+
+    <daemon|d> [--help] [start] [stop] [restart] [status] [init]
+
 =head1 Dependencies
 
 =over 4
@@ -44,17 +61,6 @@ L<btrfs-progs|https://github.com/kdave/btrfs-progs>
 
 =back
 
-=head1 Snapshots vs Backups
-
-Before we go on, let's clear up the difference between a snapshot and a backup.
-
-A L<snapshot|https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html#subvolume-and-snapshot>
-is a read-only subvolume created with the C<btrfs subvolume snapshot -r> command.
-
-A L<backup|https://btrfs.readthedocs.io/en/latest/Send-receive.html> is a
-snapshot that has been transferred to another btrfs filesystem via a combination
-of C<btrfs send> and C<btrfs receive>.
-
 =head1 Installation
 
 In the near future Yabsm should be available in all major Linux distribution
@@ -64,23 +70,6 @@ Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App:
 
     # apt install cpanminus
     # cpanm App::Yabsm
-
-=head1 Usage
-
-    usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
-
-    commands:
-
-    <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
-               [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
-               [local_backups] [backups]
-
-    <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
-
-    <daemon|d> [--help] [start] [stop] [restart] [status] [init]
-
-Yabsm provides 3 commands: L<config|/"Configuration Querying">,
-L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 
 =head1 The Yabsm Daemon
 
@@ -288,7 +277,7 @@ configuration.
                             [ssh-key] [yabsm-user-home] [yabsm_dir] [subvols]
                             [snaps] [ssh_backups] [local_backups] [backups]
 
-The C<check ?file> subcommand checks that C<?file> is a valid yabsm configuration
+The C<check ?file> subcommand checks that C<?file> is a valid Yabsm configuration
 file and if not prints useful error messages. If the C<?file> argument is omitted
 it defaults to C</etc/yabsm.conf>.
 
@@ -382,12 +371,6 @@ or C<min> is omitted then they are assumed to be 0. Therefore C<2020_12_25> is
 always the same as C<2020_12_25_00:00>. If the current day is I<2020/12/25>, then
 C<23:59> is the same as C<2020_12_25_23:59>.
 
-=head1 Security (Sudo)
-
-Yabsm uses its root permissions at startup to install itself a sudo rule to
-C</etc/sudoers.d/yabsm-btrfs> that grants the I<yabsm> user passwordless sudo
-permission to the C<btrfs> executable.
-
 =head1 Getting Support
 
 Do not hesitate to open an issue at
@@ -403,7 +386,7 @@ want to include the output of the following commands in your issue:
 An example systemd service and sysvinit script are provided in the C<init/>
 directory.
 
-An example config file is located at C<example-config/yabsm.conf.example>. It
+An example config file is located at C<examples/yabsm.conf.example>. It
 would probably be useful to install this file to C</etc/yabsm.conf.example>.
 
 =head1 Author

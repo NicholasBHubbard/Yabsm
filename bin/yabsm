@@ -61,6 +61,28 @@ Provides a simple query language for locating snapshots and backups.
 
 =back
 
+=head1 Dependencies
+
+=over 4
+
+=item *
+
+L<Perl|https://perldoc.perl.org/>
+
+=item *
+
+L<OpenSSH|https://www.openssh.com/>
+
+=item *
+
+L<Sudo|https://www.sudo.ws/>
+
+=item *
+
+L<btrfs-progs|https://github.com/kdave/btrfs-progs>
+
+=back
+
 =head1 Installation
 
 In the near future Yabsm should be available in all major Linux distribution

@@ -119,7 +119,7 @@ sub answer_query {
                 die "yabsm: error: do not have read permission on '$dir'\n";
             }
             opendir my $dh, $dir or confess "yabsm: internal error: could not opendir '$dir'";
-            push @snapshots, map { $_ = "$dir/$_"} grep { is_snapshot_name($_) } readdir($dh);
+            push @snapshots, map { $_ = "$dir/$_" } grep { is_snapshot_name($_) } readdir($dh);
             closedir $dh;
         }
     }
@@ -145,6 +145,7 @@ sub answer_query {
                 die "yabsm: ssh error: $ssh_dest: remote user does not have read permission on '$dir'\n";
             }
             push @snapshots, grep { chomp $_; is_snapshot_name($_) } App::Yabsm::Backup::SSH::ssh_system_or_die($ssh, "ls -1 '$dir'");
+            map { $_ = "$dir/$_" } @snapshots;
         }
     }
 
@@ -155,7 +156,7 @@ sub answer_query {
                 die "yabsm: error: do not have read permission on '$dir'\n";
             }
             opendir my $dh, $dir or confess "yabsm: internal error: could not opendir '$dir'";
-            push @snapshots, map { $_ = "$dir/$_"} grep { is_snapshot_name($_) } readdir($dh);
+            push @snapshots, map { $_ = "$dir/$_" } grep { is_snapshot_name($_) } readdir($dh);
             closedir $dh;
         }
     }

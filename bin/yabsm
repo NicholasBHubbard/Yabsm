@@ -22,23 +22,6 @@ __END__
 
 Yabsm - yet another btrfs snapshot manager
 
-=head1 Usage
-
-Yabsm provides 3 commands: L<config|/"Configuration Querying">,
-L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
-
-    usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
-
-    commands:
-
-    <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
-               [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
-               [local_backups] [backups]
-
-    <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
-
-    <daemon|d> [--help] [start] [stop] [restart] [status] [init]
-
 =head1 What is Yabsm?
 
 Yabsm is a btrfs snapshot and backup management system that provides the
@@ -60,6 +43,23 @@ timeframe categories.
 Provides a simple query language for locating snapshots and backups.
 
 =back
+
+=head1 Usage
+
+Yabsm provides 3 commands: L<config|/"Configuration Querying">,
+L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
+
+    usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
+
+    commands:
+
+    <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
+               [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
+               [local_backups] [backups]
+
+    <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+
+    <daemon|d> [--help] [start] [stop] [restart] [status] [init]
 
 =head1 Dependencies
 
@@ -396,7 +396,7 @@ C<23:59> is the same as C<2020_12_25_23:59>.
 =head1 Getting Support
 
 Do not hesitate to open an issue at
-L<https://github.com/NicholasBHubbard/yabsm/issues>! To help get support, you may
+L<https://github.com/NicholasBHubbard/Yabsm/issues>! To help get support, you may
 want to include the output of the following commands in your issue:
 
     yabsm config check

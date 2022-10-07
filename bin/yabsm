@@ -93,6 +93,22 @@ Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App:
     # apt install cpanminus
     # cpanm App::Yabsm
 
+=head1 Snapshots vs Backups
+
+Before we go on, let's clear up the difference between a snapshot and a backup.
+
+A L<snapshot|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Snapshots> is
+a read-only nested subvolume created with a C<btrfs subvolume snapshot -r>
+command. B<SNAPSHOTS ARE NOT RELIABLE AS A BACKUP MECHANISM>!. If a subvolume is
+corrupted then all the snapshots of that subvolume may also be corrupted.
+
+A backup is an L<incremental
+backup|https://btrfs.wiki.kernel.org/index.php/Incremental_Backup> sent to some
+location via Btrfs's
+L<send/receive|https://btrfs.readthedocs.io/en/latest/Send-receive.html>
+commands. A backup will not be corrupted if the subvolume being backed up is
+corrupted.
+
 =head1 The Yabsm Daemon
 
     usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status] [init]

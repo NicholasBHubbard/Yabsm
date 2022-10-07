@@ -35,8 +35,8 @@ Takes read only snapshots and performs both remote and local incremental backups
 
 =item *
 
-Separates snapshots and backups into 5minute, hourly, daily, weekly, and monthly
-timeframe categories.
+Separates snapshots and backups into I<5minute>, I<hourly>, I<daily>, I<weekly>,
+and I<monthly> timeframe categories.
 
 =item *
 
@@ -181,8 +181,8 @@ takes a value that is a path to a subvolume.
 =head4 Timeframes
 
 We need to understand timeframes before we can understand I<snaps>,
-I<ssh_backups>, and I<local_backups>. There are 5 timeframes: 5minute, hourly,
-daily, weekly, and monthly.
+I<ssh_backups>, and I<local_backups>. There are 5 timeframes: I<5minute>,
+I<hourly>, I<daily>, I<weekly>, and I<monthly>.
 
 I<Snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
 timeframes. For example, a I<ssh_backup> may be configured to take backups in the
@@ -216,16 +216,16 @@ Any C<*_keep> setting defines how many snapshots/backups you want to keep at one
 time for the configuration object. A common configuration is to keep 48 hourly
 snapshots so you can go back 2 days in one-hour increments.
 
-The C<daily_times> setting for daily snapshots takes a comma separated list of
-I<hh:mm> times. Yabsm will perform the snapshot/backup every day at all the given
-times.
+The I<daily> timeframe requires a C<daily_times> setting, which takes a comma
+separated list of C<hh:mm> times. Yabsm will perform the snapshot/backup every
+day at all the given times.
 
-The weekly timeframe requires a C<weekly_day> setting that takes a day of week
+The I<weekly> timeframe requires a C<weekly_day> setting that takes a day of week
 string such as I<monday>, I<thursday>, or I<saturday> and a I<weekly_time>
 setting that takes a I<hh:mm> time. The weekly snapshot/backup will be performed
 on the given day of the week at the given time.
 
-The monthly timeframe requires a C<monthly_day> setting that takes an integer
+The I<monthly> timeframe requires a C<monthly_day> setting that takes an integer
 between 1-31 and a C<monthly_time> setting that takes a I<hh:mm> time. The
 monthly snapshot/backup will be performed on the given day of the month at the
 given time.
@@ -233,7 +233,7 @@ given time.
 =head4 Snaps
 
 A I<snap> represents a snapshot configuration for some I<subvol>. Here is an
-example of a I<snap> that snapshots I<home_subvol> twice a day.
+example of a I<snap> that snapshots C<home_subvol> twice a day.
 
     snap home_subvol_snap {
         subvol=home_subvol
@@ -245,7 +245,7 @@ example of a I<snap> that snapshots I<home_subvol> twice a day.
 =head4 SSH Backups
 
 A I<ssh_backup> represents a backup configuration that sends snapshots over a
-network via SSH. See this example of a I<ssh_backup> that backs up I<home_subvol>
+network via SSH. See this example of a I<ssh_backup> that backs up C<home_subvol>
 to C<larry@192.168.1.73:/backups/yabsm/laptop_home> every night at midnight:
 
     ssh_backup home_subvol_larry_server {

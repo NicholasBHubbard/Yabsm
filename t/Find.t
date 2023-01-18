@@ -68,6 +68,7 @@ use Time::Piece;
     lives_and { is_deeply $f->('newest'), { type => 'newest'} } "$n - parses 'newest'";
     lives_and { is_deeply $f->('oldest'), { type => 'oldest'} } "$n - parses 'oldest'";
 
+    lives_and { is_deeply $f->('2020_5_13_20:59'), { type => 'closest', target => 'yabsm-2020_05_13_20:59' } } "$n - parses 'yr_mon_day_hr_min'";
     lives_and { is_deeply $f->('2020_5_13_23:59'), { type => 'closest', target => 'yabsm-2020_05_13_23:59' } } "$n - parses 'yr_mon_day_hr_min'";
     lives_and { is_deeply $f->('2020_05_13'), { type => 'closest', target => 'yabsm-2020_05_13_00:00'} } "$n - parses 'yr_mon_day'";
     lives_and { is_deeply $f->('5_13_2:30'), { type => 'closest', target => "yabsm-${yr}_05_13_02:30" } } "$n - parses 'mon_day_hr:min'";

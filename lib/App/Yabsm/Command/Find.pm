@@ -509,7 +509,7 @@ sub immediate_time_abbreviation_parser {
     my %time_regex = ( yr  => qr/2[0-9]{3}/
                      , mon => qr/[1][0-2]|0?[1-9]/
                      , day => qr/3[01]|[12][0-9]|0?[1-9]/
-                     , hr  => qr/2[123]|1[0-9]|0?[0-9]/
+                     , hr  => qr/2[0123]|1[0-9]|0?[0-9]/
                      , min => qr/[1-5][0-9]|0?[0-9]/
                      );
 

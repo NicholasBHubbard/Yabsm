@@ -49,25 +49,26 @@ sub have_prerequisites {
 
     return 0 unless $^O =~ /linux/i;
     return 0 unless 0 == system('which btrfs >/dev/null 2>&1');
-    return 0 unless `ssh -V 2>&1` =~ /^OpenSSH/;
+    return 0 unless `ssh -V 2>&1` =~ /^OpenSSH/; # there could be a different SSH implementation.
     return 0 unless 0 == system('which sudo >/dev/null 2>&1');
 
     return 1;
 }
 
-sub have_prerequisites_or_die {
+sub os_dependencies_satisfied_or_die {
 
-    # Like &have_prerequisites except die if the prerequisites are not met.
+    # Kill the program unless we are running on a Linux OS and have sudo,
+    # OpenSSH, and btrfs-progs installed.
 
     unless ($^O =~ /linux/i) {
-        die "yabsm: internal error: not a Linux OS, this is a '$^O' OS\n";
+        die "yabsm: internal error: This not a Linux OS, this is a '$^O' OS\n";
     }
 
     unless (0 == system('which btrfs >/dev/null 2>&1')) {
         die 'yabsm: internal error: btrfs-progs not installed'."\n";
     }
 
-    unless (`ssh -V 2>&1` =~ /^OpenSSH/) {
+    unless (`ssh -V 2>&1` =~ /^openssh/i) {
         die 'yabsm: internal error: OpenSSH not installed'."\n";
     }
 

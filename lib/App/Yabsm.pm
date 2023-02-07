@@ -10,7 +10,7 @@ use v5.16.3;
 
 package App::Yabsm;
 
-our $VERSION = '3.14';
+our $VERSION = '3.15';
 
 use App::Yabsm::Command::Daemon;
 use App::Yabsm::Command::Config;

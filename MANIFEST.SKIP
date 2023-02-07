@@ -3,5 +3,6 @@
 ^App-Yabsm
 ^perl-5\.
 ^local
-^.plx
-^.git
+^\.dumbjump
+^\.plx
+^\.git

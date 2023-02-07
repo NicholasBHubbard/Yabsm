@@ -2,29 +2,29 @@
 
 The latest release of Yabsm, including all documentation, can be found on CPAN [here](https://metacpan.org/dist/App-Yabsm/view/bin/yabsm).
 
-## Issues
+# Issues
 
 Don't hesitate to [open an issue](https://github.com/NicholasBHubbard/Yabsm/issues).
 
-## Developers
+# Developers
 
-# Download dependencies 
+### Download dependencies 
 
 dzil authordeps | cpanm
 dzil listdeps | cpanm
 
-# Run the test suite
+### Run the test suite
 
 dzil test
 
-# Build the distribution
+### Build the distribution
 
 dzil build
 
-# Release to CPAN
+### Release to CPAN
 
 dzil release
 
-## License
+# License
 
 MIT

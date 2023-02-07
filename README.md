@@ -8,22 +8,36 @@ Don't hesitate to [open an issue](https://github.com/NicholasBHubbard/Yabsm/issu
 
 # Developers
 
+### Install [Dist::Zilla](https://metacpan.org/pod/Dist::Zilla)
+
+```
+$ cpanm Dist::Zilla
+```
+
 ### Download dependencies 
 
-dzil authordeps | cpanm
-dzil listdeps | cpanm
+```
+$ dzil authordeps | cpanm
+$ dzil listdeps | cpanm
+```
 
 ### Run the test suite
 
-dzil test
+```
+$ dzil test
+```
 
 ### Build the distribution
 
-dzil build
+```
+$ dzil build
+```
 
 ### Release to CPAN
 
-dzil release
+```
+$ dzil release
+```
 
 # License
 

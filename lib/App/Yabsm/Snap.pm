@@ -2,8 +2,8 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Provides the &do_snap subroutine, which performs a single snap. This is a
-#  top-level subroutine that is scheduled to be run by the daemon.
+#  Provides the &do_snap subroutine which performs a single snapshot. This is a
+#  top-level subroutine that is directly scheduled to be run by the daemon.
 
 use strict;
 use warnings;

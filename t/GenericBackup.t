@@ -8,7 +8,7 @@
 
 use strict;
 use warnings;
-use v5.16.3;
+use v5.34.0;
 
 use App::Yabsm::Backup::Generic;
 use App::Yabsm::Snapshot;

@@ -7,7 +7,7 @@
 
 use strict;
 use warnings;
-use v5.16.3;
+use v5.34.0;
 
 package App::Yabsm::Config::Query;
 

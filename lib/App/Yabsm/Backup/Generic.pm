@@ -67,7 +67,7 @@ sub take_tmp_snapshot {
     closedir $dh;
     map { $_ = "$tmp_snapshot_dir/$_" } @tmp_snapshots;
 
-    # The old tmp snapshot may be in the process of being sent which will cause
+    # The old tmp snapshot may be in the process of being sent, which will cause
     # the deletion to fail. In this case we can just ignore the failure.
     for (@tmp_snapshots) {
         try {

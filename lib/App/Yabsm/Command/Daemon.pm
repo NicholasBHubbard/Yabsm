@@ -234,7 +234,7 @@ sub create_cron_scheduler {
 
     my $cron_scheduler = Schedule::Cron->new(
         sub { confess("yabsm: internal error: default Schedule::Cron dispatcher was invoked") },
-        processprefix => 'yabsmd'
+        processname => 'yabsmd'
     );
 
     for my $snap (all_snaps($config_ref)) {

@@ -419,6 +419,28 @@ want to include the output of the following commands in your issue:
     yabsm config ssh-check <SSH_BACKUP>
     cat /var/log/yabsm
 
+=head1 Dependencies
+
+=over 4
+
+=item *
+
+Perl >= 5.34.0
+
+=item *
+
+btrfs-progs
+
+=item *
+
+OpenSSH
+
+=item *
+
+Sudo
+
+=back
+
 =head1 Packaging
 
 An example systemd service and sysvinit script are provided in the C<init/>

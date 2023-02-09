@@ -295,7 +295,7 @@ sub create_bootstrap_lock_file {
 
 sub is_backup_type_or_die {
 
-    # Logdie unless $backup_type equals 'ssh' or 'local'.
+    # Die unless $backup_type equals 'ssh' or 'local'.
 
     arg_count_or_die(1, 1, @_);
 

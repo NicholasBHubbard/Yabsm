@@ -2,7 +2,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  This module contains the program's &main function.
+#  This module contains the program's &main subroutine.
 
 use strict;
 use warnings;
@@ -37,7 +37,8 @@ END_USAGE
 
 sub main {
 
-    # This is the toplevel subroutine of Yabsm.
+    # This is the toplevel subroutine of Yabsm. It is invoked directly from
+    # bin/yabsm with @ARGV as its args.
 
     my $cmd = shift @_ or die usage();
 

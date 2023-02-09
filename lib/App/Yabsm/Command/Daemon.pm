@@ -419,7 +419,7 @@ sub yabsmd_pid {
 
     arg_count_or_die(0, 0, @_);
 
-    chomp for my @pids = `pgrep ^yabsmd`;
+    chomp for my @pids = `pgrep ^yabsmd\$`;
 
     my $pid_file_pid;
     if (open my $fh, '<', '/run/yabsmd.pid') {

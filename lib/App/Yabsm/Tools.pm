@@ -19,8 +19,8 @@ use File::Path qw(make_path);
 use File::Basename qw(dirname);
 
 use Exporter qw(import);
-our @EXPORT_OK = qw(have_prerequisites
-                    have_prerequisites_or_die
+our @EXPORT_OK = qw(os_dependencies_satisfied
+                    os_dependencies_satisfied_or_die
                     arg_count_or_die
                     with_error_catch_log
                     have_sudo_access_to_btrfs
@@ -42,7 +42,7 @@ our %EXPORT_TAGS = ( ALL => [ @EXPORT_OK ] );
                  #            SUBROUTINES           #
                  ####################################
 
-sub have_prerequisites {
+sub os_dependencies_satisfied {
 
     # Return 1 if we are running on a Linux OS and have sudo, OpenSSH, and
     # btrfs-progs installed.
@@ -65,15 +65,15 @@ sub os_dependencies_satisfied_or_die {
     }
 
     unless (0 == system('which btrfs >/dev/null 2>&1')) {
-        die 'yabsm: internal error: btrfs-progs not installed'."\n";
+        die 'yabsm: internal error: btrfs-progs not installed', "\n";
     }
 
     unless (`ssh -V 2>&1` =~ /^openssh/i) {
-        die 'yabsm: internal error: OpenSSH not installed'."\n";
+        die 'yabsm: internal error: OpenSSH not installed', "\n";
     }
 
     unless (0 == system('which sudo >/dev/null 2>&1')) {
-        die 'yabsm: internal error: sudo not installed'."\n";
+        die 'yabsm: internal error: sudo not installed', "\n";
     }
 
     return 1;

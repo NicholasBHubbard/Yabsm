@@ -185,7 +185,7 @@ sub initialize_yabsmd_runtime_environment {
 
     i_am_root_or_die();
 
-    have_prerequisites_or_die();
+    os_dependencies_satisfied_or_die();
 
     install_signal_handlers();
 

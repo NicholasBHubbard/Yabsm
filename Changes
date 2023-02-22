@@ -1,9 +1,19 @@
-3.15    UPCOMING
+Revision history for App::Yabsm
 
-  - TODO: Change all source file headers to include # COPYRIGHT
-  - Added "[InsertCopyright]" to dist.ini
-  - Minor documentation upgrades
-  - Added "Changes" file (this file)
+3.15.0    TBD
+
+  - Improved error diagnostics on failed system command
+  - Set daemon process name to 'yabsmd'
+  - Various documentation upgrades
+  - Moved example init scripts into examples/
+  - Minor change to example sysvinit script
+  - Fixed bug rejecting immediate times at hour 20 (#2)
+  - Switched repo from Dist::Zilla to ExtUtils::MakeMaker
+  - Ship as a zero-dependency App::FatPacker packed script
+  - Upgraded minimum Perl version from v5.16.3 to v5.34.0
+  - Switched to semantic versioning
+  - Changed license from MIT to GPL3
+  - Added Changes file (this file)
 
 3.14    2022-10-04
 

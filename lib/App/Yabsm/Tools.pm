@@ -14,7 +14,7 @@ package App::Yabsm::Tools;
 
 use Time::Piece;
 use Feature::Compat::Try;
-use IPC::Cmd;
+use IPC::Run3 qw(run3);
 use Carp qw(confess);
 use File::Path qw(make_path);
 use File::Basename qw(dirname);
@@ -262,14 +262,15 @@ sub nums_denote_valid_date_or_die {
 sub system_or_die {
 
     # Wrapper around system that Carp::Confess's if the system command exits
-    # with a non-zero status. Redirects STDOUT and STDERR to /dev/null.
+    # with a non-zero status.
 
-    my @cmd = @_;
+    arg_count_or_die(1, '_', @_);
 
-    my ($success, undef, undef, undef, $stderr_buf) = IPC::Cmd::run(command => \@cmd);
+    run3(@_ == 1 ? $_[0] : \@_, undef, undef, \my $stderr);
 
-    if (not $success) {
-        confess("yabsm: internal error: system command '@cmd' exited with non-zero status: captured stdout '@$stderr_buf'");
+    unless (0 == $?) {
+        chomp $stderr;
+        confess("yabsm: internal error: system command '@_' exited with non-zero status '$?': captured stderr '$stderr'");
     }
 
     return 1;

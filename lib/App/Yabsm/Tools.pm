@@ -1,6 +1,6 @@
 #  Author:  Nicholas Hubbard
-#  WWW:     https://github.com/NicholasBHubbard/yabsm
-#  License: MIT
+#  WWW:     https://github.com/NicholasBHubbard/Yabsm
+#  License: GPL_3
 
 #  Miscellaneous tools to aid in the development of Yabsm.
 #

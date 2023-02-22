@@ -47,6 +47,16 @@ Provides a simple query language for locating snapshots and backups.
 
 =back
 
+=head1 Installation
+
+In the near future Yabsm should be available in all major Linux distribution
+repositories.
+
+Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
+
+    # apt install cpanminus
+    # cpanm App::Yabsm
+
 =head1 Usage
 
 Yabsm provides 3 commands: L<config|/"Configuration Querying">,
@@ -63,38 +73,6 @@ L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
       <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
 
       <daemon|d> [--help] [start] [stop] [restart] [status] [init]
-
-=head1 Dependencies
-
-=over 4
-
-=item *
-
-L<Perl|https://perldoc.perl.org/>
-
-=item *
-
-L<OpenSSH|https://www.openssh.com/>
-
-=item *
-
-L<Sudo|https://www.sudo.ws/>
-
-=item *
-
-L<btrfs-progs|https://github.com/kdave/btrfs-progs>
-
-=back
-
-=head1 Installation
-
-In the near future Yabsm should be available in all major Linux distribution
-repositories.
-
-Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
-
-    # apt install cpanminus
-    # cpanm App::Yabsm
 
 =head1 Snapshots vs Backups
 
@@ -140,7 +118,7 @@ the I<snaps>, I<ssh_backups>, and I<local_backups> defined in C</etc/yabsm.conf>
 
 The Yabsm daemon logs all of its errors to C</var/log/yabsm>. If, for example,
 you have an I<ssh_backup> that is not being performed, the first thing you should
-do is check the logs.
+do is check the log file.
 
 =head1 Configuration
 
@@ -421,28 +399,6 @@ want to include the output of the following commands in your issue:
     yabsm config check
     yabsm config ssh-check <SSH_BACKUP>
     cat /var/log/yabsm
-
-=head1 OS Dependencies
-
-=over 4
-
-=item *
-
-Perl >= 5.34.0
-
-=item *
-
-btrfs-progs
-
-=item *
-
-OpenSSH
-
-=item *
-
-Sudo
-
-=back
 
 =head1 Author
 

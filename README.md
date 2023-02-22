@@ -46,4 +46,4 @@ An example configuration is provided in `/examples/yabsm.conf.example`. It would
 
 #### Versioning Scheme
 
-Yabsm uses [semantic versioning](https://semver.org/). The MAJOR version is upgraded if we make any change that breaks backwards compatibility. The MINOR version is upgraded functionality is added. The PATCH version is upgraded if there is a bug fix, or an upgrade is made to one of the fatpacked CPAN dependencies.
+Yabsm uses [semantic versioning](https://semver.org/). The MAJOR version is upgraded if we make any change that breaks backwards compatibility. The MINOR version is upgraded if functionality is added. The PATCH version is upgraded if there is a bug fix, or an upgrade is made to one of the fatpacked CPAN dependencies.

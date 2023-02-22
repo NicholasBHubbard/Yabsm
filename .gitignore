@@ -6,3 +6,9 @@
 /.dumbjump
 /yabsm-scratch.pl
 /App-Yabsm*
+/MYMETA*
+/Makefile
+/Makefile.old
+/blib
+/fatlib
+/pm_to_blib

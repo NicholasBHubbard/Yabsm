@@ -1,16 +1,18 @@
-# See the 'Configuration' section in 'man yabsm' for a
-# detailed overview on how to create a yabsm configuration.
+# See the 'Configuration' section in '$ man yabsm' for a detailed explanation on
+# how to create a yabsm configuration.
 
-# This is the directory for yabsm to place snapshots, and use
-# as a working dir for performing backups.
+# This is the directory you want yabsm to place your snapshots, and use as a
+# working directory for performing backups.
 yabsm_dir=/.snapshots/yabsm
 
 ### Subvols ###
 
 # A 'subvol' is yabsm's interface to a btrfs subvolume
 #
-# This configuration makes sense for a system that has
-# two btrfs subvolumes mounted at '/' and '/home'.
+# This configuration makes sense for a system that has two btrfs subvolumes
+# mounted at '/' and '/home'.
+#
+# See the 'Subvols' section of '$ man yabsm' for a detailed explanation.
 
 subvol root_subvol {
     mountpoint=/
@@ -22,11 +24,10 @@ subvol home_subvol {
 
 ### Snaps ###
 
-# A 'snap' represents a configuration for taking readonly
-# snapshots of some 'subvol'.
+# A 'snap' represents a configuration for taking readonly snapshots of some
+# 'subvol'.
 #
-# See the 'Snaps' section of 'man yabsm' for a detailed
-# overview.
+# See the 'Snaps' section of '$ man yabsm' for a detailed explanation.
 
 snap root_snap {
     subvol=root_subvol
@@ -60,11 +61,10 @@ snap home_snap {
 
 ### SSH Backups ###
 
-# A 'ssh_backup' represents a configuration for performing
-# incremental backups over SSH.
+# A 'ssh_backup' represents a configuration for performing incremental backups
+# of some 'subvol' over SSH.
 #
-# See the 'SSH Backups' section of 'man yabsm' for a detailed
-# overview.
+# See the 'SSH Backups' section of '$ man yabsm' for a detailed explanation.
 
 ssh_backup home_ssh_backup {
     subvol=home_subvol
@@ -78,12 +78,11 @@ ssh_backup home_ssh_backup {
 
 ### Local Backups ###
 
-# A 'local_backup' represents a configuration for performing
-# incremental backups to a seperate partition of the same system.
-# This is useful for backing up to an external hard drive.
+# A 'local_backup' represents a configuration for performing incremental backups
+# of some 'subvol' to a seperate partition of the host system. This is useful
+# for backing up to an external hard drive.
 #
-# See the 'Local Backups' section of 'man yabsm' for a detailed
-# overview.
+# See the 'Local Backups' section of '$ man yabsm' for a detailed explanation.
 
 local_backup home_local_backup {
     subvol=home_subvol

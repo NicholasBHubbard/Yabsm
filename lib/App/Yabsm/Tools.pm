@@ -14,6 +14,7 @@ package App::Yabsm::Tools;
 
 use Time::Piece;
 use Feature::Compat::Try;
+use IPC::Cmd;
 use Carp qw(confess);
 use File::Path qw(make_path);
 use File::Basename qw(dirname);
@@ -263,22 +264,12 @@ sub system_or_die {
     # Wrapper around system that Carp::Confess's if the system command exits
     # with a non-zero status. Redirects STDOUT and STDERR to /dev/null.
 
-    open my $NULLFD, '>', '/dev/null';
-    open my $OLD_STDOUT, '>&', STDOUT;
-    open my $OLD_STDERR, '>&', STDERR;
-    open STDOUT, '>&', $NULLFD;
-    open STDERR, '>&', $NULLFD;
+    my @cmd = @_;
 
-    my $status = system @_;
+    my ($success, undef, undef, undef, $stderr_buf) = IPC::Cmd::run(command => \@cmd);
 
-    open STDOUT, '>&', $OLD_STDOUT;
-    open STDERR, '>&', $OLD_STDERR;
-    close $NULLFD;
-    close $OLD_STDOUT;
-    close $OLD_STDERR;
-
-    unless (0 == $status) {
-        confess("yabsm: internal error: system command '@_' exited with non-zero status '$status'");
+    if (not $success) {
+        confess("yabsm: internal error: system command '@cmd' exited with non-zero status: captured stdout '@$stderr_buf'");
     }
 
     return 1;

@@ -20,7 +20,7 @@ sub usage {
     return <<'END_USAGE';
 usage: yabsm [--help] [--version] [<COMMAND> <ARGS>]
 
-See 'man yabsm' for a detailed overview.
+See '$ man yabsm' for a detailed overview.
 
 Commands:
 

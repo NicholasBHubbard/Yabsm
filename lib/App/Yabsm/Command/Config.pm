@@ -56,6 +56,7 @@ local_backups          Print the of all local_backups defined in /etc/yabsm.conf
 
 backups                Print names of all ssh_backups and local_backups defined
                        in /etc/yabsm.conf.
+
 END_HELP
 }
 

@@ -69,6 +69,7 @@ status       Print the Yabsm daemons PID if it is running.
 
 init         Initialize the Yabsm daemons runtime environment without starting
              the daemon.
+
 END_HELP
 }
 

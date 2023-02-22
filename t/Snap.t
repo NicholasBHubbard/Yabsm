@@ -10,6 +10,9 @@ use strict;
 use warnings;
 use v5.34.0;
 
+# Compile the fatpacked bin/yabsm if running from the distribution.
+BEGIN { require './bin/yabsm' if -e 'META.yml' }
+
 use App::Yabsm::Snap;
 
 use Test::More;
@@ -43,7 +46,7 @@ GetOptions( 's=s' => \$BTRFS_SUBVOLUME
 
 print $USAGE and exit 0 if $HELP;
 
-have_prerequisites() or plan skip_all => 'Missing OS prerequisites';
+os_dependencies_satisfied() or plan skip_all => 'Missing OS prerequisites';
 
 defined $BTRFS_SUBVOLUME or plan skip_all => 'Failed to provide btrfs subvolume';
 

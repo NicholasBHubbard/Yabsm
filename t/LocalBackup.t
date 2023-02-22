@@ -10,6 +10,9 @@ use strict;
 use warnings;
 use v5.34.0;
 
+# Compile the fatpacked bin/yabsm if running from the distribution.
+BEGIN { require './bin/yabsm' if -e 'META.yml' }
+
 use App::Yabsm::Backup::Local;
 
 use App::Yabsm::Tools qw( :ALL );
@@ -46,7 +49,7 @@ print $USAGE and exit 0 if $HELP;
                  #         ENSURE ENVIRONMENT       #
                  ####################################
 
-have_prerequisites() or plan skip_all => 'Missing OS prerequisites';
+os_dependencies_satisfied() or plan skip_all => 'Missing OS prerequisites';
 
 defined $BTRFS_SUBVOLUME or plan skip_all => 'Failed to provide btrfs subvolume';
 

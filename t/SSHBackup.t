@@ -10,6 +10,9 @@ use strict;
 use warnings;
 use v5.34.0;
 
+# Compile the fatpacked bin/yabsm if running from the distribution.
+BEGIN { require './bin/yabsm' if -e 'META.yml' }
+
 use App::Yabsm::Backup::SSH;
 
 use App::Yabsm::Tools qw( :ALL );
@@ -45,7 +48,7 @@ print $USAGE and exit 0 if $HELP;
                  #         ENSURE ENVIRONMENT       #
                  ####################################
 
-have_prerequisites() or plan skip_all => 'Missing OS prerequisites';
+os_dependencies_satisfied() or plan skip_all => 'Missing OS prerequisites';
 
 i_am_root() or plan skip_all => 'Must be root user';
 
@@ -191,5 +194,7 @@ sub cleanup_snapshots {
 }
 
 cleanup_snapshots();
+
+done_testing();
 
 1;

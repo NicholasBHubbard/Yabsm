@@ -10,6 +10,9 @@ use strict;
 use warnings;
 use v5.34.0;
 
+# Compile the fatpacked bin/yabsm if running from the distribution.
+BEGIN { require './bin/yabsm' if -e 'META.yml' }
+
 use App::Yabsm::Tools;
 
 use Test::More 'no_plan';

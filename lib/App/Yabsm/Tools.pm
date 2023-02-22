@@ -97,12 +97,12 @@ sub arg_count_or_die {
 
     unless ($lower_ok && $upper_ok) {
         my $caller    = ( caller(1) )[3];
-        my $error_msg = "yabsm: internal error: called '$caller' with $num_args args but it expects";
+        my $err_msg_prefix = "yabsm: internal error: called '$caller' with $num_args args but it expects";
         my $range_msg;
         if    ($upper eq '_')    { $range_msg = "at least $lower args" }
         elsif ($lower == $upper) { $range_msg = "$lower args"          }
         else                     { $range_msg = "$lower-$upper args"   }
-        confess("$error_msg $range_msg");
+        confess("$err_msg_prefix $range_msg");
     }
 
     return 1;

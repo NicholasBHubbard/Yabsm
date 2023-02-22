@@ -17,12 +17,13 @@ All patches welcome!
 #### CPAN Release Steps
 
 - Make sure the `$VERSION` variable is correct in `/lib/App/Yabsm.pm`
-- Make sure `/Changes` lists all relevant changes since previous version
+- Make sure `/Changes` lists all relevant changes since the previous version
 - In `/Changes`, update TBD to today's yyyy-mm-dd
-- Run the test suite
 - Make sure that [/cpanfile](https://metacpan.org/dist/Module-CPANfile/view/lib/cpanfile.pod) lists all the dependencies (with specific versions) that need to be fatpacked
-- Pack the script with [App::FatPacker](https://metacpan.org/pod/App::FatPacker): `$ fatpack pack bin/yabsm-unpacked > bin/yabsm`
-- Make the dist: `$ make clean; perl Makefile.PL; make; make test; make dist`
+- Install all modules listed in `/cpanfile`: `$ cpanm --installdeps .`
+- Run the test suite and make sure all tests pass
+- Pack `bin/yabsm-unpacked` with [App::FatPacker](https://metacpan.org/pod/App::FatPacker): `$ fatpack pack bin/yabsm-unpacked > bin/yabsm`
+- Make the dist: `$ perl Makefile.PL; make; make test; make dist`
 - Examine the dist to make sure everything is as expected
 - Do a [cpan-upload](https://metacpan.org/pod/CPAN::Uploader) dry run: `$ cpan-upload --dry-run App-Yabsm-*.tar.gz`
 - Check everything one last time

@@ -5,7 +5,7 @@ requires 'IPC::Run3'      => '0.048';
 requires 'Net::OpenSSH'   => '0.83';
 requires 'Parser::MGC'    => '0.21';
 requires 'Regexp::Common' => '2017060201';
-requires 'Schedule::Cron' => '1.04';
+requires 'Schedule::Cron' => '1.05';
 
 on 'test' => sub {
    requires 'Test::Exception' => '0';

@@ -266,7 +266,7 @@ sub system_or_die {
 
     arg_count_or_die(1, '_', @_);
 
-    run3(@_ == 1 ? $_[0] : \@_, undef, undef, \my $stderr);
+    run3(@_ == 1 ? $_[0] : \@_, \undef, \undef, \my $stderr);
 
     unless (0 == $?) {
         chomp $stderr;

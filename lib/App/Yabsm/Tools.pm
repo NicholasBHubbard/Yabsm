@@ -148,7 +148,7 @@ sub have_sudo_access_to_btrfs_or_die {
 
     my $username = getpwuid $<;
 
-    have_sudo_access_to_btrfs() ? return 1 : die("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'");
+    have_sudo_access_to_btrfs() ? return 1 : die("yabsm: internal error: no sudo access rights to 'btrfs' while running as user '$username'\n");
 }
 
 sub is_btrfs_dir {

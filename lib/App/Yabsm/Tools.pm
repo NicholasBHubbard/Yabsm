@@ -270,6 +270,7 @@ sub system_or_die {
 
     unless (0 == $?) {
         chomp $stderr;
+        $? >>= 8;
         confess("yabsm: internal error: system command '@_' exited with non-zero status '$?': captured stderr '$stderr'");
     }
 

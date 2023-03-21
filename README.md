@@ -28,7 +28,6 @@ All patches welcome!
 - Do a [cpan-upload](https://metacpan.org/pod/CPAN::Uploader) dry run: `$ cpan-upload --dry-run $PAUSE_USERNAME App-Yabsm-*.tar.gz`
 - Check everything one last time
 - Upload to CPAN: `$ cpan-upload -u $PAUSE_USERNAME App-Yabsm-*.tar.gz`
-- Cleanup: `$ make clean`
 
 # Packagers
 

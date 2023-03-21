@@ -4,7 +4,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/yabsm
 #  License: MIT
 
-#  Testing for the Yabsm::Tools library.
+#  Testing for the App::Yabsm::Tools library.
 
 use strict;
 use warnings;
@@ -67,7 +67,7 @@ use Test::Exception;
 
     lives_and { is $f->('true'), 1 } "$n - succeeds if command succeeds";
     throws_ok { $f->('false') } qr/yabsm: internal error: system command 'false' exited with non-zero status/, "$n - dies if command fails";
-    throws_ok { $f->('>&2 echo death ; false')} qr/captured stderr 'death'/;
+    throws_ok { $f->('>&2 echo death ; false') } qr/captured stderr 'death'/;
 }
 
 1;

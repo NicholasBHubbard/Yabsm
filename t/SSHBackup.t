@@ -195,6 +195,4 @@ sub cleanup_snapshots {
 
 cleanup_snapshots();
 
-done_testing();
-
 1;

@@ -12,7 +12,7 @@ use v5.34.0;
 
 use App::Yabsm;
 
-# 'unless caller' allows the fatpacked version of this script to be required,
+# 'unless caller' allows the fatpacked version of this script to be 'require'd,
 # which allows test scripts to load their dependencies when "make test" is run
 # at installation time.
 App::Yabsm::main(@ARGV) unless caller;

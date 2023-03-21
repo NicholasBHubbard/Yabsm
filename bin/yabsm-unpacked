@@ -4,7 +4,7 @@
 #  WWW:     https://github.com/NicholasBHubbard/Yabsm
 #  License: GPL_3
 
-#  The toplevel script of Yabsm.
+#  The toplevel script and manual of Yabsm.
 
 use strict;
 use warnings;
@@ -12,9 +12,6 @@ use v5.34.0;
 
 use App::Yabsm;
 
-# 'unless caller' allows the fatpacked version of this script to be 'require'd,
-# which allows test scripts to load their dependencies when "make test" is run
-# at installation time.
 App::Yabsm::main(@ARGV) unless caller;
 
 __END__

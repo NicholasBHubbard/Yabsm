@@ -20,7 +20,6 @@ t/SSHBackup.t
 t/Snap.t
 t/Snapshot.t
 t/Tools.t
-t/test-configs
 t/test-configs/valid/comments-and-whitespace
 t/test-configs/valid/local-backup-basic
 t/test-configs/valid/multiple-subjects

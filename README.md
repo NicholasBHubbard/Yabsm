@@ -25,7 +25,6 @@ All patches welcome!
 - Pack `bin/yabsm-unpacked` with [App::FatPacker](https://metacpan.org/pod/App::FatPacker): `$ fatpack pack bin/yabsm-unpacked > bin/yabsm`
 - Make the dist: `$ perl Makefile.PL; make; make test; make dist`
 - Examine the dist to make sure everything is as expected
-- Do a [cpan-upload](https://metacpan.org/pod/CPAN::Uploader) dry run: `$ cpan-upload --dry-run $PAUSE_USERNAME App-Yabsm-*.tar.gz`
 - Check everything one last time
 - Upload to CPAN: `$ cpan-upload -u $PAUSE_USERNAME App-Yabsm-*.tar.gz`
 

@@ -1,6 +1,7 @@
-#  Author:  Nicholas Hubbard
-#  WWW:     https://github.com/NicholasBHubbard/Yabsm
-#  License: GPL_3
+#  Author:    Nicholas Hubbard
+#  Copyright: Nicholas Hubbard
+#  License:   GPL_3
+#  WWW:       https://github.com/NicholasBHubbard/Yabsm
 
 #  Provides functionality for Yabsm configuration parsing using the
 #  Parser::MGC library. Tests for the parser are located at

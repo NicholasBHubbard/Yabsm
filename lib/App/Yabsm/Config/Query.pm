@@ -1,6 +1,7 @@
-#  Author:  Nicholas Hubbard
-#  WWW:     https://github.com/NicholasBHubbard/Yabsm
-#  License: GPL_3
+#  Author:    Nicholas Hubbard
+#  Copyright: Nicholas Hubbard
+#  License:   GPL_3
+#  WWW:       https://github.com/NicholasBHubbard/Yabsm
 
 #  Provides functions for querying the Yabsm configuration hash that is produced
 #  by Yabsm::Config::Parser::parse_config_or_die().

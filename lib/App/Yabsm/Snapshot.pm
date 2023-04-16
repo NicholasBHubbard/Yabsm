@@ -1,6 +1,7 @@
-#  Author:  Nicholas Hubbard
-#  WWW:     https://github.com/NicholasBHubbard/Yabsm
-#  License: GPL_3
+#  Author:    Nicholas Hubbard
+#  Copyright: Nicholas Hubbard
+#  License:   GPL_3
+#  WWW:       https://github.com/NicholasBHubbard/Yabsm
 
 #  Provides functions for taking and cycling snapshots based off of
 #  the user config.

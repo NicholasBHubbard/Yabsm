@@ -1,6 +1,7 @@
-#  Author:  Nicholas Hubbard
-#  WWW:     https://github.com/NicholasBHubbard/Yabsm
-#  License: GPL_3
+#  Author:    Nicholas Hubbard
+#  Copyright: Nicholas Hubbard
+#  License:   GPL_3
+#  WWW:       https://github.com/NicholasBHubbard/Yabsm
 
 #  Provides the &do_local_backup subroutine, which performs a single local_backup
 #  This is a top-level subroutine that is directly scheduled to be run by the

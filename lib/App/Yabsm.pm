@@ -1,8 +1,10 @@
-#  Author:  Nicholas Hubbard
-#  WWW:     https://github.com/NicholasBHubbard/Yabsm
-#  License: GPL_3
+#  Author:    Nicholas Hubbard
+#  Copyright: Nicholas Hubbard
+#  License:   GPL_3
+#  WWW:       https://github.com/NicholasBHubbard/Yabsm
 
-#  This module contains the program's &main subroutine.
+#  This module contains the program's &main subroutine, and the developers
+#  manual.
 
 use strict;
 use warnings;

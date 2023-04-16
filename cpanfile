@@ -2,7 +2,7 @@
 
 # Feature::Compat::Try must be version 0.04 in order for yabsm
 # to support v5.34.0 as its minimum version. Feature::Compat::Try
-# versions >0.04 require XS on Perl >5.35.8, which prevents us
+# versions >0.04 require XS on Perl <5.36.0, which prevents us
 # from fatpacking.
 
 requires 'Array::Utils'         => '== 0.5';

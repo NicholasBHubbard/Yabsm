@@ -1,6 +1,6 @@
 # Yabsm (yet another btrfs snapshot manager)
 
-The latest release of Yabsm, including all user documentation, can be found on CPAN [here](https://metacpan.org/dist/App-Yabsm/view/bin/yabsm).
+The latest release of Yabsm, including all user documentation, can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.1/view/bin/yabsm).
 
 # Issues
 

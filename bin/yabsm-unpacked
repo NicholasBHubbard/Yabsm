@@ -394,9 +394,13 @@ Do not hesitate to open an issue at
 L<https://github.com/NicholasBHubbard/Yabsm/issues>! To help get support, you may
 want to include the output of the following commands in your issue:
 
-    yabsm config check
-    yabsm config ssh-check <SSH_BACKUP>
-    cat /var/log/yabsm
+    $ yabsm config check
+    $ yabsm config ssh-check <SSH_BACKUP>
+    $ cat /var/log/yabsm
+
+=head1 Developers
+
+The developers manual can be viewed at: https://metacpan.org/pod/App::Yabsm.
 
 =head1 Author
 

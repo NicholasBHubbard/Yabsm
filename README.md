@@ -1,8 +1,6 @@
-[LATEST_YABSM_VERSION]: 3.15.2
-
 # Yabsm (a btrfs snapshot manager and backup system)
 
-Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-[LATEST_YABSM_VERSION]/view/bin/yabsm).
+Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.2/view/bin/yabsm).
 
 # Installation
 
@@ -10,7 +8,7 @@ Yabsm is officially supported on Arch, and Slackware.
 
 #### Arch
 
-Available on the AUR as [https://aur.archlinux.org/packages/yabsm](yabsm). After creating a configuration, start and enable the yabsmd service with `$ systemctl enable --now yabsmd`.
+Available on the AUR as [yabsm](https://aur.archlinux.org/packages/yabsm). After [creating a configuration](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.2/view/bin/yabsm#Configuration), start and enable the yabsmd service with `$ systemctl enable --now yabsmd`.
 
 #### Slackware
 

@@ -25,6 +25,7 @@ First off, all patches welcome!
 #### Features to Add
 
 - Bash completion, specifically for the `find` command
+- On-demand snapshots/backups
 
 #### Dependencies
 

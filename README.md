@@ -1,6 +1,18 @@
-# Yabsm (yet another btrfs snapshot manager)
+# Yabsm (a btrfs snapshot manager and backup system)
 
-The latest release of Yabsm, including all user documentation, can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.1/view/bin/yabsm).
+Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.1/view/bin/yabsm).
+
+# Installation
+
+Yabsm is officially supported on Arch, and Slackware.
+
+#### Arch
+
+Available on the AUR as [https://aur.archlinux.org/packages/yabsm](yabsm). After creating a configuration, start and enable the yabsmd service with `$ systemctl enable --now yabsmd`.
+
+#### Slackware
+
+Available on SlackBuilds.org as [system/yabsm](https://slackbuilds.org/repository/15.0/system/yabsm/) (be sure to read its README).
 
 # Issues
 
@@ -8,41 +20,52 @@ Don't hesitate to [open an issue](https://github.com/NicholasBHubbard/Yabsm/issu
 
 # Developers
 
-All patches welcome!
+First off, all patches welcome!
 
 #### Features to Add
 
-- Add bash completion, specifically for the `find` command
-
-#### CPAN Release Steps
-
-- Make sure the `$VERSION` variable is correct in `/lib/App/Yabsm.pm`
-- Make sure `/Changes` lists all relevant changes since the previous version
-- In `/Changes`, update TBD to today's yyyy-mm-dd
-- Make sure that [/cpanfile](https://metacpan.org/dist/Module-CPANfile/view/lib/cpanfile.pod) lists all the dependencies (with specific versions) that need to be fatpacked
-- Install all modules listed in `/cpanfile`: `$ cpanm --installdeps .`
-- Run the test suite and make sure all tests pass
-- Pack `bin/yabsm-unpacked` with [App::FatPacker](https://metacpan.org/pod/App::FatPacker): `$ fatpack pack bin/yabsm-unpacked > bin/yabsm`
-- Make the dist: `$ perl Makefile.PL; make; make test; make dist`
-- Examine the dist to make sure everything is as expected
-- Check everything one last time
-- Upload to CPAN: `$ cpan-upload -u $PAUSE_USERNAME App-Yabsm-*.tar.gz`
-
-# Packagers
+- Bash completion, specifically for the `find` command
 
 #### Dependencies
 
 - Perl >= 5.34.0
-- Sudo
-- OpenSSH
 - btrfs-progs
+- OpenSSH
+- sudo
+- which
 
 #### Relevant Packaging Information
 
 Yabsm runs as a cron-style daemon that is meant to be started at boot time. An example sysvinit-style init script is provided in `/examples/rc.yabsmd`, and an example systemd service is provided in `/examples/yabsmd.service`.
 
-An example configuration is provided in `/examples/yabsm.conf.example`. It would be helpful to the user if this file was installed to `/etc/yabsm.conf.example`.
+Yabsm is distributed as an [App::FatPacker](https://metacpan.org/pod/App::FatPacker) packed script. This allows Yabsm to be implemented in a single executable, with all of its CPAN dependencies packed into this file. For all packaging purposes Yabsm has zero CPAN dependencies. The test suite however depends on Test::Exception, so it will be needed if you want to run the test suite at install time (which should not be necessary).
+
+An example configuration is provided in `/examples/yabsm.conf.example`. This example configuration should be installed to `/etc/yabsm.conf.example`.
 
 #### Versioning Scheme
 
 Yabsm uses [semantic versioning](https://semver.org/). The MAJOR version is upgraded if we make any change that breaks backwards compatibility. The MINOR version is upgraded if functionality is added that does not break backwards compatibility. The PATCH version is upgraded if there is a bug fix, or an upgrade is made to one of the fatpacked CPAN dependencies.
+
+
+#### CPAN Release Steps
+
+- Make sure the `$VERSION` variable is correct in `/lib/App/Yabsm.pm`
+- Make sure that [/cpanfile](https://metacpan.org/dist/Module-CPANfile/view/lib/cpanfile.pod) lists all the dependencies (with specific versions) that need to be fatpacked
+- Install all modules listed in `/cpanfile`: `$ cpanm --installdeps .`
+- Run the test suite and make sure all tests pass
+- Pack `bin/yabsm-unpacked` with [App::FatPacker](https://metacpan.org/pod/App::FatPacker): `$ fatpack pack bin/yabsm-unpacked > bin/yabsm`
+  - Make the dist: `$ perl Makefile.PL; make; make test; make dist`
+- Examine the dist to make sure everything is as expected
+- Make sure `/Changes` lists all relevant changes since the previous version and denotes todays date for the version to be released
+- Check everything one last time. Specifically, make sure all the CPAN deps (with correct version) have been fatpacked into `bin/yabsm`.
+- Upload to CPAN: `$ cpan-upload -u $PAUSE_USERNAME App-Yabsm-$VERSION.tar.gz`
+
+# Copyright and License
+
+Copyright (C) 2022-2023 by Nicholas Hubbard <nicholashubbard@posteo.net>
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with App-Yabsm. If not, see http://www.gnu.org/licenses/.

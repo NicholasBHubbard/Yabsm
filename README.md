@@ -1,6 +1,8 @@
+[LATEST_YABSM_VERSION]: 3.15.2
+
 # Yabsm (a btrfs snapshot manager and backup system)
 
-Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.1/view/bin/yabsm).
+Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-[LATEST_YABSM_VERSION]/view/bin/yabsm).
 
 # Installation
 

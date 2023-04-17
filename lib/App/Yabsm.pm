@@ -3,8 +3,7 @@
 #  License:   GPL_3
 #  WWW:       https://github.com/NicholasBHubbard/Yabsm
 
-#  This module contains the program's &main subroutine, and the developers
-#  manual.
+#  This module contains the program's &main subroutine.
 
 use strict;
 use warnings;

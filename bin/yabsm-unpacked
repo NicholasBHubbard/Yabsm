@@ -122,8 +122,8 @@ do is check the log file.
 
 The Yabsm daemon is configured via the C</etc/yabsm.conf> file.
 
-You can run the command C<yabsm config check> to check your config and output
-useful error messages if there are any problems.
+You can run the command C<yabsm config check> to check the correctness of your
+config and output useful error messages if there are any problems.
 
 =head3 Configuration Grammar
 

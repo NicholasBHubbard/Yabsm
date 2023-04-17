@@ -45,16 +45,6 @@ Provides a simple query language for locating snapshots and backups.
 
 =back
 
-=head1 Installation
-
-In the near future Yabsm should be available in all major Linux distribution
-repositories.
-
-Until then Yabsm can be installed with L<cpanminus|https://metacpan.org/pod/App::cpanminus>.
-
-    # apt install cpanminus
-    # cpanm App::Yabsm
-
 =head1 Usage
 
 Yabsm provides 3 commands: L<config|/"Configuration Querying">,

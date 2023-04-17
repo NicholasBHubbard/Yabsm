@@ -5,7 +5,7 @@
 #  License:   GPL_3
 #  WWW:       https://github.com/NicholasBHubbard/Yabsm
 
-#  The toplevel script and manual of Yabsm.
+#  The toplevel script (and manual) of Yabsm.
 
 use strict;
 use warnings;

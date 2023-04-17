@@ -1,15 +1,9 @@
 Revision history for App::Yabsm
 
-3.150.1   2023-04-16
+3.15.2    2023-04-17
 
-  - Include lib/App/Yabsm.pm in the dist so MetaCPAN can index.
-    This module now contains the contributors manual.
-
-3.150.0   2023-04-14
-
-  - Update version to be higher than 3.14. 3.14 == 3.140 but
-    3.15.0 == 3.015. This version update was necessary for
-    MetaCPAN to index the newest version properly.
+  - Minor updates to manual
+  - Add copyright holder to all Yabsm module headers
 
 3.15.1    2023-03-22
 

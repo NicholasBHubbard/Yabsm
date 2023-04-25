@@ -6,7 +6,7 @@ I also wrote an article about how I personally use Yabsm [here](https://dev.to/n
 
 # Installation
 
-Yabsm is officially supported on Arch, and Slackware.
+Yabsm is officially supported on Arch, and Slackware (more distributions coming soon).
 
 #### Arch
 

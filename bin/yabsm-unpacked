@@ -388,10 +388,6 @@ want to include the output of the following commands in your issue:
     $ yabsm config ssh-check <SSH_BACKUP>
     $ cat /var/log/yabsm
 
-=head1 Developers
-
-The developers manual can be viewed at: https://metacpan.org/pod/App::Yabsm.
-
 =head1 Author
 
 Nicholas Hubbard <nicholashubbard@posteo.net>

@@ -10,10 +10,11 @@ Yabsm is officially supported on Arch, and Slackware (more distributions coming 
 
 #### Arch
 
-Available on the AUR as [yabsm](https://aur.archlinux.org/packages/yabsm). After creating a configuration, enable and start the yabsmd service:
+Available on the AUR as [yabsm](https://aur.archlinux.org/packages/yabsm). After creating a configuration, start and enable the yabsmd service:
 
 ```
-# systemctl enable --now yabsmd
+# systemctl start yabsmd
+# systemctl enable yabsmd
 ```
 
 #### Slackware
@@ -26,7 +27,7 @@ Don't hesitate to [open an issue](https://github.com/NicholasBHubbard/Yabsm/issu
 
 # Developers
 
-First off, all patches welcome!
+If Yabsm is not packaged for your Linux distribution I would really appreciate it if you packaged it (and let me know you packaged it).
 
 #### Features to Add
 

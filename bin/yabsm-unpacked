@@ -125,9 +125,10 @@ automatically when it starts.
 
     yabsm_dir=/.snapshots/yabsm
 
-There are 4 different configuration objects: I<subvols>, I<snaps>,
-I<ssh_backups>, and I<local_backups>. The general form of each configuration
-object is:
+The rest of the config will contain your configuration objects. There are 4
+different configuration objects: I<subvols>, I<snaps>, I<ssh_backups>, and
+I<local_backups>. You can define as many configuration object as you want.  The
+general form of each configuration object is:
 
     type name {
         key=val
@@ -139,10 +140,11 @@ unique names. You can define as many configuration objects as you want.
 
 =head4 Subvols
 
-A subvol is the simplest configuration object and is used to give a name to a
-L<btrfs subvolume|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes>
-on your system. A subvol definition accepts one field named C<mountpoint> which
-takes a value that is a path to a subvolume.
+A subvol is the simplest configuration object and is used to give a name to one
+of your L<btrfs
+subvolumes|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Subvolumes>. A
+subvol definition accepts one field named C<mountpoint> which takes a value that
+is a path to a subvolume.
 
     subvol home_subvol {
         mountpoint=/home
@@ -150,31 +152,35 @@ takes a value that is a path to a subvolume.
 
 =head4 Timeframes
 
-We need to understand timeframes before we can understand I<snaps>,
-I<ssh_backups>, and I<local_backups>. There are 5 timeframes: I<5minute>,
-I<hourly>, I<daily>, I<weekly>, and I<monthly>.
+We need to understand timeframes before we can understand the other
+configuration objects (I<snaps>, I<ssh_backups>, and I<local_backups>).
+
+There are 5 timeframes: I<5minute>, I<hourly>, I<daily>, I<weekly>, and
+I<monthly>.
 
 I<Snaps>, I<ssh_backups>, and I<local_backups> are performed in one or more
-timeframes. For example, a I<ssh_backup> may be configured to take backups in the
-I<hourly> and I<weekly> categories, which means that we want to backup every hour
-and once a week.
+timeframes. For example, a I<ssh_backup> may be configured to take backups in
+the I<hourly> and I<weekly> timeframes , which means that we want to backup
+every hour and once a week.
 
-The following table describes in plain English what each timeframe means:
+The following table provides a brief description of each timeframe:
 
-    5minute -> Every 5 minutes.
-    hourly  -> At the beginning of every hour.
-    daily   -> Every day at one or more times of the day.
-    weekly  -> Once a week on a specific weekday at a specific time.
-    monthly -> Once a month on a specific day at a specific time.
+    5minute -> Every 5 minutes
+    hourly  -> At the beginning of every hour
+    daily   -> Every day at one or more times of the day
+    weekly  -> Once a week on a specific weekday at a specific time
+    monthly -> Once a month on a specific day at a specific time
 
-To specify the timeframes you want, you set the value of C<timeframes> to a comma
-separated list of timeframe values. For example, this is how you specify that you
-want every timeframe:
+To specify the timeframes you want, the I<snap>, I<ssh_backup>, and
+I<local_backup> require you to specify a C<timeframes> value. This value is set
+to a comma separated list of timeframe values. For example, this is how you
+specify that you want every timeframe:
 
     timeframes=5minute,hourly,daily,weekly,monthly
 
 Each timeframe you specify adds new required settings for the configuration
-object. Here is a table that shows the timeframe settings:
+object. Here is a table that shows the extra settings required for each
+timeframe:
 
     5minute -> 5minute_keep
     hourly  -> hourly_keep
@@ -183,8 +189,8 @@ object. Here is a table that shows the timeframe settings:
     monthly -> monthly_keep, monthly_time, monthly_day
 
 Any C<*_keep> setting defines how many snapshots/backups you want to keep at one
-time for the configuration object. A common configuration is to keep 48 hourly
-snapshots so you can go back 2 days in one-hour increments.
+time for that timeframe category. For example, a common configuration is to keep
+48 hourly snapshots so you can go back 2 days in one-hour increments.
 
 The I<daily> timeframe requires a C<daily_times> setting, which takes a comma
 separated list of C<hh:mm> times. Yabsm will perform the snapshot/backup every
@@ -203,7 +209,8 @@ given time.
 =head4 Snaps
 
 A I<snap> represents a snapshot configuration for some I<subvol>. Here is an
-example of a I<snap> that snapshots C<home_subvol> twice a day.
+example of a I<snap> that snapshots C<home_subvol> twice a day. These snapshots
+will be stored in C<$yabsm_dir/$SNAP_NAME/$TIMEFRAME>.
 
     snap home_subvol_snap {
         subvol=home_subvol

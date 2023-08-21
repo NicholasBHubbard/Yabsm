@@ -1,6 +1,6 @@
 # Yabsm (a btrfs snapshot manager and backup system)
 
-Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.2/view/bin/yabsm).
+Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.3/view/bin/yabsm).
 
 I also wrote an article about how I personally use Yabsm [here](https://dev.to/nicholasbhubbard/how-i-use-yabsm-to-manage-my-btrfs-snapshots-19a3).
 

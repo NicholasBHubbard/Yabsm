@@ -67,16 +67,15 @@ L<find|/"Finding Snapshots">, and L<daemon|/"The Yabsm Daemon">
 Before we go on, let's clear up the difference between a snapshot and a backup.
 
 A L<snapshot|https://btrfs.wiki.kernel.org/index.php/SysadminGuide#Snapshots> is
-a read-only nested subvolume created with a C<btrfs subvolume snapshot -r>
-command. B<SNAPSHOTS ARE NOT RELIABLE AS A BACKUP MECHANISM>!. If a subvolume is
-corrupted then all the snapshots of that subvolume may also be corrupted.
+a read-only nested subvolume created with the C<btrfs subvolume snapshot -r>
+command.
 
-A backup is an L<incremental
-backup|https://btrfs.wiki.kernel.org/index.php/Incremental_Backup> sent to some
-location via Btrfs's
+A backup is a snapshot that has been transferred to another disk via the btrfs
 L<send/receive|https://btrfs.readthedocs.io/en/latest/Send-receive.html>
-commands. A backup will not be corrupted if the subvolume being backed up is
-corrupted.
+commands. Yabsm leverages btrfs's <incremental
+backup|https://btrfs.wiki.kernel.org/index.php/Incremental_Backup> feature to do
+this efficiently. Yabsm can transfer backup snapshots over SSH and to local
+storage.
 
 =head1 The Yabsm Daemon
 
@@ -117,12 +116,14 @@ config and output useful error messages if there are any problems.
 
 =head3 Configuration Grammar
 
-First things first: you must specify a C<yabsm_dir> that Yabsm will use for
-storing snapshots and as a cache for holding data needed for performing snapshots
-and backups. Most commonly this directory is set to C</.snapshots/yabsm>. Yabsm
-will take this directory literally so you almost certainly want the path to end
-in C</yabsm>. If this directory does not exist, the Yabsm daemon will create it
+You must specify a C<yabsm_dir> that Yabsm will use for storing snapshots and as
+a cache for holding data needed for performing snapshots and backups. Most
+commonly this directory is set to C</.snapshots/yabsm>. Yabsm will take this
+directory literally so you almost certainly want the path to end in
+C</yabsm>. If this directory does not exist, the Yabsm daemon will create it
 automatically when it starts.
+
+    yabsm_dir=/.snapshots/yabsm
 
 There are 4 different configuration objects: I<subvols>, I<snaps>,
 I<ssh_backups>, and I<local_backups>. The general form of each configuration

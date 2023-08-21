@@ -67,7 +67,7 @@ Yabsm uses [semantic versioning](https://semver.org/). The MAJOR version is upgr
 - Make sure `/Changes` lists all relevant changes since the previous version and denotes todays date for the version to be released
 - Check everything one last time. Specifically, make sure all the CPAN deps (with correct version) have been fatpacked into `bin/yabsm`.
 - Upload to CPAN: `$ cpan-upload -u $PAUSE_USERNAME App-Yabsm-$VERSION.tar.gz`
-- Update this documents link to the official so it point to the new version.
+- Update this documents link to the official manual so it points to the new version.
 
 # Copyright and License
 

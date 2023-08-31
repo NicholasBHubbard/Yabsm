@@ -62,7 +62,7 @@ sub do_local_backup {
     my $tmp_snapshot       = take_tmp_snapshot($local_backup, 'local', $tframe, $config_ref);
     my $bootstrap_snapshot = maybe_do_local_backup_bootstrap($local_backup, $config_ref);
 
-    system_or_die("sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot' | sudo -n btrfs receive '$backup_dir' >/dev/null 2>&1");
+    system_or_die("sudo -n btrfs send -p '$bootstrap_snapshot' '$tmp_snapshot' | sudo -n btrfs receive '$backup_dir'");
 
     # @backups is sorted from newest to oldest
     my @backups = sort_snapshots(do {
@@ -124,7 +124,7 @@ sub do_local_backup_bootstrap {
 
     my $backup_dir_base = local_backup_dir($local_backup, undef, $config_ref);
 
-    system_or_die("sudo -n btrfs send '$local_boot_snap' | sudo -n btrfs receive '$backup_dir_base' >/dev/null 2>&1");
+    system_or_die("sudo -n btrfs send '$local_boot_snap' | sudo -n btrfs receive '$backup_dir_base'");
 
     return $local_boot_snap;
 }

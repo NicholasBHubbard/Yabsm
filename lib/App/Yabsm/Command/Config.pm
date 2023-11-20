@@ -15,7 +15,6 @@ use App::Yabsm::Tools qw( :ALL );
 use App::Yabsm::Config::Query qw( :ALL );
 use App::Yabsm::Config::Parser qw(parse_config_or_die);
 use App::Yabsm::Backup::SSH;
-use App::Yabsm::Command::Daemon;
 
 sub usage {
     arg_count_or_die(0, 0, @_);
@@ -159,11 +158,11 @@ sub check_ssh_backup {
         die "yabsm: error: no such ssh_backup named '$ssh_backup'\n";
     }
 
-    unless (App::Yabsm::Command::Daemon::yabsm_user_exists()) {
+    unless (yabsm_user_exists()) {
         die q(yabsm: error: cannot find user named 'yabsm')."\n";
     }
 
-    unless (App::Yabsm::Command::Daemon::yabsm_group_exists()) {
+    unless (yabsm_group_exists()) {
         die q(yabsm: error: cannot find group named 'yabsm')."\n";
     }
 

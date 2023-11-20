@@ -1,3 +1,7 @@
+# YABSM IS DEPRECATED
+
+Yabsm is no longer being worked on or maintained. Please consider using alternatives such as btrbk or snapper.
+
 # Yabsm (a btrfs snapshot manager and backup system)
 
 Yabsm's user manual can be found on CPAN [here](https://metacpan.org/release/NHUBBARD/App-Yabsm-3.15.3/view/bin/yabsm).

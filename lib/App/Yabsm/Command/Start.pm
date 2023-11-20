@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use v5.34.0;
 
-package App::Yabsm::Command::Daemon;
+package App::Yabsm::Command::Start;
 
 use App::Yabsm::Tools qw( :ALL );
 use App::Yabsm::Config::Query qw( :ALL );
@@ -25,23 +25,21 @@ use Carp qw(confess);
 
 sub usage {
     arg_count_or_die(0, 0, @_);
-    return 'usage: yabsm <daemon|d> [--help] [start] [stop] [restart] [status] [init]'."\n";
+    return 'usage: yabsm <start|s> [--help]'."\n";
 }
 
                  ####################################
                  #               MAIN               #
                  ####################################
+
 sub main {
-
-    my $cmd = shift // die usage();
-    @_ and die usage();
-
-    if    ($cmd =~ /^(-h|--help)$/) { help()           }
-    elsif ($cmd eq 'start'        ) { yabsmd_start()   }
-    elsif ($cmd eq 'stop'         ) { yabsmd_stop()    }
-    elsif ($cmd eq 'restart'      ) { yabsmd_restart() }
-    elsif ($cmd eq 'status'       ) { yabsmd_status()  }
-    elsif ($cmd eq 'init'         ) { yabsmd_init()    }
+    if (@_ == 0) {
+        yabsmd_start();
+    }
+    elsif (@_ == 1) {
+        shift =~ /^(-h|--help)$/ or die usage();
+        help();
+    }
     else {
         die usage();
     }
@@ -60,107 +58,22 @@ $usage
 
 --help       Print this help message.
 
-start        Start the Yabsm daemon.
-
-stop         Stop the Yabsm daemon.
-
-restart      Restart the Yabsm daemon.
-
-status       Print the Yabsm daemons PID if it is running.
-
-init         Initialize the Yabsm daemons runtime environment without starting
-             the daemon.
-
 END_HELP
 }
 
 sub yabsmd_start {
 
-    # Start the yabsm daemon.
+    # Start the yabsm daemon. This subroutine does not return.
 
     arg_count_or_die(0, 0, @_);
 
     die 'yabsm: error: permission denied'."\n" unless i_am_root();
-
-    # There can only ever be one running instance of yabsmd.
-    if (my $yabsmd_pid = yabsmd_pid()) {
-        die "yabsm: error: yabsmd is already running as pid $yabsmd_pid\n";
-    }
 
     my $config_ref = parse_config_or_die();
 
     initialize_yabsmd_runtime_environment(1, 1, $config_ref);
 
-    my $pid = create_cron_scheduler($config_ref)->run(
-        detach => 1,
-        pid_file => '/run/yabsmd.pid'
-    );
-
-    say "started yabsmd as pid $pid";
-}
-
-sub yabsmd_stop {
-
-    # Stop the yabsm daemon if it is running and exit.
-
-    arg_count_or_die(0, 0, @_);
-
-    die 'yabsm: error: permission denied'."\n" unless i_am_root();
-
-    if (my $pid = yabsmd_pid()) {
-        if (kill 'TERM', $pid) {
-            say "terminated yabsmd process running as pid $pid";
-        }
-        else {
-            die "yabsm: error: cannot terminate yabsmd process running as pid $pid\n";
-        }
-    }
-    else { die 'no running instance of yabsmd'."\n" }
-}
-
-sub yabsmd_restart {
-
-    # Restart the yabsm daemon if it is running and exit.
-
-    arg_count_or_die(0, 0, @_);
-
-    die 'yabsm: error: permission denied'."\n" unless i_am_root();
-
-    yabsmd_stop();
-
-    sleep 1;
-
-    yabsmd_start();
-}
-
-sub yabsmd_status {
-
-    # If the yabsm daemon is running print its pid.
-
-    arg_count_or_die(0, 0, @_);
-
-    if (my $pid = yabsmd_pid()) {
-        say $pid;
-    }
-    else {
-        die "no running instance of yabsmd\n";
-    }
-}
-
-sub yabsmd_init {
-
-    # Subcommand to allow user to yabsmd's runtime environment without having to
-    # start yabsmd.
-
-    arg_count_or_die(0, 0, @_);
-
-    die 'yabsm: error: permission denied'."\n" unless i_am_root();
-
-    my $config_ref = parse_config_or_die();
-
-    initialize_yabsmd_runtime_environment(0, 0, $config_ref);
-
-    say 'all good';
+    create_cron_scheduler($config_ref)->run();
 }
 
                  ####################################
@@ -171,7 +84,6 @@ sub initialize_yabsmd_runtime_environment {
 
     # Initialize yabsmd's runtime environment:
     #
-    # * Install the signal handlers that remove the PID file before exiting
     # * Create dirs needed for performing snaps, ssh_backups, and local_backups
     # * Create the yabsm user and group if they don't already exists
     # * If $create_log_file, create /var/log/yabsm if it does not exist and chown it to yabsm:yabsm
@@ -188,8 +100,6 @@ sub initialize_yabsmd_runtime_environment {
     i_am_root_or_die();
 
     os_dependencies_satisfied_or_die();
-
-    install_signal_handlers();
 
     create_yabsmd_runtime_dirs($config_ref);
 
@@ -412,71 +322,6 @@ sub create_yabsmd_runtime_dirs {
         }
     }
     return 1;
-}
-
-sub yabsmd_pid {
-
-    # If there is a running instance of yabsmd return its pid and otherwise
-    # return 0.
-
-    arg_count_or_die(0, 0, @_);
-
-    chomp for my @pids = `pgrep ^yabsmd\$`;
-
-    my $pid_file_pid;
-    if (open my $fh, '<', '/run/yabsmd.pid') {
-        $pid_file_pid = <$fh>;
-        chomp $pid_file_pid if $pid_file_pid;
-        close $fh;
-    }
-
-    my $is_running = $pid_file_pid && @pids && grep({$_ eq $pid_file_pid} @pids);
-
-    return $is_running ? $pid_file_pid : 0;
-}
-
-sub install_signal_handlers {
-
-    # Install a handler for all signals with a default action of terminate or
-    # dump to ensure we remove /run/yabsmd.pid before exiting.
-    #
-    # Handle SIGHUP by restarting yabsmd.
-
-    # Restart the daemon on a SIGHUP.
-    $SIG{HUP} = \&yabsmd_restart;
-
-    # Gracefully exit on any signal that has a default action of terminate or
-    # dump.
-    my $cleanup_and_exit = sub {
-        # clear the PID file
-        if (open my $fh, '>', '/run/yabsmd.pid') {
-            close $fh;
-        }
-        exit 0;
-    };
-
-    $SIG{ABRT}   = $cleanup_and_exit;
-    $SIG{ALRM}   = $cleanup_and_exit;
-    $SIG{BUS}    = $cleanup_and_exit;
-    $SIG{FPE}    = $cleanup_and_exit;
-    $SIG{ILL}    = $cleanup_and_exit;
-    $SIG{INT}    = $cleanup_and_exit;
-    $SIG{IO}     = $cleanup_and_exit;
-    $SIG{KILL}   = $cleanup_and_exit;
-    $SIG{PIPE}   = $cleanup_and_exit;
-    $SIG{PROF}   = $cleanup_and_exit;
-    $SIG{PWR}    = $cleanup_and_exit;
-    $SIG{QUIT}   = $cleanup_and_exit;
-    $SIG{SEGV}   = $cleanup_and_exit;
-    $SIG{STKFLT} = $cleanup_and_exit;
-    $SIG{SYS}    = $cleanup_and_exit;
-    $SIG{TERM}   = $cleanup_and_exit;
-    $SIG{TRAP}   = $cleanup_and_exit;
-    $SIG{USR1}   = $cleanup_and_exit;
-    $SIG{USR2}   = $cleanup_and_exit;
-    $SIG{VTALRM} = $cleanup_and_exit;
-    $SIG{XCPU}   = $cleanup_and_exit;
-    $SIG{XFSZ}   = $cleanup_and_exit;
 }
 
 sub create_yabsm_user_ssh_key {

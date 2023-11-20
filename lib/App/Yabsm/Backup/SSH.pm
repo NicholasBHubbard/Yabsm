@@ -73,7 +73,7 @@ sub do_ssh_backup {
         $ssh,
         # This is why we need the remote user to have write permission on the
         # backup dir
-        "if ! [ -d '$backup_dir' ]; then mkdir '$backup_dir'; fi"
+        "if ! [ -d '$backup_dir' ]; then mkdir -p '$backup_dir'; fi"
     );
 
     ssh_system_or_die(

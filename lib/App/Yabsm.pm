@@ -11,11 +11,11 @@ use v5.34.0;
 
 package App::Yabsm;
 
-our $VERSION = '3.15.3';
+our $VERSION = '4.0.0';
 
-use App::Yabsm::Command::Daemon;
 use App::Yabsm::Command::Config;
 use App::Yabsm::Command::Find;
+use App::Yabsm::Command::Start;
 
 sub usage {
     return <<'END_USAGE';
@@ -25,13 +25,13 @@ See '$ man yabsm' for a detailed overview.
 
 Commands:
 
-  <daemon|d> [--help] [start] [stop] [restart] [status] [init]
-
   <config|c> [--help] [check ?file] [ssh-check <SSH_BACKUP>] [ssh-key]
              [yabsm-user-home] [yabsm_dir] [subvols] [snaps] [ssh_backups]
              [local_backups] [backups]
 
   <find|f>   [--help] [<SNAP|SSH_BACKUP|LOCAL_BACKUP> <QUERY>]
+
+  <start|s>  [--help]
 
 END_USAGE
 }
@@ -49,14 +49,14 @@ sub main {
     if ($cmd eq '--version')     { say $VERSION  and exit 0 }
 
     # Provide user with command abbreviations
-    if    ($cmd eq 'd') { $cmd = 'daemon' }
-    elsif ($cmd eq 'c') { $cmd = 'config' }
+    if    ($cmd eq 'c') { $cmd = 'config' }
     elsif ($cmd eq 'f') { $cmd = 'find'   }
+    elsif ($cmd eq 's') { $cmd = 'start'  }
 
     # All 3 subcommands have their own &main
-    if    ($cmd eq 'daemon') { $cmd = \&App::Yabsm::Command::Daemon::main }
-    elsif ($cmd eq 'config') { $cmd = \&App::Yabsm::Command::Config::main }
+    if    ($cmd eq 'config') { $cmd = \&App::Yabsm::Command::Config::main }
     elsif ($cmd eq 'find'  ) { $cmd = \&App::Yabsm::Command::Find::main   }
+    elsif ($cmd eq 'start' ) { $cmd = \&App::Yabsm::Command::Start::main  }
     else {
         die usage();
     }

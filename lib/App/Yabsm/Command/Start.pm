@@ -426,33 +426,4 @@ sub create_yabsm_user_and_group {
     return wantarray ? ($yabsm_uid, $yabsm_gid) : 1;
 }
 
-sub yabsm_user_exists {
-
-    # Return 1 if there exists a locked user on the system named 'yabsm'.
-
-    arg_count_or_die(0, 0, @_);
-
-    i_am_root_or_die();
-
-    unless (0 == system('getent passwd yabsm >/dev/null 2>&1')) {
-        return 0;
-    }
-
-    unless ('L' eq (split ' ', `passwd -S yabsm`)[1]) {
-        die q(yabsm: error: found non-locked user named 'yabsm')."\n";
-    }
-
-    return 1;
-}
-
-sub yabsm_group_exists {
-
-    # Return 1 if there exists on the system a user and group named 'yabsm' and
-    # return 0 otherwise.
-
-    arg_count_or_die(0, 0, @_);
-
-    return 0+(0 == system('getent group yabsm >/dev/null 2>&1'));
-}
-
 1;

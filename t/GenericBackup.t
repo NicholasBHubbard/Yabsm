@@ -209,4 +209,6 @@ my %TEST_CONFIG = ( yabsm_dir => $BTRFS_DIR
     App::Yabsm::Snapshot::delete_snapshot($_) for @tmp_snaps;
 }
 
+done_testing;
+
 1;

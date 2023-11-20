@@ -62,7 +62,7 @@ Yabsm uses [semantic versioning](https://semver.org/). The MAJOR version is upgr
 - Install all modules listed in `/cpanfile`: `$ cpanm --installdeps .`
 - Run the test suite and make sure all tests pass
 - Pack `bin/yabsm-unpacked` with [App::FatPacker](https://metacpan.org/pod/App::FatPacker): `$ fatpack pack bin/yabsm-unpacked > bin/yabsm`
-  - Make the dist: `$ perl Makefile.PL; make; make test; make dist`
+- Make the dist: `$ perl Makefile.PL; make; make test; make dist`
 - Examine the dist to make sure everything is as expected
 - Make sure `/Changes` lists all relevant changes since the previous version and denotes todays date for the version to be released
 - Check everything one last time. Specifically, make sure all the CPAN deps (with correct version) have been fatpacked into `bin/yabsm`.

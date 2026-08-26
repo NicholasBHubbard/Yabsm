@@ -1,6 +1,6 @@
 # YABSM IS DEPRECATED
 
-Yabsm has been deprecated in favor of btrbk for the time being. Important architectural mistakes were made that I don't currently have the time to fix. Yabsm still works great and is useful, but I cannot in good conscience package it for Linux distros until I fix these mistakes.
+Yabsm has been deprecated in favor of [yaesm](https://github.com/Vultimate1/yaesm) which is largely based off of Yabsm but with significant improvements.
 
 # Yabsm (a btrfs snapshot manager and backup system)
 
